@@ -19,21 +19,42 @@ function analyzeKlines(rows){
  return {price:last.c,change_pct:(last.c/closes[closes.length-2]-1)*100,rsi:rsi(closes),ema20:e20,ema50:e50,ema200:e200,ema_trend:e20&&e50&&e200?(last.c>e20&&e20>e50&&e50>e200?"bullish":last.c<e20&&e20<e50&&e50<e200?"bearish":"mixed"):"insufficient",macd,macd_signal:macd==null||signal==null?"insufficient":macd>signal?"bullish crossover bias":macd<signal?"bearish crossover bias":"neutral",atr,atr_percent:atr?atr/last.c*100:null,support,resistance,volume_ratio:mean(vols.slice(-5))/(mean(vols.slice(-25))||1),taker_buy_volume_ratio:totalBase?takerBuyBase/totalBase:null,candle_time:new Date(last.t).toISOString()};
 }
 async function candles(symbol,interval,env,marketType="spot"){
- const base=marketType==="futures"?"https://fapi.binance.com/fapi/v1/klines":"https://api.binance.com/api/v3/klines";
- const url=base+"?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250";
- let r=await fetch(url,{headers:{"Accept":"application/json"}});
- // Binance global can reject requests from some Cloudflare egress regions.
- // For spot candles, retry against the Binance US public market-data endpoint.
- if(!r.ok && marketType!=="futures"){
-  const fallback="https://api.binance.us/api/v3/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250";
-  r=await fetch(fallback,{headers:{"Accept":"application/json"}});
+ const headers={"Accept":"application/json"};
+ const spotUrls=[
+  "https://api.binance.com/api/v3/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250",
+  "https://api.binance.us/api/v3/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250",
+  "https://data-api.binance.vision/api/v3/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250"
+ ];
+ if(marketType==="futures"){
+  let primaryError=null;
+  try{
+   const r=await fetch("https://fapi.binance.com/fapi/v1/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250",{headers});
+   if(!r.ok)throw new Error("Binance Futures HTTP "+r.status);
+   const rows=await r.json();
+   if(!Array.isArray(rows)||rows.length<80)throw new Error("Binance Futures candle history is insufficient");
+   const result=analyzeKlines(rows);result.data_provider="Binance Futures";return result;
+  }catch(e){primaryError=e;}
+  const bybitInterval={"15m":"15","1h":"60","4h":"240","1d":"D"}[interval];
+  const url="https://api.bybit.com/v5/market/kline?category=linear&symbol="+encodeURIComponent(symbol)+"&interval="+bybitInterval+"&limit=250";
+  const r=await fetch(url,{headers});
+  if(!r.ok)throw new Error("Futures data unavailable: Binance and Bybit HTTP "+r.status);
+  const payload=await r.json();
+  const list=payload?.retCode===0?payload.result?.list:null;
+  if(!Array.isArray(list)||list.length<80)throw new Error("Futures data unavailable for "+symbol+"; Binance: "+primaryError.message+"; Bybit: "+(payload?.retMsg||"insufficient candle history"));
+  const rows=list.slice().reverse().map(x=>[Number(x[0]),x[1],x[2],x[3],x[4],x[5],x[6]||"0","0","0","0"]);
+  const result=analyzeKlines(rows);result.data_provider="Bybit Linear Perpetual (fallback)";return result;
  }
- if(!r.ok){
-  const detail=(await r.text().catch(()=>"")).slice(0,180);
-  throw new Error("Market data unavailable for "+symbol+" "+interval+" (HTTP "+r.status+")"+(detail?": "+detail:""));
+ let lastError=null;
+ for(const url of spotUrls){
+  try{
+   const r=await fetch(url,{headers});
+   if(!r.ok){lastError=new Error("HTTP "+r.status);continue;}
+   const rows=await r.json();
+   if(!Array.isArray(rows)||rows.length<80){lastError=new Error("insufficient candle history");continue;}
+   const result=analyzeKlines(rows);result.data_provider=url.includes("binance.us")?"Binance.US":url.includes("data-api")?"Binance Data API":"Binance Spot";return result;
+  }catch(e){lastError=e;}
  }
- const rows=await r.json();if(!Array.isArray(rows)||rows.length<80)throw new Error("Not enough candle history for "+interval);
- return analyzeKlines(rows);
+ throw new Error("Spot data unavailable for "+symbol+" "+interval+": "+(lastError?.message||"all providers failed"));
 }
 function validSymbol(s){return /^[A-Z0-9]{2,20}$/.test(s||"")&&!s.includes("USDTUSDT")}
 
@@ -78,19 +99,40 @@ async function handle(request,env){
  const mode=["spot","futures","both"].includes(body.market_mode)?body.market_mode:"both";
  try{
   const intervals=["15m","1h","4h","1d"];
-  const candleMarket=mode==="futures"?"futures":"spot";
-  const results=await Promise.all(intervals.map(async tf=>[tf,await candles(pair,tf,env,candleMarket)]));
-  const market=Object.fromEntries(results);
+  let spotMarket=null,futuresMarket=null,market={},candleMarket=mode==="futures"?"futures":"spot";
+  if(mode==="both"){
+   const settled=await Promise.allSettled([
+    Promise.all(intervals.map(async tf=>[tf,await candles(pair,tf,env,"spot")])),
+    Promise.all(intervals.map(async tf=>[tf,await candles(pair,tf,env,"futures")]))
+   ]);
+   if(settled[0].status!=="fulfilled")throw settled[0].reason;
+   spotMarket=Object.fromEntries(settled[0].value);
+   if(settled[1].status==="fulfilled")futuresMarket=Object.fromEntries(settled[1].value);
+   market=spotMarket;
+  }else{
+   const results=await Promise.all(intervals.map(async tf=>[tf,await candles(pair,tf,env,candleMarket)]));
+   market=Object.fromEntries(results);
+   if(mode==="spot")spotMarket=market;else futuresMarket=market;
+  }
   const latest=market["4h"];
   const optionalJson=async url=>{try{const r=await fetch(url);if(!r.ok)return null;return await r.json();}catch{return null;}};
-  const [funding,openInterest,fng,global]=await Promise.all([
+  let [funding,openInterest,fng,global]=await Promise.all([
    mode==="spot"?Promise.resolve(null):optionalJson("https://fapi.binance.com/fapi/v1/premiumIndex?symbol="+pair),
    mode==="spot"?Promise.resolve(null):optionalJson("https://fapi.binance.com/fapi/v1/openInterest?symbol="+pair),
    optionalJson("https://api.alternative.me/fng/?limit=1"),
    optionalJson("https://api.coingecko.com/api/v3/global")
   ]);
-  const snapshot={asset:String(body.name||symbol).slice(0,60),symbol:pair,market_mode:mode,source:"Binance public candles; Binance Futures metrics when available; Alternative.me Fear & Greed; CoinGecko global market",market_timestamp:latest.candle_time,timeframes:market,derivatives:funding?{funding_rate:funding.lastFundingRate,mark_price:funding.markPrice,next_funding_time:funding.nextFundingTime,open_interest:openInterest?.openInterest||null}:null,sentiment:fng?.data?.[0]?{fear_greed_value:Number(fng.data[0].value),classification:fng.data[0].value_classification}:null,global_market:global?.data?{btc_dominance:global.data.market_cap_percentage?.btc,total_market_cap_usd:global.data.total_market_cap?.usd,total_volume_usd:global.data.total_volume?.usd}:null};
-  const prompt="You are MMP COIN AI, a professional quantitative crypto analyst. Use ONLY the supplied market snapshot and its numeric values. Write every human-readable sentence in fluent, natural Persian. Do not mix Persian with Russian, Chinese, or English words. Preserve only tickers and standard indicators: BTCUSDT, RSI, MACD, EMA, ATR, LONG, SHORT, BUY, SELL, WAIT, TP1, TP2, TP3. Never invent news, events, order-book data, on-chain metrics, funding, open interest, volume, prices, or indicators.\n\nAnalyze all four timeframes (15m, 1h, 4h, 1d), distinguish short-term noise from the main trend, compare EMA alignment, RSI, MACD, volume ratio, ATR, support and resistance. Explain whether timeframes agree or conflict. Evaluate derivatives funding and open interest only when present; explain Fear & Greed only when present.\n\nReturn ONLY one valid JSON object with keys: action (BUY, SELL, WAIT), primary_timeframe, confidence (integer 0-100 representing strength/alignment of evidence, NOT probability of profit), risk_level, market {price_usd}, levels {entry_zone:{low,high},stop_loss,tp1,tp2,tp3}, risk_reward, holding_horizon, position_risk, summary, technical_analysis, indicators {rsi,macd_signal,ema_trend,atr_percent}, scenarios [{name,description}], recommendations [3-6 concise actionable Persian suggestions], reasons [3-6 evidence-based Persian strings], risk_management, invalidation, market_context, data_source, market_timestamp.\n\nScenarios must cover bullish, bearish, and sideways cases, each with the condition that would confirm it and the relevant supplied support/resistance or indicator evidence. Recommendations should include what to monitor next, what would confirm entry, what invalidates the setup, and whether to wait for candle close. Never promise a return or call confidence a win probability.\n\nChoose WAIT when timeframes conflict, evidence is weak, risk/reward is below 1.5, volume confirmation is missing, or data is insufficient. When action is WAIT, set all entry/stop/target values to null. For BUY, entry and targets must be logically consistent around current price; for SELL, reverse the direction. Derive levels only from supplied support, resistance, ATR and current price. In spot-only mode never recommend SHORT or SELL. For futures, warn that leverage creates liquidation risk and advise low or no leverage. Use concise but substantive analysis, not generic filler.\n\nSnapshot: "+JSON.stringify(snapshot);
+  if(mode!=="spot"&&(!funding||!openInterest)){
+   const [bybitFunding,bybitOi]=await Promise.all([
+    optionalJson("https://api.bybit.com/v5/market/funding/history?category=linear&symbol="+pair+"&limit=1"),
+    optionalJson("https://api.bybit.com/v5/market/open-interest?category=linear&symbol="+pair+"&intervalTime=1h&limit=1")
+   ]);
+   if(!funding&&bybitFunding?.retCode===0&&bybitFunding.result?.list?.[0])funding={lastFundingRate:bybitFunding.result.list[0].fundingRate,markPrice:null};
+   if(!openInterest&&bybitOi?.retCode===0&&bybitOi.result?.list?.[0])openInterest={openInterest:bybitOi.result.list[0].openInterest};
+  }
+  const providers=[...(spotMarket?Object.values(spotMarket).map(x=>x.data_provider):[]),...(futuresMarket?Object.values(futuresMarket).map(x=>x.data_provider):[])];
+  const snapshot={asset:String(body.name||symbol).slice(0,60),symbol:pair,market_mode:mode,source:[...new Set(providers)].join(" + ")+"; derivatives metrics when available; Alternative.me Fear & Greed; CoinGecko global market",market_timestamp:latest.candle_time,timeframes:market,futures_timeframes:mode==="both"&&futuresMarket?futuresMarket:null,spot_timeframes:mode==="both"?spotMarket:null,futures_data_available:mode==="both"?!!futuresMarket:mode==="futures",derivatives:funding?{funding_rate:funding.lastFundingRate,mark_price:funding.markPrice??null,next_funding_time:funding.nextFundingTime??null,open_interest:openInterest?.openInterest||null}:null,sentiment:fng?.data?.[0]?{fear_greed_value:Number(fng.data[0].value),classification:fng.data[0].value_classification}:null,global_market:global?.data?{btc_dominance:global.data.market_cap_percentage?.btc,total_market_cap_usd:global.data.total_market_cap?.usd,total_volume_usd:global.data.total_volume?.usd}:null};
+  const prompt="You are MMP COIN AI, a professional quantitative crypto analyst. Use ONLY the supplied market snapshot and its numeric values. Write every human-readable sentence in fluent, natural Persian. Do not mix Persian with Russian, Chinese, or English words. Preserve only tickers and standard indicators: BTCUSDT, RSI, MACD, EMA, ATR, LONG, SHORT, BUY, SELL, WAIT, TP1, TP2, TP3. Never invent news, events, order-book data, on-chain metrics, funding, open interest, volume, prices, or indicators.\n\nAnalyze all four timeframes (15m, 1h, 4h, 1d), distinguish short-term noise from the main trend, compare EMA alignment, RSI, MACD, volume ratio, ATR, support and resistance. In both mode, compare spot timeframes against futures_timeframes and explicitly identify agreement or divergence; never claim futures data was checked when futures_data_available is false. Evaluate derivatives funding and open interest only when present; explain Fear & Greed only when present.\n\nReturn ONLY one valid JSON object with keys: action (BUY, SELL, WAIT), primary_timeframe, confidence (integer 0-100 representing strength/alignment of evidence, NOT probability of profit), risk_level, market {price_usd}, levels {entry_zone:{low,high},stop_loss,tp1,tp2,tp3}, risk_reward, holding_horizon, position_risk, summary, technical_analysis, indicators {rsi,macd_signal,ema_trend,atr_percent}, scenarios [{name,description}], recommendations [3-6 concise actionable Persian suggestions], reasons [3-6 evidence-based Persian strings], risk_management, invalidation, market_context, data_source, market_timestamp.\n\nScenarios must cover bullish, bearish, and sideways cases, each with the condition that would confirm it and the relevant supplied support/resistance or indicator evidence. Recommendations should include what to monitor next, what would confirm entry, what invalidates the setup, and whether to wait for candle close. Never promise a return or call confidence a win probability.\n\nChoose WAIT when timeframes conflict, evidence is weak, risk/reward is below 1.5, volume confirmation is missing, or data is insufficient. When action is WAIT, set all entry/stop/target values to null. For BUY, entry and targets must be logically consistent around current price; for SELL, reverse the direction. Derive levels only from supplied support, resistance, ATR and current price. In spot-only mode never recommend SHORT or SELL. For futures, warn that leverage creates liquidation risk and advise low or no leverage. Use concise but substantive analysis, not generic filler.\n\nSnapshot: "+JSON.stringify(snapshot);
   const ai=await env.AI.run(MODEL,{messages:[{role:"system",content:"Return one valid JSON object only. Never give guaranteed financial advice."},{role:"user",content:prompt}],max_tokens:2400,temperature:0.12});
   let raw=ai.response||ai.result||ai.output_text||"";
   if(typeof raw!=="string")raw=JSON.stringify(raw);
@@ -106,8 +148,10 @@ async function handle(request,env){
   analysis.recommendations=Array.isArray(analysis.recommendations)?analysis.recommendations.slice(0,6):[];
   analysis.scenarios=Array.isArray(analysis.scenarios)?analysis.scenarios.slice(0,3):[];
   analysis.reasons=Array.isArray(analysis.reasons)?analysis.reasons.slice(0,6):[];
-  const longAligned=market["4h"].ema_trend==="bullish"&&market["1d"].ema_trend!=="bearish";
-  const shortAligned=market["4h"].ema_trend==="bearish"&&market["1d"].ema_trend!=="bullish";
+  const alignmentMarket=mode==="futures"?(futuresMarket||market):market;
+  let longAligned=alignmentMarket["4h"].ema_trend==="bullish"&&alignmentMarket["1d"].ema_trend!=="bearish";
+  let shortAligned=alignmentMarket["4h"].ema_trend==="bearish"&&alignmentMarket["1d"].ema_trend!=="bullish";
+  if(mode==="both"&&futuresMarket){longAligned=longAligned&&futuresMarket["4h"].ema_trend==="bullish"&&futuresMarket["1d"].ema_trend!=="bearish";shortAligned=shortAligned&&futuresMarket["4h"].ema_trend==="bearish"&&futuresMarket["1d"].ema_trend!=="bullish";}
   if((analysis.action==="BUY"&&!longAligned)||(analysis.action==="SELL"&&!shortAligned)||(mode==="spot"&&analysis.action==="SELL")){
    analysis.action="WAIT";analysis.confidence=Math.min(analysis.confidence,55);
    analysis.levels={entry_zone:null,stop_loss:null,tp1:null,tp2:null,tp3:null};
