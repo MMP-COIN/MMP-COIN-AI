@@ -1,0 +1,13 @@
+{
+  "appId": "com.mmpcoinai.app",
+  "appName": "MMP COIN AI",
+  "webDir": "www",
+  "server": {
+    "url": "https://mmp1988.github.io/MMP-COIN-AI/",
+    "cleartext": false,
+    "allowNavigation": [
+      "mmp1988.github.io",
+      "mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev"
+    ]
+  }
+}
