@@ -14,7 +14,6 @@ function analyzeKlines(rows){
  const tr=candles.slice(1).map((x,i)=>Math.max(x.h-x.l,Math.abs(x.h-candles[i].c),Math.abs(x.l-candles[i].c)));
  const atr=tr.length>=14?mean(tr.slice(-14)):null;
  const support=Math.min(...lows.slice(-30)),resistance=Math.max(...highs.slice(-30));
- const takerBuy=candles.slice(-24).reduce((s,x)=>s+(Number(x.v)>0?Math.min(Number(x.v),Number(x.v)):0),0);
  const takerBuyBase=rows.slice(-24).reduce((s,x)=>s+Number(x[9]||0),0);
  const totalBase=rows.slice(-24).reduce((s,x)=>s+Number(x[5]||0),0);
  return {price:last.c,change_pct:(last.c/closes[closes.length-2]-1)*100,rsi:rsi(closes),ema20:e20,ema50:e50,ema200:e200,ema_trend:e20&&e50&&e200?(last.c>e20&&e20>e50&&e50>e200?"bullish":last.c<e20&&e20<e50&&e50<e200?"bearish":"mixed"):"insufficient",macd,macd_signal:macd==null||signal==null?"insufficient":macd>signal?"bullish crossover bias":macd<signal?"bearish crossover bias":"neutral",atr,atr_percent:atr?atr/last.c*100:null,support,resistance,volume_ratio:mean(vols.slice(-5))/(mean(vols.slice(-25))||1),taker_buy_volume_ratio:totalBase?takerBuyBase/totalBase:null,candle_time:new Date(last.t).toISOString()};
