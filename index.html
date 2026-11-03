@@ -398,8 +398,9 @@ function toggleFullCoinsList() {
   btn.innerText = box.classList.contains('show') ? '▲ بستن لیست کامل ارزها' : '▼ مشاهده لیست کامل و بقیه ارزهای برتر بازار (۳۵ ارز)';
 }
 
+const LAYERZERO_COIN_ID = 'layerzero';
 const EXTRA_COIN_IDS = [
- 'layerzero','near','sui','aptos','arbitrum','optimism','injective-protocol','celestia','sei-network','filecoin','render-token','bittensor','artificial-superintelligence-alliance','ondo-finance','jupiter-exchange-solana','dogwifcoin','pepe','bonk','polygon-ecosystem-token','cosmos','internet-computer','uniswap','aave','chainlink','avalanche-2','polkadot','stellar','hedera-hashgraph','litecoin','bitcoin-cash','ethereum-classic','the-graph','decentraland','the-sandbox','thorchain','immutable-x','algorand','quant-network','curve-dao-token','pancakeswap-token','flare-networks','worldcoin-wld','gala','chiliz','eos','dash','zcash','compound-governance-token','yearn-finance','dydx'
+ LAYERZERO_COIN_ID,'near','sui','aptos','arbitrum','optimism','injective-protocol','celestia','sei-network','filecoin','render-token','bittensor','artificial-superintelligence-alliance','ondo-finance','jupiter-exchange-solana','dogwifcoin','pepe','bonk','polygon-ecosystem-token','cosmos','internet-computer','uniswap','aave','chainlink','avalanche-2','polkadot','stellar','hedera-hashgraph','litecoin','bitcoin-cash','ethereum-classic','the-graph','decentraland','the-sandbox','thorchain','immutable-x','algorand','quant-network','curve-dao-token','pancakeswap-token','flare-networks','worldcoin-wld','gala','chiliz','eos','dash','zcash','compound-governance-token','yearn-finance','dydx'
 ];
 const NON_TRADABLE_COIN_IDS = new Set([
  'tether','usd-coin','dai','usds','ethena-usde','first-digital-usd','paypal-usd','true-usd',
