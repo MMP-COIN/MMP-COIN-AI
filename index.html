@@ -223,7 +223,7 @@ body{background:radial-gradient(ellipse at 82% -10%,#29223b 0,transparent 36%),r
 <div class="card"><div class="stat-label">اونس جهانی طلا · XAU</div><div class="stat-value" id="gold">$—</div><div class="sub">مرجع جهانی فلزات گرانبها</div></div>
 </section>
 
-<!-- بخش نمودار تریدینگ‌ویو با منوی کامل ۳۵ ارز برتر -->
+<!-- بخش نمودار تریدینگ‌ویو با منوی ۵۰ ارز اصلی و ارزهای منتخب -->
 <section class="chart-box-wrapper" id="chart-section">
 <div class="chart-top-bar">
   <h2 style="font-size:16px; margin:0;">نمودار تخصصی تریدینگ‌ویو</h2>
@@ -282,7 +282,7 @@ body{background:radial-gradient(ellipse at 82% -10%,#29223b 0,transparent 36%),r
 <tbody id="top-coins"><tr><td colspan="5" class="muted">در حال دریافت داده…</td></tr></tbody>
 </table></div>
 
-<button class="expand-coins-btn" onclick="toggleFullCoinsList()" id="expand-btn">▼ مشاهده لیست کامل و بقیه ارزهای برتر بازار (۳۵ ارز)</button>
+<button class="expand-coins-btn" onclick="toggleFullCoinsList()" id="expand-btn">▼ مشاهده لیست کامل و بقیه ارزهای برتر بازار (۵۰ ارز اصلی + منتخب‌ها)</button>
 
 <div class="full-coins-list" id="full-coins-box">
   <div class="table-wrap" style="margin-top:12px;"><table class="market-table">
@@ -398,6 +398,26 @@ function toggleFullCoinsList() {
   btn.innerText = box.classList.contains('show') ? '▲ بستن لیست کامل ارزها' : '▼ مشاهده لیست کامل و بقیه ارزهای برتر بازار (۳۵ ارز)';
 }
 
+const EXTRA_COIN_IDS = [
+ 'layerzero','near','sui','aptos','arbitrum','optimism','injective-protocol','celestia','sei-network',
+ 'filecoin','render-token','bittensor','artificial-superintelligence-alliance','ondo-finance',
+ 'jupiter-exchange-solana','dogwifcoin','pepe','bonk','matic-network','cosmos','internet-computer',
+ 'uniswap','aave','chainlink','avalanche-2','polkadot','stellar','hedera-hashgraph','litecoin',
+ 'bitcoin-cash','ethereum-classic','the-graph','decentraland','the-sandbox','thorchain','immutable-x',
+ 'algorand','quant-network','curve-dao-token','pancakeswap-token','flare-networks','worldcoin-wld',
+ 'gala','chiliz','eos','dash','zcash','compound-governance-token','yearn-finance','dydx',
+ 'enjincoin','mina-protocol','kava','neo','axie-infinity'
+];
+const NON_TRADABLE_COIN_IDS = new Set([
+ 'tether','usd-coin','dai','usds','ethena-usde','first-digital-usd','paypal-usd','true-usd',
+ 'frax','usdd','wrapped-bitcoin','coinbase-wrapped-btc','lido-staked-ether','wrapped-steth',
+ 'rocket-pool-eth','staked-ether','staked-ether-2','tether-gold'
+]);
+const NON_TRADABLE_SYMBOLS = new Set([
+ 'USDT','USDC','DAI','USDS','USDE','FDUSD','PYUSD','TUSD','FRAX','USDD','WBTC','CBBTC',
+ 'STETH','WSTETH','RETH','XAUT'
+]);
+
 async function refreshAll(){
  $('updated').textContent='در حال بروزرسانی از مراجع معتبر…';
  try{
@@ -422,22 +442,28 @@ async function refreshAll(){
     $('usdt-source').textContent = 'منبع: Nobitex & Wallex';
   }
 
-  let res = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=35&page=1&sparkline=false');
-  let data = await res.json();
-
-  let targetIds = ['layerzero', 'near'];
-  for(let tid of targetIds) {
-    if(!data.some(x => x.id === tid)) {
-      try {
-        let singleRes = await fetch(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${tid}&sparkline=false`);
-        let singleData = await singleRes.json();
-        if(singleData && singleData.length > 0) {
-          data.push(singleData[0]);
-        }
-      } catch(e){}
-    }
+  const [topRes, extraRes] = await Promise.all([
+    fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=false'),
+    fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids='+EXTRA_COIN_IDS.join(',')+'&order=market_cap_desc&sparkline=false')
+  ]);
+  if(!topRes.ok) throw new Error('CoinGecko top-50 HTTP '+topRes.status);
+  const topData = await topRes.json();
+  let extraData = [];
+  if(extraRes.ok) {
+    const payload = await extraRes.json();
+    if(Array.isArray(payload)) extraData = payload;
   }
+  if(!Array.isArray(topData)) throw new Error('CoinGecko returned invalid top-50 data');
 
+  // نگه‌داشتن ۵۰ ارز اصلیِ قابل معامله و افزودن ارزهای منتخب؛ استیبل‌کوین‌ها و توکن‌های رَپ‌شده از منوی کندل/تحلیل کنار گذاشته می‌شوند.
+  const merged = new Map();
+  [...topData,...extraData].forEach(c => {
+    if(!c || !c.id || !c.symbol) return;
+    if(NON_TRADABLE_COIN_IDS.has(c.id) || NON_TRADABLE_SYMBOLS.has(String(c.symbol).toUpperCase())) return;
+    if(!merged.has(c.id)) merged.set(c.id,c);
+  });
+  let data = [...merged.values()].sort((a,b)=>(a.market_cap_rank||999999)-(b.market_cap_rank||999999));
+  if(data.length < 50) throw new Error('Only '+data.length+' tradable assets received from CoinGecko; retry on next refresh');
   cachedCoinsData = data;
   
   lastMarket.crypto = {};
@@ -502,7 +528,7 @@ function updateDropdowns(data) {
   selectAi.innerHTML = aiHtml;
   if(currentAiVal) selectAi.value = currentAiVal;
 
-  // بروزرسانی منوی کشویی بالای چارت تریدینگ‌ویو با تمام ۳۵ ارز بازار
+  // بروزرسانی منوی کشویی بالای چارت تریدینگ‌ویو با ۵۰ ارز اصلی و ارزهای منتخب بازار
   let tvSelect = $('tv-symbol');
   let currentTvVal = tvSelect.value;
   let tvHtml = '';
