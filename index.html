@@ -464,6 +464,7 @@ function renderAiReport(r,c){
  '<h3>🧠 جمع‌بندی تحلیل هوش مصنوعی</h3><p>'+aiEscape(r.summary||"تحلیل متنی در دسترس نیست.")+'</p>'+
  '<h3>📊 تحلیل تکنیکال و چندتایم‌فریمی</h3><p>'+aiEscape(r.technical_analysis||"")+'</p><p><b>RSI:</b> '+aiEscape(indicators.rsi??"—")+' · <b>MACD:</b> '+aiEscape(indicators.macd_signal??"—")+' · <b>EMA:</b> '+aiEscape(indicators.ema_trend??"—")+' · <b>ATR:</b> '+aiEscape(indicators.atr_percent??"—")+'</p>'+
  '<h3>🧭 سناریوهای پیش‌رو</h3><ul class="ai-list">'+scenarios.map(s=>'<li><b>'+aiEscape(s.name||"سناریو")+'</b>: '+aiEscape(s.description||"")+'</li>').join("")+'</ul>'+
+ '<h3>🌐 وضعیت کلی بازار، احساسات و مشتقات</h3><p>'+aiEscape(r.market_context||"در صورت دسترسی، احساسات بازار، فاندینگ‌ریت و اوپن اینترست در تحلیل لحاظ می‌شوند.")+'</p>'+
  '<h3>🔍 دلایل سیگنال</h3><ul class="ai-list">'+reasons.map(x=>'<li>'+aiEscape(x)+'</li>').join("")+'</ul>'+
  '<h3>🛡️ مدیریت ریسک و شرایط ابطال</h3><p>'+aiEscape(r.risk_management||"")+'</p><p><b>شرط ابطال تحلیل:</b> '+aiEscape(r.invalidation||"")+'</p>'+
  '<div class="ai-note">داده بازار: '+aiEscape(r.data_source||"Binance public market data")+' · زمان داده: '+aiEscape(r.market_timestamp||"نامشخص")+' · زمان تولید تحلیل: '+new Date().toLocaleString("fa-IR")+'<br>درصد اطمینان، ارزیابی مدل از کیفیت هم‌جهتی شواهد است و احتمال قطعی سود نیست.</div>';
