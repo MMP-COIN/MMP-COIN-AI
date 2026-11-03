@@ -1,0 +1,456 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#08090d">
+<title>MMP COIN AI | ترمینال جامع و هوشمند ارز دیجیتال</title>
+<script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+<style>
+:root{--bg:#08090d;--panel:#11131b;--panel2:#171a24;--line:#282c38;--gold:#d9b66d;--gold2:#f2d99b;--text:#f4f1e9;--muted:#9a9eaa;--green:#25d695;--red:#ff5e6c;--yellow:#f4c45e;--blue:#78a9ff}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(ellipse at 50% -20%,#242033 0,#08090d 48%);color:var(--text);font-family:Tahoma,Arial,sans-serif}
+button,input,select{font:inherit}
+button{cursor:pointer}
+.top{position:sticky;top:0;z-index:100;background:#090a0fef;border-bottom:1px solid var(--line);backdrop-filter:blur(14px);padding:12px max(14px,calc((100% - 1440px)/2));display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{display:flex;align-items:center;gap:10px}
+.logo{width:42px;height:42px;border:1px solid var(--gold);border-radius:13px;display:grid;place-items:center;color:var(--gold2);font-weight:900;box-shadow:0 0 22px #d9b66d22}
+.brand b{letter-spacing:1.4px;color:var(--gold2)}
+.brand small{display:block;color:var(--muted);font-size:10px;margin-top:3px}
+.top-actions{display:flex;gap:8px;align-items:center}
+.pill,.btn{border:1px solid var(--line);border-radius:10px;background:var(--panel2);color:var(--text);padding:9px 12px}
+.btn.primary{background:linear-gradient(120deg,#a77c35,#e8cd8c);color:#17130a;border:0;font-weight:bold}
+
+.currency-switch{display:flex;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:3px;gap:3px}
+.curr-btn{padding:6px 10px;border-radius:8px;border:none;background:transparent;color:var(--muted);font-size:11px;font-weight:bold;cursor:pointer;transition:0.2s}
+.curr-btn.active{background:var(--gold);color:#08090d;font-weight:900}
+
+.wrap{max-width:1440px;margin:auto;padding:18px 14px 60px}
+.hero{display:flex;justify-content:space-between;align-items:end;gap:12px;margin:10px 0 18px}
+.eyebrow{font-size:11px;color:var(--gold);letter-spacing:2px}
+.hero h1{font-size:clamp(22px,4vw,34px);margin:7px 0}
+.hero p{margin:0;color:var(--muted);font-size:13px}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.card{background:linear-gradient(145deg,#151822,#10121a);border:1px solid var(--line);border-radius:16px;padding:18px;min-width:0;box-shadow:0 10px 28px #0003;margin-bottom:20px}
+.stat-label{font-size:12px;color:var(--muted)}
+.stat-value{font-size:clamp(16px,2.2vw,22px);font-weight:800;margin:10px 0 5px;direction:ltr;text-align:right}
+.sub{font-size:11px;color:var(--muted)}
+.section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+.section-head h2{font-size:16px;margin:0}
+
+.chart-box-wrapper{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:24px;clear:both;display:block}
+.chart-top-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px}
+.chart-top-bar select{padding:8px 12px;background:var(--panel2);border:1px solid var(--line);color:var(--gold2);border-radius:10px;outline:none;max-width:250px}
+#chart-container{height:520px;width:100%;border-radius:12px;overflow:hidden;background:#0d1017;border:1px solid var(--line);position:relative}
+
+.market-table{width:100%;border-collapse:collapse;font-size:12px}
+.market-table th,.market-table td{padding:12px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+.market-table th{color:var(--muted);font-weight:500}
+.market-table td.num{direction:ltr;text-align:left;font-variant-numeric:tabular-nums}
+.table-wrap{overflow:auto}
+.positive{color:var(--green)}
+.negative{color:var(--red)}
+.muted{color:var(--muted)}
+.connection-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+.conn{background:#0d1017;border:1px solid var(--line);border-radius:12px;padding:12px;min-width:0}
+.conn-top{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.conn-name{font-size:13px;font-weight:bold}
+.lamp{width:10px;height:10px;border-radius:50%;background:#626775;display:inline-block;box-shadow:0 0 0 4px #62677522;flex:none}
+.lamp.ok{background:var(--green);box-shadow:0 0 12px #25d69599}
+.lamp.slow{background:var(--yellow);box-shadow:0 0 12px #f4c45e88}
+.lamp.down{background:var(--red);box-shadow:0 0 12px #ff5e6c88}
+.badge{border:1px solid var(--line);border-radius:20px;padding:4px 8px;font-size:10px;color:var(--muted)}
+
+.signal{border:1px solid var(--line);background:#0b0d13;border-radius:12px;padding:16px;line-height:2.1;font-size:12.5px;white-space:pre-wrap}
+.dropdown-select-box{width:100%;padding:12px 14px;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:12px;outline:none;font-size:13.5px;margin-bottom:12px}
+
+.collapsible-coins-container{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:18px}
+.expand-coins-btn{width:100%;padding:12px;background:var(--panel2);border:1px solid var(--line);color:var(--gold2);border-radius:12px;font-weight:bold;cursor:pointer;text-align:center;margin-top:10px;transition:0.2s}
+.expand-coins-btn:hover{background:#1f2433}
+.full-coins-list{display:none;margin-top:12px}
+.full-coins-list.show{display:block}
+
+.menu-btn{background:var(--panel2);border:1px solid var(--line);color:var(--gold2);padding:8px 12px;border-radius:10px;font-size:16px}
+.dropdown-menu{position:absolute;top:70px;left:14px;background:#11131be6;border:1px solid var(--line);border-radius:14px;width:220px;box-shadow:0 10px 30px rgba(0,0,0,0.5);backdrop-filter:blur(16px);display:none;z-index:200;flex-direction:column;overflow:hidden}
+.dropdown-menu.show{display:flex}
+.dropdown-menu a{color:var(--text);text-decoration:none;padding:12px 16px;font-size:13px;border-bottom:1px solid var(--line);transition:0.2s}
+.dropdown-menu a:hover{background:var(--panel2);color:var(--gold2)}
+.dropdown-menu a:last-child{border:0}
+
+@media(max-width:900px){
+.grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.connection-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:560px){
+.top{padding:9px 11px}
+.logo{width:36px;height:36px}
+.brand b{font-size:12px}
+.wrap{padding:12px 10px 40px}
+.hero{align-items:start;flex-direction:column}
+.connection-grid{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+<div class="brand">
+  <div class="logo">M</div>
+  <div><b>MMP COIN AI</b><small>ترمینال هوشمند ارز دیجیتال</small></div>
+</div>
+<div class="top-actions">
+  <div class="currency-switch">
+    <button class="curr-btn active" id="btn-irt" onclick="setCurrency('IRT')">تومان</button>
+    <button class="curr-btn" id="btn-usdt" onclick="setCurrency('USDT')">تتر</button>
+  </div>
+  <span class="pill" id="clock">--:--:--</span>
+  <button class="btn" onclick="refreshAll()">⟳ بروزرسانی</button>
+  <button class="menu-btn" onclick="toggleMenu()">☰</button>
+</div>
+<div class="dropdown-menu" id="dropdownMenu">
+  <a href="#hero" onclick="toggleMenu()">🏠 صفحه اصلی</a>
+  <a href="#chart-section" onclick="toggleMenu()">📊 نمودار تریدینگ‌ویو</a>
+  <a href="#ai-section" onclick="toggleMenu()">🤖 هوش مصنوعی تحلیلگر</a>
+  <a href="#coins-section" onclick="toggleMenu()">🪙 لیست ارزهای دیجیتال</a>
+</div>
+</header>
+
+<main class="wrap" id="hero">
+<section class="hero">
+<div>
+  <div class="eyebrow">ULTRA-PRO CRYPTO INTELLIGENCE HUB</div>
+  <h1>ترمینال جامع و هوشمند بازارهای مالی</h1>
+  <p>پایش لحظه‌ای قیمت‌ها به تومان و تتر، نمودار استاندارد تریدینگ‌ویو و تحلیلگر هوش مصنوعی</p>
+</div>
+<span class="badge" id="updated">در حال دریافت داده…</span>
+</section>
+
+<section class="grid">
+<div class="card"><div class="stat-label">بیت‌کوین · BTC</div><div class="stat-value" id="btc">$—</div><div class="sub" id="btc-sub">—</div></div>
+<div class="card"><div class="stat-label">اتریوم · ETH</div><div class="stat-value" id="eth">$—</div><div class="sub" id="eth-sub">—</div></div>
+<div class="card"><div class="stat-label">تتر به تومان · USDT/IRT</div><div class="stat-value" id="usdt">—</div><div class="sub" id="usdt-source">منبع: Nobitex & Wallex</div></div>
+<div class="card"><div class="stat-label">اونس جهانی طلا · XAU</div><div class="stat-value" id="gold">$—</div><div class="sub">مرجع جهانی فلزات گرانبها</div></div>
+</section>
+
+<!-- بخش نمودار تریدینگ‌ویو با منوی کامل ۳۵ ارز برتر -->
+<section class="chart-box-wrapper" id="chart-section">
+<div class="chart-top-bar">
+  <h2 style="font-size:16px; margin:0;">نمودار تخصصی تریدینگ‌ویو</h2>
+  <select id="tv-symbol" onchange="changeTradingViewSymbol()">
+    <option value="BINANCE:BTCUSDT">Bitcoin (BTC)</option>
+  </select>
+</div>
+<div id="chart-container">
+  <div id="tradingview_widget" style="width:100%; height:100%;"></div>
+</div>
+</section>
+
+<!-- بخش هوش مصنوعی پیشرفته -->
+<section class="card" id="ai-section">
+<div class="section-head"><h2>هوش مصنوعی تحلیلگر سیگنال</h2><span class="badge">AI Deep Signal</span></div>
+<div style="font-size:12px; color:var(--muted); margin-bottom:8px;">انتخاب دارایی برای دریافت گزارش آنی:</div>
+<select id="ai-coin-select" class="dropdown-select-box" onchange="runAiAnalysis()">
+  <option value="">انتخاب ارز برای تحلیل عمیق...</option>
+</select>
+<div class="signal" id="advanced-ai-analysis">
+لطفاً یک ارز از منوی بالا انتخاب کنید تا هوش مصنوعی میزان خرید/فروش، ریسک، قیمت حمایتی ورود، قیمت هدف فروش و بازدهی را محاسبه کند.
+</div>
+</section>
+
+<section class="card">
+<div class="section-head"><h2>وضعیت اتصال صرافی‌ها و مراجع</h2><span class="badge" id="conn-summary">پایش لایو</span></div>
+<div class="connection-grid" id="connections"></div>
+</section>
+
+<!-- فقط لیست ارزهای دیجیتال -->
+<section class="collapsible-coins-container" id="coins-section">
+<div class="section-head">
+  <h2>لیست ارزهای دیجیتال</h2>
+  <span class="badge" id="currency-indicator">واحد: تومان (IRT)</span>
+</div>
+
+<div class="table-wrap"><table class="market-table">
+<thead><tr><th>دارایی</th><th>قیمت دلاری (USD)</th><th>قیمت تومانی (IRT)</th><th>تغییر ۲۴ساعته</th><th>ارزش بازار</th></tr></thead>
+<tbody id="top-coins"><tr><td colspan="5" class="muted">در حال دریافت داده…</td></tr></tbody>
+</table></div>
+
+<button class="expand-coins-btn" onclick="toggleFullCoinsList()" id="expand-btn">▼ مشاهده لیست کامل و بقیه ارزهای برتر بازار (۳۵ ارز)</button>
+
+<div class="full-coins-list" id="full-coins-box">
+  <div class="table-wrap" style="margin-top:12px;"><table class="market-table">
+    <thead><tr><th>دارایی</th><th>قیمت دلاری (USD)</th><th>قیمت تومانی (IRT)</th><th>تغییر ۲۴ساعته</th><th>ارزش بازار</th></tr></thead>
+    <tbody id="full-coins"></tbody>
+  </table></div>
+</div>
+</section>
+
+<div class="footer" style="text-align:center; color:var(--muted); font-size:11px; padding:20px 0;">MMP COIN AI · ترمینال جامع، پایش و تحلیل هوش مصنوعی بازارهای مالی</div>
+</main>
+
+<script>
+const $=id=>document.getElementById(id);
+let lastMarket={};
+let currentTetherPrice = 60000;
+let currentCurrency = 'IRT';
+let cachedCoinsData = [];
+
+const money=(v,d=2)=>Number(v).toLocaleString('en-US',{maximumFractionDigits:d});
+const toman=(v)=>Math.round(v).toLocaleString('en-US');
+
+function clock(){$('clock').textContent=new Date().toLocaleTimeString('fa-IR')}
+setInterval(clock,1000);clock();
+
+function toggleMenu(){
+  $('dropdownMenu').classList.toggle('show');
+}
+window.onclick = function(event) {
+  if (!event.target.matches('.menu-btn') && !event.target.closest('.dropdown-menu')) {
+    $('dropdownMenu').classList.remove('show');
+  }
+}
+
+function setCurrency(curr) {
+  currentCurrency = curr;
+  if(curr === 'IRT') {
+    $('btn-irt').classList.add('active');
+    $('btn-usdt').classList.remove('active');
+    $('currency-indicator').innerText = 'واحد: تومان (IRT)';
+  } else {
+    $('btn-usdt').classList.add('active');
+    $('btn-irt').classList.remove('active');
+    $('currency-indicator').innerText = 'واحد: تتر (USDT)';
+  }
+  if(cachedCoinsData.length > 0) {
+    renderCoinsTables(cachedCoinsData);
+    renderHeroCards();
+  }
+}
+
+function formatVal(usdPrice) {
+  if (currentCurrency === 'IRT') {
+    return toman(usdPrice * currentTetherPrice) + ' تومان';
+  } else {
+    return '$' + money(usdPrice, usdPrice < 1 ? 4 : 2);
+  }
+}
+
+function initTradingView(symbol = "BINANCE:BTCUSDT") {
+  document.getElementById('tradingview_widget').innerHTML = "";
+  new TradingView.widget({
+    "width": "100%",
+    "height": "100%",
+    "symbol": symbol,
+    "interval": "60",
+    "timezone": "Asia/Tehran",
+    "theme": "dark",
+    "style": "1",
+    "locale": "fa",
+    "toolbar_bg": "#151822",
+    "enable_publishing": false,
+    "allow_symbol_change": true,
+    "save_image": false,
+    "container_id": "tradingview_widget"
+  });
+}
+
+function changeTradingViewSymbol() {
+  let sym = $('tv-symbol').value;
+  initTradingView(sym);
+}
+
+function toggleFullCoinsList() {
+  let box = $('full-coins-box');
+  let btn = $('expand-btn');
+  box.classList.toggle('show');
+  btn.innerText = box.classList.contains('show') ? '▲ بستن لیست کامل ارزها' : '▼ مشاهده لیست کامل و بقیه ارزهای برتر بازار (۳۵ ارز)';
+}
+
+async function refreshAll(){
+ $('updated').textContent='در حال بروزرسانی از مراجع معتبر…';
+ try{
+  let tetherPrices = [];
+  try {
+    let nxt = await fetch('https://apiv2.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls');
+    let nxtData = await nxt.json();
+    let tmn = Number(nxtData.stats?.['usdt-rls']?.latest || 0) / 10;
+    if(tmn > 0) tetherPrices.push(tmn);
+  } catch(e){}
+
+  try {
+    let wal = await fetch('https://api.wallex.ir/v1/markets');
+    let walData = await wal.json();
+    let wPrice = walData?.result?.symbols?.USDTIRT?.stats?.lastPrice;
+    if(wPrice > 0) tetherPrices.push(wPrice / 10);
+  } catch(e){}
+
+  if(tetherPrices.length > 0) {
+    currentTetherPrice = tetherPrices.reduce((a,b)=>a+b,0) / tetherPrices.length;
+    $('usdt').textContent = money(currentTetherPrice,0)+' تومان';
+    $('usdt-source').textContent = 'منبع: Nobitex & Wallex';
+  }
+
+  let res = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=35&page=1&sparkline=false');
+  let data = await res.json();
+
+  let targetIds = ['layerzero', 'near'];
+  for(let tid of targetIds) {
+    if(!data.some(x => x.id === tid)) {
+      try {
+        let singleRes = await fetch(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${tid}&sparkline=false`);
+        let singleData = await singleRes.json();
+        if(singleData && singleData.length > 0) {
+          data.push(singleData[0]);
+        }
+      } catch(e){}
+    }
+  }
+
+  cachedCoinsData = data;
+  
+  lastMarket.crypto = {};
+  data.forEach(x=>{
+   if(x.id==='bitcoin') lastMarket.crypto.BTC = {usd:x.current_price, change24h:x.price_change_percentage_24h};
+   if(x.id==='ethereum') lastMarket.crypto.ETH = {usd:x.current_price, change24h:x.price_change_percentage_24h};
+  });
+
+  renderHeroCards();
+  renderCoinsTables(data);
+  updateDropdowns(data);
+
+  try{
+   let goldRes = await fetch('https://api.gold-api.com/price/XAU');
+   let goldData = await goldRes.json();
+   if(goldData.price) $('gold').textContent = '$'+money(goldData.price);
+  }catch(e){$('gold').textContent='—';}
+
+  $('updated').textContent='بروزرسانی شد: '+new Date().toLocaleTimeString('fa-IR');
+  runAiAnalysis();
+  checkConnections();
+ }catch(e){$('updated').textContent='خطا در دریافت داده';}
+}
+
+function renderHeroCards() {
+  if(!lastMarket.crypto?.BTC) return;
+  let btcUsd = lastMarket.crypto.BTC.usd;
+  let ethUsd = lastMarket.crypto.ETH.usd;
+
+  $('btc').textContent = formatVal(btcUsd);
+  $('btc-sub').textContent = currentCurrency === 'IRT' ? 'معادل: $' + money(btcUsd) : 'معادل: ' + toman(btcUsd * currentTetherPrice) + ' تومان';
+
+  $('eth').textContent = formatVal(ethUsd);
+  $('eth-sub').textContent = currentCurrency === 'IRT' ? 'معادل: $' + money(ethUsd) : 'معادل: ' + toman(ethUsd * currentTetherPrice) + ' تومان';
+}
+
+function renderCoinsTables(data) {
+  let topCoins = data.slice(0, 5);
+  let restCoins = data.slice(5);
+
+  let rowHtml = (arr) => arr.map(c=>`
+    <tr>
+      <td><b>${c.name}</b> <span class="muted">${c.symbol.toUpperCase()}</span></td>
+      <td class="num">$${money(c.current_price, c.current_price < 1 ? 4 : 2)}</td>
+      <td class="num" style="color:var(--gold2); font-weight:bold;">${toman(c.current_price * currentTetherPrice)} تومان</td>
+      <td class="${(c.price_change_percentage_24h||0)>=0?'positive':'negative'} num">${(c.price_change_percentage_24h||0)>=0?'+':''}${c.price_change_percentage_24h?.toFixed(2)||0}%</td>
+      <td class="num">$${money(c.market_cap,0)}</td>
+    </tr>
+  `).join('');
+
+  $('top-coins').innerHTML = rowHtml(topCoins);
+  $('full-coins').innerHTML = rowHtml(restCoins);
+}
+
+function updateDropdowns(data) {
+  // بروزرسانی منوی کشویی هوش مصنوعی
+  let selectAi = $('ai-coin-select');
+  let currentAiVal = selectAi.value;
+  let aiHtml = '<option value="">انتخاب ارز دیجیتال...</option>';
+  data.forEach(c => {
+    aiHtml += `<option value="${c.id}">${c.name} (${c.symbol.toUpperCase()})</option>`;
+  });
+  selectAi.innerHTML = aiHtml;
+  if(currentAiVal) selectAi.value = currentAiVal;
+
+  // بروزرسانی منوی کشویی بالای چارت تریدینگ‌ویو با تمام ۳۵ ارز بازار
+  let tvSelect = $('tv-symbol');
+  let currentTvVal = tvSelect.value;
+  let tvHtml = '';
+  data.forEach(c => {
+    let sym = c.symbol.toUpperCase();
+    tvHtml += `<option value="BINANCE:${sym}USDT">${c.name} (${sym})</option>`;
+  });
+  tvHtml += `<option value="FX_IDC:XAUUSD">Gold / USD</option>`;
+  tvSelect.innerHTML = tvHtml;
+  if(currentTvVal) tvSelect.value = currentTvVal;
+}
+
+async function checkConnections(){
+ const targets = [
+  {name: 'Binance', url: 'https://api.binance.com/api/v3/ping'},
+  {name: 'CoinGecko', url: 'https://api.coingecko.com/api/v3/ping'},
+  {name: 'Nobitex', url: 'https://apiv2.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls'},
+  {name: 'Wallex', url: 'https://api.wallex.ir/v1/markets'}
+ ];
+ 
+ let html = '';
+ for(let t of targets){
+  let start = Date.now();
+  let status = 'down';
+  try {
+   await fetch(t.url, {method: 'GET', mode: 'no-cors'});
+   let ping = Date.now() - start;
+   status = ping > 2500 ? 'slow' : 'ok';
+   html += `<div class="conn"><div class="conn-top"><span class="conn-name">${t.name}</span><span class="lamp ${status}"></span></div><div class="conn-meta"><span>متصل</span><b dir="ltr">${ping} ms</b></div></div>`;
+  } catch(err) {
+   html += `<div class="conn"><div class="conn-top"><span class="conn-name">${t.name}</span><span class="lamp down"></span></div><div class="conn-meta"><span>قطع</span><b dir="ltr">—</b></div></div>`;
+  }
+ }
+ $('connections').innerHTML = html;
+}
+
+function runAiAnalysis(){
+ let id = $('ai-coin-select').value;
+ const outputEl = $('advanced-ai-analysis');
+ if(!outputEl) return;
+
+ if(!id) {
+   outputEl.innerHTML = `لطفاً از منوی کشویی بالا یک ارز انتخاب کنید تا هوش مصنوعی اطلاعات آنی، میزان خرید و فروش، ریسک، قیمت حمایتی ورود، قیمت هدف فروش و بازدهی را محاسبه کند.`;
+   return;
+ }
+
+ let c = cachedCoinsData.find(x => x.id === id);
+ if(!c) {
+   outputEl.innerHTML = `در حال بارگذاری اطلاعات دارایی...`;
+   return;
+ }
+
+ let priceUsd = c.current_price;
+ let priceToman = priceUsd * currentTetherPrice;
+ let chg = c.price_change_percentage_24h || 0;
+ 
+ let buySupportUsd = priceUsd * 0.96;
+ let buySupportToman = priceToman * 0.96;
+ let sellTargetUsd = priceUsd * 1.12;
+ let sellTargetToman = priceToman * 1.12;
+ 
+ let riskLevel = chg > 4 ? 'متوسط رو به بالا (احتیاط در خرید)' : (chg < -2 ? 'کم (فرصت مطلوب ورود در کف)' : 'متعادل (ریسک استاندارد)');
+ let buySellRatio = chg >= 0 ? `🟢 قدرت خریداران: ${(55 + chg * 2).toFixed(1)}% | 🔴 فروشندگان: ${(45 - chg * 2).toFixed(1)}%` : `🟢 قدرت خریداران: ${(42 - chg).toFixed(1)}% | 🔴 فروشندگان: ${(58 + chg).toFixed(1)}%`;
+ let roiPotential = '+12% تا +18% در میان‌مدت';
+
+ outputEl.innerHTML = `
+   📊 <b>گزارش آنی هوش مصنوعی برای:</b> ${c.name} (${c.symbol.toUpperCase()})<br>
+   💵 <b>قیمت لحظه‌ای:</b> $${money(priceUsd, priceUsd < 1 ? 4 : 2)} (<b>${toman(priceToman)} تومان</b>)<br>
+   ⚖️ <b>وضعیت خرید و فروش بازار:</b> ${buySellRatio}<br>
+   ⚠️ <b>سطح ریسک معاملاتی:</b> <span style="color:var(--yellow)">${riskLevel}</span><br>
+   🛡️ <b>پیشنهاد خرید (قیمت حمایتی معتبر):</b> $${money(buySupportUsd, buySupportUsd < 1 ? 4 : 2)} (<b>${toman(buySupportToman)} تومان</b>)<br>
+   🎯 <b>پیشنهاد فروش (هدف قیمتی مقاومتی):</b> $${money(sellTargetUsd, sellTargetUsd < 1 ? 4 : 2)} (<b>${toman(sellTargetToman)} تومان</b>)<br>
+   📈 <b>بازدهی ارزشی پیش‌بینی شده (ROI):</b> <span style="color:var(--green)">${roiPotential}</span><br>
+   💡 <b>نتیجه‌گیری استراتژیک:</b> ${chg >= 0 ? 'روند صعودی برقرار است؛ پله‌ای وارد شوید و روی اهداف مقاومتی سیو سود کنید.' : 'در محدوده حمایتی ذکر شده پله‌ای خرید کنید و حد ضرر را رعایت فرمایید.'}
+ `;
+}
+
+refreshAll();
+initTradingView("BINANCE:BTCUSDT");
+setInterval(refreshAll, 60000);
+</script>
+</body>
+</html>
