@@ -73,10 +73,10 @@ function buildSetup(direction,m){
  }
  const risk=Math.abs(entry-stop);if(!Number.isFinite(risk)||risk<=0)return null;
  const sign=direction==="LONG"?1:-1,fmt=x=>roundPrice(x,price),target=k=>fmt(entry+sign*risk*k);
- return {direction,entry_zone:{low:fmt(low),high:fmt(high)},stop_loss:fmt(stop),tp1:target(1.5),tp2:target(2.2),tp3:target(3),risk_reward:"1:1.5 / 1:2.2 / 1:3",trigger:direction==="LONG"?"فقط پس از بسته‌شدن کندل ۱ ساعته بالای مقاومت و تثبیت قیمت":"فقط پس از بسته‌شدن کندل ۱ ساعته زیر حمایت و تثبیت قیمت",invalidation:direction==="LONG"?"بسته‌شدن کندل ۱ ساعته دوباره زیر سطح شکست":"بسته‌شدن کندل ۱ ساعته دوباره بالای سطح شکست"};
+ return {direction,entry_zone:{low:fmt(low),high:fmt(high)},stop_loss:fmt(stop),tp1:target(1.5),tp2:target(2.2),tp3:target(3),risk_reward:"1:1.5 / 1:2.2 / 1:3",trigger:direction==="LONG"?"فقط پس از بسته‌شدن کندل ۴ ساعته بالای مقاومت و تثبیت قیمت":"فقط پس از بسته‌شدن کندل ۴ ساعته زیر حمایت و تثبیت قیمت",invalidation:direction==="LONG"?"بسته‌شدن کندل ۴ ساعته دوباره زیر سطح شکست":"بسته‌شدن کندل ۴ ساعته دوباره بالای سطح شکست"};
 }
-function buildTradePlans(m,action,mode){
- const long=buildSetup("LONG",m),short=mode==="spot"?null:buildSetup("SHORT",m);
+function buildTradePlans(longMarket,action,mode,shortMarket=longMarket){
+ const long=buildSetup("LONG",longMarket),short=mode==="spot"||!shortMarket?null:buildSetup("SHORT",shortMarket);
  if(action==="BUY"&&long)return {active:long,conditional:null};
  if(action==="SELL"&&short)return {active:short,conditional:null};
  return {active:null,conditional:{long,short}};
@@ -220,8 +220,9 @@ async function handle(request,env){
    analysis.action="WAIT";analysis.confidence=Math.min(analysis.confidence,55);
    analysis.reasons.unshift("هم‌جهتی کافی میان روند ۴ ساعته و روزانه وجود ندارد؛ ورود فوری تأیید نمی‌شود.");
   }
-  const planMarket=mode==="futures"&&futuresMarket?futuresMarket:market;
-  const plans=buildTradePlans(planMarket,analysis.action,mode);
+  const longPlanMarket=(mode==="futures"&&futuresMarket?futuresMarket:market)["4h"];
+  const shortPlanMarket=mode==="spot"?null:(mode==="both"?(futuresMarket?futuresMarket["4h"]:null):longPlanMarket);
+  const plans=buildTradePlans(longPlanMarket,analysis.action,mode,shortPlanMarket);
   if(plans.active){
    analysis.levels={entry_zone:plans.active.entry_zone,stop_loss:plans.active.stop_loss,tp1:plans.active.tp1,tp2:plans.active.tp2,tp3:plans.active.tp3};
    analysis.risk_reward=plans.active.risk_reward;
@@ -229,11 +230,12 @@ async function handle(request,env){
    analysis.entry_trigger=plans.active.trigger;analysis.invalidation=plans.active.invalidation;
   }else{
    analysis.levels={entry_zone:null,stop_loss:null,tp1:null,tp2:null,tp3:null};
-   analysis.position_risk="تا فعال‌شدن یکی از شروط شکست، بدون ورود";
+   analysis.position_risk="فعلاً بدون ورود؛ ریسک سرمایه صفر تا تأیید سناریو";
   }
   analysis.conditional_setups=plans.conditional;
   analysis.plan_status=plans.active?"active_signal":"conditional_wait";
-  analysis.plan_method="سطوح محاسبه‌شده از قیمت، ATR و حمایت/مقاومت؛ ورود مشروط به بسته‌شدن کندل";
+  analysis.plan_method="سطوح محاسبه‌شده از داده ۴ ساعته، ATR و حمایت/مقاومت؛ ورود مشروط به بسته‌شدن کندل ۴ ساعته";
+  analysis.holding_horizon=analysis.holding_horizon||"تا بسته‌شدن و تأیید کندل ۴ ساعته بعدی";
   if(!analysis.recommendations.length)analysis.recommendations=["برای ورود LONG منتظر بسته‌شدن کندل ۱ ساعته بالای مقاومت و تثبیت قیمت بمان.","برای ورود SHORT منتظر بسته‌شدن کندل ۱ ساعته زیر حمایت و تثبیت قیمت بمان.","پس از ورود، حد ضرر و اهداف عددی برنامه را رعایت کن.","اگر هیچ‌کدام از شکست‌ها تأیید نشد، معامله نکن."];
   return json({analysis,market:snapshot});
  }catch(e){return json({error:e.message||"Analysis failed"},502)}
