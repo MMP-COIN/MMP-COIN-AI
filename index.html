@@ -675,7 +675,7 @@ async function runAiAnalysis(force=false){
    res=await fetch(AI_ANALYSIS_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({coin_id:c.id,symbol:c.symbol.toUpperCase(),name:c.name,market_mode:$("ai-market-mode").value}),signal:controller.signal});
   }finally{clearTimeout(timeout);}
   const data=await res.json();
-  if(!res.ok)throw new Error(data.error||"خطا در سرویس تحلیل");
+  if(!res.ok)throw new Error((data.error||"خطا در سرویس تحلیل")+(data.stage?" | مرحله: "+data.stage:"")+(data.symbol?" | ارز: "+data.symbol:""));
   if(!data.analysis)throw new Error("پاسخ تحلیل معتبر نیست.");
   if(token!==aiRequestToken)return;
   const reportTime=Date.now();
