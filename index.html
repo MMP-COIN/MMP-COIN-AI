@@ -490,10 +490,13 @@ async function checkConnections(){
 }
 
 const AI_ANALYSIS_ENDPOINT = "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev"; // بعد از انتشار Worker، نشانی ...workers.dev/analyze در این متغیر قرار می‌گیرد.
-let aiBusy=false;\nlet aiCache=new Map();\nlet aiRequestToken=0;
+
+let aiBusy=false;
+let aiCache=new Map();
+let aiRequestToken=0;
 function aiEscape(v){return String(v??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));}
 function aiNum(v){return Number.isFinite(Number(v))?Number(v):null;}
-function aiPrice(v){if(v==null)return "—";return "$"+money(v,v<1?6:2);}
+function aiPrice(v){if(v==null||!Number.isFinite(Number(v)))return "—";return "$"+money(Number(v),Number(v)<1?6:2);}
 function aiSetStatus(t,busy=false){$("ai-status").textContent=t;$("ai-status").classList.toggle("busy",busy);}
 function renderAiReport(r,c,market={}){
  const action=String(r.action||"WAIT").toUpperCase();
@@ -501,54 +504,85 @@ function renderAiReport(r,c,market={}){
  const cls=action==="BUY"?"buy":action==="SELL"?"sell":"wait";
  $("ai-action").textContent=label;
  $("ai-action").style.color=action==="BUY"?"var(--green)":action==="SELL"?"var(--red)":"var(--yellow)";
- $("ai-confidence").textContent=(r.confidence??"—")+(r.confidence!=null?" از ۱۰۰":"");\n $("ai-confidence-label").textContent=(r.confidence??"—")+(r.confidence!=null?" از ۱۰۰":"");\n $("ai-confidence-fill").style.width=Math.max(0,Math.min(100,Number(r.confidence)||0))+"%";
+ $("ai-confidence").textContent=(r.confidence??"—")+(r.confidence!=null?" از ۱۰۰":"");
+ $("ai-confidence-label").textContent=(r.confidence??"—")+(r.confidence!=null?" از ۱۰۰":"");
+ $("ai-confidence-fill").style.width=Math.max(0,Math.min(100,Number(r.confidence)||0))+"%";
  $("ai-risk").textContent=r.risk_level||"نامشخص";
  $("ai-live-price").textContent=aiPrice(r.market?.price_usd??c?.current_price);
+ const tfNames={"15m":"۱۵ دقیقه","1h":"۱ ساعت","4h":"۴ ساعت","1d":"روزانه"};
+ const tfHtml=Object.entries(market.timeframes||{}).map(([tf,v])=>{
+  const trend=v.ema_trend==="bullish"?"صعودی":v.ema_trend==="bearish"?"نزولی":"خنثی / متناقض";
+  const color=v.ema_trend==="bullish"?"var(--green)":v.ema_trend==="bearish"?"var(--red)":"var(--yellow)";
+  return '<div class="tf-card"><strong>'+tfNames[tf]+'</strong><div class="tf-trend" style="color:'+color+'">'+trend+'</div><small>RSI: '+aiEscape(v.rsi==null?"—":Number(v.rsi).toFixed(1))+'<br>حمایت: '+aiEscape(aiPrice(v.support))+'<br>مقاومت: '+aiEscape(aiPrice(v.resistance))+'</small></div>';
+ }).join("");
+ $("ai-timeframes").innerHTML=tfHtml||'<div class="ai-empty" style="grid-column:1/-1">اطلاعات تایم‌فریم‌ها در پاسخ موجود نیست.</div>';
  const lv=r.levels||{};
- const level=(title,val)=>{let shown="—";if(val&&typeof val==="object"&&("low" in val||"high" in val)){shown=(val.low!=null?aiPrice(aiNum(val.low)):"—")+" تا "+(val.high!=null?aiPrice(aiNum(val.high)):"—");}else if(typeof val==="number"||(!isNaN(Number(val))&&val!==null&&val!=="")){shown=aiPrice(aiNum(val));}else if(val!=null){shown=String(val);}return '<div class="ai-level"><small>'+title+'</small><b>'+aiEscape(shown)+'</b></div>';};
+ const level=(title,val)=>{
+  let shown="—";
+  if(val&&typeof val==="object"&&("low" in val||"high" in val))shown=(val.low!=null?aiPrice(val.low):"—")+" تا "+(val.high!=null?aiPrice(val.high):"—");
+  else if(val!=null&&val!==""&&Number.isFinite(Number(val)))shown=aiPrice(val);
+  else if(val!=null)shown=String(val);
+  return '<div class="ai-level"><small>'+title+'</small><b>'+aiEscape(shown)+'</b></div>';
+ };
  const reasons=Array.isArray(r.reasons)?r.reasons:[];
  const scenarios=Array.isArray(r.scenarios)?r.scenarios:[];
+ const recommendations=Array.isArray(r.recommendations)?r.recommendations:[];
  const indicators=r.indicators||{};
- const html='<div><span class="ai-pill '+cls+'">'+label+'</span><span class="ai-pill">تایم‌فریم: '+aiEscape(r.primary_timeframe||"۴ ساعته")+'</span><span class="ai-pill">بازار: '+aiEscape($("ai-market-mode").selectedOptions[0].textContent)+'</span></div>'+
+ const html='<div><span class="ai-pill '+cls+'">'+label+'</span><span class="ai-pill">تایم‌فریم اصلی: '+aiEscape(r.primary_timeframe||"۴ ساعته")+'</span><span class="ai-pill">بازار: '+aiEscape($("ai-market-mode").selectedOptions[0].textContent)+'</span></div>'+
  '<h3>🎯 برنامه معاملاتی پیشنهادی</h3><div class="ai-levels">'+level("محدوده ورود",lv.entry_zone)+level("حد ضرر",lv.stop_loss)+level("هدف اول · TP1",lv.tp1)+level("هدف دوم · TP2",lv.tp2)+level("هدف سوم · TP3",lv.tp3)+level("نسبت سود به زیان",r.risk_reward)+level("افق زمانی",r.holding_horizon)+level("حداکثر ریسک پیشنهادی",r.position_risk)+'</div>'+
  '<h3>🧠 جمع‌بندی تحلیل هوش مصنوعی</h3><p>'+aiEscape(r.summary||"تحلیل متنی در دسترس نیست.")+'</p>'+
  '<h3>📊 تحلیل تکنیکال و چندتایم‌فریمی</h3><p>'+aiEscape(r.technical_analysis||"")+'</p><p><b>RSI:</b> '+aiEscape(indicators.rsi??"—")+' · <b>MACD:</b> '+aiEscape(indicators.macd_signal??"—")+' · <b>EMA:</b> '+aiEscape(indicators.ema_trend??"—")+' · <b>ATR:</b> '+aiEscape(indicators.atr_percent??"—")+'</p>'+
- '<h3>🧭 سناریوهای پیش‌رو</h3><ul class="ai-list">'+scenarios.map(s=>'<li><b>'+aiEscape(s.name||"سناریو")+'</b>: '+aiEscape(s.description||"")+'</li>').join("")+'</ul>'+\n '<h3>💡 پیشنهادهای عملی و نقاط قابل‌پیگیری</h3><ul class="ai-suggestion-list">'+recommendations.map(x=>'<li>'+aiEscape(x)+'</li>').join("")+'</ul>'+
- '<h3>🌐 وضعیت کلی بازار، احساسات و مشتقات</h3><p>'+aiEscape(r.market_context||"در صورت دسترسی، احساسات بازار، فاندینگ‌ریت و اوپن اینترست در تحلیل لحاظ می‌شوند.")+'</p>'+
+ '<h3>🧭 سناریوهای پیش‌رو</h3><ul class="ai-list">'+scenarios.map(x=>'<li><b>'+aiEscape(x.name||"سناریو")+'</b>: '+aiEscape(x.description||"")+'</li>').join("")+'</ul>'+
+ '<h3>💡 پیشنهادهای عملی و نقاط قابل‌پیگیری</h3><ul class="ai-suggestion-list">'+recommendations.map(x=>'<li>'+aiEscape(x)+'</li>').join("")+'</ul>'+
+ '<h3>🌐 وضعیت کلی بازار، احساسات و مشتقات</h3><p>'+aiEscape(r.market_context||"اطلاعات تکمیلی احساسات و مشتقات در دسترس نیست.")+'</p>'+
  '<h3>🔍 دلایل سیگنال</h3><ul class="ai-list">'+reasons.map(x=>'<li>'+aiEscape(x)+'</li>').join("")+'</ul>'+
  '<h3>🛡️ مدیریت ریسک و شرایط ابطال</h3><p>'+aiEscape(r.risk_management||"")+'</p><p><b>شرط ابطال تحلیل:</b> '+aiEscape(r.invalidation||"")+'</p>'+
- '<div class="ai-note">داده بازار: '+aiEscape(r.data_source||"Binance public market data")+' · زمان داده: '+aiEscape(r.market_timestamp||"نامشخص")+' · زمان تولید تحلیل: '+new Date().toLocaleString("fa-IR")+'<br>درصد اطمینان، ارزیابی مدل از کیفیت هم‌جهتی شواهد است و احتمال قطعی سود نیست.</div>';
+ '<div class="ai-note">منبع داده: '+aiEscape(r.data_source||"داده عمومی بازار")+' · زمان آخرین کندل: '+aiEscape(r.market_timestamp||"نامشخص")+' · زمان تولید: '+new Date().toLocaleString("fa-IR")+'<br>درصد اطمینان، قدرت و هم‌جهتی شواهد است و احتمال قطعی سود نیست.</div>';
  $("advanced-ai-analysis").innerHTML=html;
+ $("advanced-ai-analysis").dataset.hasReport="true";
 }
 async function runAiAnalysis(force=false){
- const id=$("ai-coin-select").value, out=$("advanced-ai-analysis"), btn=$("ai-run-btn");
- if(!id){$("ai-action").textContent="منتظر انتخاب ارز";aiSetStatus("برای شروع، یک ارز انتخاب کنید.");return;}
+ const id=$("ai-coin-select").value;
+ const out=$("advanced-ai-analysis"),btn=$("ai-run-btn"),refreshBtn=$("ai-refresh-btn");
+ if(!id){$("ai-action").textContent="منتظر انتخاب ارز";aiSetStatus("ابتدا یک ارز برای تحلیل انتخاب کنید.");return;}
  const c=cachedCoinsData.find(x=>x.id===id);
  if(!c){aiSetStatus("داده قیمت این ارز هنوز بارگذاری نشده است.");return;}
- if(!AI_ANALYSIS_ENDPOINT){
-   $("ai-live-price").textContent=aiPrice(c.current_price);
-   $("ai-action").textContent="موتور AI هنوز متصل نیست";
-   aiSetStatus("بخش نمایشی فیک حذف شده است؛ برای فعال‌سازی تحلیل واقعی، Worker امن Cloudflare باید منتشر و آدرس آن در تنظیمات سایت ثبت شود.");
-   out.innerHTML='<b>تحلیل واقعی هنوز فعال نشده است.</b><br>قیمت نمایشی از داده بازار دریافت شده، اما تا اتصال موتور تحلیل، هیچ سیگنال خرید یا فروش ساختگی نمایش داده نمی‌شود.';
-   return;
+ const cacheKey=id+"|"+$("ai-market-mode").value;
+ const cached=aiCache.get(cacheKey);
+ if(!force&&cached&&Date.now()-cached.time<180000){
+  renderAiReport(cached.analysis,c,cached.market);
+  aiSetStatus("آخرین تحلیل ذخیره‌شده نمایش داده شد · برای داده تازه، «تحلیل مجدد» را بزنید.");
+  return;
  }
  if(aiBusy)return;
- aiBusy=true;btn.disabled=true;btn.textContent="در حال تحلیل…";
- $("ai-action").textContent="در حال بررسی";
- aiSetStatus("دریافت کندل‌ها و محاسبه اندیکاتورها در چند تایم‌فریم…");
- out.textContent="در حال تحلیل داده‌های واقعی بازار؛ لطفاً منتظر بمانید…";
+ aiBusy=true;
+ const token=++aiRequestToken;
+ btn.disabled=true;refreshBtn.disabled=true;btn.textContent="در حال تحلیل…";
+ aiSetStatus("در حال دریافت داده‌های بازار و بررسی ۴ تایم‌فریم؛ گزارش قبلی تا پایان پردازش حفظ می‌شود…",true);
+ if(out.dataset.hasReport!=="true")out.innerHTML='<div class="ai-empty"><div class="symbol">◌</div><b>در حال تحلیل بازار…</b><p>کندل‌ها، روند، حجم، سطوح حمایت و مقاومت و داده‌های مشتقات بررسی می‌شوند.</p></div>';
  try{
-  const res=await fetch(AI_ANALYSIS_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({coin_id:c.id,symbol:c.symbol.toUpperCase(),name:c.name,market_mode:$("ai-market-mode").value})});
+  const controller=new AbortController();
+  const timeout=setTimeout(()=>controller.abort(),55000);
+  let res;
+  try{
+   res=await fetch(AI_ANALYSIS_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({coin_id:c.id,symbol:c.symbol.toUpperCase(),name:c.name,market_mode:$("ai-market-mode").value}),signal:controller.signal});
+  }finally{clearTimeout(timeout);}
   const data=await res.json();
   if(!res.ok)throw new Error(data.error||"خطا در سرویس تحلیل");
   if(!data.analysis)throw new Error("پاسخ تحلیل معتبر نیست.");
-  renderAiReport(data.analysis,c);
-  aiSetStatus("تحلیل تکمیل شد · داده‌های بازار و زمان ثبت در گزارش درج شده‌اند.");
+  if(token!==aiRequestToken)return;
+  aiCache.set(cacheKey,{analysis:data.analysis,market:data.market||{},time:Date.now()});
+  renderAiReport(data.analysis,c,data.market||{});
+  aiSetStatus("تحلیل تکمیل شد · گزارش حفظ می‌شود و بروزرسانی قیمت‌ها آن را دوباره اجرا نمی‌کند.");
  }catch(e){
-  $("ai-action").textContent="تحلیل ناموفق";
-  aiSetStatus("خطا در دریافت تحلیل: "+e.message);
-  out.textContent="در حال حاضر امکان تولید تحلیل معتبر وجود ندارد. لطفاً بعداً دوباره تلاش کنید. هیچ سیگنال جایگزینی ساخته نشد.";
- }finally{aiBusy=false;btn.disabled=false;btn.textContent="تحلیل کامل ارز";}
+  if(token===aiRequestToken){
+   $("ai-action").textContent="تحلیل ناموفق";
+   aiSetStatus("خطا در دریافت تحلیل: "+(e.name==="AbortError"?"زمان پاسخ سرویس بیش از حد طول کشید":e.message));
+   if(out.dataset.hasReport!=="true")out.innerHTML='<div class="ai-empty"><b>تحلیل فعلاً در دسترس نیست</b><p>داده یا پاسخ معتبر دریافت نشد. دوباره تلاش کنید.</p></div>';
+  }
+ }finally{
+  if(token===aiRequestToken){aiBusy=false;btn.disabled=false;refreshBtn.disabled=false;btn.textContent="شروع تحلیل هوشمند";}
+ }
 }
 
 refreshAll();
