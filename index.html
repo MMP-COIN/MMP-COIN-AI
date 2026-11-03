@@ -469,6 +469,7 @@ async function refreshAll(){
   renderHeroCards();
   renderCoinsTables(data);
   updateDropdowns(data);
+  auditExchangeSupport(data);
 
   try{
    let goldRes = await fetch('https://api.gold-api.com/price/XAU');
@@ -561,6 +562,41 @@ async function checkConnections(){
 }
 
 const AI_ANALYSIS_ENDPOINT = "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev"; // بعد از انتشار Worker، نشانی ...workers.dev/analyze در این متغیر قرار می‌گیرد.
+
+let exchangeSupportBySymbol={};
+let exchangeAuditPromise=null;
+let exchangeAuditAt=0;
+async function auditExchangeSupport(coins,force=false){
+ if(exchangeAuditPromise)return exchangeAuditPromise;
+ if(!force&&Date.now()-exchangeAuditAt<600000)return;
+ const symbols=[...new Set((coins||[]).map(x=>String(x.symbol||"").toUpperCase()).filter(Boolean))];
+ if(!symbols.length)return;
+ exchangeAuditPromise=(async()=>{
+  try{
+   const url=AI_ANALYSIS_ENDPOINT+"/support-check?symbols="+encodeURIComponent(symbols.join(","));
+   const response=await fetch(url,{cache:"no-store"});
+   const payload=await response.json();
+   if(!response.ok||!Array.isArray(payload.assets))throw new Error(payload.error||"تأیید صرافی‌ها ناموفق بود");
+   exchangeSupportBySymbol=Object.fromEntries(payload.assets.map(x=>[x.symbol.replace(/USDT$/,""),x]));
+   exchangeAuditAt=Date.now();
+   const select=$("ai-coin-select");
+   [...select.options].forEach(option=>{
+    if(!option.value)return;
+    const coin=coins.find(x=>x.id===option.value);
+    if(!coin)return;
+    const info=exchangeSupportBySymbol[String(coin.symbol).toUpperCase()];
+    if(!info)return;
+    const providers=[...(info.spot?.providers||[]),...(info.futures?.providers||[])];
+    const unavailable=Object.values(payload.sources||{}).every(x=>!x.ok);
+    const suffix=providers.length?" · تأیید: "+[...new Set(providers)].join("، "):unavailable?" · بررسی صرافی ناموفق":" · جفت فعال پیدا نشد";
+    option.textContent=coin.name+" ("+coin.symbol.toUpperCase()+")"+suffix;
+   });
+  }catch(e){
+   console.warn("Exchange support audit:",e);
+  }finally{exchangeAuditPromise=null;}
+ })();
+ return exchangeAuditPromise;
+}
 
 let aiBusy=false;
 let aiCache=new Map();
@@ -669,6 +705,12 @@ async function runAiAnalysis(force=false){
  aiSetStatus("در حال دریافت داده‌های بازار و بررسی ۴ تایم‌فریم؛ گزارش قبلی تا پایان پردازش حفظ می‌شود…",true);
  if(out.dataset.hasReport!=="true")out.innerHTML='<div class="ai-empty"><div class="symbol">◌</div><b>در حال تحلیل بازار…</b><p>کندل‌ها، روند، حجم، سطوح حمایت و مقاومت و داده‌های مشتقات بررسی می‌شوند.</p></div>';
  try{
+  if(exchangeAuditPromise)await exchangeAuditPromise;
+  const support=exchangeSupportBySymbol[String(c.symbol).toUpperCase()];
+  const selectedMode=$("ai-market-mode").value;
+  if(!support)throw new Error("تأیید جفت معاملاتی این ارز از صرافی‌ها دریافت نشده؛ ابتدا صفحه را تازه‌سازی کنید و دوباره تلاش کنید.");
+  if((selectedMode==="spot"||selectedMode==="both")&&!support.spot?.confirmed)throw new Error("هیچ جفت فعال "+String(c.symbol).toUpperCase()+"/USDT در بازار نقدی Binance، Bybit یا OKX تأیید نشد؛ تحلیل اجرا نشد.");
+  if(selectedMode==="futures"&&!support.futures?.confirmed)throw new Error("هیچ قرارداد فعال "+String(c.symbol).toUpperCase()+" در بازار آتی Binance، Bybit یا OKX تأیید نشد؛ تحلیل اجرا نشد.");
   const controller=new AbortController();
   const timeout=setTimeout(()=>controller.abort(),55000);
   let res;
