@@ -455,7 +455,7 @@ function renderAiReport(r,c){
  $("ai-risk").textContent=r.risk_level||"نامشخص";
  $("ai-live-price").textContent=aiPrice(r.market?.price_usd??c?.current_price);
  const lv=r.levels||{};
- const level=(title,val)=>'<div class="ai-level"><small>'+title+'</small><b>'+aiPrice(aiNum(val))+'</b></div>';
+ const level=(title,val)=>{let shown="—";if(val&&typeof val==="object"&&("low" in val||"high" in val)){shown=(val.low!=null?aiPrice(aiNum(val.low)):"—")+" تا "+(val.high!=null?aiPrice(aiNum(val.high)):"—");}else if(typeof val==="number"||(!isNaN(Number(val))&&val!==null&&val!=="")){shown=aiPrice(aiNum(val));}else if(val!=null){shown=String(val);}return '<div class="ai-level"><small>'+title+'</small><b>'+aiEscape(shown)+'</b></div>';};
  const reasons=Array.isArray(r.reasons)?r.reasons:[];
  const scenarios=Array.isArray(r.scenarios)?r.scenarios:[];
  const indicators=r.indicators||{};
