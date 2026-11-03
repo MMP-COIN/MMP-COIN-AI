@@ -542,6 +542,20 @@ function renderAiReport(r,c,market={}){
   if(val&&typeof val==="object"&&("low" in val||"high" in val))shown=(val.low!=null?aiPrice(val.low):"—")+" تا "+(val.high!=null?aiPrice(val.high):"—");
   else if(val!=null&&val!==""&&Number.isFinite(Number(val)))shown=aiPrice(val);
   else if(val!=null)shown=String(val);
+  if(shown==="—"){
+   const action=String(r.action||"WAIT").toUpperCase();
+   const fallback={
+    "محدوده ورود":action==="WAIT"?"پس از تأیید جهت بازار":"در انتظار داده معتبر",
+    "حد ضرر":"پس از تعیین نقطه ورود",
+    "هدف اول · TP1":"پس از تأیید ورود",
+    "هدف دوم · TP2":"پس از تأیید ورود",
+    "هدف سوم · TP3":"پس از تأیید ورود",
+    "نسبت سود به زیان":"فعلاً قابل محاسبه نیست",
+    "افق زمانی":"تا تأیید کندل ۴ ساعته",
+    "حداکثر ریسک پیشنهادی":"فعلاً بدون ورود"
+   };
+   shown=fallback[title]||"پس از تأیید شرایط بازار";
+  }
   return '<div class="ai-level"><small>'+title+'</small><b>'+aiEscape(shown)+'</b></div>';
  };
  const reasons=Array.isArray(r.reasons)?r.reasons:[];
