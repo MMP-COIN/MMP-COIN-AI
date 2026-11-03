@@ -74,12 +74,18 @@ async function candles(symbol,interval,env,marketType="spot"){
   try{
    const okxBar={"15m":"15m","1h":"1H","4h":"4H","1d":"1Dutc"}[interval];
    const instId=symbol.replace(/USDT$/,"-USDT");
-   const url="https://www.okx.com/api/v5/market/candles?instId="+encodeURIComponent(instId)+"&bar="+okxBar+"&limit=250";
-   const r=await fetch(url,{headers});
-   if(!r.ok)throw new Error("OKX Spot HTTP "+r.status);
-   const payload=await r.json();
-   const list=payload?.code==="0"?payload.data:null;
-   if(!Array.isArray(list)||list.length<80)throw new Error(payload?.msg||"insufficient OKX spot candle history");
+   let payload=null,lastOkxError=null;
+   for(const host of ["https://www.okx.com","https://us.okx.com","https://openapi.okx.com"]){
+    try{
+     const r=await fetch(host+"/api/v5/market/candles?instId="+encodeURIComponent(instId)+"&bar="+okxBar+"&limit=250",{headers});
+     if(!r.ok){lastOkxError=new Error("OKX "+host+" HTTP "+r.status);continue;}
+     const candidate=await r.json();
+     if(candidate?.code==="0"&&Array.isArray(candidate.data)&&candidate.data.length>=80){payload=candidate;break;}
+     lastOkxError=new Error(candidate?.msg||"insufficient OKX spot candle history");
+    }catch(e){lastOkxError=e;}
+   }
+   const list=payload?.data;
+   if(!Array.isArray(list)||list.length<80)throw lastOkxError||new Error("OKX spot candle history unavailable");
    const rows=list.slice().reverse().map(x=>[Number(x[0]),x[1],x[2],x[3],x[4],x[5],x[6]||"0","0","0","0"]);
    const result=analyzeKlines(rows);result.data_provider="OKX Spot (fallback)";return result;
   }catch(okxError){
