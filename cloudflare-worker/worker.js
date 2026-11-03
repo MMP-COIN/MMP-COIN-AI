@@ -115,6 +115,54 @@ function buildTradePlans(longMarket,action,mode,shortMarket=longMarket){
 
 function validSymbol(s){return /^[A-Z0-9]{2,20}$/.test(s||"")&&!s.includes("USDTUSDT")}
 
+let exchangeCatalogCache=null,exchangeCatalogCacheAt=0;
+async function readPublicJson(url){
+ try{
+  const r=await fetch(url,{headers:{"Accept":"application/json","User-Agent":"MMP-COIN-AI/1.0"}});
+  if(!r.ok)return {ok:false,status:r.status,error:"HTTP "+r.status};
+  const data=await r.json();return {ok:true,status:r.status,data};
+ }catch(e){return {ok:false,status:0,error:e.message||"network error"};}
+}
+async function readOkxCatalog(instType){
+ let last=null;
+ for(const host of ["https://www.okx.com","https://us.okx.com","https://openapi.okx.com"]){
+  const r=await readPublicJson(host+"/api/v5/public/instruments?instType="+instType);
+  if(r.ok&&r.data?.code==="0"&&Array.isArray(r.data.data))return {...r,source:host};
+  last=r;
+ }
+ return last||{ok:false,status:0,error:"OKX catalog unavailable"};
+}
+async function getExchangeCatalogs(){
+ if(exchangeCatalogCache&&Date.now()-exchangeCatalogCacheAt<300000)return exchangeCatalogCache;
+ const urls=[
+  ["binance_spot","https://api.binance.com/api/v3/exchangeInfo"],
+  ["bybit_spot","https://api.bybit.com/v5/market/instruments-info?category=spot&limit=1000"],
+  ["binance_futures","https://fapi.binance.com/fapi/v1/exchangeInfo"],
+  ["bybit_futures","https://api.bybit.com/v5/market/instruments-info?category=linear&limit=1000"]
+ ];
+ const results=await Promise.all(urls.map(async ([key,url])=>[key,await readPublicJson(url)]));
+ const out=Object.fromEntries(results);
+ const [okxSpot,okxSwap]=await Promise.all([readOkxCatalog("SPOT"),readOkxCatalog("SWAP")]);
+ out.okx_spot=okxSpot;out.okx_futures=okxSwap;
+ exchangeCatalogCache=out;exchangeCatalogCacheAt=Date.now();return out;
+}
+function exchangeSupport(symbol,catalogs){
+ const pair=symbol.endsWith("USDT")?symbol:symbol+"USDT";
+ const base=pair.slice(0,-4);
+ const match=(entry,key)=>entry?.ok&&entry.data;
+ const binanceSpot=match(catalogs.binance_spot)&&catalogs.binance_spot.data.symbols?.some(x=>x.symbol===pair&&x.status==="TRADING");
+ const bybitSpot=match(catalogs.bybit_spot)&&catalogs.bybit_spot.data.result?.list?.some(x=>x.symbol===pair&&x.status==="Trading");
+ const okxSpot=match(catalogs.okx_spot)&&catalogs.okx_spot.data.data?.some(x=>x.instId===base+"-USDT"&&x.state==="live");
+ const binanceFutures=match(catalogs.binance_futures)&&catalogs.binance_futures.data.symbols?.some(x=>x.symbol===pair&&x.status==="TRADING");
+ const bybitFutures=match(catalogs.bybit_futures)&&catalogs.bybit_futures.data.result?.list?.some(x=>x.symbol===pair&&x.status==="Trading");
+ const okxFutures=match(catalogs.okx_futures)&&catalogs.okx_futures.data.data?.some(x=>x.instId===base+"-USDT-SWAP"&&x.state==="live");
+ const providers={
+  spot:{Binance:catalogs.binance_spot?.ok?(binanceSpot?"فعال":"جفت فعال پیدا نشد"):(catalogs.binance_spot?.error||"تأیید نشد"),Bybit:catalogs.bybit_spot?.ok?(bybitSpot?"فعال":"جفت فعال پیدا نشد"):(catalogs.bybit_spot?.error||"تأیید نشد"),OKX:catalogs.okx_spot?.ok?(okxSpot?"فعال":"جفت فعال پیدا نشد"):(catalogs.okx_spot?.error||"تأیید نشد")},
+  futures:{Binance:catalogs.binance_futures?.ok?(binanceFutures?"فعال":"جفت فعال پیدا نشد"):(catalogs.binance_futures?.error||"تأیید نشد"),Bybit:catalogs.bybit_futures?.ok?(bybitFutures?"فعال":"جفت فعال پیدا نشد"):(catalogs.bybit_futures?.error||"تأیید نشد"),OKX:catalogs.okx_futures?.ok?(okxFutures?"فعال":"جفت فعال پیدا نشد"):(catalogs.okx_futures?.error||"تأیید نشد")}
+ };
+ return {symbol:pair,spot:{confirmed:!!(binanceSpot||bybitSpot||okxSpot),providers:Object.entries(providers.spot).filter(([,v])=>v==="فعال").map(([k])=>k)},futures:{confirmed:!!(binanceFutures||bybitFutures||okxFutures),providers:Object.entries(providers.futures).filter(([,v])=>v==="فعال").map(([k])=>k)},providers};
+}
+
 function persianize(value){
  if(typeof value==="string"){
   const rules=[
@@ -176,6 +224,15 @@ function persianize(value){
 
 async function handle(request,env){
  if(request.method==="OPTIONS")return new Response(null,{headers:CORS});
+ if(request.method==="GET"&&new URL(request.url).pathname==="/support-check"){
+  const url=new URL(request.url);
+  const symbols=[...new Set((url.searchParams.get("symbols")||"").split(",").map(x=>x.toUpperCase().replace(/[^A-Z0-9]/g,"")).filter(validSymbol))].slice(0,150);
+  if(!symbols.length)return json({error:"Provide comma-separated symbols"},400);
+  const catalogs=await getExchangeCatalogs();
+  const assets=symbols.map(symbol=>exchangeSupport(symbol,catalogs));
+  const sources=Object.fromEntries(Object.entries(catalogs).map(([k,v])=>[k,{ok:!!v?.ok,status:v?.status||0,error:v?.error||null,source:v?.source||null}]));
+  return json({checked_at:new Date().toISOString(),assets,sources});
+ }
  if(request.method==="GET"&&new URL(request.url).pathname==="/health"){
   const probe=async(url)=>{try{const r=await fetch(url,{headers:{"Accept":"application/json"}});return {ok:r.ok,status:r.status};}catch(e){return {ok:false,error:e.message||"network error"};}};
   const [spot,futures,bybit]=await Promise.all([
