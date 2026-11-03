@@ -75,8 +75,8 @@ function buildSetup(direction,m){
  const sign=direction==="LONG"?1:-1,fmt=x=>roundPrice(x,price),target=k=>fmt(entry+sign*risk*k);
  return {direction,entry_zone:{low:fmt(low),high:fmt(high)},stop_loss:fmt(stop),tp1:target(1.5),tp2:target(2.2),tp3:target(3),risk_reward:"1:1.5 / 1:2.2 / 1:3",trigger:direction==="LONG"?"فقط پس از بسته‌شدن کندل ۱ ساعته بالای مقاومت و تثبیت قیمت":"فقط پس از بسته‌شدن کندل ۱ ساعته زیر حمایت و تثبیت قیمت",invalidation:direction==="LONG"?"بسته‌شدن کندل ۱ ساعته دوباره زیر سطح شکست":"بسته‌شدن کندل ۱ ساعته دوباره بالای سطح شکست"};
 }
-function buildTradePlans(m,action){
- const long=buildSetup("LONG",m),short=buildSetup("SHORT",m);
+function buildTradePlans(m,action,mode){
+ const long=buildSetup("LONG",m),short=mode==="spot"?null:buildSetup("SHORT",m);
  if(action==="BUY"&&long)return {active:long,conditional:null};
  if(action==="SELL"&&short)return {active:short,conditional:null};
  return {active:null,conditional:{long,short}};
@@ -192,7 +192,7 @@ async function handle(request,env){
    analysis.reasons.unshift("هم‌جهتی کافی میان روند ۴ ساعته و روزانه وجود ندارد؛ ورود فوری تأیید نمی‌شود.");
   }
   const planMarket=mode==="futures"&&futuresMarket?futuresMarket:market;
-  const plans=buildTradePlans(planMarket,analysis.action);
+  const plans=buildTradePlans(planMarket,analysis.action,mode);
   if(plans.active){
    analysis.levels={entry_zone:plans.active.entry_zone,stop_loss:plans.active.stop_loss,tp1:plans.active.tp1,tp2:plans.active.tp2,tp3:plans.active.tp3};
    analysis.risk_reward=plans.active.risk_reward;
