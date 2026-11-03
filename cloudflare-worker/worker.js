@@ -54,7 +54,21 @@ async function candles(symbol,interval,env,marketType="spot"){
    const result=analyzeKlines(rows);result.data_provider=url.includes("binance.us")?"Binance.US":url.includes("data-api")?"Binance Data API":"Binance Spot";return result;
   }catch(e){lastError=e;}
  }
- throw new Error("Spot data unavailable for "+symbol+" "+interval+": "+(lastError?.message||"all providers failed"));
+ // Final spot fallback: Bybit public spot candles, useful for assets whose
+ // Binance spot pair is unavailable or temporarily inaccessible.
+ try{
+  const bybitInterval={"15m":"15","1h":"60","4h":"240","1d":"D"}[interval];
+  const url="https://api.bybit.com/v5/market/kline?category=spot&symbol="+encodeURIComponent(symbol)+"&interval="+bybitInterval+"&limit=250";
+  const r=await fetch(url,{headers});
+  if(!r.ok)throw new Error("Bybit Spot HTTP "+r.status);
+  const payload=await r.json();
+  const list=payload?.retCode===0?payload.result?.list:null;
+  if(!Array.isArray(list)||list.length<80)throw new Error(payload?.retMsg||"insufficient Bybit spot candle history");
+  const rows=list.slice().reverse().map(x=>[Number(x[0]),x[1],x[2],x[3],x[4],x[5],x[6]||"0","0","0","0"]);
+  const result=analyzeKlines(rows);result.data_provider="Bybit Spot (fallback)";return result;
+ }catch(bybitError){
+  throw new Error("Spot data unavailable for "+symbol+" "+interval+"; Binance: "+(lastError?.message||"all providers failed")+"; Bybit: "+(bybitError?.message||"fallback failed"));
+ }
 }
 
 function roundPrice(value,price){const decimals=price>=1000?2:price>=1?4:price>=0.01?6:8;return Number(value.toFixed(decimals));}
