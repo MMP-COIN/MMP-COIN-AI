@@ -69,7 +69,22 @@ async function candles(symbol,interval,env,marketType="spot"){
   const rows=list.slice().reverse().map(x=>[Number(x[0]),x[1],x[2],x[3],x[4],x[5],x[6]||"0","0","0","0"]);
   const result=analyzeKlines(rows);result.data_provider="Bybit Spot (fallback)";return result;
  }catch(bybitError){
-  throw new Error("Spot data unavailable for "+symbol+" "+interval+"; Binance: "+(lastError?.message||"all providers failed")+"; Bybit: "+(bybitError?.message||"fallback failed"));
+  // Last-resort public spot fallback: OKX. This keeps analysis independent
+  // from the chart widget and avoids failing when Binance/Bybit return 403.
+  try{
+   const okxBar={"15m":"15m","1h":"1H","4h":"4H","1d":"1Dutc"}[interval];
+   const instId=symbol.replace(/USDT$/,"-USDT");
+   const url="https://www.okx.com/api/v5/market/candles?instId="+encodeURIComponent(instId)+"&bar="+okxBar+"&limit=250";
+   const r=await fetch(url,{headers});
+   if(!r.ok)throw new Error("OKX Spot HTTP "+r.status);
+   const payload=await r.json();
+   const list=payload?.code==="0"?payload.data:null;
+   if(!Array.isArray(list)||list.length<80)throw new Error(payload?.msg||"insufficient OKX spot candle history");
+   const rows=list.slice().reverse().map(x=>[Number(x[0]),x[1],x[2],x[3],x[4],x[5],x[6]||"0","0","0","0"]);
+   const result=analyzeKlines(rows);result.data_provider="OKX Spot (fallback)";return result;
+  }catch(okxError){
+   throw new Error("Spot data unavailable for "+symbol+" "+interval+"; Binance: "+(lastError?.message||"all providers failed")+"; Bybit: "+(bybitError?.message||"fallback failed")+"; OKX: "+(okxError?.message||"fallback failed"));
+  }
  }
 }
 
