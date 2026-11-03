@@ -18,8 +18,9 @@ function analyzeKlines(rows){
  const totalBase=rows.slice(-24).reduce((s,x)=>s+Number(x[5]||0),0);
  return {price:last.c,change_pct:(last.c/closes[closes.length-2]-1)*100,rsi:rsi(closes),ema20:e20,ema50:e50,ema200:e200,ema_trend:e20&&e50&&e200?(last.c>e20&&e20>e50&&e50>e200?"bullish":last.c<e20&&e20<e50&&e50<e200?"bearish":"mixed"):"insufficient",macd,macd_signal:macd==null||signal==null?"insufficient":macd>signal?"bullish crossover bias":macd<signal?"bearish crossover bias":"neutral",atr,atr_percent:atr?atr/last.c*100:null,support,resistance,volume_ratio:mean(vols.slice(-5))/(mean(vols.slice(-25))||1),taker_buy_volume_ratio:totalBase?takerBuyBase/totalBase:null,candle_time:new Date(last.t).toISOString()};
 }
-async function candles(symbol,interval,env){
- const url="https://api.binance.com/api/v3/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250";
+async function candles(symbol,interval,env,marketType="spot"){
+ const base=marketType==="futures"?"https://fapi.binance.com/fapi/v1/klines":"https://api.binance.com/api/v3/klines";
+ const url=base+"?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250";
  const r=await fetch(url,{headers:{"Accept":"application/json"}});
  if(!r.ok)throw new Error("Market data unavailable for "+symbol+" "+interval);
  const rows=await r.json();if(!Array.isArray(rows)||rows.length<80)throw new Error("Not enough candle history for "+interval);
@@ -37,7 +38,8 @@ async function handle(request,env){
  const mode=["spot","futures","both"].includes(body.market_mode)?body.market_mode:"both";
  try{
   const intervals=["15m","1h","4h","1d"];
-  const results=await Promise.all(intervals.map(async tf=>[tf,await candles(pair,tf,env)]));
+  const candleMarket=mode==="futures"?"futures":"spot";
+  const results=await Promise.all(intervals.map(async tf=>[tf,await candles(pair,tf,env,candleMarket)]));
   const market=Object.fromEntries(results);
   const latest=market["4h"];
   const optionalJson=async url=>{try{const r=await fetch(url);if(!r.ok)return null;return await r.json();}catch{return null;}};
@@ -58,7 +60,7 @@ async function handle(request,env){
   const analysis=JSON.parse(raw.slice(start,end+1));
   if(!["BUY","SELL","WAIT"].includes(String(analysis.action||"").toUpperCase()))analysis.action="WAIT";
   analysis.market=analysis.market||{};analysis.market.price_usd=latest.price;
-  analysis.market_timestamp=latest.candle_time;analysis.data_source="Binance public market candles · Cloudflare Workers AI";
+  analysis.market_timestamp=latest.candle_time;analysis.data_source=(candleMarket==="futures"?"Binance Futures":"Binance Spot")+" public market candles · Cloudflare Workers AI";
   if(mode==="spot"&&analysis.action==="SELL"){analysis.action="WAIT";analysis.levels={entry_zone:null,stop_loss:null,tp1:null,tp2:null,tp3:null};}
   return json({analysis,market:snapshot});
  }catch(e){return json({error:e.message||"Analysis failed"},502)}
