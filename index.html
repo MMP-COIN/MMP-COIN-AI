@@ -158,6 +158,20 @@ body{background:radial-gradient(ellipse at 82% -10%,#29223b 0,transparent 36%),r
 @media(max-width:760px){.ai-toolbar{grid-template-columns:1fr 1fr}.ai-toolbar button{grid-column:auto}.tf-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.ai-toolbar{grid-template-columns:1fr 1fr}.ai-toolbar button{font-size:11px;padding:10px 6px}.ai-report{padding:13px}.ai-suggestion-list{grid-template-columns:1fr}.top-actions .pill{display:none}}
 
+
+/* نمودار بزرگ‌تر و خواناتر تریدینگ‌ویو */
+.chart-box-wrapper{padding:20px}
+#chart-container{height:760px;min-height:760px}
+#tradingview_widget{width:100%;height:100%;min-height:760px}
+@media(max-width:760px){
+ .chart-box-wrapper{padding:10px}
+ #chart-container{height:680px;min-height:680px}
+ #tradingview_widget{min-height:680px}
+}
+@media(max-width:420px){
+ #chart-container{height:620px;min-height:620px}
+ #tradingview_widget{min-height:620px}
+}
 </style>
 </head>
 <body>
