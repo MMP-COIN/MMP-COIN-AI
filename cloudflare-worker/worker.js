@@ -56,6 +56,32 @@ async function candles(symbol,interval,env,marketType="spot"){
  }
  throw new Error("Spot data unavailable for "+symbol+" "+interval+": "+(lastError?.message||"all providers failed"));
 }
+
+function roundPrice(value,price){const decimals=price>=1000?2:price>=1?4:price>=0.01?6:8;return Number(value.toFixed(decimals));}
+function buildSetup(direction,m){
+ const price=Number(m?.price),atr=Number(m?.atr),support=Number(m?.support),resistance=Number(m?.resistance);
+ if(!Number.isFinite(price)||price<=0||!Number.isFinite(atr)||atr<=0)return null;
+ const pad=atr*0.12;let low,high,stop,entry;
+ if(direction==="LONG"){
+  const pivot=Number.isFinite(resistance)&&resistance>price*0.995?resistance:price;
+  low=Math.max(price,pivot);high=low+pad;entry=(low+high)/2;
+  stop=Math.min(entry-atr*0.9,Number.isFinite(support)&&support<entry?support-atr*0.12:entry-atr*1.1);
+ }else{
+  const pivot=Number.isFinite(support)&&support<price*1.005?support:price;
+  low=pivot-pad;high=Math.min(price,pivot);entry=(low+high)/2;
+  stop=Math.max(entry+atr*0.9,Number.isFinite(resistance)&&resistance>entry?resistance+atr*0.12:entry+atr*1.1);
+ }
+ const risk=Math.abs(entry-stop);if(!Number.isFinite(risk)||risk<=0)return null;
+ const sign=direction==="LONG"?1:-1,fmt=x=>roundPrice(x,price),target=k=>fmt(entry+sign*risk*k);
+ return {direction,entry_zone:{low:fmt(low),high:fmt(high)},stop_loss:fmt(stop),tp1:target(1.5),tp2:target(2.2),tp3:target(3),risk_reward:"1:1.5 / 1:2.2 / 1:3",trigger:direction==="LONG"?"فقط پس از بسته‌شدن کندل ۱ ساعته بالای مقاومت و تثبیت قیمت":"فقط پس از بسته‌شدن کندل ۱ ساعته زیر حمایت و تثبیت قیمت",invalidation:direction==="LONG"?"بسته‌شدن کندل ۱ ساعته دوباره زیر سطح شکست":"بسته‌شدن کندل ۱ ساعته دوباره بالای سطح شکست"};
+}
+function buildTradePlans(m,action){
+ const long=buildSetup("LONG",m),short=buildSetup("SHORT",m);
+ if(action==="BUY"&&long)return {active:long,conditional:null};
+ if(action==="SELL"&&short)return {active:short,conditional:null};
+ return {active:null,conditional:{long,short}};
+}
+
 function validSymbol(s){return /^[A-Z0-9]{2,20}$/.test(s||"")&&!s.includes("USDTUSDT")}
 
 function persianize(value){
@@ -163,11 +189,23 @@ async function handle(request,env){
   if(mode==="both"&&futuresMarket){longAligned=longAligned&&futuresMarket["4h"].ema_trend==="bullish"&&futuresMarket["1d"].ema_trend!=="bearish";shortAligned=shortAligned&&futuresMarket["4h"].ema_trend==="bearish"&&futuresMarket["1d"].ema_trend!=="bullish";}
   if((analysis.action==="BUY"&&!longAligned)||(analysis.action==="SELL"&&!shortAligned)||(mode==="spot"&&analysis.action==="SELL")){
    analysis.action="WAIT";analysis.confidence=Math.min(analysis.confidence,55);
-   analysis.levels={entry_zone:null,stop_loss:null,tp1:null,tp2:null,tp3:null};
-   analysis.reasons.unshift("هم‌جهتی کافی میان روند ۴ ساعته و روزانه وجود ندارد؛ برای جلوگیری از سیگنال شتاب‌زده، فعلاً ورود پیشنهاد نمی‌شود.");
+   analysis.reasons.unshift("هم‌جهتی کافی میان روند ۴ ساعته و روزانه وجود ندارد؛ ورود فوری تأیید نمی‌شود.");
   }
-  if(analysis.action==="WAIT")analysis.levels={entry_zone:null,stop_loss:null,tp1:null,tp2:null,tp3:null};
-  if(!analysis.recommendations.length)analysis.recommendations=["برای تأیید جهت، بسته‌شدن کندل ۴ ساعته را زیر نظر بگیر.","حجم معاملات را با میانگین اخیر مقایسه کن.","شکست معتبر حمایت یا مقاومت را پیش از ورود بررسی کن.","در صورت نبود هم‌جهتی تایم‌فریم‌ها، از ورود عجولانه خودداری کن."];
+  const planMarket=mode==="futures"&&futuresMarket?futuresMarket:market;
+  const plans=buildTradePlans(planMarket,analysis.action);
+  if(plans.active){
+   analysis.levels={entry_zone:plans.active.entry_zone,stop_loss:plans.active.stop_loss,tp1:plans.active.tp1,tp2:plans.active.tp2,tp3:plans.active.tp3};
+   analysis.risk_reward=plans.active.risk_reward;
+   analysis.position_risk=analysis.position_risk||"حداکثر ۱٪ سرمایه در هر معامله؛ اهرم پایین یا بدون اهرم";
+   analysis.entry_trigger=plans.active.trigger;analysis.invalidation=plans.active.invalidation;
+  }else{
+   analysis.levels={entry_zone:null,stop_loss:null,tp1:null,tp2:null,tp3:null};
+   analysis.position_risk="تا فعال‌شدن یکی از شروط شکست، بدون ورود";
+  }
+  analysis.conditional_setups=plans.conditional;
+  analysis.plan_status=plans.active?"active_signal":"conditional_wait";
+  analysis.plan_method="سطوح محاسبه‌شده از قیمت، ATR و حمایت/مقاومت؛ ورود مشروط به بسته‌شدن کندل";
+  if(!analysis.recommendations.length)analysis.recommendations=["برای ورود LONG منتظر بسته‌شدن کندل ۱ ساعته بالای مقاومت و تثبیت قیمت بمان.","برای ورود SHORT منتظر بسته‌شدن کندل ۱ ساعته زیر حمایت و تثبیت قیمت بمان.","پس از ورود، حد ضرر و اهداف عددی برنامه را رعایت کن.","اگر هیچ‌کدام از شکست‌ها تأیید نشد، معامله نکن."];
   return json({analysis,market:snapshot});
  }catch(e){return json({error:e.message||"Analysis failed"},502)}
 }
