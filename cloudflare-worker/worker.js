@@ -1,5 +1,5 @@
 const MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
-const CORS = {"Access-Control-Allow-Origin":"*","Access-Control-Allow-Methods":"POST, OPTIONS","Access-Control-Allow-Headers":"Content-Type"};
+const CORS = {"Access-Control-Allow-Origin":"*","Access-Control-Allow-Methods":"GET, POST, OPTIONS","Access-Control-Allow-Headers":"Content-Type"};
 const json=(obj,status=200)=>new Response(JSON.stringify(obj),{status,headers:{...CORS,"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store"}});
 function mean(a){return a.length?a.reduce((x,y)=>x+y,0)/a.length:0}
 function ema(values,period){if(values.length<period)return null;let k=2/(period+1),v=mean(values.slice(0,period));for(let i=period;i<values.length;i++)v=values[i]*k+v*(1-k);return v}
@@ -90,6 +90,15 @@ function persianize(value){
 
 async function handle(request,env){
  if(request.method==="OPTIONS")return new Response(null,{headers:CORS});
+ if(request.method==="GET"&&new URL(request.url).pathname==="/health"){
+  const probe=async(url)=>{try{const r=await fetch(url,{headers:{"Accept":"application/json"}});return {ok:r.ok,status:r.status};}catch(e){return {ok:false,error:e.message||"network error"};}};
+  const [spot,futures,bybit]=await Promise.all([
+   probe("https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1h&limit=1"),
+   probe("https://fapi.binance.com/fapi/v1/klines?symbol=BTCUSDT&interval=1h&limit=1"),
+   probe("https://api.bybit.com/v5/market/kline?category=linear&symbol=BTCUSDT&interval=60&limit=1")
+  ]);
+  return json({service:"MMP COIN AI",worker:"online",ai_binding:!!env.AI,providers:{spot_binance:spot,futures_binance:futures,futures_bybit_fallback:bybit},checked_at:new Date().toISOString()});
+ }
  if(request.method!=="POST")return json({error:"Method not allowed"},405);
  if(!env.AI)return json({error:"AI binding is not configured in Cloudflare Worker."},503);
  let body;try{body=await request.json()}catch{return json({error:"Invalid JSON"},400)}
