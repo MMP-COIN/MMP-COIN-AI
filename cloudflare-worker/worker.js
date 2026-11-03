@@ -118,7 +118,7 @@ function validSymbol(s){return /^[A-Z0-9]{2,20}$/.test(s||"")&&!s.includes("USDT
 let exchangeCatalogCache=null,exchangeCatalogCacheAt=0;
 async function readPublicJson(url){
  try{
-  const r=await fetch(url,{headers:{"Accept":"application/json","User-Agent":"MMP-COIN-AI/1.0"}});
+  const r=await fetch(url,{headers:{"Accept":"application/json"}});
   if(!r.ok)return {ok:false,status:r.status,error:"HTTP "+r.status};
   const data=await r.json();return {ok:true,status:r.status,data};
  }catch(e){return {ok:false,status:0,error:e.message||"network error"};}
