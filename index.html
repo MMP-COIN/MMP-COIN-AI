@@ -439,7 +439,7 @@ async function checkConnections(){
  $('connections').innerHTML = html;
 }
 
-const AI_ANALYSIS_ENDPOINT = ""; // بعد از انتشار Worker، نشانی ...workers.dev/analyze در این متغیر قرار می‌گیرد.
+const AI_ANALYSIS_ENDPOINT = "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev"; // بعد از انتشار Worker، نشانی ...workers.dev/analyze در این متغیر قرار می‌گیرد.
 let aiBusy=false;
 function aiEscape(v){return String(v??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));}
 function aiNum(v){return Number.isFinite(Number(v))?Number(v):null;}
