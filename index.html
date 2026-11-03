@@ -463,6 +463,7 @@ function updateDropdowns(data) {
   tvHtml += `<option value="FX_IDC:XAUUSD">Gold / USD</option>`;
   tvSelect.innerHTML = tvHtml;
   if(currentTvVal) tvSelect.value = currentTvVal;
+  restoreAiReportOnce();
 }
 
 async function checkConnections(){
@@ -494,6 +495,25 @@ const AI_ANALYSIS_ENDPOINT = "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.
 let aiBusy=false;
 let aiCache=new Map();
 let aiRequestToken=0;
+let aiRestored=false;
+const AI_REPORT_STORAGE_KEY="mmp_coin_ai_last_report_v1";
+function saveAiReport(payload){
+ try{localStorage.setItem(AI_REPORT_STORAGE_KEY,JSON.stringify(payload));}catch(e){}
+}
+function restoreAiReportOnce(){
+ if(aiRestored)return;
+ aiRestored=true;
+ try{
+  const saved=JSON.parse(localStorage.getItem(AI_REPORT_STORAGE_KEY)||"null");
+  if(!saved||!saved.analysis||!saved.coin)return;
+  if(saved.marketMode)$("ai-market-mode").value=saved.marketMode;
+  const select=$("ai-coin-select");
+  if([...select.options].some(o=>o.value===saved.coin.id))select.value=saved.coin.id;
+  renderAiReport(saved.analysis,saved.coin,saved.market||{});
+  aiCache.set(saved.coin.id+"|"+(saved.marketMode||"both"),{analysis:saved.analysis,market:saved.market||{},time:saved.time||Date.now()});
+  aiSetStatus("آخرین گزارش قبلی بازیابی شد و تا تحلیل بعدی روی صفحه می‌ماند.");
+ }catch(e){}
+}
 function aiEscape(v){return String(v??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));}
 function aiNum(v){return Number.isFinite(Number(v))?Number(v):null;}
 function aiPrice(v){if(v==null||!Number.isFinite(Number(v)))return "—";return "$"+money(Number(v),Number(v)<1?6:2);}
@@ -571,9 +591,11 @@ async function runAiAnalysis(force=false){
   if(!res.ok)throw new Error(data.error||"خطا در سرویس تحلیل");
   if(!data.analysis)throw new Error("پاسخ تحلیل معتبر نیست.");
   if(token!==aiRequestToken)return;
-  aiCache.set(cacheKey,{analysis:data.analysis,market:data.market||{},time:Date.now()});
+  const reportTime=Date.now();
+  aiCache.set(cacheKey,{analysis:data.analysis,market:data.market||{},time:reportTime});
+  saveAiReport({analysis:data.analysis,market:data.market||{},coin:{id:c.id,name:c.name,symbol:c.symbol,current_price:c.current_price},marketMode:$("ai-market-mode").value,time:reportTime});
   renderAiReport(data.analysis,c,data.market||{});
-  aiSetStatus("تحلیل تکمیل شد · گزارش حفظ می‌شود و بروزرسانی قیمت‌ها آن را دوباره اجرا نمی‌کند.");
+  aiSetStatus("تحلیل تکمیل شد · گزارش ذخیره شد و حتی با تازه‌سازی صفحه باقی می‌ماند.");
  }catch(e){
   if(token===aiRequestToken){
    $("ai-action").textContent="تحلیل ناموفق";
