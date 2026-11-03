@@ -89,6 +89,29 @@ button{cursor:pointer}
 .hero{align-items:start;flex-direction:column}
 .connection-grid{grid-template-columns:1fr 1fr}
 }
+
+.ai-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:12px 0}
+.ai-metric{background:#10131c;border:1px solid var(--line);border-radius:11px;padding:12px;min-width:0}
+.ai-metric small{display:block;color:var(--muted);font-size:10px;margin-bottom:7px}
+.ai-metric b{font-size:14px;overflow-wrap:anywhere}
+.ai-toolbar{display:grid;grid-template-columns:minmax(0,2fr) minmax(130px,1fr) auto;gap:9px;align-items:center}
+.ai-toolbar .dropdown-select-box{margin:0}
+.ai-report{line-height:2.05;font-size:12.5px}
+.ai-report h3{font-size:14px;color:var(--gold2);margin:12px 0 6px}
+.ai-report .ai-pill{display:inline-block;border:1px solid var(--line);border-radius:20px;padding:3px 9px;margin:3px;font-size:11px}
+.ai-report .ai-pill.buy{color:var(--green);border-color:#25d69566}
+.ai-report .ai-pill.sell{color:var(--red);border-color:#ff5e6c66}
+.ai-report .ai-pill.wait{color:var(--yellow);border-color:#f4c45e66}
+.ai-report .ai-list{margin:4px 0;padding-right:18px}
+.ai-report .ai-note{border:1px solid var(--line);background:#111722;border-radius:10px;padding:10px;margin-top:10px;color:var(--muted)}
+.ai-report .ai-levels{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:10px 0}
+.ai-report .ai-level{background:#10131c;border:1px solid var(--line);border-radius:9px;padding:9px}
+.ai-report .ai-level small{display:block;color:var(--muted);font-size:10px}
+.ai-report .ai-level b{direction:ltr;display:block;text-align:right;font-size:12px}
+.ai-status{color:var(--muted);font-size:11px;margin:8px 0}
+.ai-warning{color:var(--yellow)}
+@media(max-width:760px){.ai-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ai-toolbar{grid-template-columns:1fr 1fr}.ai-toolbar button{grid-column:1/-1}.ai-report .ai-levels{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
 </style>
 </head>
 <body>
@@ -145,16 +168,25 @@ button{cursor:pointer}
 </div>
 </section>
 
-<!-- بخش هوش مصنوعی پیشرفته -->
+<!-- تحلیلگر واقعی: داده‌های بازار + اندیکاتورها + تفسیر مدل هوش مصنوعی -->
 <section class="card" id="ai-section">
-<div class="section-head"><h2>هوش مصنوعی تحلیلگر سیگنال</h2><span class="badge">AI Deep Signal</span></div>
-<div style="font-size:12px; color:var(--muted); margin-bottom:8px;">انتخاب دارایی برای دریافت گزارش آنی:</div>
-<select id="ai-coin-select" class="dropdown-select-box" onchange="runAiAnalysis()">
-  <option value="">انتخاب ارز برای تحلیل عمیق...</option>
+<div class="section-head"><h2>تحلیلگر هوشمند چندلایه بازار</h2><span class="badge">MMP AI · LIVE ANALYSIS</span></div>
+<div class="ai-toolbar">
+<select id="ai-coin-select" class="dropdown-select-box" onchange="runAiAnalysis()"><option value="">انتخاب ارز برای تحلیل جامع...</option></select>
+<select id="ai-market-mode" class="dropdown-select-box" aria-label="نوع بازار">
+<option value="both">اسپات + فیوچرز</option><option value="spot">فقط اسپات</option><option value="futures">فقط فیوچرز</option>
 </select>
-<div class="signal" id="advanced-ai-analysis">
-لطفاً یک ارز از منوی بالا انتخاب کنید تا هوش مصنوعی میزان خرید/فروش، ریسک، قیمت حمایتی ورود، قیمت هدف فروش و بازدهی را محاسبه کند.
+<button class="btn primary" id="ai-run-btn" onclick="runAiAnalysis(true)">تحلیل کامل ارز</button>
 </div>
+<div class="ai-grid">
+<div class="ai-metric"><small>وضعیت سیگنال</small><b id="ai-action">منتظر انتخاب ارز</b></div>
+<div class="ai-metric"><small>قیمت مرجع بازار</small><b id="ai-live-price">—</b></div>
+<div class="ai-metric"><small>قدرت سیگنال مدل</small><b id="ai-confidence">—</b></div>
+<div class="ai-metric"><small>سطح ریسک</small><b id="ai-risk">—</b></div>
+</div>
+<div class="ai-status" id="ai-status">برای تحلیل، یک ارز انتخاب کنید. گزارش بر پایه داده‌های کندلی بازار تهیه می‌شود.</div>
+<div class="signal ai-report" id="advanced-ai-analysis">این بخش پس از اتصال امن موتور تحلیل، گزارش خرید/فروش/عدم ورود، نقاط ورود، حد ضرر، اهداف سود، تحلیل چندتایم‌فریمی و مدیریت ریسک را نمایش می‌دهد.</div>
+<div class="ai-note" style="margin-top:12px">⚠️ تحلیل هوشمند ابزار تصمیم‌یار است، نه تضمین سود. سیگنال‌ها ممکن است اشتباه باشند؛ پیش از معامله، نقدشوندگی، کارمزد، اسلیپیج و حد ضرر را بررسی کنید. در صورت ناکافی بودن داده یا نامناسب بودن شرایط، خروجی باید «عدم ورود» باشد.</div>
 </section>
 
 <section class="card">
@@ -407,45 +439,65 @@ async function checkConnections(){
  $('connections').innerHTML = html;
 }
 
-function runAiAnalysis(){
- let id = $('ai-coin-select').value;
- const outputEl = $('advanced-ai-analysis');
- if(!outputEl) return;
-
- if(!id) {
-   outputEl.innerHTML = `لطفاً از منوی کشویی بالا یک ارز انتخاب کنید تا هوش مصنوعی اطلاعات آنی، میزان خرید و فروش، ریسک، قیمت حمایتی ورود، قیمت هدف فروش و بازدهی را محاسبه کند.`;
+const AI_ANALYSIS_ENDPOINT = ""; // بعد از انتشار Worker، نشانی ...workers.dev/analyze در این متغیر قرار می‌گیرد.
+let aiBusy=false;
+function aiEscape(v){return String(v??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));}
+function aiNum(v){return Number.isFinite(Number(v))?Number(v):null;}
+function aiPrice(v){if(v==null)return "—";return "$"+money(v,v<1?6:2);}
+function aiSetStatus(t){$("ai-status").textContent=t;}
+function renderAiReport(r,c){
+ const action=String(r.action||"WAIT").toUpperCase();
+ const label=action==="BUY"?"خرید / LONG":action==="SELL"?"فروش / SHORT":"عدم ورود / WAIT";
+ const cls=action==="BUY"?"buy":action==="SELL"?"sell":"wait";
+ $("ai-action").textContent=label;
+ $("ai-action").style.color=action==="BUY"?"var(--green)":action==="SELL"?"var(--red)":"var(--yellow)";
+ $("ai-confidence").textContent=(r.confidence??"—")+(r.confidence!=null?" از ۱۰۰":"");
+ $("ai-risk").textContent=r.risk_level||"نامشخص";
+ $("ai-live-price").textContent=aiPrice(r.market?.price_usd??c?.current_price);
+ const lv=r.levels||{};
+ const level=(title,val)=>'<div class="ai-level"><small>'+title+'</small><b>'+aiPrice(aiNum(val))+'</b></div>';
+ const reasons=Array.isArray(r.reasons)?r.reasons:[];
+ const scenarios=Array.isArray(r.scenarios)?r.scenarios:[];
+ const indicators=r.indicators||{};
+ const html='<div><span class="ai-pill '+cls+'">'+label+'</span><span class="ai-pill">تایم‌فریم: '+aiEscape(r.primary_timeframe||"۴ ساعته")+'</span><span class="ai-pill">بازار: '+aiEscape($("ai-market-mode").selectedOptions[0].textContent)+'</span></div>'+
+ '<h3>🎯 برنامه معاملاتی پیشنهادی</h3><div class="ai-levels">'+level("محدوده ورود",lv.entry_zone?((lv.entry_zone.low??"—")+" تا "+(lv.entry_zone.high??"—")):null)+level("حد ضرر",lv.stop_loss)+level("هدف اول · TP1",lv.tp1)+level("هدف دوم · TP2",lv.tp2)+level("هدف سوم · TP3",lv.tp3)+level("نسبت سود به زیان",r.risk_reward)+level("افق زمانی",r.holding_horizon)+level("حداکثر ریسک پیشنهادی",r.position_risk)+'</div>'+
+ '<h3>🧠 جمع‌بندی تحلیل هوش مصنوعی</h3><p>'+aiEscape(r.summary||"تحلیل متنی در دسترس نیست.")+'</p>'+
+ '<h3>📊 تحلیل تکنیکال و چندتایم‌فریمی</h3><p>'+aiEscape(r.technical_analysis||"")+'</p><p><b>RSI:</b> '+aiEscape(indicators.rsi??"—")+' · <b>MACD:</b> '+aiEscape(indicators.macd_signal??"—")+' · <b>EMA:</b> '+aiEscape(indicators.ema_trend??"—")+' · <b>ATR:</b> '+aiEscape(indicators.atr_percent??"—")+'</p>'+
+ '<h3>🧭 سناریوهای پیش‌رو</h3><ul class="ai-list">'+scenarios.map(s=>'<li><b>'+aiEscape(s.name||"سناریو")+'</b>: '+aiEscape(s.description||"")+'</li>').join("")+'</ul>'+
+ '<h3>🔍 دلایل سیگنال</h3><ul class="ai-list">'+reasons.map(x=>'<li>'+aiEscape(x)+'</li>').join("")+'</ul>'+
+ '<h3>🛡️ مدیریت ریسک و شرایط ابطال</h3><p>'+aiEscape(r.risk_management||"")+'</p><p><b>شرط ابطال تحلیل:</b> '+aiEscape(r.invalidation||"")+'</p>'+
+ '<div class="ai-note">داده بازار: '+aiEscape(r.data_source||"Binance public market data")+' · زمان داده: '+aiEscape(r.market_timestamp||"نامشخص")+' · زمان تولید تحلیل: '+new Date().toLocaleString("fa-IR")+'<br>درصد اطمینان، ارزیابی مدل از کیفیت هم‌جهتی شواهد است و احتمال قطعی سود نیست.</div>';
+ $("advanced-ai-analysis").innerHTML=html;
+}
+async function runAiAnalysis(force=false){
+ const id=$("ai-coin-select").value, out=$("advanced-ai-analysis"), btn=$("ai-run-btn");
+ if(!id){$("ai-action").textContent="منتظر انتخاب ارز";aiSetStatus("برای شروع، یک ارز انتخاب کنید.");return;}
+ const c=cachedCoinsData.find(x=>x.id===id);
+ if(!c){aiSetStatus("داده قیمت این ارز هنوز بارگذاری نشده است.");return;}
+ if(!AI_ANALYSIS_ENDPOINT){
+   $("ai-live-price").textContent=aiPrice(c.current_price);
+   $("ai-action").textContent="موتور AI هنوز متصل نیست";
+   aiSetStatus("بخش نمایشی فیک حذف شده است؛ برای فعال‌سازی تحلیل واقعی، Worker امن Cloudflare باید منتشر و آدرس آن در تنظیمات سایت ثبت شود.");
+   out.innerHTML='<b>تحلیل واقعی هنوز فعال نشده است.</b><br>قیمت نمایشی از داده بازار دریافت شده، اما تا اتصال موتور تحلیل، هیچ سیگنال خرید یا فروش ساختگی نمایش داده نمی‌شود.';
    return;
  }
-
- let c = cachedCoinsData.find(x => x.id === id);
- if(!c) {
-   outputEl.innerHTML = `در حال بارگذاری اطلاعات دارایی...`;
-   return;
- }
-
- let priceUsd = c.current_price;
- let priceToman = priceUsd * currentTetherPrice;
- let chg = c.price_change_percentage_24h || 0;
- 
- let buySupportUsd = priceUsd * 0.96;
- let buySupportToman = priceToman * 0.96;
- let sellTargetUsd = priceUsd * 1.12;
- let sellTargetToman = priceToman * 1.12;
- 
- let riskLevel = chg > 4 ? 'متوسط رو به بالا (احتیاط در خرید)' : (chg < -2 ? 'کم (فرصت مطلوب ورود در کف)' : 'متعادل (ریسک استاندارد)');
- let buySellRatio = chg >= 0 ? `🟢 قدرت خریداران: ${(55 + chg * 2).toFixed(1)}% | 🔴 فروشندگان: ${(45 - chg * 2).toFixed(1)}%` : `🟢 قدرت خریداران: ${(42 - chg).toFixed(1)}% | 🔴 فروشندگان: ${(58 + chg).toFixed(1)}%`;
- let roiPotential = '+12% تا +18% در میان‌مدت';
-
- outputEl.innerHTML = `
-   📊 <b>گزارش آنی هوش مصنوعی برای:</b> ${c.name} (${c.symbol.toUpperCase()})<br>
-   💵 <b>قیمت لحظه‌ای:</b> $${money(priceUsd, priceUsd < 1 ? 4 : 2)} (<b>${toman(priceToman)} تومان</b>)<br>
-   ⚖️ <b>وضعیت خرید و فروش بازار:</b> ${buySellRatio}<br>
-   ⚠️ <b>سطح ریسک معاملاتی:</b> <span style="color:var(--yellow)">${riskLevel}</span><br>
-   🛡️ <b>پیشنهاد خرید (قیمت حمایتی معتبر):</b> $${money(buySupportUsd, buySupportUsd < 1 ? 4 : 2)} (<b>${toman(buySupportToman)} تومان</b>)<br>
-   🎯 <b>پیشنهاد فروش (هدف قیمتی مقاومتی):</b> $${money(sellTargetUsd, sellTargetUsd < 1 ? 4 : 2)} (<b>${toman(sellTargetToman)} تومان</b>)<br>
-   📈 <b>بازدهی ارزشی پیش‌بینی شده (ROI):</b> <span style="color:var(--green)">${roiPotential}</span><br>
-   💡 <b>نتیجه‌گیری استراتژیک:</b> ${chg >= 0 ? 'روند صعودی برقرار است؛ پله‌ای وارد شوید و روی اهداف مقاومتی سیو سود کنید.' : 'در محدوده حمایتی ذکر شده پله‌ای خرید کنید و حد ضرر را رعایت فرمایید.'}
- `;
+ if(aiBusy)return;
+ aiBusy=true;btn.disabled=true;btn.textContent="در حال تحلیل…";
+ $("ai-action").textContent="در حال بررسی";
+ aiSetStatus("دریافت کندل‌ها و محاسبه اندیکاتورها در چند تایم‌فریم…");
+ out.textContent="در حال تحلیل داده‌های واقعی بازار؛ لطفاً منتظر بمانید…";
+ try{
+  const res=await fetch(AI_ANALYSIS_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({coin_id:c.id,symbol:c.symbol.toUpperCase(),name:c.name,market_mode:$("ai-market-mode").value})});
+  const data=await res.json();
+  if(!res.ok)throw new Error(data.error||"خطا در سرویس تحلیل");
+  if(!data.analysis)throw new Error("پاسخ تحلیل معتبر نیست.");
+  renderAiReport(data.analysis,c);
+  aiSetStatus("تحلیل تکمیل شد · داده‌های بازار و زمان ثبت در گزارش درج شده‌اند.");
+ }catch(e){
+  $("ai-action").textContent="تحلیل ناموفق";
+  aiSetStatus("خطا در دریافت تحلیل: "+e.message);
+  out.textContent="در حال حاضر امکان تولید تحلیل معتبر وجود ندارد. لطفاً بعداً دوباره تلاش کنید. هیچ سیگنال جایگزینی ساخته نشد.";
+ }finally{aiBusy=false;btn.disabled=false;btn.textContent="تحلیل کامل ارز";}
 }
 
 refreshAll();
