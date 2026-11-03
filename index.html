@@ -668,7 +668,7 @@ async function runAiAnalysis(force=false){
   if(token===aiRequestToken){
    $("ai-action").textContent="تحلیل ناموفق";
    aiSetStatus("خطا در دریافت تحلیل: "+(e.name==="AbortError"?"زمان پاسخ سرویس بیش از حد طول کشید":e.message));
-   if(out.dataset.hasReport!=="true")out.innerHTML='<div class="ai-empty"><b>تحلیل فعلاً در دسترس نیست</b><p>داده یا پاسخ معتبر دریافت نشد. دوباره تلاش کنید.</p></div>';
+   if(out.dataset.hasReport!=="true")out.innerHTML='<div class="ai-empty"><b>تحلیل فعلاً در دسترس نیست</b><p>علت خطا: '+aiEscape(e.name==="AbortError"?"زمان پاسخ سرویس بیش از حد طول کشید":e.message||"خطای نامشخص")+'</p><p>پس از رفع خطا، دوباره تحلیل را اجرا کنید.</p></div>';
   }
  }finally{
   if(token===aiRequestToken){aiBusy=false;btn.disabled=false;refreshBtn.disabled=false;btn.textContent="شروع تحلیل هوشمند";}
