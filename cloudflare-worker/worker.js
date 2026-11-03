@@ -14,7 +14,10 @@ function analyzeKlines(rows){
  const tr=candles.slice(1).map((x,i)=>Math.max(x.h-x.l,Math.abs(x.h-candles[i].c),Math.abs(x.l-candles[i].c)));
  const atr=tr.length>=14?mean(tr.slice(-14)):null;
  const support=Math.min(...lows.slice(-30)),resistance=Math.max(...highs.slice(-30));
- return {price:last.c,change_pct:(last.c/closes[closes.length-2]-1)*100,rsi:rsi(closes),ema20:e20,ema50:e50,ema200:e200,ema_trend:e20&&e50&&e200?(last.c>e20&&e20>e50&&e50>e200?"bullish":last.c<e20&&e20<e50&&e50<e200?"bearish":"mixed"):"insufficient",macd,macd_signal:macd==null||signal==null?"insufficient":macd>signal?"bullish crossover bias":macd<signal?"bearish crossover bias":"neutral",atr,atr_percent:atr?atr/last.c*100:null,support,resistance,volume_ratio:mean(vols.slice(-5))/(mean(vols.slice(-25))||1),candle_time:new Date(last.t).toISOString()};
+ const takerBuy=candles.slice(-24).reduce((s,x)=>s+(Number(x.v)>0?Math.min(Number(x.v),Number(x.v)):0),0);
+ const takerBuyBase=rows.slice(-24).reduce((s,x)=>s+Number(x[9]||0),0);
+ const totalBase=rows.slice(-24).reduce((s,x)=>s+Number(x[5]||0),0);
+ return {price:last.c,change_pct:(last.c/closes[closes.length-2]-1)*100,rsi:rsi(closes),ema20:e20,ema50:e50,ema200:e200,ema_trend:e20&&e50&&e200?(last.c>e20&&e20>e50&&e50>e200?"bullish":last.c<e20&&e20<e50&&e50<e200?"bearish":"mixed"):"insufficient",macd,macd_signal:macd==null||signal==null?"insufficient":macd>signal?"bullish crossover bias":macd<signal?"bearish crossover bias":"neutral",atr,atr_percent:atr?atr/last.c*100:null,support,resistance,volume_ratio:mean(vols.slice(-5))/(mean(vols.slice(-25))||1),taker_buy_volume_ratio:totalBase?takerBuyBase/totalBase:null,candle_time:new Date(last.t).toISOString()};
 }
 async function candles(symbol,interval,env){
  const url="https://api.binance.com/api/v3/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250";
@@ -38,8 +41,15 @@ async function handle(request,env){
   const results=await Promise.all(intervals.map(async tf=>[tf,await candles(pair,tf,env)]));
   const market=Object.fromEntries(results);
   const latest=market["4h"];
-  const snapshot={asset:String(body.name||symbol).slice(0,60),symbol:pair,market_mode:mode,source:"Binance Spot public klines",market_timestamp:latest.candle_time,timeframes:market};
-  const prompt="You are MMP COIN AI, a cautious professional crypto market analyst. Analyze ONLY the supplied numeric market snapshot. Do not invent prices, indicators, news, order-book data, funding, open interest, on-chain data, or probabilities. Respond in Persian. Return ONLY valid JSON with keys: action (BUY, SELL, WAIT), primary_timeframe, confidence (0-100 as evidence-strength not win probability), risk_level, market {price_usd}, levels {entry_zone:{low,high},stop_loss,tp1,tp2,tp3}, risk_reward, holding_horizon, position_risk, summary, technical_analysis, indicators {rsi,macd_signal,ema_trend,atr_percent}, scenarios [{name,description}], reasons [strings], risk_management, invalidation, data_source, market_timestamp. All price levels must be numeric USD values derived from snapshot. If signals conflict, trend is mixed, risk/reward is poor, or data is insufficient, choose WAIT and set entry/stop/targets to null. For SELL only describe short/futures conditions; for spot-only mode never recommend short selling. For futures mention leverage increases liquidation risk and recommend low/no leverage. Use support/resistance/ATR and multiple timeframes; do not promise returns. Snapshot: "+JSON.stringify(snapshot);
+  const optionalJson=async url=>{try{const r=await fetch(url);if(!r.ok)return null;return await r.json();}catch{return null;}};
+  const [funding,openInterest,fng,global]=await Promise.all([
+   mode==="spot"?Promise.resolve(null):optionalJson("https://fapi.binance.com/fapi/v1/premiumIndex?symbol="+pair),
+   mode==="spot"?Promise.resolve(null):optionalJson("https://fapi.binance.com/fapi/v1/openInterest?symbol="+pair),
+   optionalJson("https://api.alternative.me/fng/?limit=1"),
+   optionalJson("https://api.coingecko.com/api/v3/global")
+  ]);
+  const snapshot={asset:String(body.name||symbol).slice(0,60),symbol:pair,market_mode:mode,source:"Binance public candles; Binance Futures metrics when available; Alternative.me Fear & Greed; CoinGecko global market",market_timestamp:latest.candle_time,timeframes:market,derivatives:funding?{funding_rate:funding.lastFundingRate,mark_price:funding.markPrice,next_funding_time:funding.nextFundingTime,open_interest:openInterest?.openInterest||null}:null,sentiment:fng?.data?.[0]?{fear_greed_value:Number(fng.data[0].value),classification:fng.data[0].value_classification}:null,global_market:global?.data?{btc_dominance:global.data.market_cap_percentage?.btc,total_market_cap_usd:global.data.total_market_cap?.usd,total_volume_usd:global.data.total_volume?.usd}:null};
+  const prompt="You are MMP COIN AI, a cautious professional crypto market analyst. Analyze ONLY the supplied numeric market snapshot. Do not invent prices, indicators, news, order-book data, funding, open interest, on-chain data, or probabilities. Respond in Persian. Return ONLY valid JSON with keys: action (BUY, SELL, WAIT), primary_timeframe, confidence (0-100 as evidence-strength not win probability), risk_level, market {price_usd}, levels {entry_zone:{low,high},stop_loss,tp1,tp2,tp3}, risk_reward, holding_horizon, position_risk, summary, technical_analysis, indicators {rsi,macd_signal,ema_trend,atr_percent}, scenarios [{name,description}], reasons [strings], risk_management, invalidation, market_context, data_source, market_timestamp. All price levels must be numeric USD values derived from snapshot. If signals conflict, trend is mixed, risk/reward is poor, or data is insufficient, choose WAIT and set entry/stop/targets to null. For SELL only describe short/futures conditions; for spot-only mode never recommend short selling. For futures mention leverage increases liquidation risk and recommend low/no leverage. Use support/resistance/ATR and multiple timeframes; do not promise returns. Snapshot: "+JSON.stringify(snapshot);
   const ai=await env.AI.run(MODEL,{messages:[{role:"system",content:"Return one valid JSON object only. Never give guaranteed financial advice."},{role:"user",content:prompt}],max_tokens:1500,temperature:0.15});
   let raw=ai.response||ai.result||ai.output_text||"";
   if(typeof raw!=="string")raw=JSON.stringify(raw);
@@ -50,7 +60,7 @@ async function handle(request,env){
   if(!["BUY","SELL","WAIT"].includes(String(analysis.action||"").toUpperCase()))analysis.action="WAIT";
   analysis.market=analysis.market||{};analysis.market.price_usd=latest.price;
   analysis.market_timestamp=latest.candle_time;analysis.data_source="Binance public market candles · Cloudflare Workers AI";
-  if(mode==="spot"&&analysis.action==="SELL")analysis.action="WAIT";
+  if(mode==="spot"&&analysis.action==="SELL"){analysis.action="WAIT";analysis.levels={entry_zone:null,stop_loss:null,tp1:null,tp2:null,tp3:null};}
   return json({analysis,market:snapshot});
  }catch(e){return json({error:e.message||"Analysis failed"},502)}
 }
