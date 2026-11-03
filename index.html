@@ -355,7 +355,7 @@ async function refreshAll(){
    if(goldData.price) $('gold').textContent = '$'+money(goldData.price);
   }catch(e){$('gold').textContent='—';}
 
-  $('updated').textContent='Обновлено: '+new Date().toLocaleTimeString('fa-IR');
+  $('updated').textContent='Обновлено: '+new Date().toLocaleTimeString('ru-RU');
   runAiAnalysis();
   checkConnections();
  }catch(e){$('updated').textContent='Ошибка загрузки данных';}
