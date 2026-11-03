@@ -537,7 +537,7 @@ async function refreshAll(){
   renderHeroCards();
   renderCoinsTables(data);
   updateDropdowns(data);
-  renderOpportunities(); renderWatch(); syncWatchSelect();
+  renderMarketTicker(); renderOpportunities(); renderWatch(); syncWatchSelect();
   auditExchangeSupport(data);
 
   try{
@@ -825,6 +825,7 @@ function renderMarketHours(){const el=$("market-hours-grid");if(!el)return;el.in
 function loadWatch(){try{return JSON.parse(localStorage.getItem(MMP_WATCH_KEY)||"[]")}catch(e){return []}}
 function saveWatch(a){try{localStorage.setItem(MMP_WATCH_KEY,JSON.stringify(a))}catch(e){}}
 function renderWatch(){const list=$("watch-list");if(!list)return;const ids=loadWatch();$("watch-count").textContent=ids.length+" دارایی";list.innerHTML=ids.length?ids.map(id=>{const c=cachedCoinsData.find(x=>x.id===id);if(!c)return "";return '<div class="tool-list-item"><span><b>'+aiEscape(c.name)+'</b> <small class="muted">'+c.symbol.toUpperCase()+'</small></span><span class="gold-text">'+formatVal(c.current_price)+'</span><button class="watch-btn" data-watch-remove="'+aiEscape(id)+'">حذف</button></div>'}).join(""):'<p class="sub">هنوز دارایی‌ای اضافه نشده است.</p>';}
+function renderMarketTicker(){const el=$("market-ticker");if(!el||!cachedCoinsData.length)return;const wanted=["bitcoin","ethereum","binancecoin","solana","ripple","layerzero"];const picks=wanted.map(id=>cachedCoinsData.find(c=>c.id===id)).filter(Boolean);el.innerHTML=picks.map(c=>'<div class="ticker-item"><b>'+aiEscape(c.name)+' · '+c.symbol.toUpperCase()+'</b><strong>'+formatVal(c.current_price)+'</strong><small class="'+(c.price_change_percentage_24h>=0?"positive":"negative")+'">'+(c.price_change_percentage_24h>=0?"+":"")+(Number(c.price_change_percentage_24h)||0).toFixed(2)+'% در ۲۴ ساعت</small></div>').join("");}
 function renderOpportunities(){const el=$("opportunity-list");if(!el||!cachedCoinsData.length)return;const ranked=[...cachedCoinsData].filter(c=>Number.isFinite(c.price_change_percentage_24h)).sort((a,b)=>Math.abs(b.price_change_percentage_24h)-Math.abs(a.price_change_percentage_24h)).slice(0,8);el.innerHTML=ranked.map(c=>'<div class="tool-list-item"><span><b>'+aiEscape(c.name)+'</b> <small class="muted">'+c.symbol.toUpperCase()+'</small></span><span class="'+(c.price_change_percentage_24h>=0?"positive":"negative")+'">'+(c.price_change_percentage_24h>=0?"+":"")+c.price_change_percentage_24h.toFixed(2)+'%</span><button class="watch-btn" data-watch-add="'+aiEscape(c.id)+'">دیده‌بان +</button></div>').join("")+'<p class="sub">مرتب‌سازی بر اساس قدر مطلق تغییر ۲۴ساعته است؛ این فهرست صرفاً غربالگری نوسان است و توصیه خرید یا فروش نیست.</p>';}
 function syncWatchSelect(){const s=$("watch-add-select");if(!s)return;const old=s.value;s.innerHTML='<option value="">انتخاب دارایی…</option>'+cachedCoinsData.map(c=>'<option value="'+aiEscape(c.id)+'">'+aiEscape(c.name)+' ('+c.symbol.toUpperCase()+')</option>').join("");if(old)s.value=old;}
 function addWatch(id){if(!id)return;const a=loadWatch();if(!a.includes(id))a.push(id);saveWatch(a);renderWatch();}
