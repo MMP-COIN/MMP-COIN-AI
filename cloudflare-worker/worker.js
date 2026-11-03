@@ -36,6 +36,37 @@ async function candles(symbol,interval,env,marketType="spot"){
  return analyzeKlines(rows);
 }
 function validSymbol(s){return /^[A-Z0-9]{2,20}$/.test(s||"")&&!s.includes("USDTUSDT")}
+
+function persianize(value){
+ if(typeof value==="string"){
+  const rules=[
+   [/technical analysis/gi,"تحلیل تکنیکال"],
+   [/bearish crossover bias/gi,"تمایل به تقاطع نزولی"],
+   [/bullish crossover bias/gi,"تمایل به تقاطع صعودی"],
+   [/conflicting signals/gi,"سیگنال‌های متعارض"],
+   [/mixed signals/gi,"سیگنال‌های متناقض"],
+   [/trend/gi,"روند"],
+   [/mixed/gi,"متناقض"],
+   [/fear/gi,"ترس"],
+   [/greed/gi,"طمع"],
+   [/support/gi,"حمایت"],
+   [/resistance/gi,"مقاومت"],
+   [/bullish/gi,"صعودی"],
+   [/bearish/gi,"نزولی"],
+   [/neutral/gi,"خنثی"],
+   [/insufficient/gi,"ناکافی"],
+   [/signals?/gi,"سیگنال"],
+   [/信号/g,"سیگنال"],
+   [/تrend/g,"روند"]
+  ];
+  for(const [pattern,replacement] of rules)value=value.replace(pattern,replacement);
+  return value;
+ }
+ if(Array.isArray(value))return value.map(persianize);
+ if(value&&typeof value==="object"){for(const key of Object.keys(value))value[key]=persianize(value[key]);}
+ return value;
+}
+
 async function handle(request,env){
  if(request.method==="OPTIONS")return new Response(null,{headers:CORS});
  if(request.method!=="POST")return json({error:"Method not allowed"},405);
@@ -59,16 +90,16 @@ async function handle(request,env){
    optionalJson("https://api.coingecko.com/api/v3/global")
   ]);
   const snapshot={asset:String(body.name||symbol).slice(0,60),symbol:pair,market_mode:mode,source:"Binance public candles; Binance Futures metrics when available; Alternative.me Fear & Greed; CoinGecko global market",market_timestamp:latest.candle_time,timeframes:market,derivatives:funding?{funding_rate:funding.lastFundingRate,mark_price:funding.markPrice,next_funding_time:funding.nextFundingTime,open_interest:openInterest?.openInterest||null}:null,sentiment:fng?.data?.[0]?{fear_greed_value:Number(fng.data[0].value),classification:fng.data[0].value_classification}:null,global_market:global?.data?{btc_dominance:global.data.market_cap_percentage?.btc,total_market_cap_usd:global.data.total_market_cap?.usd,total_volume_usd:global.data.total_volume?.usd}:null};
-  const prompt="You are MMP COIN AI, a cautious professional crypto market analyst. Analyze ONLY the supplied numeric market snapshot. Do not invent prices, indicators, news, order-book data, funding, open interest, on-chain data, or probabilities. Respond in Persian. Return ONLY valid JSON with keys: action (BUY, SELL, WAIT), primary_timeframe, confidence (0-100 as evidence-strength not win probability), risk_level, market {price_usd}, levels {entry_zone:{low,high},stop_loss,tp1,tp2,tp3}, risk_reward, holding_horizon, position_risk, summary, technical_analysis, indicators {rsi,macd_signal,ema_trend,atr_percent}, scenarios [{name,description}], reasons [strings], risk_management, invalidation, market_context, data_source, market_timestamp. All price levels must be numeric USD values derived from snapshot. If signals conflict, trend is mixed, risk/reward is poor, or data is insufficient, choose WAIT and set entry/stop/targets to null. For SELL only describe short/futures conditions; for spot-only mode never recommend short selling. For futures mention leverage increases liquidation risk and recommend low/no leverage. Use support/resistance/ATR and multiple timeframes; do not promise returns. Snapshot: "+JSON.stringify(snapshot);
+  const prompt="You are MMP COIN AI, a cautious professional crypto market analyst. Analyze ONLY the supplied numeric market snapshot. Do not invent prices, indicators, news, order-book data, funding, open interest, on-chain data, or probabilities. Respond entirely in natural, fluent Persian (فارسی) for every human-readable string value. Never use Russian, Chinese, or English words in Persian sentences. Keep only standard crypto tickers and indicator names such as BTCUSDT, RSI, MACD, EMA, ATR, LONG, SHORT, BUY, SELL, WAIT in English. Use Persian equivalents: trend=روند, mixed=متناقض, conflicting signals=سیگنال‌های متعارض, technical analysis=تحلیل تکنیکال, fear=ترس, greed=طمع, support=حمایت, resistance=مقاومت. Return ONLY valid JSON with keys: action (BUY, SELL, WAIT), primary_timeframe, confidence (0-100 as evidence-strength not win probability), risk_level, market {price_usd}, levels {entry_zone:{low,high},stop_loss,tp1,tp2,tp3}, risk_reward, holding_horizon, position_risk, summary, technical_analysis, indicators {rsi,macd_signal,ema_trend,atr_percent}, scenarios [{name,description}], reasons [strings], risk_management, invalidation, market_context, data_source, market_timestamp. All price levels must be numeric USD values derived from snapshot. If signals conflict, trend is mixed, risk/reward is poor, or data is insufficient, choose WAIT and set entry/stop/targets to null. For SELL only describe short/futures conditions; for spot-only mode never recommend short selling. For futures mention leverage increases liquidation risk and recommend low/no leverage. Use support/resistance/ATR and multiple timeframes; do not promise returns. Snapshot: "+JSON.stringify(snapshot);
   const ai=await env.AI.run(MODEL,{messages:[{role:"system",content:"Return one valid JSON object only. Never give guaranteed financial advice."},{role:"user",content:prompt}],max_tokens:1500,temperature:0.15});
   let raw=ai.response||ai.result||ai.output_text||"";
   if(typeof raw!=="string")raw=JSON.stringify(raw);
   raw=raw.replace(/^```(?:json)?\s*/i,"").replace(/\s*```$/,"").trim();
   const start=raw.indexOf("{"),end=raw.lastIndexOf("}");
   if(start<0||end<=start)throw new Error("AI returned an invalid structured response");
-  const analysis=JSON.parse(raw.slice(start,end+1));
+  const analysis=persianize(JSON.parse(raw.slice(start,end+1)));
   if(!["BUY","SELL","WAIT"].includes(String(analysis.action||"").toUpperCase()))analysis.action="WAIT";
-  analysis.market=analysis.market||{};analysis.market.price_usd=latest.price;
+  analysis.market=analysis.market||{};analysis.market.price_usd=latest.price;analysis.indicators={...(analysis.indicators||{}),rsi:latest.rsi==null?null:Number(latest.rsi.toFixed(2)),macd_signal:latest.macd_signal,ema_trend:latest.ema_trend,atr_percent:latest.atr_percent==null?null:Number(latest.atr_percent.toFixed(2))};
   analysis.market_timestamp=latest.candle_time;analysis.data_source=(candleMarket==="futures"?"Binance Futures":"Binance Spot")+" public market candles · Cloudflare Workers AI";
   if(mode==="spot"&&analysis.action==="SELL"){analysis.action="WAIT";analysis.levels={entry_zone:null,stop_loss:null,tp1:null,tp2:null,tp3:null};}
   return json({analysis,market:snapshot});
