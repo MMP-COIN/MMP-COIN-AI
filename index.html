@@ -460,7 +460,7 @@ function renderAiReport(r,c){
  const scenarios=Array.isArray(r.scenarios)?r.scenarios:[];
  const indicators=r.indicators||{};
  const html='<div><span class="ai-pill '+cls+'">'+label+'</span><span class="ai-pill">تایم‌فریم: '+aiEscape(r.primary_timeframe||"۴ ساعته")+'</span><span class="ai-pill">بازار: '+aiEscape($("ai-market-mode").selectedOptions[0].textContent)+'</span></div>'+
- '<h3>🎯 برنامه معاملاتی پیشنهادی</h3><div class="ai-levels">'+level("محدوده ورود",lv.entry_zone?((lv.entry_zone.low??"—")+" تا "+(lv.entry_zone.high??"—")):null)+level("حد ضرر",lv.stop_loss)+level("هدف اول · TP1",lv.tp1)+level("هدف دوم · TP2",lv.tp2)+level("هدف سوم · TP3",lv.tp3)+level("نسبت سود به زیان",r.risk_reward)+level("افق زمانی",r.holding_horizon)+level("حداکثر ریسک پیشنهادی",r.position_risk)+'</div>'+
+ '<h3>🎯 برنامه معاملاتی پیشنهادی</h3><div class="ai-levels">'+level("محدوده ورود",lv.entry_zone)+level("حد ضرر",lv.stop_loss)+level("هدف اول · TP1",lv.tp1)+level("هدف دوم · TP2",lv.tp2)+level("هدف سوم · TP3",lv.tp3)+level("نسبت سود به زیان",r.risk_reward)+level("افق زمانی",r.holding_horizon)+level("حداکثر ریسک پیشنهادی",r.position_risk)+'</div>'+
  '<h3>🧠 جمع‌بندی تحلیل هوش مصنوعی</h3><p>'+aiEscape(r.summary||"تحلیل متنی در دسترس نیست.")+'</p>'+
  '<h3>📊 تحلیل تکنیکال و چندتایم‌فریمی</h3><p>'+aiEscape(r.technical_analysis||"")+'</p><p><b>RSI:</b> '+aiEscape(indicators.rsi??"—")+' · <b>MACD:</b> '+aiEscape(indicators.macd_signal??"—")+' · <b>EMA:</b> '+aiEscape(indicators.ema_trend??"—")+' · <b>ATR:</b> '+aiEscape(indicators.atr_percent??"—")+'</p>'+
  '<h3>🧭 سناریوهای پیش‌رو</h3><ul class="ai-list">'+scenarios.map(s=>'<li><b>'+aiEscape(s.name||"سناریو")+'</b>: '+aiEscape(s.description||"")+'</li>').join("")+'</ul>'+
