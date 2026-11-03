@@ -21,8 +21,17 @@ function analyzeKlines(rows){
 async function candles(symbol,interval,env,marketType="spot"){
  const base=marketType==="futures"?"https://fapi.binance.com/fapi/v1/klines":"https://api.binance.com/api/v3/klines";
  const url=base+"?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250";
- const r=await fetch(url,{headers:{"Accept":"application/json"}});
- if(!r.ok)throw new Error("Market data unavailable for "+symbol+" "+interval);
+ let r=await fetch(url,{headers:{"Accept":"application/json"}});
+ // Binance global can reject requests from some Cloudflare egress regions.
+ // For spot candles, retry against the Binance US public market-data endpoint.
+ if(!r.ok && marketType!=="futures"){
+  const fallback="https://api.binance.us/api/v3/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250";
+  r=await fetch(fallback,{headers:{"Accept":"application/json"}});
+ }
+ if(!r.ok){
+  const detail=(await r.text().catch(()=>"")).slice(0,180);
+  throw new Error("Market data unavailable for "+symbol+" "+interval+" (HTTP "+r.status+")"+(detail?": "+detail:""));
+ }
  const rows=await r.json();if(!Array.isArray(rows)||rows.length<80)throw new Error("Not enough candle history for "+interval);
  return analyzeKlines(rows);
 }
