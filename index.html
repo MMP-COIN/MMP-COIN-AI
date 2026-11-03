@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="fa" dir="rtl">
+<html lang="ru" dir="ltr">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#08090d">
-<title>MMP COIN AI | ترمینال جامع و هوشمند ارز دیجیتال</title>
+<title>MMP COIN AI | Интеллектуальный криптовалютный терминал</title>
 <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
 <style>
 :root{--bg:#08090d;--panel:#11131b;--panel2:#171a24;--line:#282c38;--gold:#d9b66d;--gold2:#f2d99b;--text:#f4f1e9;--muted:#9a9eaa;--green:#25d695;--red:#ff5e6c;--yellow:#f4c45e;--blue:#78a9ff}
@@ -119,22 +119,22 @@ button{cursor:pointer}
 <header class="top">
 <div class="brand">
   <div class="logo">M</div>
-  <div><b>MMP COIN AI</b><small>ترمینال هوشمند ارز دیجیتال</small></div>
+  <div><b>MMP COIN AI</b><small>Умный криптовалютный терминал</small></div>
 </div>
 <div class="top-actions">
   <div class="currency-switch">
-    <button class="curr-btn active" id="btn-irt" onclick="setCurrency('IRT')">تومان</button>
-    <button class="curr-btn" id="btn-usdt" onclick="setCurrency('USDT')">تتر</button>
+    <button class="curr-btn active" id="btn-irt" onclick="setCurrency('IRT')">IRR</button>
+    <button class="curr-btn" id="btn-usdt" onclick="setCurrency('USDT')">USDT</button>
   </div>
   <span class="pill" id="clock">--:--:--</span>
-  <button class="btn" onclick="refreshAll()">⟳ بروزرسانی</button>
+  <button class="btn" onclick="refreshAll()">⟳ Обновить</button>
   <button class="menu-btn" onclick="toggleMenu()">☰</button>
 </div>
 <div class="dropdown-menu" id="dropdownMenu">
-  <a href="#hero" onclick="toggleMenu()">🏠 صفحه اصلی</a>
-  <a href="#chart-section" onclick="toggleMenu()">📊 نمودار تریدینگ‌ویو</a>
-  <a href="#ai-section" onclick="toggleMenu()">🤖 هوش مصنوعی تحلیلگر</a>
-  <a href="#coins-section" onclick="toggleMenu()">🪙 لیست ارزهای دیجیتال</a>
+  <a href="#hero" onclick="toggleMenu()">🏠 Главная</a>
+  <a href="#chart-section" onclick="toggleMenu()">📊 График TradingView</a>
+  <a href="#ai-section" onclick="toggleMenu()">🤖 ИИ-аналитик</a>
+  <a href="#coins-section" onclick="toggleMenu()">🪙 Список криптовалют</a>
 </div>
 </header>
 
@@ -142,23 +142,23 @@ button{cursor:pointer}
 <section class="hero">
 <div>
   <div class="eyebrow">ULTRA-PRO CRYPTO INTELLIGENCE HUB</div>
-  <h1>ترمینال جامع و هوشمند بازارهای مالی</h1>
-  <p>پایش لحظه‌ای قیمت‌ها به تومان و تتر، نمودار استاندارد تریدینگ‌ویو و تحلیلگر هوش مصنوعی</p>
+  <h1>Универсальный интеллектуальный терминал финансовых рынков</h1>
+  <p>پایش لحظه‌ای قیمت‌ها به IRR و USDT، نمودار استاندارد تریدینگ‌ویو و تحلیلگر هوش مصنوعی</p>
 </div>
-<span class="badge" id="updated">در حال دریافت داده…</span>
+<span class="badge" id="updated">Загрузка данных…</span>
 </section>
 
 <section class="grid">
-<div class="card"><div class="stat-label">بیت‌کوین · BTC</div><div class="stat-value" id="btc">$—</div><div class="sub" id="btc-sub">—</div></div>
-<div class="card"><div class="stat-label">اتریوم · ETH</div><div class="stat-value" id="eth">$—</div><div class="sub" id="eth-sub">—</div></div>
-<div class="card"><div class="stat-label">تتر به تومان · USDT/IRT</div><div class="stat-value" id="usdt">—</div><div class="sub" id="usdt-source">منبع: Nobitex & Wallex</div></div>
-<div class="card"><div class="stat-label">اونس جهانی طلا · XAU</div><div class="stat-value" id="gold">$—</div><div class="sub">مرجع جهانی فلزات گرانبها</div></div>
+<div class="card"><div class="stat-label">Биткоин · BTC</div><div class="stat-value" id="btc">$—</div><div class="sub" id="btc-sub">—</div></div>
+<div class="card"><div class="stat-label">Эфириум · ETH</div><div class="stat-value" id="eth">$—</div><div class="sub" id="eth-sub">—</div></div>
+<div class="card"><div class="stat-label">USDT به IRR · USDT/IRT</div><div class="stat-value" id="usdt">—</div><div class="sub" id="usdt-source">Источник: Nobitex и Wallex</div></div>
+<div class="card"><div class="stat-label">Золото · XAU</div><div class="stat-value" id="gold">$—</div><div class="sub">Мировой рынок драгоценных металлов</div></div>
 </section>
 
 <!-- بخش نمودار تریدینگ‌ویو با منوی کامل ۳۵ ارز برتر -->
 <section class="chart-box-wrapper" id="chart-section">
 <div class="chart-top-bar">
-  <h2 style="font-size:16px; margin:0;">نمودار تخصصی تریدینگ‌ویو</h2>
+  <h2 style="font-size:16px; margin:0;">Профессиональный график TradingView</h2>
   <select id="tv-symbol" onchange="changeTradingViewSymbol()">
     <option value="BINANCE:BTCUSDT">Bitcoin (BTC)</option>
   </select>
@@ -170,53 +170,53 @@ button{cursor:pointer}
 
 <!-- تحلیلگر واقعی: داده‌های بازار + اندیکاتورها + تفسیر مدل هوش مصنوعی -->
 <section class="card" id="ai-section">
-<div class="section-head"><h2>تحلیلگر هوشمند چندلایه بازار</h2><span class="badge">MMP AI · LIVE ANALYSIS</span></div>
+<div class="section-head"><h2>Многоуровневый ИИ-анализ рынка</h2><span class="badge">MMP AI · LIVE ANALYSIS</span></div>
 <div class="ai-toolbar">
-<select id="ai-coin-select" class="dropdown-select-box" onchange="runAiAnalysis()"><option value="">انتخاب ارز برای تحلیل جامع...</option></select>
-<select id="ai-market-mode" class="dropdown-select-box" aria-label="نوع بازار">
-<option value="both">اسپات + فیوچرز</option><option value="spot">فقط اسپات</option><option value="futures">فقط فیوچرز</option>
+<select id="ai-coin-select" class="dropdown-select-box" onchange="runAiAnalysis()"><option value="">Выберите актив для полного анализа…</option></select>
+<select id="ai-market-mode" class="dropdown-select-box" aria-label="Тип рынка">
+<option value="both">Спот + фьючерсы</option><option value="spot">Только спот</option><option value="futures">Только фьючерсы</option>
 </select>
-<button class="btn primary" id="ai-run-btn" onclick="runAiAnalysis(true)">تحلیل کامل ارز</button>
+<button class="btn primary" id="ai-run-btn" onclick="runAiAnalysis(true)">Полный анализ актива</button>
 </div>
 <div class="ai-grid">
-<div class="ai-metric"><small>وضعیت سیگنال</small><b id="ai-action">منتظر انتخاب ارز</b></div>
-<div class="ai-metric"><small>قیمت مرجع بازار</small><b id="ai-live-price">—</b></div>
-<div class="ai-metric"><small>قدرت سیگنال مدل</small><b id="ai-confidence">—</b></div>
-<div class="ai-metric"><small>سطح ریسک</small><b id="ai-risk">—</b></div>
+<div class="ai-metric"><small>Сигнал</small><b id="ai-action">Ожидание выбора актива</b></div>
+<div class="ai-metric"><small>Рыночная цена</small><b id="ai-live-price">—</b></div>
+<div class="ai-metric"><small>Уверенность модели</small><b id="ai-confidence">—</b></div>
+<div class="ai-metric"><small>Уровень риска</small><b id="ai-risk">—</b></div>
 </div>
-<div class="ai-status" id="ai-status">برای تحلیل، یک ارز انتخاب کنید. گزارش بر پایه داده‌های کندلی بازار تهیه می‌شود.</div>
-<div class="signal ai-report" id="advanced-ai-analysis">این بخش پس از اتصال امن موتور تحلیل، گزارش خرید/فروش/عدم ورود، نقاط ورود، حد ضرر، اهداف سود، تحلیل چندتایم‌فریمی و مدیریت ریسک را نمایش می‌دهد.</div>
-<div class="ai-note" style="margin-top:12px">⚠️ تحلیل هوشمند ابزار تصمیم‌یار است، نه تضمین سود. سیگنال‌ها ممکن است اشتباه باشند؛ پیش از معامله، نقدشوندگی، کارمزد، اسلیپیج و حد ضرر را بررسی کنید. در صورت ناکافی بودن داده یا نامناسب بودن شرایط، خروجی باید «عدم ورود» باشد.</div>
+<div class="ai-status" id="ai-status">Выберите актив для анализа. Отчёт формируется на основе рыночных свечных данных.</div>
+<div class="signal ai-report" id="advanced-ai-analysis">После подключения аналитического движка здесь будут отображаться сигнал, точки входа, стоп-лосс, цели прибыли, анализ нескольких таймфреймов и управление рисками.</div>
+<div class="ai-note" style="margin-top:12px">⚠️ Анализ ИИ — инструмент поддержки решений, а не гарантия прибыли. Сигналы могут быть ошибочными. Перед сделкой учитывайте ликвидность, комиссии, проскальзывание и стоп-лосс. При недостатке данных или неблагоприятных условиях результатом должно быть «НЕ ВХОДИТЬ».</div>
 </section>
 
 <section class="card">
-<div class="section-head"><h2>وضعیت اتصال صرافی‌ها و مراجع</h2><span class="badge" id="conn-summary">پایش لایو</span></div>
+<div class="section-head"><h2>Статус подключения бирж и источников</h2><span class="badge" id="conn-summary">Мониторинг в реальном времени</span></div>
 <div class="connection-grid" id="connections"></div>
 </section>
 
-<!-- فقط لیست ارزهای دیجیتال -->
+<!-- فقط Список криптовалют -->
 <section class="collapsible-coins-container" id="coins-section">
 <div class="section-head">
-  <h2>لیست ارزهای دیجیتال</h2>
-  <span class="badge" id="currency-indicator">واحد: تومان (IRT)</span>
+  <h2>Список криптовалют</h2>
+  <span class="badge" id="currency-indicator">Валюта: IRR</span>
 </div>
 
 <div class="table-wrap"><table class="market-table">
-<thead><tr><th>دارایی</th><th>قیمت دلاری (USD)</th><th>قیمت تومانی (IRT)</th><th>تغییر ۲۴ساعته</th><th>ارزش بازار</th></tr></thead>
-<tbody id="top-coins"><tr><td colspan="5" class="muted">در حال دریافت داده…</td></tr></tbody>
+<thead><tr><th>Актив</th><th>Цена (USD)</th><th>قیمت IRRی (IRT)</th><th>Изменение за 24 ч.</th><th>Капитализация</th></tr></thead>
+<tbody id="top-coins"><tr><td colspan="5" class="muted">Загрузка данных…</td></tr></tbody>
 </table></div>
 
-<button class="expand-coins-btn" onclick="toggleFullCoinsList()" id="expand-btn">▼ مشاهده لیست کامل و بقیه ارزهای برتر بازار (۳۵ ارز)</button>
+<button class="expand-coins-btn" onclick="toggleFullCoinsList()" id="expand-btn">▼ Показать полный список (35 активов)</button>
 
 <div class="full-coins-list" id="full-coins-box">
   <div class="table-wrap" style="margin-top:12px;"><table class="market-table">
-    <thead><tr><th>دارایی</th><th>قیمت دلاری (USD)</th><th>قیمت تومانی (IRT)</th><th>تغییر ۲۴ساعته</th><th>ارزش بازار</th></tr></thead>
+    <thead><tr><th>Актив</th><th>Цена (USD)</th><th>قیمت IRRی (IRT)</th><th>Изменение за 24 ч.</th><th>Капитализация</th></tr></thead>
     <tbody id="full-coins"></tbody>
   </table></div>
 </div>
 </section>
 
-<div class="footer" style="text-align:center; color:var(--muted); font-size:11px; padding:20px 0;">MMP COIN AI · ترمینال جامع، پایش و تحلیل هوش مصنوعی بازارهای مالی</div>
+<div class="footer" style="text-align:center; color:var(--muted); font-size:11px; padding:20px 0;">MMP COIN AI · Терминал мониторинга и ИИ-анализа финансовых рынков</div>
 </main>
 
 <script>
@@ -229,7 +229,7 @@ let cachedCoinsData = [];
 const money=(v,d=2)=>Number(v).toLocaleString('en-US',{maximumFractionDigits:d});
 const toman=(v)=>Math.round(v).toLocaleString('en-US');
 
-function clock(){$('clock').textContent=new Date().toLocaleTimeString('fa-IR')}
+function clock(){$('clock').textContent=new Date().toLocaleTimeString('ru-RU')}
 setInterval(clock,1000);clock();
 
 function toggleMenu(){
@@ -246,11 +246,11 @@ function setCurrency(curr) {
   if(curr === 'IRT') {
     $('btn-irt').classList.add('active');
     $('btn-usdt').classList.remove('active');
-    $('currency-indicator').innerText = 'واحد: تومان (IRT)';
+    $('currency-indicator').innerText = 'Валюта: IRR';
   } else {
     $('btn-usdt').classList.add('active');
     $('btn-irt').classList.remove('active');
-    $('currency-indicator').innerText = 'واحد: تتر (USDT)';
+    $('currency-indicator').innerText = 'واحد: USDT (USDT)';
   }
   if(cachedCoinsData.length > 0) {
     renderCoinsTables(cachedCoinsData);
@@ -260,7 +260,7 @@ function setCurrency(curr) {
 
 function formatVal(usdPrice) {
   if (currentCurrency === 'IRT') {
-    return toman(usdPrice * currentTetherPrice) + ' تومان';
+    return toman(usdPrice * currentTetherPrice) + ' IRR';
   } else {
     return '$' + money(usdPrice, usdPrice < 1 ? 4 : 2);
   }
@@ -276,7 +276,7 @@ function initTradingView(symbol = "BINANCE:BTCUSDT") {
     "timezone": "Asia/Tehran",
     "theme": "dark",
     "style": "1",
-    "locale": "fa",
+    "locale": "ru",
     "toolbar_bg": "#151822",
     "enable_publishing": false,
     "allow_symbol_change": true,
@@ -294,11 +294,11 @@ function toggleFullCoinsList() {
   let box = $('full-coins-box');
   let btn = $('expand-btn');
   box.classList.toggle('show');
-  btn.innerText = box.classList.contains('show') ? '▲ بستن لیست کامل ارزها' : '▼ مشاهده لیست کامل و بقیه ارزهای برتر بازار (۳۵ ارز)';
+  btn.innerText = box.classList.contains('show') ? '▲ Скрыть полный список активов' : '▼ Показать полный список (35 активов)';
 }
 
 async function refreshAll(){
- $('updated').textContent='در حال بروزرسانی از مراجع معتبر…';
+ $('updated').textContent='Обновление по надёжным источникам…';
  try{
   let tetherPrices = [];
   try {
@@ -317,8 +317,8 @@ async function refreshAll(){
 
   if(tetherPrices.length > 0) {
     currentTetherPrice = tetherPrices.reduce((a,b)=>a+b,0) / tetherPrices.length;
-    $('usdt').textContent = money(currentTetherPrice,0)+' تومان';
-    $('usdt-source').textContent = 'منبع: Nobitex & Wallex';
+    $('usdt').textContent = money(currentTetherPrice,0)+' IRR';
+    $('usdt-source').textContent = 'Источник: Nobitex и Wallex';
   }
 
   let res = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=35&page=1&sparkline=false');
@@ -355,10 +355,10 @@ async function refreshAll(){
    if(goldData.price) $('gold').textContent = '$'+money(goldData.price);
   }catch(e){$('gold').textContent='—';}
 
-  $('updated').textContent='بروزرسانی شد: '+new Date().toLocaleTimeString('fa-IR');
+  $('updated').textContent='Обновлено: '+new Date().toLocaleTimeString('fa-IR');
   runAiAnalysis();
   checkConnections();
- }catch(e){$('updated').textContent='خطا در دریافت داده';}
+ }catch(e){$('updated').textContent='Ошибка загрузки данных';}
 }
 
 function renderHeroCards() {
@@ -367,10 +367,10 @@ function renderHeroCards() {
   let ethUsd = lastMarket.crypto.ETH.usd;
 
   $('btc').textContent = formatVal(btcUsd);
-  $('btc-sub').textContent = currentCurrency === 'IRT' ? 'معادل: $' + money(btcUsd) : 'معادل: ' + toman(btcUsd * currentTetherPrice) + ' تومان';
+  $('btc-sub').textContent = currentCurrency === 'IRT' ? 'Эквивалент: $' + money(btcUsd) : 'Эквивалент: ' + toman(btcUsd * currentTetherPrice) + ' IRR';
 
   $('eth').textContent = formatVal(ethUsd);
-  $('eth-sub').textContent = currentCurrency === 'IRT' ? 'معادل: $' + money(ethUsd) : 'معادل: ' + toman(ethUsd * currentTetherPrice) + ' تومان';
+  $('eth-sub').textContent = currentCurrency === 'IRT' ? 'Эквивалент: $' + money(ethUsd) : 'Эквивалент: ' + toman(ethUsd * currentTetherPrice) + ' IRR';
 }
 
 function renderCoinsTables(data) {
@@ -381,7 +381,7 @@ function renderCoinsTables(data) {
     <tr>
       <td><b>${c.name}</b> <span class="muted">${c.symbol.toUpperCase()}</span></td>
       <td class="num">$${money(c.current_price, c.current_price < 1 ? 4 : 2)}</td>
-      <td class="num" style="color:var(--gold2); font-weight:bold;">${toman(c.current_price * currentTetherPrice)} تومان</td>
+      <td class="num" style="color:var(--gold2); font-weight:bold;">${toman(c.current_price * currentTetherPrice)} IRR</td>
       <td class="${(c.price_change_percentage_24h||0)>=0?'positive':'negative'} num">${(c.price_change_percentage_24h||0)>=0?'+':''}${c.price_change_percentage_24h?.toFixed(2)||0}%</td>
       <td class="num">$${money(c.market_cap,0)}</td>
     </tr>
@@ -395,7 +395,7 @@ function updateDropdowns(data) {
   // بروزرسانی منوی کشویی هوش مصنوعی
   let selectAi = $('ai-coin-select');
   let currentAiVal = selectAi.value;
-  let aiHtml = '<option value="">انتخاب ارز دیجیتال...</option>';
+  let aiHtml = '<option value="">Выберите криптовалюту…</option>';
   data.forEach(c => {
     aiHtml += `<option value="${c.id}">${c.name} (${c.symbol.toUpperCase()})</option>`;
   });
@@ -431,9 +431,9 @@ async function checkConnections(){
    await fetch(t.url, {method: 'GET', mode: 'no-cors'});
    let ping = Date.now() - start;
    status = ping > 2500 ? 'slow' : 'ok';
-   html += `<div class="conn"><div class="conn-top"><span class="conn-name">${t.name}</span><span class="lamp ${status}"></span></div><div class="conn-meta"><span>متصل</span><b dir="ltr">${ping} ms</b></div></div>`;
+   html += `<div class="conn"><div class="conn-top"><span class="conn-name">${t.name}</span><span class="lamp ${status}"></span></div><div class="conn-meta"><span>Подключено</span><b dir="ltr">${ping} ms</b></div></div>`;
   } catch(err) {
-   html += `<div class="conn"><div class="conn-top"><span class="conn-name">${t.name}</span><span class="lamp down"></span></div><div class="conn-meta"><span>قطع</span><b dir="ltr">—</b></div></div>`;
+   html += `<div class="conn"><div class="conn-top"><span class="conn-name">${t.name}</span><span class="lamp down"></span></div><div class="conn-meta"><span>Нет связи</span><b dir="ltr">—</b></div></div>`;
   }
  }
  $('connections').innerHTML = html;
@@ -447,58 +447,58 @@ function aiPrice(v){if(v==null)return "—";return "$"+money(v,v<1?6:2);}
 function aiSetStatus(t){$("ai-status").textContent=t;}
 function renderAiReport(r,c){
  const action=String(r.action||"WAIT").toUpperCase();
- const label=action==="BUY"?"خرید / LONG":action==="SELL"?"فروش / SHORT":"عدم ورود / WAIT";
+ const label=action==="BUY"?"ПОКУПКА / LONG":action==="SELL"?"ПРОДАЖА / SHORT":"НЕ ВХОДИТЬ / WAIT";
  const cls=action==="BUY"?"buy":action==="SELL"?"sell":"wait";
  $("ai-action").textContent=label;
  $("ai-action").style.color=action==="BUY"?"var(--green)":action==="SELL"?"var(--red)":"var(--yellow)";
- $("ai-confidence").textContent=(r.confidence??"—")+(r.confidence!=null?" از ۱۰۰":"");
- $("ai-risk").textContent=r.risk_level||"نامشخص";
+ $("ai-confidence").textContent=(r.confidence??"—")+(r.confidence!=null?" из 100":"");
+ $("ai-risk").textContent=r.risk_level||"Неизвестно";
  $("ai-live-price").textContent=aiPrice(r.market?.price_usd??c?.current_price);
  const lv=r.levels||{};
- const level=(title,val)=>{let shown="—";if(val&&typeof val==="object"&&("low" in val||"high" in val)){shown=(val.low!=null?aiPrice(aiNum(val.low)):"—")+" تا "+(val.high!=null?aiPrice(aiNum(val.high)):"—");}else if(typeof val==="number"||(!isNaN(Number(val))&&val!==null&&val!=="")){shown=aiPrice(aiNum(val));}else if(val!=null){shown=String(val);}return '<div class="ai-level"><small>'+title+'</small><b>'+aiEscape(shown)+'</b></div>';};
+ const level=(title,val)=>{let shown="—";if(val&&typeof val==="object"&&("low" in val||"high" in val)){shown=(val.low!=null?aiPrice(aiNum(val.low)):"—")+" — "+(val.high!=null?aiPrice(aiNum(val.high)):"—");}else if(typeof val==="number"||(!isNaN(Number(val))&&val!==null&&val!=="")){shown=aiPrice(aiNum(val));}else if(val!=null){shown=String(val);}return '<div class="ai-level"><small>'+title+'</small><b>'+aiEscape(shown)+'</b></div>';};
  const reasons=Array.isArray(r.reasons)?r.reasons:[];
  const scenarios=Array.isArray(r.scenarios)?r.scenarios:[];
  const indicators=r.indicators||{};
- const html='<div><span class="ai-pill '+cls+'">'+label+'</span><span class="ai-pill">تایم‌فریم: '+aiEscape(r.primary_timeframe||"۴ ساعته")+'</span><span class="ai-pill">بازار: '+aiEscape($("ai-market-mode").selectedOptions[0].textContent)+'</span></div>'+
- '<h3>🎯 برنامه معاملاتی پیشنهادی</h3><div class="ai-levels">'+level("محدوده ورود",lv.entry_zone)+level("حد ضرر",lv.stop_loss)+level("هدف اول · TP1",lv.tp1)+level("هدف دوم · TP2",lv.tp2)+level("هدف سوم · TP3",lv.tp3)+level("نسبت سود به زیان",r.risk_reward)+level("افق زمانی",r.holding_horizon)+level("حداکثر ریسک پیشنهادی",r.position_risk)+'</div>'+
- '<h3>🧠 جمع‌بندی تحلیل هوش مصنوعی</h3><p>'+aiEscape(r.summary||"تحلیل متنی در دسترس نیست.")+'</p>'+
- '<h3>📊 تحلیل تکنیکال و چندتایم‌فریمی</h3><p>'+aiEscape(r.technical_analysis||"")+'</p><p><b>RSI:</b> '+aiEscape(indicators.rsi??"—")+' · <b>MACD:</b> '+aiEscape(indicators.macd_signal??"—")+' · <b>EMA:</b> '+aiEscape(indicators.ema_trend??"—")+' · <b>ATR:</b> '+aiEscape(indicators.atr_percent??"—")+'</p>'+
- '<h3>🧭 سناریوهای پیش‌رو</h3><ul class="ai-list">'+scenarios.map(s=>'<li><b>'+aiEscape(s.name||"سناریو")+'</b>: '+aiEscape(s.description||"")+'</li>').join("")+'</ul>'+
- '<h3>🌐 وضعیت کلی بازار، احساسات و مشتقات</h3><p>'+aiEscape(r.market_context||"در صورت دسترسی، احساسات بازار، فاندینگ‌ریت و اوپن اینترست در تحلیل لحاظ می‌شوند.")+'</p>'+
- '<h3>🔍 دلایل سیگنال</h3><ul class="ai-list">'+reasons.map(x=>'<li>'+aiEscape(x)+'</li>').join("")+'</ul>'+
- '<h3>🛡️ مدیریت ریسک و شرایط ابطال</h3><p>'+aiEscape(r.risk_management||"")+'</p><p><b>شرط ابطال تحلیل:</b> '+aiEscape(r.invalidation||"")+'</p>'+
- '<div class="ai-note">داده بازار: '+aiEscape(r.data_source||"Binance public market data")+' · زمان داده: '+aiEscape(r.market_timestamp||"نامشخص")+' · زمان تولید تحلیل: '+new Date().toLocaleString("fa-IR")+'<br>درصد اطمینان، ارزیابی مدل از کیفیت هم‌جهتی شواهد است و احتمال قطعی سود نیست.</div>';
+ const html='<div><span class="ai-pill '+cls+'">'+label+'</span><span class="ai-pill">Таймфрейм: '+aiEscape(r.primary_timeframe||"4 часа")+'</span><span class="ai-pill">Рынок: '+aiEscape($("ai-market-mode").selectedOptions[0].textContent)+'</span></div>'+
+ '<h3>🎯 Торговый план</h3><div class="ai-levels">'+level("Зона входа",lv.entry_zone)+level("Стоп-лосс",lv.stop_loss)+level("Цель 1 · TP1",lv.tp1)+level("Цель 2 · TP2",lv.tp2)+level("Цель 3 · TP3",lv.tp3)+level("Риск/прибыль",r.risk_reward)+level("Горизонт сделки",r.holding_horizon)+level("Рекомендуемый риск",r.position_risk)+'</div>'+
+ '<h3>🧠 Итог ИИ-анализа</h3><p>'+aiEscape(r.summary||"Текстовый анализ недоступен.")+'</p>'+
+ '<h3>📊 Технический анализ и таймфреймы</h3><p>'+aiEscape(r.technical_analysis||"")+'</p><p><b>RSI:</b> '+aiEscape(indicators.rsi??"—")+' · <b>MACD:</b> '+aiEscape(indicators.macd_signal??"—")+' · <b>EMA:</b> '+aiEscape(indicators.ema_trend??"—")+' · <b>ATR:</b> '+aiEscape(indicators.atr_percent??"—")+'</p>'+
+ '<h3>🧭 Возможные сценарии</h3><ul class="ai-list">'+scenarios.map(s=>'<li><b>'+aiEscape(s.name||"Сценарий")+'</b>: '+aiEscape(s.description||"")+'</li>').join("")+'</ul>'+
+ '<h3>🌐 Общее состояние рынка, настроения и деривативы</h3><p>'+aiEscape(r.market_context||"При наличии данных учитываются настроения рынка, ставка финансирования и открытый интерес.")+'</p>'+
+ '<h3>🔍 Причины сигнала</h3><ul class="ai-list">'+reasons.map(x=>'<li>'+aiEscape(x)+'</li>').join("")+'</ul>'+
+ '<h3>🛡️ Управление рисками и отмена сценария</h3><p>'+aiEscape(r.risk_management||"")+'</p><p><b>Условие отмены сценария:</b> '+aiEscape(r.invalidation||"")+'</p>'+
+ '<div class="ai-note">داده Рынок: '+aiEscape(r.data_source||"Binance public market data")+' · زمان داده: '+aiEscape(r.market_timestamp||"Неизвестно")+' · Время формирования анализа: '+new Date().toLocaleString("ru-RU")+'<br>درصد اطمینان، ارزیابی مدل از کیفیت هم‌جهتی شواهد است و احتمال Нет связиی سود نیست.</div>';
  $("advanced-ai-analysis").innerHTML=html;
 }
 async function runAiAnalysis(force=false){
  const id=$("ai-coin-select").value, out=$("advanced-ai-analysis"), btn=$("ai-run-btn");
- if(!id){$("ai-action").textContent="منتظر انتخاب ارز";aiSetStatus("برای شروع، یک ارز انتخاب کنید.");return;}
+ if(!id){$("ai-action").textContent="Ожидание выбора актива";aiSetStatus("Сначала выберите актив.");return;}
  const c=cachedCoinsData.find(x=>x.id===id);
- if(!c){aiSetStatus("داده قیمت این ارز هنوز بارگذاری نشده است.");return;}
+ if(!c){aiSetStatus("Ценовые данные этого актива ещё не загружены.");return;}
  if(!AI_ANALYSIS_ENDPOINT){
    $("ai-live-price").textContent=aiPrice(c.current_price);
-   $("ai-action").textContent="موتور AI هنوز متصل نیست";
-   aiSetStatus("بخش نمایشی فیک حذف شده است؛ برای فعال‌سازی تحلیل واقعی، Worker امن Cloudflare باید منتشر و آدرس آن در تنظیمات سایت ثبت شود.");
-   out.innerHTML='<b>تحلیل واقعی هنوز فعال نشده است.</b><br>قیمت نمایشی از داده بازار دریافت شده، اما تا اتصال موتور تحلیل، هیچ سیگنال خرید یا فروش ساختگی نمایش داده نمی‌شود.';
+   $("ai-action").textContent="موتور AI هنوز Подключено نیست";
+   aiSetStatus("Демонстрационные фиктивные сигналы отключены. Для реального анализа необходимо развернуть защищённый Cloudflare Worker и указать его адрес.");
+   out.innerHTML='<b>Реальный анализ ещё не активирован.</b><br>قیمت نمایشی از داده بازار دریافت شده، اما — اتصال موتور تحلیل، هیچ سیگنال خرید یا فروش ساختگی نمایش داده نمی‌شود.';
    return;
  }
  if(aiBusy)return;
- aiBusy=true;btn.disabled=true;btn.textContent="در حال تحلیل…";
- $("ai-action").textContent="در حال بررسی";
- aiSetStatus("دریافت کندل‌ها و محاسبه اندیکاتورها در چند تایم‌فریم…");
- out.textContent="در حال تحلیل داده‌های واقعی بازار؛ لطفاً منتظر بمانید…";
+ aiBusy=true;btn.disabled=true;btn.textContent="Анализ…";
+ $("ai-action").textContent="Проверка…";
+ aiSetStatus("Получение свечей и расчёт индикаторов на нескольких таймфреймах…");
+ out.textContent="Анализ реальных рыночных данных. Пожалуйста, подождите…";
  try{
   const res=await fetch(AI_ANALYSIS_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({coin_id:c.id,symbol:c.symbol.toUpperCase(),name:c.name,market_mode:$("ai-market-mode").value})});
   const data=await res.json();
-  if(!res.ok)throw new Error(data.error||"خطا در سرویس تحلیل");
-  if(!data.analysis)throw new Error("پاسخ تحلیل معتبر نیست.");
+  if(!res.ok)throw new Error(data.error||"Ошибка аналитического сервиса");
+  if(!data.analysis)throw new Error("Некорректный ответ анализа.");
   renderAiReport(data.analysis,c);
-  aiSetStatus("تحلیل تکمیل شد · داده‌های بازار و زمان ثبت در گزارش درج شده‌اند.");
+  aiSetStatus("Анализ завершён · рыночные данные и время указаны в отчёте.");
  }catch(e){
-  $("ai-action").textContent="تحلیل ناموفق";
-  aiSetStatus("خطا در دریافت تحلیل: "+e.message);
-  out.textContent="در حال حاضر امکان تولید تحلیل معتبر وجود ندارد. لطفاً بعداً دوباره تلاش کنید. هیچ سیگنال جایگزینی ساخته نشد.";
- }finally{aiBusy=false;btn.disabled=false;btn.textContent="تحلیل کامل ارز";}
+  $("ai-action").textContent="Ошибка анализа";
+  aiSetStatus("Ошибка получения анализа: "+e.message);
+  out.textContent="Сейчас невозможно сформировать достоверный анализ. Повторите попытку позже. Альтернативный сигнал не был создан.";
+ }finally{aiBusy=false;btn.disabled=false;btn.textContent="Полный анализ актива";}
 }
 
 refreshAll();
