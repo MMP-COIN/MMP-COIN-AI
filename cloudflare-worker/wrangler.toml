@@ -1,0 +1,6 @@
+name = "mmp-coin-ai-analyzer"
+main = "worker.js"
+compatibility_date = "2026-11-04"
+
+[ai]
+binding = "AI"
