@@ -1,4 +1,6 @@
 const MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+// Canonical exchange symbols for selected assets (CoinGecko ID -> ticker).
+const ASSET_SYMBOL_OVERRIDES = { layerzero: "ZRO" };
 const CORS = {"Access-Control-Allow-Origin":"*","Access-Control-Allow-Methods":"GET, POST, OPTIONS","Access-Control-Allow-Headers":"Content-Type"};
 const json=(obj,status=200)=>new Response(JSON.stringify(obj),{status,headers:{...CORS,"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store"}});
 function mean(a){return a.length?a.reduce((x,y)=>x+y,0)/a.length:0}
@@ -171,7 +173,8 @@ async function handle(request,env){
  if(request.method!=="POST")return json({error:"Method not allowed"},405);
  if(!env.AI)return json({error:"AI binding is not configured in Cloudflare Worker."},503);
  let body;try{body=await request.json()}catch{return json({error:"Invalid JSON"},400)}
- const symbol=String(body.symbol||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
+ const coinId=String(body.coin_id||"").toLowerCase();
+ const symbol=String(ASSET_SYMBOL_OVERRIDES[coinId]||body.symbol||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
  if(!validSymbol(symbol))return json({error:"Invalid asset symbol"},400);
  const pair=symbol.endsWith("USDT")?symbol:symbol+"USDT";
  const mode=["spot","futures","both"].includes(body.market_mode)?body.market_mode:"both";
