@@ -180,6 +180,52 @@ body{background:radial-gradient(ellipse at 82% -10%,#29223b 0,transparent 36%),r
  #chart-container{height:380px;min-height:380px}
  #tradingview_widget{min-height:380px}
 }
+
+/* MMP ULTRA terminal redesign */
+:root{--bg:#07090d;--panel:#10151e;--panel2:#151c28;--line:#293444;--gold:#d7b46a;--gold2:#f5dda2;--green:#21d49a;--red:#ff6576;--muted:#8f9aaa}
+body{background:radial-gradient(ellipse at 50% -20%,#46351d55,transparent 40%),radial-gradient(ellipse at 0 30%,#123b3850,transparent 30%),#07090d}
+.top{border-bottom-color:#5b4928;background:#080b11ed;box-shadow:0 8px 35px #0008}
+.brand .logo{font-size:19px;letter-spacing:-2px;position:relative;isolation:isolate}
+.brand .logo:after{content:"";position:absolute;inset:4px;border:1px solid #fff5;border-radius:9px;z-index:-1}
+.wrap{max-width:1580px}
+.hero{padding:24px 26px;border:1px solid #6f582e66;border-radius:20px;background:linear-gradient(110deg,#1c1a18e8,#101923ed 55%,#10151d);box-shadow:0 18px 55px #0008;align-items:center}
+.hero h1{font-size:clamp(25px,4vw,42px);font-weight:900;letter-spacing:-1px}
+.hero .eyebrow{color:var(--gold2);font-weight:800}
+.card,.chart-box-wrapper,.collapsible-coins-container{border-radius:18px;border-color:#2c3748;background:linear-gradient(145deg,#151c27f2,#0d121bf5);box-shadow:0 15px 42px #0006}
+.grid{gap:14px}
+.stat-value{font-size:clamp(18px,2.4vw,26px)}
+.market-ticker{display:flex;gap:9px;overflow:auto;padding:10px 2px 16px;scrollbar-width:thin}
+.ticker-item{flex:0 0 auto;min-width:150px;border:1px solid #293444;border-radius:12px;background:#101722;padding:10px 13px}
+.ticker-item b{display:block;font-size:12px}.ticker-item strong{display:block;direction:ltr;text-align:right;margin:5px 0;font-size:14px}.ticker-item small{font-size:10px;color:var(--muted)}
+.terminal-grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(280px,.8fr);gap:14px;align-items:stretch}
+.market-hours-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+.market-session{background:linear-gradient(145deg,#161f2c,#0d131d);border:1px solid #2a3545;border-radius:13px;padding:12px;min-width:0}
+.market-session .session-head{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.market-session b{font-size:12px}.market-session small{display:block;color:var(--muted);font-size:10px;margin-top:8px;line-height:1.8}
+.session-state{font-size:10px;border-radius:20px;padding:4px 8px;border:1px solid #384354;white-space:nowrap}
+.session-state.open{color:var(--green);border-color:#21d49a66;background:#21d49a12}
+.session-state.closed{color:#ff8793;border-color:#ff657666;background:#ff657612}
+.session-state.always{color:var(--gold2);border-color:#d7b46a66;background:#d7b46a12}
+.session-clock{direction:ltr;text-align:right;font-variant-numeric:tabular-nums;font-size:16px;font-weight:800;margin-top:8px}
+.tool-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.tool-card{background:linear-gradient(145deg,#151d29,#0d131c);border:1px solid #2b3748;border-radius:15px;padding:15px;min-width:0}
+.tool-card h3{margin:0 0 10px;font-size:14px;color:var(--gold2)}
+.tool-card p{font-size:11px;color:var(--muted);line-height:1.8}
+.tool-row{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.tool-row input,.tool-row select{min-width:0;flex:1;background:#090e16;border:1px solid #354255;color:#fff;border-radius:9px;padding:10px}
+.tool-list{display:grid;gap:7px}
+.tool-list-item{display:flex;justify-content:space-between;gap:10px;align-items:center;border-bottom:1px solid #273242;padding:8px 0;font-size:12px}
+.tool-list-item:last-child{border:0}
+.gold-text{color:var(--gold2)}
+.watch-btn{border:1px solid #4b412d;background:#211e18;color:var(--gold2);border-radius:8px;padding:5px 9px}
+.market-table tr:hover td{background:#ffffff06}
+.section-kicker{font-size:10px;letter-spacing:1.5px;color:var(--gold);font-weight:800;margin-bottom:6px}
+.terminal-nav{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.terminal-nav a{color:#d9c79f;text-decoration:none;font-size:11px;border:1px solid #30394a;background:#111824;border-radius:20px;padding:7px 12px}
+.terminal-nav a:hover{border-color:var(--gold);color:#fff}
+@media(max-width:900px){.terminal-grid{grid-template-columns:1fr}.market-hours-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.hero{padding:18px 15px}.tool-grid{grid-template-columns:1fr}.market-hours-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ticker-item{min-width:135px}}
+
 </style>
 </head>
 <body>
@@ -216,6 +262,8 @@ body{background:radial-gradient(ellipse at 82% -10%,#29223b 0,transparent 36%),r
 <span class="badge" id="updated">در حال دریافت داده…</span>
 </section>
 
+<section class="market-ticker" id="market-ticker" aria-label="نوار قیمت‌های بازار"><div class="ticker-item"><b>BTC / Bitcoin</b><strong>در حال دریافت…</strong><small>بازار رمزارز</small></div></section>
+<nav class="terminal-nav"><a href="#chart-section">نمودار حرفه‌ای</a><a href="#ai-section">تحلیل AI</a><a href="#market-hours">ساعت بازارها</a><a href="#opportunities">فرصت‌های بازار</a><a href="#trading-tools">ابزار معامله‌گر</a><a href="#coins-section">بازارها</a></nav>
 <section class="grid">
 <div class="card"><div class="stat-label">بیت‌کوین · BTC</div><div class="stat-value" id="btc">$—</div><div class="sub" id="btc-sub">—</div></div>
 <div class="card"><div class="stat-label">اتریوم · ETH</div><div class="stat-value" id="eth">$—</div><div class="sub" id="eth-sub">—</div></div>
@@ -246,8 +294,7 @@ body{background:radial-gradient(ellipse at 82% -10%,#29223b 0,transparent 36%),r
 <select id="ai-coin-select" class="dropdown-select-box"><option value="">انتخاب ارز برای تحلیل جامع...</option></select>
 <select id="ai-market-mode" class="dropdown-select-box" aria-label="نوع بازار">
 <option value="both">اسپات + فیوچرز</option><option value="spot">فقط اسپات</option><option value="futures">فقط فیوچرز</option>
-</select>
-<button class="btn primary" id="ai-run-btn" onclick="runAiAnalysis(false)">شروع تحلیل هوشمند</button>
+</select><button class="btn primary" id="ai-run-btn" onclick="runAiAnalysis(false)">شروع تحلیل هوشمند</button>
 <button class="btn secondary" id="ai-refresh-btn" onclick="runAiAnalysis(true)">تحلیل مجدد</button>
 </div>
 <div class="ai-grid">
@@ -265,6 +312,27 @@ body{background:radial-gradient(ellipse at 82% -10%,#29223b 0,transparent 36%),r
 
 </section>
 
+<section class="card" id="market-hours">
+<div class="section-head"><div><div class="section-kicker">GLOBAL MARKET CLOCK</div><h2>ساعت کاری بازارهای مالی جهان</h2></div><span class="badge" id="market-clock-zone">زمان محلی دستگاه</span></div>
+<div class="market-hours-grid" id="market-hours-grid"></div>
+<p class="sub" style="margin-top:12px">ساعت‌ها بر اساس منطقه زمانی هر بازار و تغییر ساعت تابستانی محاسبه می‌شوند. تعطیلات رسمی و تغییرات اضطراری ممکن است وضعیت را تغییر دهند؛ این نمایش راهنمای زمان‌بندی است، نه تأییدیه رسمی بورس.</p>
+</section>
+<section class="terminal-grid" id="opportunities">
+<section class="card"><div class="section-head"><div><div class="section-kicker">MARKET SCANNER</div><h2>رادار فرصت‌های بازار</h2></div><span class="badge">غربالگری اولیه · نه سیگنال قطعی</span></div>
+<div id="opportunity-list" class="tool-list"><div class="ai-empty">پس از دریافت قیمت‌ها، دارایی‌های دارای حرکت قابل‌توجه نمایش داده می‌شوند.</div></div></section>
+<section class="card"><div class="section-head"><div><div class="section-kicker">PERSONAL WATCHLIST</div><h2>دیده‌بان من</h2></div><span class="badge" id="watch-count">۰ دارایی</span></div>
+<div class="tool-row"><select id="watch-add-select" class="dropdown-select-box" style="margin:0"><option value="">انتخاب دارایی…</option></select><button class="btn secondary" id="watch-add-btn" type="button">افزودن</button></div>
+<div id="watch-list" class="tool-list" style="margin-top:10px"><p class="sub">هنوز دارایی‌ای اضافه نشده است.</p></div></section>
+</section>
+<section class="card" id="trading-tools">
+<div class="section-head"><div><div class="section-kicker">TRADER TOOLKIT</div><h2>ابزارهای حرفه‌ای معامله‌گر</h2></div><span class="badge">محاسبه در همین دستگاه</span></div>
+<div class="tool-grid">
+<div class="tool-card"><h3>محاسبه‌گر ریسک و حجم معامله</h3><p>سرمایه، درصد ریسک، قیمت ورود و حد ضرر را وارد کن تا اندازه موقعیت پیشنهادی محاسبه شود.</p>
+<div class="tool-row"><input id="risk-capital" type="number" min="0" placeholder="سرمایه (USDT)" value="1000"><input id="risk-percent" type="number" min="0.1" max="100" step="0.1" placeholder="ریسک %" value="1"></div>
+<div class="tool-row" style="margin-top:7px"><input id="risk-entry" type="number" min="0" step="any" placeholder="قیمت ورود"><input id="risk-stop" type="number" min="0" step="any" placeholder="حد ضرر"></div>
+<button class="btn primary" id="risk-calc" style="margin-top:9px">محاسبه حجم معامله</button><div id="risk-result" class="ai-status" style="margin-top:10px">اطلاعات معامله را وارد کنید.</div></div>
+<div class="tool-card"><h3>دفتر ثبت تحلیل‌ها</h3><p>تحلیل‌های اجراشده روی همین دستگاه ثبت می‌شوند تا سوابق تصمیم‌ها قابل مرور باشد. ثبت تحلیل به معنی نتیجه سود یا زیان نیست.</p><div id="analysis-journal" class="tool-list"><p class="sub">هنوز تحلیلی ثبت نشده است.</p></div><button class="btn secondary" id="journal-clear" style="margin-top:9px">پاک‌کردن سوابق محلی</button></div>
+</div></section>
 <section class="card">
 <div class="section-head"><h2>وضعیت اتصال صرافی‌ها و مراجع</h2><span class="badge" id="conn-summary">پایش لایو</span></div>
 <div class="connection-grid" id="connections"></div>
@@ -469,6 +537,7 @@ async function refreshAll(){
   renderHeroCards();
   renderCoinsTables(data);
   updateDropdowns(data);
+  renderOpportunities(); renderWatch(); syncWatchSelect();
   auditExchangeSupport(data);
 
   try{
@@ -516,8 +585,7 @@ function updateDropdowns(data) {
   // بروزرسانی منوی کشویی هوش مصنوعی
   let selectAi = $('ai-coin-select');
   let currentAiVal = selectAi.value;
-  let aiHtml = '<option value="">انتخاب ارز دیجیتال...</option>';
-  data.forEach(c => {
+  let aiHtml = '<option value="">انتخاب ارز دیجیتال...</option>';  data.forEach(c => {
     aiHtml += `<option value="${c.id}">${c.name} (${c.symbol.toUpperCase()})</option>`;
   });
   selectAi.innerHTML = aiHtml;
@@ -725,7 +793,8 @@ async function runAiAnalysis(force=false){
   aiCache.set(cacheKey,{analysis:data.analysis,market:data.market||{},time:reportTime});
   saveAiReport({analysis:data.analysis,market:data.market||{},coin:{id:c.id,name:c.name,symbol:c.symbol,current_price:c.current_price},marketMode:$("ai-market-mode").value,time:reportTime});
   renderAiReport(data.analysis,c,data.market||{});
-  aiSetStatus("تحلیل تکمیل شد · گزارش ذخیره شد و حتی با تازه‌سازی صفحه باقی می‌ماند.");
+  saveJournal({name:c.name,symbol:c.symbol.toUpperCase(),action:data.analysis.action||"WAIT",confidence:data.analysis.confidence??"—",time:reportTime});
+  aiSetStatus("تحلیل تکمیل شد · گزارش و سابقه محلی ذخیره شد.");
  }catch(e){
   if(token===aiRequestToken){
    $("ai-action").textContent="تحلیل ناموفق";
@@ -736,6 +805,38 @@ async function runAiAnalysis(force=false){
   if(token===aiRequestToken){aiBusy=false;btn.disabled=false;refreshBtn.disabled=false;btn.textContent="شروع تحلیل هوشمند";}
  }
 }
+
+
+/* MMP terminal modules: global sessions, watchlist, scanner, risk sizing and local journal */
+const MMP_WATCH_KEY="mmp_terminal_watchlist_v1";
+const MMP_JOURNAL_KEY="mmp_terminal_journal_v1";
+const marketSessions=[
+ {id:"crypto",name:"بازار رمزارز",zone:"UTC",open:0,close:1440,days:[0,1,2,3,4,5,6],kind:"always",hours:"۲۴ ساعته · ۷ روز هفته"},
+ {id:"us",name:"بورس آمریکا · NYSE/Nasdaq",zone:"America/New_York",open:570,close:960,days:[1,2,3,4,5],hours:"۰۹:۳۰ تا ۱۶:۰۰"},
+ {id:"forex",name:"فارکس",zone:"America/New_York",open:1020,close:1020,days:[0,1,2,3,4,5],kind:"overnight",hours:"یکشنبه ۱۷:۰۰ تا جمعه ۱۷:۰۰"},
+ {id:"gold",name:"طلای جهانی · XAU/USD",zone:"America/New_York",open:1020,close:1020,days:[0,1,2,3,4,5],kind:"overnight",hours:"تقریباً ۲۴/۵ · وابسته به کارگزار"},
+ {id:"london",name:"بورس لندن · LSE",zone:"Europe/London",open:480,close:990,days:[1,2,3,4,5],hours:"۰۸:۰۰ تا ۱۶:۳۰"},
+ {id:"tokyo",name:"بورس توکیو · TSE",zone:"Asia/Tokyo",open:540,close:900,days:[1,2,3,4,5],breaks:[[690,750]],hours:"۰۹:۰۰ تا ۱۵:۰۰ · وقفه ناهار"},
+ {id:"hongkong",name:"بورس هنگ‌کنگ · HKEX",zone:"Asia/Hong_Kong",open:570,close:960,days:[1,2,3,4,5],breaks:[[720,780]],hours:"۰۹:۳۰ تا ۱۶:۰۰ · وقفه ناهار"}
+];
+function marketTimeParts(zone){const parts=new Intl.DateTimeFormat("en-US",{timeZone:zone,weekday:"short",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(new Date());const get=t=>parts.find(p=>p.type===t)?.value;const day=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].indexOf(get("weekday"));return {day,minute:Number(get("hour"))*60+Number(get("minute")),clock:new Intl.DateTimeFormat("fa-IR",{timeZone:zone,hour:"2-digit",minute:"2-digit",second:"2-digit"}).format(new Date())};}
+function sessionIsOpen(s,t){if(s.kind==="always")return true;if(s.kind==="overnight")return (t.day===0&&t.minute>=s.open)||(t.day>=1&&t.day<=4)||(t.day===5&&t.minute<s.close);if(!s.days.includes(t.day)||t.minute<s.open||t.minute>=s.close)return false;return !(s.breaks||[]).some(([a,b])=>t.minute>=a&&t.minute<b);}
+function renderMarketHours(){const el=$("market-hours-grid");if(!el)return;el.innerHTML=marketSessions.map(s=>{const t=marketTimeParts(s.zone),open=sessionIsOpen(s,t),state=s.kind==="always"?"۲۴/۷":open?"باز است":"بسته است";return '<div class="market-session"><div class="session-head"><b>'+s.name+'</b><span class="session-state '+(s.kind==="always"?"always":open?"open":"closed")+'">'+state+'</span></div><div class="session-clock">'+t.clock+'</div><small>منطقه زمانی: '+s.zone+'<br>ساعت کاری: '+s.hours+'</small></div>';}).join("");$("market-clock-zone").textContent="زمان محلی: "+new Intl.DateTimeFormat("fa-IR",{hour:"2-digit",minute:"2-digit",timeZoneName:"short"}).format(new Date());}
+function loadWatch(){try{return JSON.parse(localStorage.getItem(MMP_WATCH_KEY)||"[]")}catch(e){return []}}
+function saveWatch(a){try{localStorage.setItem(MMP_WATCH_KEY,JSON.stringify(a))}catch(e){}}
+function renderWatch(){const list=$("watch-list");if(!list)return;const ids=loadWatch();$("watch-count").textContent=ids.length+" دارایی";list.innerHTML=ids.length?ids.map(id=>{const c=cachedCoinsData.find(x=>x.id===id);if(!c)return "";return '<div class="tool-list-item"><span><b>'+aiEscape(c.name)+'</b> <small class="muted">'+c.symbol.toUpperCase()+'</small></span><span class="gold-text">'+formatVal(c.current_price)+'</span><button class="watch-btn" data-watch-remove="'+aiEscape(id)+'">حذف</button></div>'}).join(""):'<p class="sub">هنوز دارایی‌ای اضافه نشده است.</p>';}
+function renderOpportunities(){const el=$("opportunity-list");if(!el||!cachedCoinsData.length)return;const ranked=[...cachedCoinsData].filter(c=>Number.isFinite(c.price_change_percentage_24h)).sort((a,b)=>Math.abs(b.price_change_percentage_24h)-Math.abs(a.price_change_percentage_24h)).slice(0,8);el.innerHTML=ranked.map(c=>'<div class="tool-list-item"><span><b>'+aiEscape(c.name)+'</b> <small class="muted">'+c.symbol.toUpperCase()+'</small></span><span class="'+(c.price_change_percentage_24h>=0?"positive":"negative")+'">'+(c.price_change_percentage_24h>=0?"+":"")+c.price_change_percentage_24h.toFixed(2)+'%</span><button class="watch-btn" data-watch-add="'+aiEscape(c.id)+'">دیده‌بان +</button></div>').join("")+'<p class="sub">مرتب‌سازی بر اساس قدر مطلق تغییر ۲۴ساعته است؛ این فهرست صرفاً غربالگری نوسان است و توصیه خرید یا فروش نیست.</p>';}
+function syncWatchSelect(){const s=$("watch-add-select");if(!s)return;const old=s.value;s.innerHTML='<option value="">انتخاب دارایی…</option>'+cachedCoinsData.map(c=>'<option value="'+aiEscape(c.id)+'">'+aiEscape(c.name)+' ('+c.symbol.toUpperCase()+')</option>').join("");if(old)s.value=old;}
+function addWatch(id){if(!id)return;const a=loadWatch();if(!a.includes(id))a.push(id);saveWatch(a);renderWatch();}
+function saveJournal(entry){try{const a=JSON.parse(localStorage.getItem(MMP_JOURNAL_KEY)||"[]");a.unshift(entry);localStorage.setItem(MMP_JOURNAL_KEY,JSON.stringify(a.slice(0,30)));renderJournal()}catch(e){}}
+function renderJournal(){const el=$("analysis-journal");if(!el)return;let a=[];try{a=JSON.parse(localStorage.getItem(MMP_JOURNAL_KEY)||"[]")}catch(e){}el.innerHTML=a.length?a.slice(0,8).map(x=>'<div class="tool-list-item"><span><b>'+aiEscape(x.name)+' ('+aiEscape(x.symbol)+')</b><small class="muted" style="display:block">'+new Date(x.time).toLocaleString("fa-IR")+'</small></span><span>'+aiEscape(x.action)+' · '+aiEscape(x.confidence)+'</span></div>').join(""):'<p class="sub">هنوز تحلیلی ثبت نشده است.</p>';}
+function calcRisk(){const capital=Number($("risk-capital").value),pct=Number($("risk-percent").value),entry=Number($("risk-entry").value),stop=Number($("risk-stop").value);const out=$("risk-result");if(!(capital>0&&pct>0&&pct<=100&&entry>0&&stop>0&&entry!==stop)){out.textContent="لطفاً مقادیر معتبر وارد کنید؛ ورود و حد ضرر نباید برابر باشند.";return;}const risk=capital*pct/100,dist=Math.abs(entry-stop)/entry,notional=risk/dist,qty=notional/entry;out.innerHTML="ریسک دلاری مجاز: <b>$"+money(risk,2)+"</b> · ارزش اسمی موقعیت: <b>$"+money(notional,2)+"</b> · مقدار دارایی: <b>"+money(qty,6)+"</b><br><small>کارمزد، لغزش قیمت، اهرم و ریسک لیکوییدشدن در این محاسبه لحاظ نشده‌اند.</small>";}
+$("watch-add-btn")?.addEventListener("click",()=>addWatch($("watch-add-select").value));
+$("watch-list")?.addEventListener("click",e=>{const id=e.target?.dataset?.watchRemove;if(id){saveWatch(loadWatch().filter(x=>x!==id));renderWatch()}});
+$("opportunity-list")?.addEventListener("click",e=>{const id=e.target?.dataset?.watchAdd;if(id)addWatch(id)});
+$("risk-calc")?.addEventListener("click",calcRisk);
+$("journal-clear")?.addEventListener("click",()=>{if(confirm("سوابق تحلیل ذخیره‌شده روی این دستگاه پاک شود؟")){localStorage.removeItem(MMP_JOURNAL_KEY);renderJournal()}});
+renderMarketHours();renderJournal();renderWatch();setInterval(renderMarketHours,15000);
 
 refreshAll();
 initTradingView("BINANCE:BTCUSDT");
