@@ -1119,29 +1119,6 @@ async function checkConnections(){
   const ordered=expected.map(name=>checks.get(name)).filter(Boolean);
   if(ordered.length!==5)throw new Error("پاسخ بررسی اتصال کامل نیست");
 
-  // آزمون مستقیم از مرورگر کاربر؛ بعضی APIها درخواست‌های خروجی Cloudflare Worker را با 403 رد می‌کنند.
-  const clientProbe=async(urls,valid,timeout=5500)=>{
-   const attempts=await Promise.all(urls.map(async url=>{
-    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeout),started=Date.now();
-    try{
-     const response=await fetch(url,{cache:"no-store",mode:"cors",signal:controller.signal,headers:{Accept:"application/json"}});
-     if(!response.ok)throw new Error("HTTP "+response.status);
-     const data=await response.json();
-     if(!valid(data))throw new Error("پاسخ معتبر دریافت نشد");
-     return {status:Date.now()-started>2500?"slow":"ok",ping:Date.now()-started};
-    }catch(error){return {status:"down",ping:null,error:String(error?.message||"network error").slice(0,90)};}
-    finally{clearTimeout(timer);}
-   }));
-   return attempts.filter(x=>x.status!=="down").sort((a,b)=>a.ping-b.ping)[0]||attempts[0];
-  };
-  const [bybitClient,wallexClient]=await Promise.all([
-   clientProbe(["https://api.bybit.com/v5/market/tickers?category=spot&symbol=BTCUSDT","https://api.bytick.com/v5/market/tickers?category=spot&symbol=BTCUSDT"],d=>d?.retCode===0&&Number(d?.result?.list?.[0]?.lastPrice)>0),
-   clientProbe(["https://api.wallex.ir/v1/markets","https://api.wallex.ir/hector/web/v1/markets"],d=>d?.success===true&&!!(Number(d?.result?.symbols?.USDTIRT?.stats?.lastPrice)>0||Number(d?.result?.symbols?.USDTTMN?.stats?.lastPrice)>0))
-  ]);
-  const bybitIndex=ordered.findIndex(c=>String(c.name).toLowerCase()==="bybit spot");
-  const wallexIndex=ordered.findIndex(c=>String(c.name).toLowerCase()==="wallex");
-  if(bybitIndex>=0)ordered[bybitIndex]={...ordered[bybitIndex],...bybitClient};
-  if(wallexIndex>=0)ordered[wallexIndex]={...ordered[wallexIndex],...wallexClient};
   const makeCard=c=>{
    const label=c.status==="down"?"قطع":c.status==="slow"?"کند":"متصل";
    const latency=c.ping===null||c.ping===undefined?"—":c.ping+" ms";
