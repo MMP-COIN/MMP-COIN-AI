@@ -51,6 +51,15 @@ jobs:
           probe "Bybit global" "https://api.bybit.com/v5/market/tickers?category=spot&symbol=BTCUSDT"
           probe "Wallex with browser headers" "https://api.wallex.ir/v1/markets" -H "Origin: https://wallex.ir" -H "Referer: https://wallex.ir/"
           probe "Bitget Spot" "https://api.bitget.com/api/v3/market/tickers?category=SPOT&symbol=BTCUSDT"
+          probe_cors() {
+            label="$1"
+            url="$2"
+            status=$(curl --silent --show-error --max-time 15 -D /tmp/market-headers -o /dev/null -w "%{http_code}" -H "Origin: https://mmp-coin.github.io" -H "Referer: https://mmp-coin.github.io/" "$url" || true)
+            allow=$(grep -i "^access-control-allow-origin:" /tmp/market-headers | tail -1 | tr -d "\r" | cut -d ":" -f2- | xargs || true)
+            echo "$label browser-CORS: HTTP $status; allow-origin=${allow:-missing}"
+          }
+          probe_cors "Wallex" "https://api.wallex.ir/v1/markets"
+          probe_cors "Bitget" "https://api.bitget.com/api/v3/market/tickers?category=SPOT&symbol=BTCUSDT"
 
       - name: Check exchange connection monitor
         env:
