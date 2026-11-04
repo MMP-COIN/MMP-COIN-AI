@@ -732,16 +732,12 @@ body:after{content:"";position:fixed;width:42vw;height:42vw;max-width:620px;max-
 </div>
 </section>
 
-<section id="app-download" aria-label="دانلود و اشتراک اپلیکیشن اندروید" style="margin:30px auto 12px;max-width:900px;padding:clamp(22px,4vw,34px) 20px;border:1px solid #8b7041;border-radius:22px;background:radial-gradient(ellipse at 50% 0,#d9b66d18,transparent 58%),linear-gradient(135deg,#17212d,#10151e 62%,#211b12);box-shadow:0 18px 42px #0008;text-align:center;position:relative;overflow:hidden">
-  <div style="display:inline-flex;align-items:center;gap:7px;border:1px solid #80683f;border-radius:30px;padding:6px 12px;color:#e8ce94;font-size:10px;font-weight:800;margin-bottom:14px">MMP COIN AI · ANDROID APP</div>
-  <div style="font-size:34px;line-height:1;margin-bottom:12px" aria-hidden="true">📲</div>
-  <h2 style="color:var(--gold2);font-size:clamp(17px,3vw,21px);font-weight:900;margin:0 0 9px">اپلیکیشن MMP COIN AI را نصب کنید</h2>
-  <p style="color:#aeb7c5;font-size:12px;line-height:2;margin:0 auto 20px;max-width:560px">نسخه اندروید ترمینال هوشمند بازار را مستقیم دریافت کنید؛ سپس لینک نصب را برای دوستانتان بفرستید تا آن‌ها هم به‌راحتی از اپ استفاده کنند.</p>
-  <div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap">
-    <a href="https://github.com/MMP-COIN/MMP-COIN-AI/releases/latest/download/app-release.apk" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;justify-content:center;gap:9px;min-width:190px;padding:13px 22px;border-radius:12px;background:linear-gradient(120deg,#a77c35,#f0d99c);color:#17130a;font-size:13px;font-weight:900;text-decoration:none;box-shadow:0 8px 22px #d9b66d35">⬇ دانلود و نصب اپ اندروید</a>
-    <button type="button" id="mmp-share-site-app" onclick="shareMmpSiteApp()" style="display:inline-flex;align-items:center;justify-content:center;gap:9px;min-width:190px;padding:13px 22px;border-radius:12px;border:1px solid #80683f;background:#172333;color:#f2d99b;font-size:13px;font-weight:900;cursor:pointer">↗ اشتراک‌گذاری لینک اپ</button>
-  </div>
-  <div id="mmp-app-share-status" role="status" aria-live="polite" style="color:#aeb7c5;font-size:10px;line-height:1.9;margin-top:13px">دانلود مستقیم فایل APK · ارسال لینک نصب برای دیگران</div>
+<section id="app-download" aria-label="دانلود اپلیکیشن اندروید" style="margin:24px auto 8px;max-width:760px;padding:22px 18px;border:1px solid #80683f;border-radius:20px;background:linear-gradient(135deg,#171b24,#10131a 62%,#211b12);box-shadow:0 14px 34px #0006;text-align:center">
+  <div style="font-size:28px;line-height:1;margin-bottom:10px" aria-hidden="true">📱</div>
+  <div style="color:var(--gold2);font-size:16px;font-weight:900;margin-bottom:8px">اپلیکیشن اندروید MMP COIN AI</div>
+  <p style="color:var(--muted);font-size:12px;line-height:2;margin:0 auto 16px;max-width:520px">نسخه اندروید ترمینال هوشمند بازار را روی گوشی خود نصب کنید و سریع‌تر به ابزارهای تحلیل دسترسی داشته باشید.</p>
+  <a href="https://github.com/MMP-COIN/MMP-COIN-AI/releases/latest/download/app-release.apk" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;justify-content:center;gap:9px;padding:12px 22px;border-radius:12px;background:linear-gradient(120deg,#a77c35,#e8cd8c);color:#17130a;font-size:13px;font-weight:900;text-decoration:none;box-shadow:0 7px 20px #d9b66d30">⬇ دانلود اپلیکیشن اندروید</a>
+  <div style="color:#9a9eaa;font-size:10px;line-height:1.9;margin-top:11px">دانلود مستقیم فایل APK · بدون نیاز به استخراج ZIP · نسخه پایدار و به‌روز</div>
 </section>
 <script>
 function shareMmpSiteApp(){
@@ -1472,7 +1468,7 @@ html.mmp-native-app .chart-box-wrapper,html.mmp-native-app .card,html.mmp-native
 html.mmp-native-app .section-head{border-bottom:1px solid #2d4354;padding-bottom:11px}
 html.mmp-native-app .section-head h2{font-size:14px;color:#f0dfb7}
 html.mmp-native-app .mmp-mobile-dock{position:fixed!important;z-index:980;left:12px!important;right:12px!important;bottom:max(10px,env(safe-area-inset-bottom))!important;display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr));gap:3px;align-items:center;padding:7px 6px!important;border:1px solid #52617a!important;border-radius:20px!important;background:linear-gradient(110deg,#142535f5,#0b141ff7)!important;box-shadow:0 12px 35px #000b!important;backdrop-filter:blur(22px)}
-html.mmp-native-app .mmp-mobile-dock{grid-template-columns:repeat(6,minmax(0,1fr))}
+html.mmp-native-app .mmp-mobile-dock{grid-template-columns:repeat(7,minmax(0,1fr))}
 html.mmp-native-app .mmp-mobile-dock .dock-share{appearance:none;border:0;background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:0;padding:6px 1px;border-radius:13px;color:#e7c77e;font:700 9px Tahoma,Arial,sans-serif;white-space:nowrap}
 html.mmp-native-app .mmp-mobile-dock .dock-share i{font-style:normal;font-size:20px;line-height:1.1;color:#f2d99b}
 html.mmp-native-app .mmp-mobile-dock .dock-share:active{background:#d9b66d20;transform:scale(.96)}
@@ -1506,7 +1502,7 @@ html.mmp-native-app .footer{padding-bottom:12px}
    document.body.insertBefore(header,document.body.firstChild);
    var nav=document.querySelector(".mmp-mobile-dock");
    if(nav){
-    nav.innerHTML='<a href="#hero" data-native-tab="hero"><i>⌂</i><span>خانه</span></a><a href="#opportunities" data-native-tab="opportunities"><i>◈</i><span>رادار</span></a><a href="#watchlist" data-native-tab="watchlist"><i>☆</i><span>دیده‌بان</span></a><a href="#ai-section" data-native-tab="ai-section" class="dock-ai"><i>✧</i><span>تحلیل AI</span></a><a href="#trading-tools" data-native-tab="trading-tools"><i>⌗</i><span>ابزارها</span></a><button type="button" class="dock-share" id="mmp-share-app" aria-label="ارسال لینک اپ"><i>↗</i><span>ارسال اپ</span></button>'
+    nav.innerHTML='<a href="#hero" data-native-tab="hero"><i>⌂</i><span>خانه</span></a><a href="#chart-section" data-native-tab="chart-section"><i>▥</i><span>نمودار</span></a><a href="#opportunities" data-native-tab="opportunities"><i>◈</i><span>رادار</span></a><a href="#watchlist" data-native-tab="watchlist"><i>☆</i><span>دیده‌بان</span></a><a href="#ai-section" data-native-tab="ai-section" class="dock-ai"><i>✧</i><span>تحلیل AI</span></a><a href="#trading-tools" data-native-tab="trading-tools"><i>⌗</i><span>ابزارها</span></a><button type="button" class="dock-share" id="mmp-share-app" aria-label="ارسال لینک اپ"><i>↗</i><span>ارسال اپ</span></button>'
     var links=nav.querySelectorAll("a");
     var shareButton=nav.querySelector("#mmp-share-app");
     function showShareToast(message){var old=document.querySelector(".mmp-share-toast");if(old)old.remove();var toast=document.createElement("div");toast.className="mmp-share-toast";toast.textContent=message;document.body.appendChild(toast);setTimeout(function(){toast.remove()},2600)}
@@ -1515,7 +1511,7 @@ html.mmp-native-app .footer{padding-bottom:12px}
     links.forEach(function(a){a.addEventListener("click",function(){setActive(a.getAttribute("data-native-tab"))})});
     setActive("hero");
     if("IntersectionObserver" in window){
-     var sections=["hero","opportunities","watchlist","ai-section","trading-tools"].map(function(id){return document.getElementById(id)}).filter(Boolean);
+     var sections=["hero","chart-section","opportunities","watchlist","ai-section","trading-tools"].map(function(id){return document.getElementById(id)}).filter(Boolean);
      var observer=new IntersectionObserver(function(entries){var visible=entries.filter(function(e){return e.isIntersecting}).sort(function(a,b){return b.intersectionRatio-a.intersectionRatio})[0];if(visible)setActive(visible.target.id)},{rootMargin:"-18% 0px -58% 0px",threshold:[0,.15,.35,.6]});
      sections.forEach(function(el){observer.observe(el)});
     }
