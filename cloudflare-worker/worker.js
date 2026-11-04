@@ -335,8 +335,6 @@ async function handle(request,env){
   const url=new URL(request.url),source=url.searchParams.get("source")||"";
   const urls={
    "binance-tickers":["https://api.binance.com/api/v3/ticker/24hr","https://api.binance.us/api/v3/ticker/24hr","https://api1.binance.com/api/v3/ticker/24hr","https://api2.binance.com/api/v3/ticker/24hr","https://api3.binance.com/api/v3/ticker/24hr","https://data-api.binance.vision/api/v3/ticker/24hr"],
-   "bitget-tickers":["https://api.bitget.com/api/v3/market/tickers?category=SPOT"],
-   "bitpin-tickers":["https://api.bitpin.ir/api/v1/mkt/tickers/"],
    "coingecko-top":["https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=false&price_change_percentage=1h%2C24h%2C7d"],
    "nobitex-tether":["https://apiv2.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls","https://api.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls"],
    "wallex-markets":["https://api.wallex.ir/v1/markets","https://api.wallex.ir/hector/web/v1/markets","https://api.wallex.ir/v1/otc/markets"]
@@ -383,7 +381,7 @@ async function handle(request,env){
    const good=results.filter(x=>x.status!=="down").sort((a,b)=>a.ping-b.ping);
    return good[0]||results[results.length-1]||{status:"down",ping:null,error:"no Wallex endpoint responded"};
   };
-  const [binance,bybit,okx,nobitex,wallex,bitget,bitpin]=await Promise.all([
+  const [binance,bybit,okx,nobitex,wallex,bitget]=await Promise.all([
    probeAny(["https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://api.binance.us/api/v3/ticker/price?symbol=BTCUSDT","https://api1.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://api2.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://api3.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://data-api.binance.vision/api/v3/ticker/price?symbol=BTCUSDT"],d=>Number(d?.price)>0),
    probeAny([
     "https://api.bybit.eu/v5/market/tickers?category=spot&symbol=BTCUSDT",
@@ -401,7 +399,6 @@ async function handle(request,env){
     return false;
    },12000,{"Origin":"https://wallex.ir","Referer":"https://wallex.ir/"}),
    timeoutFetch("https://api.bitget.com/api/v3/market/tickers?category=SPOT&symbol=BTCUSDT",d=>d?.code==="00000"&&Number(d?.data?.[0]?.lastPrice)>0,7000),
-   timeoutFetch("https://api.bitpin.ir/api/v1/mkt/tickers/",d=>Array.isArray(d)&&d.some(t=>String(t?.symbol||"").toUpperCase()==="USDT_IRT"&&Number(t?.price)>0),9000)
   ]);
   const checks=[
    {name:"Binance Spot",purpose:"قیمت و معاملات اسپات",...binance},
@@ -410,7 +407,6 @@ async function handle(request,env){
    {name:"Nobitex",purpose:"نرخ تتر به تومان",...nobitex},
    {name:"Wallex",purpose:"نرخ تتر به تومان",...wallex},
    {name:"Bitget Spot",purpose:"قیمت و معاملات اسپات",...bitget},
-   {name:"Bitpin",purpose:"نرخ تتر به تومان",...bitpin}
   ];
   return json({checked_at:new Date().toISOString(),checks},200,request);
  }
