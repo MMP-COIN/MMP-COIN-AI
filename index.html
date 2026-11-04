@@ -1681,6 +1681,9 @@ html.mmp-native-app .footer{padding-bottom:12px}
    }
    var updateCheckButton=document.getElementById("native-update-check-btn");
    if(updateCheckButton)updateCheckButton.addEventListener("click",function(){checkNativeUpdate(true);});
+   document.addEventListener("visibilitychange",function(){if(document.visibilityState==="visible")checkNativeUpdate(false);});
+   window.addEventListener("focus",function(){checkNativeUpdate(false);});
+   setInterval(function(){if(document.visibilityState==="visible")checkNativeUpdate(false);},30*60*1000);
    checkNativeUpdate(false);
    var wrap=document.querySelector(".wrap");
    if(wrap){
