@@ -1078,10 +1078,12 @@ function updateDropdowns(data) {
 let coinGeckoConnectionStatus="checking";
 function renderCoinGeckoConnection(){
  const box=$("connections-extra");if(!box)return;
+ const wallex=box.querySelector('.conn:not([data-provider="coingecko"])');
+ const wallexHtml=wallex?wallex.outerHTML:"";
  const status=coinGeckoConnectionStatus;
  const label=status==="ok"?"متصل":status==="down"?"قطع":"در حال بررسی";
  const detail=status==="ok"?"منبع قیمت و فهرست ارزها فعال است":status==="down"?"دریافت اطلاعات بازار ناموفق بود":"در انتظار دریافت اطلاعات بازار";
- box.innerHTML='<div class="conn"><div class="conn-top"><span class="conn-name">CoinGecko · مرجع بازار</span><span class="lamp '+(status==="ok"?"ok":status==="down"?"down":"")+'"></span></div><div class="conn-meta"><span>'+label+'</span><b dir="ltr">—</b></div><small class="conn-purpose">'+detail+'</small></div>';
+ box.innerHTML=wallexHtml+'<div class="conn" data-provider="coingecko"><div class="conn-top"><span class="conn-name">CoinGecko · مرجع بازار</span><span class="lamp '+(status==="ok"?"ok":status==="down"?"down":"")+'"></span></div><div class="conn-meta"><span>'+label+'</span><b dir="ltr">—</b></div><small class="conn-purpose">'+detail+'</small></div>';
 }
 function setupConnectionsToggle(){
  const button=$("connections-toggle"),extra=$("connections-extra");
