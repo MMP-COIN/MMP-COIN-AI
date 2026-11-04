@@ -455,6 +455,31 @@ body:after{content:"";position:fixed;width:42vw;height:42vw;max-width:620px;max-
 .risk-input-wrap input{width:100%;min-width:0;flex:1;background:transparent!important;border:0!important;outline:0;color:#fff;padding:10px 7px;font-size:13px}
 .risk-input-wrap small{flex:0 0 auto;padding:0 7px;color:#f0d58f;font-size:10px;font-weight:900;white-space:nowrap}
 
+
+/* MMP separated coin cards: persistent on desktop and mobile */
+#coins-section .table-wrap{overflow:visible;border:0;background:transparent}
+#coins-section .market-table{display:block;width:100%;border-collapse:separate;border-spacing:0}
+#coins-section .market-table thead{display:none}
+#coins-section .market-table tbody{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:stretch}
+#coins-section .market-table tbody tr.coin-card-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 14px;align-content:start;padding:16px;border:1px solid #34465b;border-radius:17px;background:linear-gradient(145deg,#172332,#101722 72%);box-shadow:0 9px 24px #0005,inset 0 1px #ffffff0b;min-width:0;transition:border-color .2s,transform .2s,box-shadow .2s}
+#coins-section .market-table tbody tr.coin-card-row:hover{border-color:#b99a5c99;transform:translateY(-2px);box-shadow:0 14px 30px #0007}
+#coins-section .market-table tbody td{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0;padding:5px 2px;border:0;white-space:normal;text-align:right;line-height:1.5;font-size:12px;overflow-wrap:anywhere}
+#coins-section .market-table tbody td:before{content:attr(data-label);color:var(--muted);font-size:10px;font-weight:600;white-space:nowrap}
+#coins-section .market-table tbody td.coin-identity{grid-column:1/-1;justify-content:flex-start;border-bottom:1px solid #ffffff16;padding-bottom:11px;gap:10px}
+#coins-section .market-table tbody td.coin-identity:before{display:none}
+#coins-section .coin-identity b{font-size:13px}
+#coins-section .coin-symbol{display:inline-block;margin-right:7px;color:var(--muted);font-size:10px;direction:ltr}
+#coins-section .coin-icon{width:31px;height:31px;flex:0 0 31px}
+#coins-section .coin-price-usdt{color:#f4d995;font-weight:900;direction:ltr}
+#coins-section .coin-price-irt{color:#e7bd62;font-weight:900}
+#coins-section .coin-source{grid-column:1/-1;display:flex;flex-direction:column;align-items:flex-start;gap:3px;border-top:1px solid #ffffff16;padding-top:10px!important;color:#d6c08d;font-size:10px}
+#coins-section .coin-source:before{display:none}
+#coins-section .coin-source small{color:var(--muted);font-size:9px;line-height:1.6}
+#coins-section .coin-change,#coins-section .coin-market-cap{font-variant-numeric:tabular-nums}
+.conn-purpose{display:block;color:var(--muted);font-size:9px;line-height:1.5;margin-top:7px}
+@media(max-width:760px){#coins-section .market-table tbody{grid-template-columns:minmax(0,1fr);gap:10px}#coins-section .market-table tbody tr.coin-card-row{padding:13px;gap:8px 10px}}
+@media(max-width:380px){#coins-section .market-table tbody tr.coin-card-row{padding:11px;gap:7px}#coins-section .market-table tbody td{font-size:10px}#coins-section .market-table tbody td:before{font-size:9px}}
+
 </style>
 </head>
 <body>
@@ -604,7 +629,7 @@ body:after{content:"";position:fixed;width:42vw;height:42vw;max-width:620px;max-
 <section class="collapsible-coins-container" id="coins-section">
 <div class="section-head">
   <h2>لیست ارزهای دیجیتال</h2>
-  <span class="badge" id="currency-indicator">واحد: تومان (IRT)</span>
+  <span class="badge" id="currency-indicator">نمایش هم‌زمان: USDT + تومان</span>
 </div>
 
 <div class="table-wrap"><table class="market-table">
@@ -637,8 +662,10 @@ body:after{content:"";position:fixed;width:42vw;height:42vw;max-width:620px;max-
 <script>
 const $=id=>document.getElementById(id);
 let lastMarket={};
-let currentTetherPrice = 60000;
+let currentTetherPrice = 0;
 let currentCurrency = 'IRT';
+let currentTetherSources=[];
+let currentTetherWarning='';
 let cachedCoinsData = [];
 
 const money=(v,d=2)=>Number(v).toLocaleString('en-US',{maximumFractionDigits:d});
@@ -661,11 +688,11 @@ function setCurrency(curr) {
   if(curr === 'IRT') {
     $('btn-irt').classList.add('active');
     $('btn-usdt').classList.remove('active');
-    $('currency-indicator').innerText = 'واحد: تومان (IRT)';
+    $('currency-indicator').innerText = 'نمایش هم‌زمان: USDT + تومان';
   } else {
     $('btn-usdt').classList.add('active');
     $('btn-irt').classList.remove('active');
-    $('currency-indicator').innerText = 'واحد: تتر (USDT)';
+    $('currency-indicator').innerText = 'نمایش هم‌زمان: USDT + تومان';
   }
   if(cachedCoinsData.length > 0) {
     renderCoinsTables(cachedCoinsData);
@@ -675,7 +702,7 @@ function setCurrency(curr) {
 
 function formatVal(usdPrice) {
   if (currentCurrency === 'IRT') {
-    return toman(usdPrice * currentTetherPrice) + ' تومان';
+    return currentTetherPrice>0?toman(usdPrice * currentTetherPrice) + ' تومان':'— تومان';
   } else {
     return '$' + money(usdPrice, usdPrice < 1 ? 4 : 2);
   }
@@ -781,9 +808,9 @@ async function enrichWithBinance(coins){
    const price=Number(ticker?.lastPrice);
    const change=Number(ticker?.priceChangePercent);
    if(ticker&&Number.isFinite(price)&&price>0){
-    return {...c,current_price:price,price_change_percentage_24h:Number.isFinite(change)?change:c.price_change_percentage_24h,price_source:'Binance'};
+    return {...c,current_price:price,price_change_percentage_24h:Number.isFinite(change)?change:c.price_change_percentage_24h,price_source:'Binance',price_updated_at:new Date(Number(ticker.closeTime)||Date.now()).toISOString()};
    }
-   return {...c,price_source:'CoinGecko'};
+   return {...c,price_source:'CoinGecko',price_updated_at:c.last_updated||null};
   });
  }catch(e){
   console.warn('Binance live quotes unavailable; using CoinGecko fallback:',e);
@@ -791,30 +818,43 @@ async function enrichWithBinance(coins){
  }
 }
 
+
+let currentTetherSources=[];
+let currentTetherWarning="";
+async function fetchTetherRate(){
+ const requests=[
+  {source:"Nobitex",url:"https://apiv2.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls",read:d=>Number(d?.stats?.["usdt-rls"]?.latest)/10},
+  {source:"Wallex",url:"https://api.wallex.ir/v1/markets",read:d=>Number(d?.result?.symbols?.USDTIRT?.stats?.lastPrice)/10}
+ ];
+ const results=await Promise.all(requests.map(async item=>{
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),6500);
+  try{
+   const response=await fetch(item.url,{cache:"no-store",signal:controller.signal});
+   if(!response.ok)throw new Error("HTTP "+response.status);
+   const data=await response.json(),price=item.read(data);
+   if(!Number.isFinite(price)||price<1000||price>100000000)throw new Error("invalid rate");
+   return {source:item.source,price};
+  }catch(error){return null;}
+  finally{clearTimeout(timer);}
+ }));
+ const valid=results.filter(Boolean);
+ if(!valid.length)return {price:0,sources:[],warning:"نرخ تتر از منابع داخلی دریافت نشد"};
+ if(valid.length===1)return {price:valid[0].price,sources:[valid[0].source],warning:"فقط یک منبع نرخ تتر پاسخ داد"};
+ const a=valid[0],b=valid[1],diff=Math.abs(a.price-b.price)/((a.price+b.price)/2);
+ if(diff>0.03)return {price:a.price,sources:[a.source],warning:"اختلاف بیش از ۳٪ میان منابع؛ نرخ منبع اصلی نمایش داده شد"};
+ return {price:(a.price+b.price)/2,sources:valid.map(x=>x.source),warning:""};
+}
+
 async function refreshAll(){
  $('updated').textContent='در حال بروزرسانی از مراجع معتبر…';
  checkConnections();
  try{
-  let tetherPrices = [];
-  try {
-    let nxt = await fetch('https://apiv2.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls');
-    let nxtData = await nxt.json();
-    let tmn = Number(nxtData.stats?.['usdt-rls']?.latest || 0) / 10;
-    if(tmn > 0) tetherPrices.push({source:'Nobitex',price:tmn});
-  } catch(e){}
-
-  try {
-    let wal = await fetch('https://api.wallex.ir/v1/markets');
-    let walData = await wal.json();
-    let wPrice = walData?.result?.symbols?.USDTIRT?.stats?.lastPrice;
-    if(wPrice > 0) tetherPrices.push({source:'Wallex',price:wPrice / 10});
-  } catch(e){}
-
-  if(tetherPrices.length > 0) {
-    currentTetherPrice = tetherPrices.reduce((a,b)=>a+b.price,0) / tetherPrices.length;
-    $('usdt').textContent = money(currentTetherPrice,0)+' تومان';
-    $('usdt-source').textContent = 'منبع: '+tetherPrices.map(x=>x.source).join(' + ');
-  }
+  const tether=await fetchTetherRate();
+  currentTetherPrice=tether.price;
+  currentTetherSources=tether.sources;
+  currentTetherWarning=tether.warning;
+  if(currentTetherPrice>0){$("usdt").textContent=money(currentTetherPrice,0)+" تومان";$("usdt-source").textContent="منبع: "+currentTetherSources.join(" + ")+(currentTetherWarning?" · "+currentTetherWarning:"");}
+  else{$("usdt").textContent="داده در دسترس نیست";$("usdt-source").textContent=currentTetherWarning;}
 
   const [topRes, extraRes] = await Promise.all([
     fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=false&price_change_percentage=1h%2C24h%2C7d'),
@@ -872,32 +912,45 @@ function renderHeroCards() {
   let ethUsd = lastMarket.crypto.ETH.usd;
 
   $('btc').textContent = formatVal(btcUsd);
-  $('btc-sub').textContent = currentCurrency === 'IRT' ? 'معادل: $' + money(btcUsd) : 'معادل: ' + toman(btcUsd * currentTetherPrice) + ' تومان';
+  $('btc-sub').textContent = currentCurrency === 'IRT' ? 'معادل: $' + money(btcUsd) : currentTetherPrice>0?'معادل: ' + toman(btcUsd * currentTetherPrice) + ' تومان':'معادل تومانی در دسترس نیست';
 
   $('eth').textContent = formatVal(ethUsd);
-  $('eth-sub').textContent = currentCurrency === 'IRT' ? 'معادل: $' + money(ethUsd) : 'معادل: ' + toman(ethUsd * currentTetherPrice) + ' تومان';
+  $('eth-sub').textContent = currentCurrency === 'IRT' ? 'معادل: $' + money(ethUsd) : currentTetherPrice>0?'معادل: ' + toman(ethUsd * currentTetherPrice) + ' تومان':'معادل تومانی در دسترس نیست';
   $('btc-sub').textContent += ' · قیمت: ' + (cachedCoinsData.find(x=>x.id==='bitcoin')?.price_source||'CoinGecko');
   $('eth-sub').textContent += ' · قیمت: ' + (cachedCoinsData.find(x=>x.id==='ethereum')?.price_source||'CoinGecko');
 }
 
+
 function renderCoinsTables(data) {
-  let topCoins = data.slice(0, 5);
-  let restCoins = data.slice(5);
-
-  let rowHtml = (arr) => arr.map(c=>`
-    <tr>
-      <td class="coin-identity" data-label="ارز"><img class="coin-icon" src="${c.image||''}" alt="" loading="lazy"><span><b>${c.name}</b> <span class="muted">${c.symbol.toUpperCase()}</span></span></td>
-      <td class="num" data-label="قیمت دلاری">${money(c.current_price, c.current_price < 1 ? 4 : 2)} $<small class="muted" style="display:block;font-size:10px;margin-top:3px;">منبع قیمت: ${c.price_source||"CoinGecko"} · ${c.exchange_support?(c.exchange_support.spot?.confirmed?"اسپات: "+c.exchange_support.spot.providers.join("، "):c.exchange_support.futures?.confirmed?"فیوچرز: "+c.exchange_support.futures.providers.join("، "):"فقط قیمت مرجع"):"در حال بررسی جفت‌ها"}</small></td>
-      <td class="num" data-label="قیمت تومانی" style="color:var(--gold2); font-weight:bold;">${toman(c.current_price * currentTetherPrice)} تومان</td>
-      <td class="${(c.price_change_percentage_24h||0)>=0?'positive':'negative'} num" data-label="تغییر ۲۴ ساعت">${(c.price_change_percentage_24h||0)>=0?'+':''}${c.price_change_percentage_24h?.toFixed(2)||0}%</td>
-      <td class="num" data-label="ارزش بازار">${money(c.market_cap,0)}</td>
-    </tr>
-  `).join('');
-
-  $('top-coins').innerHTML = rowHtml(topCoins);
-  $('full-coins').innerHTML = rowHtml(restCoins);
-  const count = $('full-coins-count');
-  if (count) count.textContent = restCoins.length + ' ارز دیگر · برای مشاهده باز کنید';
+ const renderRows=items=>items.map(c=>{
+  const symbol=aiEscape(String(c.symbol||"").toUpperCase());
+  const name=aiEscape(c.name||symbol);
+  const price=Number(c.current_price);
+  const priceText=Number.isFinite(price)&&price>0?money(price,price<1?6:2)+" USDT":"داده در دسترس نیست";
+  const tomanText=currentTetherPrice>0&&Number.isFinite(price)&&price>0?toman(price*currentTetherPrice)+" تومان":"نرخ تبدیل در دسترس نیست";
+  const source=aiEscape(c.price_source||"CoinGecko");
+  const sourceLabel=source==="CoinGecko"?"مرجع دلاری CoinGecko":"قیمت بازار اسپات";
+  const updatedAt=c.price_updated_at||c.last_updated;
+  const updatedText=updatedAt&&!Number.isNaN(Date.parse(updatedAt))?new Date(updatedAt).toLocaleTimeString("fa-IR"):"زمان بروزرسانی نامشخص";
+  const spot=c.exchange_support?.spot;
+  const spotText=spot?.confirmed?"جفت اسپات فعال: "+(spot.providers||[]).join("، "):"جفت اسپات تأییدشده در صرافی‌های بررسی‌شده پیدا نشد";
+  const change=Number(c.price_change_percentage_24h);
+  const changeText=Number.isFinite(change)?(change>=0?"+":"")+change.toFixed(2)+"%":"—";
+  const cap=Number(c.market_cap)>0?money(c.market_cap,0):"—";
+  return `
+   <tr class="coin-card-row">
+    <td class="coin-identity" data-label="دارایی"><img class="coin-icon" src="${aiEscape(c.image||"")}" alt="" loading="lazy"><span><b>${name}</b><span class="coin-symbol">${symbol}</span></span></td>
+    <td class="num coin-price-usdt" data-label="قیمت به تتر">${priceText}</td>
+    <td class="num coin-price-irt" data-label="قیمت به تومان">${tomanText}</td>
+    <td class="num coin-change ${Number.isFinite(change)?(change>=0?"positive":"negative"):"muted"}" data-label="تغییر ۲۴ ساعت">${changeText}</td>
+    <td class="num coin-market-cap" data-label="ارزش بازار">${cap}</td>
+    <td class="coin-source" data-label="منبع قیمت"><span>منبع قیمت: <b>${source}</b></span><small>${sourceLabel} · ${updatedText}</small><small>${aiEscape(spotText)}</small></td>
+   </tr>`;
+ }).join("");
+ $("top-coins").innerHTML=renderRows(data.slice(0,5));
+ $("full-coins").innerHTML=renderRows(data.slice(5));
+ const count=$("full-coins-count");
+ if(count)count.textContent=data.slice(5).length+" ارز دیگر · برای مشاهده باز کنید";
 }
 
 function updateDropdowns(data) {
@@ -924,32 +977,37 @@ function updateDropdowns(data) {
   restoreAiReportOnce();
 }
 
+
 async function checkConnections(){
  const targets=[
-  {name:'Binance',url:'https://api.binance.com/api/v3/time',valid:d=>Number.isFinite(Number(d.serverTime))},
-  {name:'CoinGecko',url:'https://api.coingecko.com/api/v3/ping',valid:d=>typeof d.gecko_says==='string'},
-  {name:'Nobitex',url:'https://apiv2.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls',valid:d=>Number(d.stats?.['usdt-rls']?.latest)>0},
-  {name:'Wallex',url:'https://api.wallex.ir/v1/markets',valid:d=>Number(d?.result?.symbols?.USDTIRT?.stats?.lastPrice)>0}
+  {name:"Binance Spot",purpose:"قیمت و معاملات اسپات",url:"https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT",valid:d=>Number(d?.price)>0},
+  {name:"Bybit Spot",purpose:"قیمت و معاملات اسپات",url:"https://api.bybit.com/v5/market/tickers?category=spot&symbol=BTCUSDT",valid:d=>d?.retCode===0&&Number(d?.result?.list?.[0]?.lastPrice)>0},
+  {name:"OKX Spot",purpose:"قیمت و معاملات اسپات",url:"https://www.okx.com/api/v5/market/ticker?instId=BTC-USDT",valid:d=>d?.code==="0"&&Number(d?.data?.[0]?.last)>0},
+  {name:"CoinGecko",purpose:"قیمت مرجع و اطلاعات بازار",url:"https://api.coingecko.com/api/v3/ping",valid:d=>typeof d?.gecko_says==="string"},
+  {name:"Nobitex",purpose:"نرخ تتر به تومان",url:"https://apiv2.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls",valid:d=>Number(d?.stats?.["usdt-rls"]?.latest)>0},
+  {name:"Wallex",purpose:"نرخ تتر به تومان",url:"https://api.wallex.ir/v1/markets",valid:d=>Number(d?.result?.symbols?.USDTIRT?.stats?.lastPrice)>0}
  ];
  const checks=await Promise.all(targets.map(async t=>{
-  const start=Date.now();
+  const start=Date.now(),controller=new AbortController(),timer=setTimeout(()=>controller.abort(),6500);
   try{
-   const controller=new AbortController();
-   const timer=setTimeout(()=>controller.abort(),6500);
-   let response;
-   try{response=await fetch(t.url,{cache:'no-store',signal:controller.signal});}finally{clearTimeout(timer);}
-   if(!response.ok)throw new Error('HTTP '+response.status);
+   const response=await fetch(t.url,{cache:"no-store",signal:controller.signal});
+   if(!response.ok)throw new Error("HTTP "+response.status);
    const data=await response.json();
-   if(!t.valid(data))throw new Error('Invalid API response');
+   if(!t.valid(data))throw new Error("پاسخ معتبر دریافت نشد");
    const ping=Date.now()-start;
-   return {name:t.name,status:ping>2500?'slow':'ok',ping};
-  }catch(e){return {name:t.name,status:'down',ping:null};}
+   return {...t,status:ping>2500?"slow":"ok",ping};
+  }catch(error){return {...t,status:"down",ping:null};}
+  finally{clearTimeout(timer);}
  }));
- $('connections').innerHTML=checks.map(c=>{
-  const label=c.status==='down'?'قطع':c.status==='slow'?'کند':'متصل';
-  const latency=c.ping===null?'—':c.ping+' ms';
-  return '<div class="conn"><div class="conn-top"><span class="conn-name">'+c.name+'</span><span class="lamp '+c.status+'"></span></div><div class="conn-meta"><span>'+label+'</span><b dir="ltr">'+latency+'</b></div></div>';
- }).join('');
+ const cards=checks.map(c=>{
+  const label=c.status==="down"?"قطع":c.status==="slow"?"کند":"متصل";
+  const latency=c.ping===null?"—":c.ping+" ms";
+  return '<div class="conn"><div class="conn-top"><span class="conn-name">'+c.name+'</span><span class="lamp '+c.status+'"></span></div><div class="conn-meta"><span>'+label+'</span><b dir="ltr">'+latency+'</b></div><small class="conn-purpose">'+c.purpose+'</small></div>';
+ });
+ cards.push('<div class="conn"><div class="conn-top"><span class="conn-name">CoinMarketCap</span><span class="lamp"></span></div><div class="conn-meta"><span>فعال نشده</span><b>کلید API لازم است</b></div><small class="conn-purpose">منبع مرجع جایگزین؛ پس از افزودن کلید امن</small></div>');
+ $("connections").innerHTML=cards.join("");
+ const summary=$("conn-summary");
+ if(summary)summary.textContent=checks.filter(x=>x.status!=="down").length+" از "+checks.length+" منبع پاسخ‌گو";
  return checks;
 }
 
