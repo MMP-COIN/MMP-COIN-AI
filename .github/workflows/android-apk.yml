@@ -23,6 +23,8 @@ concurrency:
 jobs:
   build-android:
     runs-on: ubuntu-latest
+    env:
+      ANDROID_SIGNING_CONFIG: ${{ secrets.ANDROID_SIGNING_CONFIG }}
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
