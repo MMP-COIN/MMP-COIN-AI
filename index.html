@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#08090d">
+<meta name="mmp-app-version" content="1.0.0">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="icon" type="image/svg+xml" href="assets/mmp-coin-ai-icon.svg?v=20261104">
@@ -1421,7 +1422,7 @@ html.mmp-native-app .top,html.mmp-native-app .mmp-sidebar{display:none!important
 html.mmp-native-app .wrap{max-width:100%;padding:12px 13px calc(112px + env(safe-area-inset-bottom));}
 html.mmp-native-app .native-appbar{position:sticky;top:0;z-index:950;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:calc(9px + env(safe-area-inset-top)) 15px 11px;margin:0 -13px 13px;background:linear-gradient(110deg,#101e2cF5,#0a111bf5);border-bottom:1px solid #40586b;box-shadow:0 8px 28px #0006;backdrop-filter:blur(20px)}
 html.mmp-native-app .native-brand{display:flex;align-items:center;gap:10px}
-html.mmp-native-app .native-mark{width:39px;height:39px;display:grid;place-items:center;border-radius:13px;background:linear-gradient(145deg,#f4d895,#a77a36);color:#17130b;font-size:23px;font-weight:1000;box-shadow:0 5px 18px #d9b66d44}
+html.mmp-native-app .native-mark{width:42px;height:42px;display:grid;place-items:center;overflow:hidden;border-radius:13px;background:#081323;border:1px solid #61748a;box-shadow:0 5px 18px #d9b66d33;flex:none}html.mmp-native-app .native-mark img{display:block;width:100%;height:100%;object-fit:cover}
 html.mmp-native-app .native-brand b{display:block;color:#f3d995;font-size:13px;letter-spacing:1px}
 html.mmp-native-app .native-brand small{display:block;color:#8fa8bb;font-size:9px;margin-top:3px;letter-spacing:1.4px}
 html.mmp-native-app .native-live{display:flex;align-items:center;gap:7px;color:#a7c0cf;font-size:10px;border:1px solid #355367;border-radius:30px;padding:7px 10px;background:#112331}
@@ -1442,11 +1443,13 @@ html.mmp-native-app .stat-value{font-size:18px}
 html.mmp-native-app .chart-box-wrapper,html.mmp-native-app .card,html.mmp-native-app .collapsible-coins-container{border-radius:17px;border-color:#30495c;background:linear-gradient(145deg,#142332,#0c151f);box-shadow:0 12px 28px #0005}
 html.mmp-native-app .section-head{border-bottom:1px solid #2d4354;padding-bottom:11px}
 html.mmp-native-app .section-head h2{font-size:14px;color:#f0dfb7}
-html.mmp-native-app .mmp-mobile-dock{position:fixed!important;z-index:980;bottom:calc(8px + env(safe-area-inset-bottom))!important;left:10px!important;right:10px!important;display:flex!important;justify-content:space-around;align-items:center;padding:8px 5px!important;border:1px solid #526b7d!important;border-radius:19px!important;background:linear-gradient(110deg,#142535f5,#0b141ff7)!important;box-shadow:0 13px 36px #000b,inset 0 1px #ffffff1c!important;backdrop-filter:blur(24px)}
-html.mmp-native-app .mmp-mobile-dock a{min-width:48px;color:#9bb0bf;font-size:9px;gap:4px}
-html.mmp-native-app .mmp-mobile-dock a i{font-size:19px}
-html.mmp-native-app .mmp-mobile-dock a.dock-ai i{background:linear-gradient(145deg,#f1d48f,#a77a38);color:#16130d;width:36px;height:31px;border-radius:11px}
-html.mmp-native-app .mmp-mobile-dock a.native-active{color:#f5d991}
+html.mmp-native-app .mmp-mobile-dock{position:fixed!important;z-index:980;left:12px!important;right:12px!important;bottom:max(10px,env(safe-area-inset-bottom))!important;display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr));gap:3px;align-items:center;padding:7px 6px!important;border:1px solid #52617a!important;border-radius:20px!important;background:linear-gradient(110deg,#142535f5,#0b141ff7)!important;box-shadow:0 12px 35px #000b!important;backdrop-filter:blur(22px)}
+html.mmp-native-app .mmp-mobile-dock a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:0;padding:6px 2px;border-radius:13px;color:#9eacbf;font-size:9px;font-weight:700;text-decoration:none;white-space:nowrap}
+html.mmp-native-app .mmp-mobile-dock a i{font-style:normal;font-size:19px;line-height:1.1}
+html.mmp-native-app .mmp-mobile-dock a.dock-ai i{background:linear-gradient(145deg,#f1d48f,#a77a38);color:#16130d;width:36px;height:31px;display:grid;place-items:center;border-radius:11px}
+html.mmp-native-app .mmp-mobile-dock a.native-active{color:#f5d991;background:linear-gradient(145deg,#3b301d,#1c2430);border:1px solid #9e804a;box-shadow:0 0 18px #d7b46a30}
+html.mmp-native-app .native-update-banner{position:fixed;z-index:1200;left:14px;right:14px;top:calc(12px + env(safe-area-inset-top));display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid #b8914d;border-radius:15px;background:linear-gradient(120deg,#172638,#121923);box-shadow:0 12px 35px #000b;color:#f4e1b5;font-size:11px}
+html.mmp-native-app .native-update-banner a{flex:none;padding:8px 12px;border-radius:10px;background:linear-gradient(145deg,#f1d48f,#a77a38);color:#15120b;text-decoration:none;font-weight:900}
 html.mmp-native-app #chart-container,html.mmp-native-app #tradingview_widget{height:420px;min-height:420px}
 html.mmp-native-app .connection-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 html.mmp-native-app .ai-toolbar{grid-template-columns:1fr 1fr}
@@ -1465,15 +1468,35 @@ html.mmp-native-app .footer{padding-bottom:12px}
   document.addEventListener("DOMContentLoaded",function(){
    if(document.querySelector(".native-appbar"))return;
    var header=document.createElement("header");header.className="native-appbar";
-   header.innerHTML='<div class="native-brand"><div class="native-mark">M</div><div><b>MMP COIN AI</b><small>SMART MARKET TERMINAL</small></div></div><div class="native-live"><i></i><span>بازار زنده</span></div>';
+   header.innerHTML='<div class="native-brand"><div class="native-mark"><img src="assets/mmp-coin-ai-icon.svg" alt="MMP COIN AI"></div><div><b>MMP COIN AI</b><small>SMART MARKET TERMINAL</small></div></div><div class="native-live"><i></i><span>بازار زنده</span></div>';
    document.body.insertBefore(header,document.body.firstChild);
    var nav=document.querySelector(".mmp-mobile-dock");
    if(nav){
-    nav.innerHTML='<a href="#hero" data-native-tab="hero"><i>⌂</i><span>خانه</span></a><a href="#opportunities" data-native-tab="opportunities"><i>◈</i><span>رادار</span></a><a href="#watchlist" data-native-tab="watchlist"><i>☆</i><span>دیده‌بان</span></a><a href="#ai-section" data-native-tab="ai-section" class="dock-ai"><i>✧</i><span>تحلیل AI</span></a><a href="#trading-tools" data-native-tab="trading-tools"><i>⌗</i><span>ابزارها</span></a>';
+    nav.innerHTML='<a href="#hero" data-native-tab="hero"><i>⌂</i><span>خانه</span></a><a href="#chart-section" data-native-tab="chart-section"><i>▥</i><span>نمودار</span></a><a href="#opportunities" data-native-tab="opportunities"><i>◈</i><span>رادار</span></a><a href="#ai-section" data-native-tab="ai-section" class="dock-ai"><i>✧</i><span>تحلیل AI</span></a><a href="#trading-tools" data-native-tab="trading-tools"><i>⌗</i><span>ابزارها</span></a>';
     var links=nav.querySelectorAll("a");
-    links.forEach(function(a){a.addEventListener("click",function(){links.forEach(function(x){x.classList.remove("native-active")});a.classList.add("native-active")})});
-    links[0]?.classList.add("native-active");
+    function setActive(id){links.forEach(function(a){a.classList.toggle("native-active",a.getAttribute("data-native-tab")===id)})}
+    links.forEach(function(a){a.addEventListener("click",function(){setActive(a.getAttribute("data-native-tab"))})});
+    setActive("hero");
+    if("IntersectionObserver" in window){
+     var sections=["hero","chart-section","opportunities","ai-section","trading-tools"].map(function(id){return document.getElementById(id)}).filter(Boolean);
+     var observer=new IntersectionObserver(function(entries){var visible=entries.filter(function(e){return e.isIntersecting}).sort(function(a,b){return b.intersectionRatio-a.intersectionRatio})[0];if(visible)setActive(visible.target.id)},{rootMargin:"-18% 0px -58% 0px",threshold:[0,.15,.35,.6]});
+     sections.forEach(function(el){observer.observe(el)});
+    }
+    links.forEach(function(a){a.addEventListener("click",function(e){var target=document.querySelector(a.getAttribute("href"));if(target){e.preventDefault();target.scrollIntoView({behavior:"smooth",block:"start"});history.replaceState(null,"",a.getAttribute("href"))}})});
    }
+   function checkNativeUpdate(){
+    var current=document.querySelector('meta[name="mmp-app-version"]')?.content||"1.0.0";
+    fetch("https://api.github.com/repos/MMP-COIN/MMP-COIN-AI/releases/latest",{headers:{Accept:"application/vnd.github+json"}})
+     .then(function(r){return r.ok?r.json():null}).then(function(release){
+      if(!release||!release.tag_name||release.tag_name==="app-v"+current)return;
+      var apk=(release.assets||[]).find(function(asset){return asset.name&&asset.name.toLowerCase().endsWith(".apk")});
+      if(!apk||document.querySelector(".native-update-banner"))return;
+      var banner=document.createElement("div");banner.className="native-update-banner";
+      banner.innerHTML='<span>نسخه جدید MMP COIN AI آماده است</span><a href="'+apk.browser_download_url+'" target="_blank" rel="noopener">دریافت بروزرسانی</a>';
+      document.body.appendChild(banner);
+     }).catch(function(){});
+   }
+   checkNativeUpdate();
    var wrap=document.querySelector(".wrap");
    if(wrap){
     var ticker=document.getElementById("market-ticker");
