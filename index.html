@@ -1157,10 +1157,10 @@ async function checkConnections(){
   if(!response.ok)throw new Error("HTTP "+response.status);
   const payload=await response.json();
   if(!Array.isArray(payload?.checks))throw new Error("پاسخ بررسی اتصال کامل نیست");
-  const expected=["binance spot","bybit spot","okx spot","nobitex","wallex"];
+  const expected=["binance spot","bybit spot","okx spot","nobitex","wallex","bitget spot"];
   const checks=new Map(payload.checks.map(c=>[String(c?.name||"").trim().toLowerCase(),c]));
   const ordered=expected.map(name=>checks.get(name)).filter(Boolean);
-  if(ordered.length!==5)throw new Error("پاسخ بررسی اتصال کامل نیست");
+  if(ordered.length!==expected.length)throw new Error("پاسخ بررسی اتصال کامل نیست");
 
   const makeCard=c=>{
    const label=c.status==="down"?"قطع":c.status==="slow"?"کند":"متصل";
@@ -1173,7 +1173,7 @@ async function checkConnections(){
   $("connections-extra").innerHTML=ordered.slice(4).map(makeCard).join("");
   renderCoinGeckoConnection();setupConnectionsToggle();
   const summary=$("conn-summary");
-  if(summary)summary.textContent=ordered.filter(x=>x.status!=="down").length+" از ۵ صرافی پاسخ‌گو";
+  if(summary)summary.textContent=ordered.filter(x=>x.status!=="down").length+" از "+expected.length+" منبع پاسخ‌گو";
   return ordered;
  }catch(error){
   const message=error.name==="AbortError"?"مهلت بررسی اتصال تمام شد":"سرویس بررسی اتصال پاسخ نداد";
