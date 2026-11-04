@@ -50,6 +50,7 @@ jobs:
           probe "Bybit EU alternate" "https://api.bytick.eu/v5/market/tickers?category=spot&symbol=BTCUSDT"
           probe "Bybit global" "https://api.bybit.com/v5/market/tickers?category=spot&symbol=BTCUSDT"
           probe "Wallex with browser headers" "https://api.wallex.ir/v1/markets" -H "Origin: https://wallex.ir" -H "Referer: https://wallex.ir/"
+          probe "Bitget Spot" "https://api.bitget.com/api/v3/market/tickers?category=SPOT&symbol=BTCUSDT"
 
       - name: Check exchange connection monitor
         env:
