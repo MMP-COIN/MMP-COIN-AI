@@ -735,28 +735,65 @@ const NON_TRADABLE_SYMBOLS = new Set([
  'STETH','WSTETH','RETH','XAUT'
 ]);
 
+async function enrichWithBinance(coins){
+ try{
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),8000);
+  let response;
+  try{
+   response=await fetch('https://api.binance.com/api/v3/ticker/24hr',{cache:'no-store',signal:controller.signal});
+  }finally{clearTimeout(timer);}
+  if(!response.ok)throw new Error('Binance HTTP '+response.status);
+  const tickers=await response.json();
+  if(!Array.isArray(tickers))throw new Error('Invalid Binance ticker response');
+  const bySymbol=new Map();
+  tickers.forEach(t=>{
+   if(typeof t.symbol==='string'&&t.symbol.endsWith('USDT'))bySymbol.set(t.symbol,t);
+  });
+  const counts=new Map();
+  coins.forEach(c=>{
+   const symbol=String(c.symbol||'').toUpperCase();
+   counts.set(symbol,(counts.get(symbol)||0)+1);
+  });
+  return coins.map(c=>{
+   const symbol=String(c.symbol||'').toUpperCase();
+   const ticker=counts.get(symbol)===1&&!NON_TRADABLE_SYMBOLS.has(symbol)&&!NON_TRADABLE_COIN_IDS.has(c.id)?bySymbol.get(symbol+'USDT'):null;
+   const price=Number(ticker?.lastPrice);
+   const change=Number(ticker?.priceChangePercent);
+   if(ticker&&Number.isFinite(price)&&price>0){
+    return {...c,current_price:price,price_change_percentage_24h:Number.isFinite(change)?change:c.price_change_percentage_24h,price_source:'Binance'};
+   }
+   return {...c,price_source:'CoinGecko'};
+  });
+ }catch(e){
+  console.warn('Binance live quotes unavailable; using CoinGecko fallback:',e);
+  return coins.map(c=>({...c,price_source:'CoinGecko'}));
+ }
+}
+
 async function refreshAll(){
  $('updated').textContent='در حال بروزرسانی از مراجع معتبر…';
+ checkConnections();
  try{
   let tetherPrices = [];
   try {
     let nxt = await fetch('https://apiv2.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls');
     let nxtData = await nxt.json();
     let tmn = Number(nxtData.stats?.['usdt-rls']?.latest || 0) / 10;
-    if(tmn > 0) tetherPrices.push(tmn);
+    if(tmn > 0) tetherPrices.push({source:'Nobitex',price:tmn});
   } catch(e){}
 
   try {
     let wal = await fetch('https://api.wallex.ir/v1/markets');
     let walData = await wal.json();
     let wPrice = walData?.result?.symbols?.USDTIRT?.stats?.lastPrice;
-    if(wPrice > 0) tetherPrices.push(wPrice / 10);
+    if(wPrice > 0) tetherPrices.push({source:'Wallex',price:wPrice / 10});
   } catch(e){}
 
   if(tetherPrices.length > 0) {
-    currentTetherPrice = tetherPrices.reduce((a,b)=>a+b,0) / tetherPrices.length;
+    currentTetherPrice = tetherPrices.reduce((a,b)=>a+b.price,0) / tetherPrices.length;
     $('usdt').textContent = money(currentTetherPrice,0)+' تومان';
-    $('usdt-source').textContent = 'منبع: Nobitex & Wallex';
+    $('usdt-source').textContent = 'منبع: '+tetherPrices.map(x=>x.source).join(' + ');
   }
 
   const [topRes, extraRes] = await Promise.all([
@@ -781,6 +818,7 @@ async function refreshAll(){
   });
   let data = [...merged.values()].sort((a,b)=>(a.market_cap_rank||999999)-(b.market_cap_rank||999999));
   if(data.length < 50) throw new Error('Only '+data.length+' tradable assets received from CoinGecko; retry on next refresh');
+  data = await enrichWithBinance(data);
   cachedCoinsData = data;
   
   lastMarket.crypto = {};
@@ -802,7 +840,6 @@ async function refreshAll(){
   }catch(e){$('gold').textContent='—';}
 
   $('updated').textContent='بروزرسانی شد: '+new Date().toLocaleTimeString('fa-IR');
-  checkConnections();
  }catch(e){$('updated').textContent='خطا در دریافت داده';}
 }
 
@@ -825,7 +862,7 @@ function renderCoinsTables(data) {
   let rowHtml = (arr) => arr.map(c=>`
     <tr>
       <td class="coin-identity" data-label="ارز"><img class="coin-icon" src="${c.image||''}" alt="" loading="lazy"><span><b>${c.name}</b> <span class="muted">${c.symbol.toUpperCase()}</span></span></td>
-      <td class="num" data-label="قیمت دلاری">${money(c.current_price, c.current_price < 1 ? 4 : 2)} $</td>
+      <td class="num" data-label="قیمت دلاری">${money(c.current_price, c.current_price < 1 ? 4 : 2)} $<small class="muted" style="display:block;font-size:10px;margin-top:3px;">منبع: ${c.price_source||"CoinGecko"}</small></td>
       <td class="num" data-label="قیمت تومانی" style="color:var(--gold2); font-weight:bold;">${toman(c.current_price * currentTetherPrice)} تومان</td>
       <td class="${(c.price_change_percentage_24h||0)>=0?'positive':'negative'} num" data-label="تغییر ۲۴ ساعت">${(c.price_change_percentage_24h||0)>=0?'+':''}${c.price_change_percentage_24h?.toFixed(2)||0}%</td>
       <td class="num" data-label="ارزش بازار">${money(c.market_cap,0)}</td>
@@ -863,27 +900,32 @@ function updateDropdowns(data) {
 }
 
 async function checkConnections(){
- const targets = [
-  {name: 'Binance', url: 'https://api.binance.com/api/v3/ping'},
-  {name: 'CoinGecko', url: 'https://api.coingecko.com/api/v3/ping'},
-  {name: 'Nobitex', url: 'https://apiv2.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls'},
-  {name: 'Wallex', url: 'https://api.wallex.ir/v1/markets'}
+ const targets=[
+  {name:'Binance',url:'https://api.binance.com/api/v3/time',valid:d=>Number.isFinite(Number(d.serverTime))},
+  {name:'CoinGecko',url:'https://api.coingecko.com/api/v3/ping',valid:d=>typeof d.gecko_says==='string'},
+  {name:'Nobitex',url:'https://apiv2.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls',valid:d=>Number(d.stats?.['usdt-rls']?.latest)>0},
+  {name:'Wallex',url:'https://api.wallex.ir/v1/markets',valid:d=>Number(d?.result?.symbols?.USDTIRT?.stats?.lastPrice)>0}
  ];
- 
- let html = '';
- for(let t of targets){
-  let start = Date.now();
-  let status = 'down';
-  try {
-   await fetch(t.url, {method: 'GET', mode: 'no-cors'});
-   let ping = Date.now() - start;
-   status = ping > 2500 ? 'slow' : 'ok';
-   html += `<div class="conn"><div class="conn-top"><span class="conn-name">${t.name}</span><span class="lamp ${status}"></span></div><div class="conn-meta"><span>متصل</span><b dir="ltr">${ping} ms</b></div></div>`;
-  } catch(err) {
-   html += `<div class="conn"><div class="conn-top"><span class="conn-name">${t.name}</span><span class="lamp down"></span></div><div class="conn-meta"><span>قطع</span><b dir="ltr">—</b></div></div>`;
-  }
- }
- $('connections').innerHTML = html;
+ const checks=await Promise.all(targets.map(async t=>{
+  const start=Date.now();
+  try{
+   const controller=new AbortController();
+   const timer=setTimeout(()=>controller.abort(),6500);
+   let response;
+   try{response=await fetch(t.url,{cache:'no-store',signal:controller.signal});}finally{clearTimeout(timer);}
+   if(!response.ok)throw new Error('HTTP '+response.status);
+   const data=await response.json();
+   if(!t.valid(data))throw new Error('Invalid API response');
+   const ping=Date.now()-start;
+   return {name:t.name,status:ping>2500?'slow':'ok',ping};
+  }catch(e){return {name:t.name,status:'down',ping:null};}
+ }));
+ $('connections').innerHTML=checks.map(c=>{
+  const label=c.status==='down'?'قطع':c.status==='slow'?'کند':'متصل';
+  const latency=c.ping===null?'—':c.ping+' ms';
+  return '<div class="conn"><div class="conn-top"><span class="conn-name">'+c.name+'</span><span class="lamp '+c.status+'"></span></div><div class="conn-meta"><span>'+label+'</span><b dir="ltr">'+latency+'</b></div></div>';
+ }).join('');
+ return checks;
 }
 
 const AI_ANALYSIS_ENDPOINT = "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev"; // بعد از انتشار Worker، نشانی ...workers.dev/analyze در این متغیر قرار می‌گیرد.
