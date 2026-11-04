@@ -1166,9 +1166,9 @@ async function checkConnections(){
   const makeCard=c=>{
    const label=c.status==="down"?"قطع":c.status==="slow"?"کند":"متصل";
    const latency=c.ping===null||c.ping===undefined?"—":c.ping+" ms";
-   const detail=c.error?'<small class="conn-purpose">'+c.error+'</small>':'<small class="conn-purpose">'+(c.purpose||"وضعیت اتصال صرافی")+'</small>';
+   const detail=c.error?'<small class="conn-purpose">'+aiEscape(c.error)+'</small>':'<small class="conn-purpose">'+aiEscape(c.purpose||"وضعیت اتصال صرافی")+'</small>';
    const lamp=c.status==="ok"?"ok":c.status==="slow"?"slow":"down";
-   return '<div class="conn"><div class="conn-top"><span class="conn-name">'+c.name+'</span><span class="lamp '+lamp+'"></span></div><div class="conn-meta"><span>'+label+'</span><b dir="ltr">'+latency+'</b></div>'+detail+'</div>';
+   return '<div class="conn"><div class="conn-top"><span class="conn-name">'+aiEscape(c.name)+'</span><span class="lamp '+lamp+'"></span></div><div class="conn-meta"><span>'+label+'</span><b dir="ltr">'+latency+'</b></div>'+detail+'</div>';
   };
   $("connections").innerHTML=ordered.slice(0,4).map(makeCard).join("");
   $("connections-extra").innerHTML=ordered.slice(4).map(makeCard).join("");
