@@ -51,7 +51,6 @@ jobs:
           probe "Bybit global" "https://api.bybit.com/v5/market/tickers?category=spot&symbol=BTCUSDT"
           probe "Wallex with browser headers" "https://api.wallex.ir/v1/markets" -H "Origin: https://wallex.ir" -H "Referer: https://wallex.ir/"
           probe "Bitget Spot" "https://api.bitget.com/api/v3/market/tickers?category=SPOT&symbol=BTCUSDT"
-          probe "Bitpin public tickers" "https://api.bitpin.ir/api/v1/mkt/tickers/"
           probe_cors() {
             label="$1"
             url="$2"
@@ -61,7 +60,6 @@ jobs:
           }
           probe_cors "Wallex" "https://api.wallex.ir/v1/markets"
           probe_cors "Bitget" "https://api.bitget.com/api/v3/market/tickers?category=SPOT&symbol=BTCUSDT"
-          probe_cors "Bitpin" "https://api.bitpin.ir/api/v1/mkt/tickers/"
 
       - name: Check exchange connection monitor
         env:
@@ -69,7 +67,7 @@ jobs:
         run: |
           set -euo pipefail
           curl --fail --silent --show-error --retry 2 --retry-delay 3 --max-time 25 "$WORKER_URL/connections-health" -o /tmp/connections.json
-          jq -e '.checks | length == 7' /tmp/connections.json >/dev/null
+          jq -e '.checks | length == 6' /tmp/connections.json >/dev/null
           echo "Current exchange connection status:"
           jq -r '.checks[] | "- " + .name + ": " + .status + (if .ping == null then "" else " (" + (.ping|tostring) + " ms)" end) + (if .error == null then "" else " — " + (.error|tostring) end)' /tmp/connections.json
           jq -r '.checks[] | "- " + .name + ": " + .status + (if .ping == null then "" else " (" + (.ping|tostring) + " ms)" end) + (if .error == null then "" else " — " + (.error|tostring) end)' /tmp/connections.json >> "$GITHUB_STEP_SUMMARY"
