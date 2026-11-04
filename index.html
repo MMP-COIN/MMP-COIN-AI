@@ -928,7 +928,7 @@ async function refreshAll(){
  if(refreshInFlight)return;
  refreshInFlight=true;
  $('updated').textContent='در حال بروزرسانی از مراجع معتبر…';
- checkConnections();
+
  try{
   const tether=await fetchTetherRate();
   if(tether.price>0){
@@ -1344,6 +1344,7 @@ $("journal-clear")?.addEventListener("click",()=>{if(confirm("سوابق تحل�
 renderMarketHours();renderJournal();renderWatch();setInterval(renderMarketHours,15000);
 
 refreshAll();
+ checkConnections();setInterval(checkConnections,300000);
 initTradingView("BINANCE:BTCUSDT");
 setInterval(refreshAll, 60000);
 </script>
