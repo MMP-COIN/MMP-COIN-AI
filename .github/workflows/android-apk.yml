@@ -8,6 +8,8 @@ on:
       - "index.html"
       - "capacitor.config.json"
       - "www/**"
+      - "assets/**"
+      - "manifest.webmanifest"
       - ".github/workflows/android-apk.yml"
   workflow_dispatch:
 
@@ -44,6 +46,9 @@ jobs:
 
       - name: Copy the full dashboard into the Android app
         run: cp index.html www/index.html
+
+      - name: Copy browser icon and install manifest
+        run: mkdir -p www/assets && cp -R assets/. www/assets/ && cp manifest.webmanifest www/manifest.webmanifest
 
       - name: Sync web configuration
         run: npx cap sync android
