@@ -863,27 +863,32 @@ function updateDropdowns(data) {
 }
 
 async function checkConnections(){
- const targets = [
-  {name: 'Binance', url: 'https://api.binance.com/api/v3/ping'},
-  {name: 'CoinGecko', url: 'https://api.coingecko.com/api/v3/ping'},
-  {name: 'Nobitex', url: 'https://apiv2.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls'},
-  {name: 'Wallex', url: 'https://api.wallex.ir/v1/markets'}
+ const targets=[
+  {name:'Binance',url:'https://api.binance.com/api/v3/time',valid:d=>Number.isFinite(Number(d.serverTime))},
+  {name:'CoinGecko',url:'https://api.coingecko.com/api/v3/ping',valid:d=>typeof d.gecko_says==='string'},
+  {name:'Nobitex',url:'https://apiv2.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls',valid:d=>Number(d.stats?.['usdt-rls']?.latest)>0},
+  {name:'Wallex',url:'https://api.wallex.ir/v1/markets',valid:d=>Number(d?.result?.symbols?.USDTIRT?.stats?.lastPrice)>0}
  ];
- 
- let html = '';
- for(let t of targets){
-  let start = Date.now();
-  let status = 'down';
-  try {
-   await fetch(t.url, {method: 'GET', mode: 'no-cors'});
-   let ping = Date.now() - start;
-   status = ping > 2500 ? 'slow' : 'ok';
-   html += `<div class="conn"><div class="conn-top"><span class="conn-name">${t.name}</span><span class="lamp ${status}"></span></div><div class="conn-meta"><span>متصل</span><b dir="ltr">${ping} ms</b></div></div>`;
-  } catch(err) {
-   html += `<div class="conn"><div class="conn-top"><span class="conn-name">${t.name}</span><span class="lamp down"></span></div><div class="conn-meta"><span>قطع</span><b dir="ltr">—</b></div></div>`;
-  }
- }
- $('connections').innerHTML = html;
+ const checks=await Promise.all(targets.map(async t=>{
+  const start=Date.now();
+  try{
+   const controller=new AbortController();
+   const timer=setTimeout(()=>controller.abort(),6500);
+   let response;
+   try{response=await fetch(t.url,{cache:'no-store',signal:controller.signal});}finally{clearTimeout(timer);}
+   if(!response.ok)throw new Error('HTTP '+response.status);
+   const data=await response.json();
+   if(!t.valid(data))throw new Error('Invalid API response');
+   const ping=Date.now()-start;
+   return {name:t.name,status:ping>2500?'slow':'ok',ping};
+  }catch(e){return {name:t.name,status:'down',ping:null};}
+ }));
+ $('connections').innerHTML=checks.map(c=>{
+  const label=c.status==='down'?'قطع':c.status==='slow'?'کند':'متصل';
+  const latency=c.ping===null?'—':c.ping+' ms';
+  return '<div class="conn"><div class="conn-top"><span class="conn-name">'+c.name+'</span><span class="lamp '+c.status+'"></span></div><div class="conn-meta"><span>'+label+'</span><b dir="ltr">'+latency+'</b></div></div>';
+ }).join('');
+ return checks;
 }
 
 const AI_ANALYSIS_ENDPOINT = "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev"; // بعد از انتشار Worker، نشانی ...workers.dev/analyze در این متغیر قرار می‌گیرد.
