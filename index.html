@@ -964,6 +964,11 @@ async function fetchTetherRate(){
     const toman=Number(tomanMarket?.stats?.lastPrice??tomanMarket?.lastPrice);
     const rial=Number(rialMarket?.stats?.lastPrice??rialMarket?.lastPrice);
     return toman>0?toman:rial/10;
+   }},
+   {source:"Bitpin",url:AI_ANALYSIS_ENDPOINT+"/market-proxy?source=bitpin-tickers",read:d=>{
+    const markets=Array.isArray(d)?d:[];
+    const market=markets.find(m=>String(m?.symbol||"").toUpperCase()==="USDT_IRT");
+    return Number(market?.price);
    }}
   ];
   const results=await Promise.all(requests.map(async item=>{
@@ -1174,7 +1179,7 @@ async function checkConnections(){
   if(!response.ok)throw new Error("HTTP "+response.status);
   const payload=await response.json();
   if(!Array.isArray(payload?.checks))throw new Error("پاسخ بررسی اتصال کامل نیست");
-  const expected=["binance spot","bybit spot","okx spot","nobitex","wallex","bitget spot"];
+  const expected=["binance spot","bybit spot","okx spot","nobitex","wallex","bitget spot","bitpin"];
   const checks=new Map(payload.checks.map(c=>[String(c?.name||"").trim().toLowerCase(),c]));
   const bitgetCheck=checks.get("bitget spot");
   if(bitgetCheck?.status==="down"){
