@@ -957,7 +957,7 @@ function renderCoinsTables(data) {
   let rowHtml = (arr) => arr.map(c=>`
     <tr>
       <td class="coin-identity" data-label="ارز"><img class="coin-icon" src="${c.image||''}" alt="" loading="lazy"><span><b>${c.name}</b> <span class="muted">${c.symbol.toUpperCase()}</span></span></td>
-      <td class="num" data-label="قیمت دلاری (USDT)">${money(c.current_price, c.current_price < 1 ? 4 : 2)} $<small class="muted" style="display:block;font-size:10px;margin-top:3px;">منبع: ${c.price_source||"CoinGecko"}</small></td>
+      <td class="num" data-label="قیمت دلاری (USDT)">${money(c.current_price, c.current_price < 1 ? 4 : 2)} $<small class="muted" style="display:block;font-size:10px;margin-top:3px;">منبع قیمت: ${c.price_source||"CoinGecko"} · ${c.exchange_support?(c.exchange_support.spot?.confirmed?"اسپات: "+c.exchange_support.spot.providers.join("، "):c.exchange_support.futures?.confirmed?"فیوچرز: "+c.exchange_support.futures.providers.join("، "):"فقط قیمت مرجع"):"در حال بررسی جفت‌ها"}</small></td>
       <td class="num" data-label="قیمت تومانی (IRT)" style="color:var(--gold2); font-weight:bold;">${toman(c.current_price * currentTetherPrice)} تومان</td>
       <td class="${(c.price_change_percentage_24h||0)>=0?'positive':'negative'} num" data-label="تغییر ۲۴ ساعت">${(c.price_change_percentage_24h||0)>=0?'+':''}${c.price_change_percentage_24h?.toFixed(2)||0}%</td>
       <td class="num" data-label="ارزش بازار">${money(c.market_cap,0)}</td>
@@ -1030,7 +1030,7 @@ let exchangeAuditPromise=null;
 let exchangeAuditAt=0;
 async function auditExchangeSupport(coins,force=false){
  if(exchangeAuditPromise)return exchangeAuditPromise;
- if(!force&&Date.now()-exchangeAuditAt<600000)return;
+ if(!force&&Date.now()-exchangeAuditAt<60000)return;
  const symbols=[...new Set((coins||[]).map(x=>String(x.symbol||"").toUpperCase()).filter(Boolean))];
  if(!symbols.length)return;
  exchangeAuditPromise=(async()=>{
@@ -1040,6 +1040,8 @@ async function auditExchangeSupport(coins,force=false){
    const payload=await response.json();
    if(!response.ok||!Array.isArray(payload.assets))throw new Error(payload.error||"تأیید صرافی‌ها ناموفق بود");
    exchangeSupportBySymbol=Object.fromEntries(payload.assets.map(x=>[x.symbol.replace(/USDT$/,""),x]));
+   (coins||[]).forEach(coin=>{coin.exchange_support=exchangeSupportBySymbol[String(coin.symbol||"").toUpperCase()]||null;});
+   if(coins===cachedCoinsData&&typeof renderCoinsTables==="function")renderCoinsTables(coins);
    exchangeAuditAt=Date.now();
    const select=$("ai-coin-select");
    [...select.options].forEach(option=>{
