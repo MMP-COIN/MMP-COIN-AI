@@ -498,15 +498,19 @@ body:after{content:"";position:fixed;width:42vw;height:42vw;max-width:620px;max-
 .mmp-app-mode .radar-group{background:linear-gradient(145deg,#182536,#101722)}
 @media(min-width:900px){.mmp-app-mode .app-tabbar{left:50%;right:auto;transform:translateX(-50%);width:min(520px,calc(100% - 32px))}}
 
-/* هویت بصری تیترهای بخش‌ها */
-.section-head h2{font-family:'Estedad','Vazirmatn',sans-serif;font-size:clamp(20px,2.45vw,27px);font-weight:900;letter-spacing:-.35px;line-height:1.55}
-#ai-section .section-head h2{color:#c5a4ff;text-shadow:0 2px 18px #9b72ff35}
-#chart-section .chart-top-bar h2{font-family:'Estedad','Vazirmatn',sans-serif!important;font-size:clamp(19px,2.2vw,25px)!important;font-weight:900!important;color:#75c9ff}
-#opportunities .section-head h2{color:#62dfad;text-shadow:0 2px 16px #36c98b30}
-#watchlist .section-head h2{color:#6fd9e8}
-#market-hours .section-head h2{color:#f0bd72}
-#coins-section .section-head h2{color:#f3d17c}
-#trading-tools .section-head h2{color:#ff9c83}
+/* هویت یکپارچه تیترها: فونت و طیف طلایی MMP */
+.section-head h2,.chart-top-bar h2,.card h2,.section-title,h1,h2,h3{
+  font-family:inherit!important;
+  font-size:clamp(20px,2.45vw,27px);
+  font-weight:900!important;
+  letter-spacing:-.35px;
+  line-height:1.6;
+  color:#f2cf78!important;
+  text-shadow:0 2px 16px #c49a3a35;
+}
+#ai-section .section-head h2{font-size:clamp(23px,2.8vw,31px);font-weight:900!important;color:#f7d77f!important}
+#chart-section .chart-top-bar h2{font-size:clamp(20px,2.4vw,27px)!important;font-weight:900!important;color:#e7bd62!important}
+.section-kicker,.side-caption{color:#c6a04f!important}
 
 </style>
 <link href="https://fonts.googleapis.com/css2?family=Estedad:wght@500;600;700;800;900&display=swap" rel="stylesheet">
@@ -1064,7 +1068,7 @@ function restoreAiReportOnce(){
 }
 function aiEscape(v){return String(v??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));}
 function aiNum(v){return Number.isFinite(Number(v))?Number(v):null;}
-function aiPrice(v){if(v==null||!Number.isFinite(Number(v)))return "—";return "$"+money(Number(v),Number(v)<1?6:2);}
+function aiPrice(v){if(v==null||!Number.isFinite(Number(v)))return "—";const usd=Number(v);const usdText="$"+money(usd,usd<1?6:2)+" USDT";const tomanText=currentTetherPrice>0?" · "+toman(usd*currentTetherPrice)+" تومان":"";return usdText+tomanText;}
 function aiSetStatus(t,busy=false){$("ai-status").textContent=t;$("ai-status").classList.toggle("busy",busy);}
 function renderAiReport(r,c,market={}){
  const action=String(r.action||"WAIT").toUpperCase();
