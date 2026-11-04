@@ -852,7 +852,318 @@ function renderHeroCards() {
   $('btc-sub').textContent = currentCurrency === 'IRT' ? 'معادل: $' + money(btcUsd) : 'معادل: ' + toman(btcUsd * currentTetherPrice) + ' تومان';
 
   $('eth').textContent = formatVal(ethUsd);
-  $('eth-sub').textContent = currentCurrency === 'IRT' ? 'معادل: $' + money(ethUsd) : 'معادل: ' + toman(ethUsd * currentTetherPrice) + ' تومان';
+  $('eth-sub').textContent = currentCurrency === 'IRT' ? 'معادل: 
+}
+
+function renderCoinsTables(data) {
+  let topCoins = data.slice(0, 5);
+  let restCoins = data.slice(5);
+
+  let rowHtml = (arr) => arr.map(c=>`
+    <tr>
+      <td class="coin-identity" data-label="ارز"><img class="coin-icon" src="${c.image||''}" alt="" loading="lazy"><span><b>${c.name}</b> <span class="muted">${c.symbol.toUpperCase()}</span></span></td>
+      <td class="num" data-label="قیمت دلاری">${money(c.current_price, c.current_price < 1 ? 4 : 2)} $<small class="muted" style="display:block;font-size:10px;margin-top:3px;">منبع: ${c.price_source||"CoinGecko"}</small></td>
+      <td class="num" data-label="قیمت تومانی" style="color:var(--gold2); font-weight:bold;">${toman(c.current_price * currentTetherPrice)} تومان</td>
+      <td class="${(c.price_change_percentage_24h||0)>=0?'positive':'negative'} num" data-label="تغییر ۲۴ ساعت">${(c.price_change_percentage_24h||0)>=0?'+':''}${c.price_change_percentage_24h?.toFixed(2)||0}%</td>
+      <td class="num" data-label="ارزش بازار">${money(c.market_cap,0)}</td>
+    </tr>
+  `).join('');
+
+  $('top-coins').innerHTML = rowHtml(topCoins);
+  $('full-coins').innerHTML = rowHtml(restCoins);
+  const count = $('full-coins-count');
+  if (count) count.textContent = restCoins.length + ' ارز دیگر · برای مشاهده باز کنید';
+}
+
+function updateDropdowns(data) {
+  // بروزرسانی منوی کشویی هوش مصنوعی
+  let selectAi = $('ai-coin-select');
+  let currentAiVal = selectAi.value;
+  let aiHtml = '<option value="">انتخاب ارز دیجیتال...</option>';  data.forEach(c => {
+    aiHtml += `<option value="${c.id}">${c.name} (${c.symbol.toUpperCase()})</option>`;
+  });
+  selectAi.innerHTML = aiHtml;
+  if(currentAiVal) selectAi.value = currentAiVal;
+
+  // بروزرسانی منوی کشویی بالای چارت تریدینگ‌ویو با ۵۰ ارز اصلی و ارزهای منتخب بازار
+  let tvSelect = $('tv-symbol');
+  let currentTvVal = tvSelect.value;
+  let tvHtml = '';
+  data.forEach(c => {
+    let sym = c.symbol.toUpperCase();
+    tvHtml += `<option value="BINANCE:${sym}USDT">${c.name} (${sym})</option>`;
+  });
+  tvHtml += `<option value="FX_IDC:XAUUSD">Gold / USD</option>`;
+  tvSelect.innerHTML = tvHtml;
+  if(currentTvVal) tvSelect.value = currentTvVal;
+  restoreAiReportOnce();
+}
+
+async function checkConnections(){
+ const targets=[
+  {name:'Binance',url:'https://api.binance.com/api/v3/time',valid:d=>Number.isFinite(Number(d.serverTime))},
+  {name:'CoinGecko',url:'https://api.coingecko.com/api/v3/ping',valid:d=>typeof d.gecko_says==='string'},
+  {name:'Nobitex',url:'https://apiv2.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls',valid:d=>Number(d.stats?.['usdt-rls']?.latest)>0},
+  {name:'Wallex',url:'https://api.wallex.ir/v1/markets',valid:d=>Number(d?.result?.symbols?.USDTIRT?.stats?.lastPrice)>0}
+ ];
+ const checks=await Promise.all(targets.map(async t=>{
+  const start=Date.now();
+  try{
+   const controller=new AbortController();
+   const timer=setTimeout(()=>controller.abort(),6500);
+   let response;
+   try{response=await fetch(t.url,{cache:'no-store',signal:controller.signal});}finally{clearTimeout(timer);}
+   if(!response.ok)throw new Error('HTTP '+response.status);
+   const data=await response.json();
+   if(!t.valid(data))throw new Error('Invalid API response');
+   const ping=Date.now()-start;
+   return {name:t.name,status:ping>2500?'slow':'ok',ping};
+  }catch(e){return {name:t.name,status:'down',ping:null};}
+ }));
+ $('connections').innerHTML=checks.map(c=>{
+  const label=c.status==='down'?'قطع':c.status==='slow'?'کند':'متصل';
+  const latency=c.ping===null?'—':c.ping+' ms';
+  return '<div class="conn"><div class="conn-top"><span class="conn-name">'+c.name+'</span><span class="lamp '+c.status+'"></span></div><div class="conn-meta"><span>'+label+'</span><b dir="ltr">'+latency+'</b></div></div>';
+ }).join('');
+ return checks;
+}
+
+const AI_ANALYSIS_ENDPOINT = "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev"; // بعد از انتشار Worker، نشانی ...workers.dev/analyze در این متغیر قرار می‌گیرد.
+
+let exchangeSupportBySymbol={};
+let exchangeAuditPromise=null;
+let exchangeAuditAt=0;
+async function auditExchangeSupport(coins,force=false){
+ if(exchangeAuditPromise)return exchangeAuditPromise;
+ if(!force&&Date.now()-exchangeAuditAt<600000)return;
+ const symbols=[...new Set((coins||[]).map(x=>String(x.symbol||"").toUpperCase()).filter(Boolean))];
+ if(!symbols.length)return;
+ exchangeAuditPromise=(async()=>{
+  try{
+   const url=AI_ANALYSIS_ENDPOINT+"/support-check?symbols="+encodeURIComponent(symbols.join(","));
+   const response=await fetch(url,{cache:"no-store"});
+   const payload=await response.json();
+   if(!response.ok||!Array.isArray(payload.assets))throw new Error(payload.error||"تأیید صرافی‌ها ناموفق بود");
+   exchangeSupportBySymbol=Object.fromEntries(payload.assets.map(x=>[x.symbol.replace(/USDT$/,""),x]));
+   exchangeAuditAt=Date.now();
+   const select=$("ai-coin-select");
+   [...select.options].forEach(option=>{
+    if(!option.value)return;
+    const coin=coins.find(x=>x.id===option.value);
+    if(!coin)return;
+    const info=exchangeSupportBySymbol[String(coin.symbol).toUpperCase()];
+    if(!info)return;
+    const providers=[...(info.spot?.providers||[]),...(info.futures?.providers||[])];
+    const unavailable=Object.values(payload.sources||{}).every(x=>!x.ok);
+    const suffix=providers.length?" · تأیید: "+[...new Set(providers)].join("، "):unavailable?" · بررسی صرافی ناموفق":" · جفت فعال پیدا نشد";
+    option.textContent=coin.name+" ("+coin.symbol.toUpperCase()+")"+suffix;
+   });
+  }catch(e){
+   console.warn("Exchange support audit:",e);
+  }finally{exchangeAuditPromise=null;}
+ })();
+ return exchangeAuditPromise;
+}
+
+let aiBusy=false;
+let aiCache=new Map();
+let aiRequestToken=0;
+let aiRestored=false;
+const AI_REPORT_STORAGE_KEY="mmp_coin_ai_last_report_v1";
+function saveAiReport(payload){
+ try{localStorage.setItem(AI_REPORT_STORAGE_KEY,JSON.stringify(payload));}catch(e){}
+}
+function restoreAiReportOnce(){
+ if(aiRestored)return;
+ aiRestored=true;
+ try{
+  const saved=JSON.parse(localStorage.getItem(AI_REPORT_STORAGE_KEY)||"null");
+  if(!saved||!saved.analysis||!saved.coin)return;
+  if(saved.marketMode)$("ai-market-mode").value=saved.marketMode;
+  const select=$("ai-coin-select");
+  if([...select.options].some(o=>o.value===saved.coin.id))select.value=saved.coin.id;
+  renderAiReport(saved.analysis,saved.coin,saved.market||{});
+  aiCache.set(saved.coin.id+"|"+(saved.marketMode||"both"),{analysis:saved.analysis,market:saved.market||{},time:saved.time||Date.now()});
+  aiSetStatus("آخرین گزارش قبلی بازیابی شد و تا تحلیل بعدی روی صفحه می‌ماند.");
+ }catch(e){}
+}
+function aiEscape(v){return String(v??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));}
+function aiNum(v){return Number.isFinite(Number(v))?Number(v):null;}
+function aiPrice(v){if(v==null||!Number.isFinite(Number(v)))return "—";return "$"+money(Number(v),Number(v)<1?6:2);}
+function aiSetStatus(t,busy=false){$("ai-status").textContent=t;$("ai-status").classList.toggle("busy",busy);}
+function renderAiReport(r,c,market={}){
+ const action=String(r.action||"WAIT").toUpperCase();
+ const label=action==="BUY"?"خرید / LONG":action==="SELL"?"فروش / SHORT":"عدم ورود / WAIT";
+ const cls=action==="BUY"?"buy":action==="SELL"?"sell":"wait";
+ $("ai-action").textContent=label;
+ $("ai-action").style.color=action==="BUY"?"var(--green)":action==="SELL"?"var(--red)":"var(--yellow)";
+ $("ai-confidence").textContent=(r.confidence??"—")+(r.confidence!=null?" از ۱۰۰":"");
+ $("ai-confidence-label").textContent=(r.confidence??"—")+(r.confidence!=null?" از ۱۰۰":"");
+ $("ai-confidence-fill").style.width=Math.max(0,Math.min(100,Number(r.confidence)||0))+"%";
+ $("ai-risk").textContent=r.risk_level||"نامشخص";
+ $("ai-live-price").textContent=aiPrice(r.market?.price_usd??c?.current_price);
+ const tfNames={"15m":"۱۵ دقیقه","1h":"۱ ساعت","4h":"۴ ساعت","1d":"روزانه"};
+ const tfHtml=Object.entries(market.timeframes||{}).map(([tf,v])=>{
+  const trend=v.ema_trend==="bullish"?"صعودی":v.ema_trend==="bearish"?"نزولی":"خنثی / متناقض";
+  const color=v.ema_trend==="bullish"?"var(--green)":v.ema_trend==="bearish"?"var(--red)":"var(--yellow)";
+  return '<div class="tf-card"><strong>'+tfNames[tf]+'</strong><div class="tf-trend" style="color:'+color+'">'+trend+'</div><small>RSI: '+aiEscape(v.rsi==null?"—":Number(v.rsi).toFixed(1))+'<br>حمایت: '+aiEscape(aiPrice(v.support))+'<br>مقاومت: '+aiEscape(aiPrice(v.resistance))+'</small></div>';
+ }).join("");
+ $("ai-timeframes").innerHTML=tfHtml||'<div class="ai-empty" style="grid-column:1/-1">اطلاعات تایم‌فریم‌ها در پاسخ موجود نیست.</div>';
+ const lv=r.levels||{};
+ const level=(title,val)=>{
+  let shown="—";
+  if(val&&typeof val==="object"&&("low" in val||"high" in val))shown=(val.low!=null?aiPrice(val.low):"—")+" تا "+(val.high!=null?aiPrice(val.high):"—");
+  else if(val!=null&&val!==""&&Number.isFinite(Number(val)))shown=aiPrice(val);
+  else if(val!=null)shown=String(val);
+  if(shown==="—"){
+   const action=String(r.action||"WAIT").toUpperCase();
+   const fallback={
+    "محدوده ورود":action==="WAIT"?"پس از تأیید جهت بازار":"در انتظار داده معتبر",
+    "حد ضرر":"پس از تعیین نقطه ورود",
+    "هدف اول · TP1":"پس از تأیید ورود",
+    "هدف دوم · TP2":"پس از تأیید ورود",
+    "هدف سوم · TP3":"پس از تأیید ورود",
+    "نسبت سود به زیان":"فعلاً قابل محاسبه نیست",
+    "افق زمانی":"تا تأیید کندل ۴ ساعته",
+    "حداکثر ریسک پیشنهادی":"فعلاً بدون ورود"
+   };
+   shown=fallback[title]||"پس از تأیید شرایط بازار";
+  }
+  return '<div class="ai-level"><small>'+title+'</small><b>'+aiEscape(shown)+'</b></div>';
+ };
+ const reasons=Array.isArray(r.reasons)?r.reasons:[];
+ const scenarios=Array.isArray(r.scenarios)?r.scenarios:[];
+ const recommendations=Array.isArray(r.recommendations)?r.recommendations:[];
+ const indicators=r.indicators||{};
+ const activePlan=r.plan_status==="active_signal";
+ const planHtml=activePlan
+  ? '<h3>🎯 برنامه معاملاتی پیشنهادی</h3><div class="ai-levels"><div class="ai-level" style="grid-column:1/-1"><small>وضعیت برنامه</small><b>شرط ورود فعال است؛ ورود فقط پس از تأیید کندل</b></div>'+level("محدوده ورود",lv.entry_zone)+level("حد ضرر",lv.stop_loss)+level("هدف اول · TP1",lv.tp1)+level("هدف دوم · TP2",lv.tp2)+level("هدف سوم · TP3",lv.tp3)+level("نسبت سود به زیان",r.risk_reward)+level("افق زمانی",r.holding_horizon)+level("حداکثر ریسک پیشنهادی",r.position_risk)+'</div>'
+  : '<h3>🎯 برنامه معاملاتی پیشنهادی</h3><div class="ai-note">فعلاً ورود فوری نداریم. قیمت‌های ورود، حد ضرر و اهدافِ سناریوهای شرطی در بخش بعدی آمده‌اند؛ فقط پس از تأیید بسته‌شدن کندل ۴ ساعته بررسی شوند.</div>';
+ const html='<div><span class="ai-pill '+cls+'">'+label+'</span><span class="ai-pill">تایم‌فریم اصلی: '+aiEscape(r.primary_timeframe||"۴ ساعته")+'</span><span class="ai-pill">بازار: '+aiEscape($("ai-market-mode").selectedOptions[0].textContent)+'</span></div>'+
+ planHtml+(r.entry_trigger?'<p><b>شرط فعال‌شدن ورود:</b> '+aiEscape(r.entry_trigger)+'</p>':'')+(r.conditional_setups?'<h4>ورودهای شرطی در صورت شکست محدوده</h4>'+["long","short"].map(k=>{const p=r.conditional_setups[k];if(!p)return "";const nm=k==="long"?"سناریوی LONG":"سناریوی SHORT";return '<div class="ai-levels"><div class="ai-level" style="grid-column:1/-1"><small>'+nm+'</small><b>'+aiEscape(p.trigger)+'</b></div>'+level("محدوده ورود",p.entry_zone)+level("حد ضرر",p.stop_loss)+level("هدف اول · TP1",p.tp1)+level("هدف دوم · TP2",p.tp2)+level("هدف سوم · TP3",p.tp3)+level("نسبت سود به زیان",p.risk_reward)+level("افق زمانی",p.holding_horizon)+level("حداکثر ریسک پیشنهادی",p.position_risk)+'</div><p><b>ابطال:</b> '+aiEscape(p.invalidation)+'</p>';}).join(""):'')+'<p><small>سطوح عددی محاسبه‌شده از ATR و حمایت/مقاومت؛ منتظر تأیید بسته‌شدن کندل بمان. این‌ها تضمین سود نیستند.</small></p>'+
+ '<h3>🧠 جمع‌بندی تحلیل هوش مصنوعی</h3><p>'+aiEscape(r.summary||"تحلیل متنی در دسترس نیست.")+'</p>'+
+ '<h3>📊 تحلیل تکنیکال و چندتایم‌فریمی</h3><p>'+aiEscape(r.technical_analysis||"")+'</p><p><b>RSI:</b> '+aiEscape(indicators.rsi??"—")+' · <b>MACD:</b> '+aiEscape(indicators.macd_signal??"—")+' · <b>EMA:</b> '+aiEscape(indicators.ema_trend??"—")+' · <b>ATR:</b> '+aiEscape(indicators.atr_percent??"—")+'</p>'+
+ '<h3>🧭 سناریوهای پیش‌رو</h3><ul class="ai-list">'+scenarios.map(x=>'<li><b>'+aiEscape(x.name||"سناریو")+'</b>: '+aiEscape(x.description||"")+'</li>').join("")+'</ul>'+
+ '<h3>💡 پیشنهادهای عملی و نقاط قابل‌پیگیری</h3><ul class="ai-suggestion-list">'+recommendations.map(x=>'<li>'+aiEscape(x)+'</li>').join("")+'</ul>'+
+ '<h3>🌐 وضعیت کلی بازار، احساسات و مشتقات</h3><p>'+aiEscape(r.market_context||"اطلاعات تکمیلی احساسات و مشتقات در دسترس نیست.")+'</p>'+
+ '<h3>🔍 دلایل سیگنال</h3><ul class="ai-list">'+reasons.map(x=>'<li>'+aiEscape(x)+'</li>').join("")+'</ul>'+
+ '<h3>🛡️ مدیریت ریسک و شرایط ابطال</h3><p>'+aiEscape(r.risk_management||"")+'</p><p><b>شرط ابطال تحلیل:</b> '+aiEscape(r.invalidation||"")+'</p>'+
+ '<div class="ai-note">منبع داده: '+aiEscape(r.data_source||"داده عمومی بازار")+' · زمان آخرین کندل: '+aiEscape(r.market_timestamp||"نامشخص")+' · زمان تولید: '+new Date().toLocaleString("fa-IR")+'</div>';
+ $("advanced-ai-analysis").innerHTML=html;
+ $("advanced-ai-analysis").dataset.hasReport="true";
+}
+async function runAiAnalysis(force=false){
+ const detailPanel=$("ai-details");if(detailPanel)detailPanel.open=true;
+ const id=$("ai-coin-select").value;
+ const out=$("advanced-ai-analysis"),btn=$("ai-run-btn"),refreshBtn=$("ai-refresh-btn");
+ if(!id){$("ai-action").textContent="منتظر انتخاب ارز";aiSetStatus("ابتدا یک ارز برای تحلیل انتخاب کنید.");return;}
+ const c=cachedCoinsData.find(x=>x.id===id);
+ if(!c){aiSetStatus("داده قیمت این ارز هنوز بارگذاری نشده است.");return;}
+ const cacheKey=id+"|"+$("ai-market-mode").value;
+ const cached=aiCache.get(cacheKey);
+ if(!force&&cached&&Date.now()-cached.time<180000){
+  renderAiReport(cached.analysis,c,cached.market);
+  aiSetStatus("آخرین تحلیل ذخیره‌شده نمایش داده شد · برای داده تازه، «تحلیل مجدد» را بزنید.");
+  return;
+ }
+ if(aiBusy)return;
+ aiBusy=true;
+ const token=++aiRequestToken;
+ btn.disabled=true;refreshBtn.disabled=true;btn.textContent="در حال تحلیل…";
+ aiSetStatus("در حال دریافت داده‌های بازار و بررسی ۴ تایم‌فریم؛ گزارش قبلی تا پایان پردازش حفظ می‌شود…",true);
+ if(out.dataset.hasReport!=="true")out.innerHTML='<div class="ai-empty"><div class="symbol">◌</div><b>در حال تحلیل بازار…</b><p>کندل‌ها، روند، حجم، سطوح حمایت و مقاومت و داده‌های مشتقات بررسی می‌شوند.</p></div>';
+ try{
+  if(exchangeAuditPromise)await exchangeAuditPromise;
+  const support=exchangeSupportBySymbol[String(c.symbol).toUpperCase()];
+  const selectedMode=$("ai-market-mode").value;
+  if(!support)throw new Error("تأیید جفت معاملاتی این ارز از صرافی‌ها دریافت نشده؛ ابتدا صفحه را تازه‌سازی کنید و دوباره تلاش کنید.");
+  if((selectedMode==="spot"||selectedMode==="both")&&!support.spot?.confirmed)throw new Error("هیچ جفت فعال "+String(c.symbol).toUpperCase()+"/USDT در بازار نقدی Binance، Bybit یا OKX تأیید نشد؛ تحلیل اجرا نشد.");
+  if(selectedMode==="futures"&&!support.futures?.confirmed)throw new Error("هیچ قرارداد فعال "+String(c.symbol).toUpperCase()+" در بازار آتی Binance، Bybit یا OKX تأیید نشد؛ تحلیل اجرا نشد.");
+  const controller=new AbortController();
+  const timeout=setTimeout(()=>controller.abort(),55000);
+  let res;
+  try{
+   res=await fetch(AI_ANALYSIS_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({coin_id:c.id,symbol:c.symbol.toUpperCase(),name:c.name,market_mode:$("ai-market-mode").value}),signal:controller.signal});
+  }finally{clearTimeout(timeout);}
+  const data=await res.json();
+  if(!res.ok)throw new Error((data.error||"خطا در سرویس تحلیل")+(data.stage?" | مرحله: "+data.stage:"")+(data.symbol?" | ارز: "+data.symbol:""));
+  if(!data.analysis)throw new Error("پاسخ تحلیل معتبر نیست.");
+  if(token!==aiRequestToken)return;
+  const reportTime=Date.now();
+  aiCache.set(cacheKey,{analysis:data.analysis,market:data.market||{},time:reportTime});
+  saveAiReport({analysis:data.analysis,market:data.market||{},coin:{id:c.id,name:c.name,symbol:c.symbol,current_price:c.current_price},marketMode:$("ai-market-mode").value,time:reportTime});
+  renderAiReport(data.analysis,c,data.market||{});
+  saveJournal({name:c.name,symbol:c.symbol.toUpperCase(),action:data.analysis.action||"WAIT",confidence:data.analysis.confidence??"—",time:reportTime});
+  aiSetStatus("تحلیل تکمیل شد · گزارش و سابقه محلی ذخیره شد.");
+ }catch(e){
+  if(token===aiRequestToken){
+   $("ai-action").textContent="تحلیل ناموفق";
+   aiSetStatus("خطا در دریافت تحلیل: "+(e.name==="AbortError"?"زمان پاسخ سرویس بیش از حد طول کشید":e.message));
+   if(out.dataset.hasReport!=="true")out.innerHTML='<div class="ai-empty"><b>تحلیل فعلاً در دسترس نیست</b><p>علت خطا: '+aiEscape(e.name==="AbortError"?"زمان پاسخ سرویس بیش از حد طول کشید":e.message||"خطای نامشخص")+'</p><p>پس از رفع خطا، دوباره تحلیل را اجرا کنید.</p></div>';
+  }
+ }finally{
+  if(token===aiRequestToken){aiBusy=false;btn.disabled=false;refreshBtn.disabled=false;btn.textContent="شروع تحلیل هوشمند";}
+ }
+}
+
+
+/* MMP terminal modules: global sessions, watchlist, scanner, risk sizing and local journal */
+const MMP_WATCH_KEY="mmp_terminal_watchlist_v1";
+const MMP_JOURNAL_KEY="mmp_terminal_journal_v1";
+const marketSessions=[
+ {id:"crypto",name:"بازار رمزارز",zone:"UTC",open:0,close:1440,days:[0,1,2,3,4,5,6],kind:"always",hours:"۲۴ ساعته · ۷ روز هفته"},
+ {id:"us",name:"بورس آمریکا · NYSE/Nasdaq",zone:"America/New_York",open:570,close:960,days:[1,2,3,4,5],hours:"۰۹:۳۰ تا ۱۶:۰۰"},
+ {id:"forex",name:"فارکس",zone:"America/New_York",open:1020,close:1020,days:[0,1,2,3,4,5],kind:"overnight",hours:"یکشنبه ۱۷:۰۰ تا جمعه ۱۷:۰۰"},
+ {id:"gold",name:"طلای جهانی · XAU/USD",zone:"America/New_York",open:1020,close:1020,days:[0,1,2,3,4,5],kind:"overnight",hours:"تقریباً ۲۴/۵ · وابسته به کارگزار"},
+ {id:"london",name:"بورس لندن · LSE",zone:"Europe/London",open:480,close:990,days:[1,2,3,4,5],hours:"۰۸:۰۰ تا ۱۶:۳۰"},
+ {id:"tokyo",name:"بورس توکیو · TSE",zone:"Asia/Tokyo",open:540,close:900,days:[1,2,3,4,5],breaks:[[690,750]],hours:"۰۹:۰۰ تا ۱۵:۰۰ · وقفه ناهار"},
+ {id:"hongkong",name:"بورس هنگ‌کنگ · HKEX",zone:"Asia/Hong_Kong",open:570,close:960,days:[1,2,3,4,5],breaks:[[720,780]],hours:"۰۹:۳۰ تا ۱۶:۰۰ · وقفه ناهار"}
+];
+function marketTimeParts(zone){const parts=new Intl.DateTimeFormat("en-US",{timeZone:zone,weekday:"short",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(new Date());const get=t=>parts.find(p=>p.type===t)?.value;const day=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].indexOf(get("weekday"));return {day,minute:Number(get("hour"))*60+Number(get("minute")),clock:new Intl.DateTimeFormat("fa-IR",{timeZone:zone,hour:"2-digit",minute:"2-digit",second:"2-digit"}).format(new Date())};}
+function sessionIsOpen(s,t){if(s.kind==="always")return true;if(s.kind==="overnight")return (t.day===0&&t.minute>=s.open)||(t.day>=1&&t.day<=4)||(t.day===5&&t.minute<s.close);if(!s.days.includes(t.day)||t.minute<s.open||t.minute>=s.close)return false;return !(s.breaks||[]).some(([a,b])=>t.minute>=a&&t.minute<b);}
+function renderMarketHours(){const el=$("market-hours-grid"),extra=$("market-hours-extra");if(!el)return;const render=s=>{const t=marketTimeParts(s.zone),open=sessionIsOpen(s,t),state=s.kind==="always"?"۲۴/۷":open?"باز است":"بسته است";return '<div class="market-session"><div class="session-head"><b>'+s.name+'</b><span class="session-state '+(s.kind==="always"?"always":open?"open":"closed")+'">'+state+'</span></div><div class="session-clock">'+t.clock+'</div><small>منطقه زمانی: '+s.zone+'<br>ساعت کاری: '+s.hours+'</small></div>';};el.innerHTML=marketSessions.slice(0,4).map(render).join("");if(extra)extra.innerHTML=marketSessions.slice(4).map(render).join("");const more=$("market-hours-more");if(more)more.hidden=marketSessions.length<=4;$("market-clock-zone").textContent="زمان محلی: "+new Intl.DateTimeFormat("fa-IR",{hour:"2-digit",minute:"2-digit",timeZoneName:"short"}).format(new Date());}
+function loadWatch(){try{const a=JSON.parse(localStorage.getItem(MMP_WATCH_KEY)||"[]");return Array.isArray(a)?[...new Set(a.filter(x=>typeof x==="string"))]:[]}catch(e){return []}}
+function saveWatch(a){try{localStorage.setItem(MMP_WATCH_KEY,JSON.stringify([...new Set(a)]));return true}catch(e){const f=$("watch-feedback");if(f)f.textContent="ذخیره‌سازی در این مرورگر در دسترس نیست.";return false}}
+function watchFeedback(message){const f=$("watch-feedback");if(f)f.textContent=message; if(f) setTimeout(()=>{if(f.textContent===message)f.textContent=""},2600)}
+function removeWatch(id){const next=loadWatch().filter(x=>x!==id);saveWatch(next);renderWatch();renderOpportunities();const c=cachedCoinsData.find(x=>x.id===id);watchFeedback((c?c.name:"ارز")+" از دیده‌بان حذف شد.");}
+function renderWatch(){const list=$("watch-list");if(!list)return;const ids=loadWatch();const count=$("watch-count");if(count)count.textContent=ids.length+" دارایی";const items=ids.map(id=>cachedCoinsData.find(x=>x.id===id)).filter(Boolean);list.innerHTML=items.length?items.map(c=>{const change=Number(c.price_change_percentage_24h),positive=change>=0;return '<article class="watch-item"><div class="watch-coin"><img src="'+aiEscape(c.image||"")+'" alt="" loading="lazy"><span><b>'+aiEscape(c.name)+'</b><small>'+c.symbol.toUpperCase()+'</small></span></div><div class="watch-price"><b>'+formatVal(c.current_price)+'</b><small class="'+(positive?"positive":"negative")+'">'+(positive?"+":"")+change.toFixed(2)+'% <span>۲۴ ساعت</span></small></div><button class="watch-remove" type="button" data-watch-remove="'+aiEscape(c.id)+'" aria-label="حذف '+aiEscape(c.name)+'">حذف</button></article>'}).join(""):('<div class="watch-empty"><b>دیده‌بان هنوز خالی است</b><span>یک ارز انتخاب کن و دکمه افزودن را بزن.</span></div>');}
+function renderMarketTicker(){const el=$("market-ticker");if(!el||!cachedCoinsData.length)return;const wanted=["bitcoin","ethereum","binancecoin","solana","ripple","layerzero"];const picks=wanted.map(id=>cachedCoinsData.find(c=>c.id===id)).filter(Boolean);el.innerHTML=picks.map(c=>'<div class="ticker-item"><b>'+aiEscape(c.name)+' · '+c.symbol.toUpperCase()+'</b><strong>'+formatVal(c.current_price)+'</strong><small class="'+(c.price_change_percentage_24h>=0?"positive":"negative")+'">'+(c.price_change_percentage_24h>=0?"+":"")+(Number(c.price_change_percentage_24h)||0).toFixed(2)+'% در ۲۴ ساعت</small></div>').join("");}
+let radarFilter="all";
+function radarScore(c){const h=Number(c.price_change_percentage_24h),d=Number(c.price_change_percentage_7d_in_currency),v=Number(c.total_volume),m=Number(c.market_cap),hi=Number(c.high_24h),lo=Number(c.low_24h),p=Number(c.current_price);const has24=Number.isFinite(h),has7=Number.isFinite(d);const momentum=has24?Math.max(0,Math.min(100,50+h*3.2)):50;const weekly=has7?Math.max(0,Math.min(100,50+d*2)):50;const liquidity=m>0&&v>0?Math.max(0,Math.min(100,(v/m)*100*2.5)):50;const range=hi>lo&&p>0?Math.max(0,Math.min(100,((p-lo)/(hi-lo))*100)):50;const score=Math.round(momentum*.38+weekly*.27+liquidity*.20+range*.15);return {score,trend:score>=62?"bull":score<=38?"bear":"neutral",h:has24?h:null,d:has7?d:null,liquidity:m>0&&v>0?v/m*100:null,range:hi>lo&&p>0?(p-lo)/(hi-lo)*100:null};}
+function renderOpportunities(){const el=$("opportunity-list");if(!el)return;if(!cachedCoinsData.length){el.innerHTML='<div class="ai-empty">داده بازار هنوز دریافت نشده است؛ پس از بروزرسانی دوباره تلاش می‌کنیم.</div>';return;}const scored=cachedCoinsData.map(c=>({coin:c,metrics:radarScore(c)})).sort((a,b)=>b.metrics.score-a.metrics.score);const filtered=scored.filter(x=>radarFilter==="all"||(radarFilter==="bull"&&x.metrics.trend==="bull")||(radarFilter==="bear"&&x.metrics.trend==="bear"));const ranked=filtered.slice(0,10);const updated=$("radar-updated");if(updated)updated.textContent="بررسی "+cachedCoinsData.length+" دارایی · بروزرسانی هر ۶۰ ثانیه";el.innerHTML=ranked.length?ranked.map(({coin:c,metrics:r})=>{const trendLabel=r.trend==="bull"?"تمایل صعودی":r.trend==="bear"?"تمایل نزولی":"خنثی";const trendClass=r.trend==="bull"?"positive":r.trend==="bear"?"negative":"";const inWatch=loadWatch().includes(c.id);return '<article class="radar-item"><div class="radar-asset"><img src="'+aiEscape(c.image||"")+'" alt="" loading="lazy"><span><b>'+aiEscape(c.name)+'</b><small>'+c.symbol.toUpperCase()+' · رتبه بازار '+(c.market_cap_rank||"—")+'</small></span></div><div class="radar-score"><b>'+r.score+'</b><small>از ۱۰۰</small></div><div class="radar-stats"><span>۲۴ساعت <b class="'+(r.h===null?"":r.h>=0?"positive":"negative")+'">'+(r.h===null?"—":(r.h>=0?"+":"")+r.h.toFixed(2)+"%")+'</b></span><span>۷روز <b class="'+(r.d===null?"":r.d>=0?"positive":"negative")+'">'+(r.d===null?"—":(r.d>=0?"+":"")+r.d.toFixed(2)+"%")+'</b></span><span>حجم/ارزش بازار <b>'+(r.liquidity===null?"—":r.liquidity.toFixed(1)+"%")+'</b></span></div><div class="radar-action"><span class="radar-trend '+trendClass+'">'+trendLabel+'</span><button type="button" class="watch-btn '+(inWatch?"is-added":"")+'" data-watch-add="'+aiEscape(c.id)+'">'+(inWatch?"✓ در دیده‌بان":"+ افزودن")+'</button></div></article>'}).join(""):'<div class="watch-empty">در این دسته فعلاً موردی پیدا نشد.</div>';}
+function syncWatchSelect(){const s=$("watch-add-select");if(!s)return;const old=s.value;s.innerHTML='<option value="">جست‌وجو و انتخاب ارز…</option>'+cachedCoinsData.map(c=>'<option value="'+aiEscape(c.id)+'">'+aiEscape(c.name)+' ('+c.symbol.toUpperCase()+')</option>').join("");if(old)s.value=old;}
+function addWatch(id){if(!id){watchFeedback("ابتدا یک ارز انتخاب کن.");return;}const c=cachedCoinsData.find(x=>x.id===id);if(!c){watchFeedback("این ارز در داده فعلی بازار پیدا نشد.");return;}const a=loadWatch();if(a.includes(id)){watchFeedback(c.name+" از قبل در دیده‌بان است.");return;}a.push(id);if(saveWatch(a)){renderWatch();renderOpportunities();watchFeedback(c.name+" به دیده‌بان اضافه شد.");}const s=$("watch-add-select");if(s)s.value="";}
+function saveJournal(entry){try{const a=JSON.parse(localStorage.getItem(MMP_JOURNAL_KEY)||"[]");a.unshift(entry);localStorage.setItem(MMP_JOURNAL_KEY,JSON.stringify(a.slice(0,30)));renderJournal()}catch(e){}}
+function renderJournal(){const el=$("analysis-journal");if(!el)return;let a=[];try{a=JSON.parse(localStorage.getItem(MMP_JOURNAL_KEY)||"[]")}catch(e){}el.innerHTML=a.length?a.slice(0,8).map(x=>'<div class="tool-list-item"><span><b>'+aiEscape(x.name)+' ('+aiEscape(x.symbol)+')</b><small class="muted" style="display:block">'+new Date(x.time).toLocaleString("fa-IR")+'</small></span><span>'+aiEscape(x.action)+' · '+aiEscape(x.confidence)+'</span></div>').join(""):'<p class="sub">هنوز تحلیلی ثبت نشده است.</p>';}
+function calcRisk(){const capital=Number($("risk-capital").value),pct=Number($("risk-percent").value),entry=Number($("risk-entry").value),stop=Number($("risk-stop").value);const out=$("risk-result");if(!(capital>0&&pct>0&&pct<=100&&entry>0&&stop>0&&entry!==stop)){out.textContent="لطفاً مقادیر معتبر وارد کنید؛ ورود و حد ضرر نباید برابر باشند.";return;}const risk=capital*pct/100,dist=Math.abs(entry-stop)/entry,notional=risk/dist,qty=notional/entry;out.innerHTML="ریسک دلاری مجاز: <b>$"+money(risk,2)+"</b> · ارزش اسمی موقعیت: <b>$"+money(notional,2)+"</b> · مقدار دارایی: <b>"+money(qty,6)+"</b><br><small>کارمزد، لغزش قیمت، اهرم و ریسک لیکوییدشدن در این محاسبه لحاظ نشده‌اند.</small>";}
+$("watch-add-btn")?.addEventListener("click",()=>addWatch($("watch-add-select")?.value));
+$("watch-list")?.addEventListener("click",e=>{const button=e.target.closest("[data-watch-remove]");if(button)removeWatch(button.dataset.watchRemove)});
+$("opportunity-list")?.addEventListener("click",e=>{const button=e.target.closest("[data-watch-add]");if(button)addWatch(button.dataset.watchAdd)});
+$("opportunities")?.addEventListener("click",e=>{const button=e.target.closest("[data-radar-filter]");if(!button)return;radarFilter=button.dataset.radarFilter;document.querySelectorAll("[data-radar-filter]").forEach(x=>x.classList.toggle("active",x===button));renderOpportunities()});
+$("risk-calc")?.addEventListener("click",calcRisk);
+$("journal-clear")?.addEventListener("click",()=>{if(confirm("سوابق تحلیل ذخیره‌شده روی این دستگاه پاک شود؟")){localStorage.removeItem(MMP_JOURNAL_KEY);renderJournal()}});
+renderMarketHours();renderJournal();renderWatch();setInterval(renderMarketHours,15000);
+
+refreshAll();
+initTradingView("BINANCE:BTCUSDT");
+setInterval(refreshAll, 60000);
+</script>
+<script>(function(){
+var key="mmp_terminal_price_alerts_v1";
+function readAlerts(){try{const a=JSON.parse(localStorage.getItem(key)||"[]");return Array.isArray(a)?a.filter(x=>x&&typeof x==="object").slice(0,100):[];}catch(e){return [];}}
+function saveAlerts(a){localStorage.setItem(key,JSON.stringify(a));}
+function syncAlerts(){var s=document.getElementById("alert-coin");if(!s||typeof cachedCoinsData==="undefined")return;var old=s.value;s.innerHTML="";cachedCoinsData.forEach(function(c){var o=document.createElement("option");o.value=c.id;o.textContent=c.name+" ("+c.symbol.toUpperCase()+")";s.appendChild(o);});if(old)s.value=old;}
+function drawAlerts(){var el=document.getElementById("price-alert-list");if(!el)return;var a=readAlerts();if(!a.length){el.innerHTML='<p class="sub">هشداری ثبت نشده است.</p>';return;}var rows=a.map(function(x){var id=aiEscape(String(x.id||""));var symbol=aiEscape(String(x.symbol||""));var target=Number(x.target);if(!id||!symbol||!Number.isFinite(target)||target<=0)return "";var direction=x.direction==="above"?"بالاتر از":x.direction==="below"?"پایین‌تر از":"نسبت به";return '<div class="tool-list-item"><span>'+symbol+' · '+direction+' <b dir="ltr">$' +target.toLocaleString("en-US")+'</b>'+(x.fired===true?' · فعال شد':'')+'</span><button class="watch-btn" data-alert-id="'+id+'">حذف</button></div>';}).filter(Boolean).join("");el.innerHTML=rows||'<p class="sub">هشداری معتبر ثبت نشده است.</p>';}
+function checkAlerts(){if(typeof cachedCoinsData==="undefined")return;var a=readAlerts(),dirty=false;a.forEach(function(x){if(x.fired)return;var c=cachedCoinsData.find(function(z){return z.id===x.coinId;});if(!c)return;var hit=x.direction==="above"?c.current_price>=x.target:c.current_price<=x.target;if(hit){x.fired=true;dirty=true;var s=document.getElementById("ai-status");if(s)s.textContent="🔔 هشدار قیمت: "+x.symbol+" به قیمت هدف رسید.";if("Notification" in window&&Notification.permission==="granted"){try{new Notification("MMP COIN AI",{body:x.symbol+" به قیمت هدف رسید."});}catch(e){}}}});if(dirty){saveAlerts(a);drawAlerts();}}
+var add=document.getElementById("alert-add");if(add)add.addEventListener("click",function(){var id=document.getElementById("alert-coin").value;var c=cachedCoinsData.find(function(z){return z.id===id;});var target=Number(document.getElementById("alert-price").value);if(!c||!(target>0)){alert("ارز و قیمت هدف معتبر وارد کنید.");return;}var a=readAlerts();a.push({id:String(Date.now()),coinId:id,symbol:c.symbol.toUpperCase(),direction:document.getElementById("alert-direction").value,target:target,fired:false});saveAlerts(a);document.getElementById("alert-price").value="";drawAlerts();});
+var list=document.getElementById("price-alert-list");if(list)list.addEventListener("click",function(e){var id=e.target.getAttribute("data-alert-id");if(id){saveAlerts(readAlerts().filter(function(x){return x.id!==id;}));drawAlerts();}});
+var notify=document.getElementById("alert-notify");if(notify)notify.addEventListener("click",function(){if(!("Notification" in window)){alert("اعلان سیستم پشتیبانی نمی‌شود؛ هشدار داخل برنامه فعال است.");return;}Notification.requestPermission().then(function(p){alert(p==="granted"?"اعلان دستگاه فعال شد.":"مجوز اعلان داده نشد؛ هشدار داخل برنامه فعال است.");});});
+syncAlerts();drawAlerts();setInterval(function(){syncAlerts();checkAlerts();},15000);
+})();</script>
+</body>
+</html> + money(ethUsd) : 'معادل: ' + toman(ethUsd * currentTetherPrice) + ' تومان';
+  $('btc-sub').textContent += ' · قیمت: ' + (cachedCoinsData.find(x=>x.id==='bitcoin')?.price_source||'CoinGecko');
+  $('eth-sub').textContent += ' · قیمت: ' + (cachedCoinsData.find(x=>x.id==='ethereum')?.price_source||'CoinGecko');
 }
 
 function renderCoinsTables(data) {
