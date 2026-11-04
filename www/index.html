@@ -1104,7 +1104,8 @@ async function runAiAnalysis(force=false){
   const support=exchangeSupportBySymbol[String(c.symbol).toUpperCase()];
   const selectedMode=$("ai-market-mode").value;
   if(!support)throw new Error("تأیید جفت معاملاتی این ارز از صرافی‌ها دریافت نشده؛ ابتدا صفحه را تازه‌سازی کنید و دوباره تلاش کنید.");
-  if((selectedMode==="spot"||selectedMode==="both")&&!support.spot?.confirmed)throw new Error("هیچ جفت فعال "+String(c.symbol).toUpperCase()+"/USDT در بازار نقدی Binance، Bybit یا OKX تأیید نشد؛ تحلیل اجرا نشد.");
+  if(selectedMode==="spot"&&!support.spot?.confirmed)throw new Error("هیچ جفت فعال برای این ارز در بازار نقدی Binance، Bybit یا OKX تأیید نشد؛ تحلیل اجرا نشد.");
+  if(selectedMode==="both"&&!support.spot?.confirmed&&!support.futures?.confirmed)throw new Error("برای این ارز نه جفت نقدی و نه قرارداد آتی فعالی در صرافی‌های پشتیبانی‌شده پیدا نشد؛ تحلیل اجرا نشد.");
   if(selectedMode==="futures"&&!support.futures?.confirmed)throw new Error("هیچ قرارداد فعال "+String(c.symbol).toUpperCase()+" در بازار آتی Binance، Bybit یا OKX تأیید نشد؛ تحلیل اجرا نشد.");
   const controller=new AbortController();
   const timeout=setTimeout(()=>controller.abort(),55000);
