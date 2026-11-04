@@ -14,7 +14,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: android-apk
@@ -44,22 +44,122 @@ jobs:
       - name: Generate Android project
         run: npx cap add android
 
-      - name: Copy the full dashboard into the Android app
-        run: cp index.html www/index.html
+      - name: Copy dashboard, browser icon and manifest
+        run: |
+          cp index.html www/index.html
+          mkdir -p www/assets
+          cp -R assets/. www/assets/
+          cp manifest.webmanifest www/manifest.webmanifest
 
-      - name: Copy browser icon and install manifest
-        run: mkdir -p www/assets && cp -R assets/. www/assets/ && cp manifest.webmanifest www/manifest.webmanifest
+      - name: Stamp app version into the bundled dashboard
+        env:
+          BUILD_VERSION: 1.0.\${{ github.run_number }}
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const file = 'www/index.html';
+          let html = fs.readFileSync(file, 'utf8');
+          html = html.replace(/(<meta name="mmp-app-version" content=")[^"]*(")/, \`$1\${process.env.BUILD_VERSION}$2\`);
+          fs.writeFileSync(file, html);
+          NODE
 
-      - name: Sync web configuration
+      - name: Generate Android launcher icons from MMP brand artwork
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const sharp = require('sharp');
+          const svg = fs.readFileSync('assets/mmp-coin-ai-icon.svg');
+          (async () => {
+            const densities = {
+              mdpi: { icon: 48, foreground: 108 },
+              hdpi: { icon: 72, foreground: 162 },
+              xhdpi: { icon: 96, foreground: 216 },
+              xxhdpi: { icon: 144, foreground: 324 },
+              xxxhdpi: { icon: 192, foreground: 432 }
+            };
+            for (const [density, sizes] of Object.entries(densities)) {
+              const dir = \`android/app/src/main/res/mipmap-\${density}\`;
+              fs.mkdirSync(dir, { recursive: true });
+              for (const name of ['ic_launcher.png', 'ic_launcher_round.png']) {
+                await sharp(svg).resize(sizes.icon, sizes.icon).png().toFile(\`\${dir}/\${name}\`);
+              }
+              await sharp(svg).resize(sizes.foreground, sizes.foreground).png().toFile(\`\${dir}/ic_launcher_foreground.png\`);
+            }
+          })().catch(err => { console.error(err); process.exit(1); });
+          NODE
+
+      - name: Prepare persistent Android signing key
+        if: \${{ secrets.ANDROID_SIGNING_CONFIG != '' }}
+        env:
+          ANDROID_SIGNING_CONFIG: \${{ secrets.ANDROID_SIGNING_CONFIG }}
+        run: |
+          echo "$ANDROID_SIGNING_CONFIG" | base64 --decode > /tmp/mmp-signing.json
+          node <<'NODE'
+          const fs = require('fs');
+          const cfg = JSON.parse(fs.readFileSync('/tmp/mmp-signing.json', 'utf8'));
+          fs.writeFileSync('android/app/mmp-release-key.jks', Buffer.from(cfg.keystoreBase64, 'base64'));
+          const env = [
+            \`ANDROID_STORE_PASSWORD=\${cfg.storePassword}\`,
+            \`ANDROID_KEY_ALIAS=\${cfg.keyAlias}\`,
+            \`ANDROID_KEY_PASSWORD=\${cfg.keyPassword}\`,
+            'ANDROID_SIGNING_READY=true'
+          ].join('\n') + '\n';
+          fs.appendFileSync(process.env.GITHUB_ENV, env);
+          NODE
+
+      - name: Configure Android version and release signing
+        env:
+          BUILD_NUMBER: \${{ github.run_number }}
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const file = 'android/app/build.gradle';
+          let gradle = fs.readFileSync(file, 'utf8');
+          gradle = gradle.replace(/versionCode\s+\d+/, \`versionCode \${process.env.BUILD_NUMBER}\`);
+          gradle = gradle.replace(/versionName\s+"[^"]+"/, \`versionName "1.0.\${process.env.BUILD_NUMBER}"\`);
+          if (process.env.ANDROID_SIGNING_READY === 'true') {
+            gradle = gradle.replace(/buildTypes\s*\{\s*release\s*\{/, \`signingConfigs {
+                  release {
+                      storeFile file("mmp-release-key.jks")
+                      storePassword System.getenv("ANDROID_STORE_PASSWORD")
+                      keyAlias System.getenv("ANDROID_KEY_ALIAS")
+                      keyPassword System.getenv("ANDROID_KEY_PASSWORD")
+                  }
+              }
+              buildTypes {
+                  release {
+                      signingConfig signingConfigs.release\`);
+          }
+          fs.writeFileSync(file, gradle);
+          NODE
+
+      - name: Sync web configuration and native plugins
         run: npx cap sync android
 
       - name: Build installable APK
-        run: cd android && ./gradlew assembleDebug --no-daemon
+        run: |
+          cd android
+          if [ "$ANDROID_SIGNING_READY" = "true" ]; then
+            ./gradlew assembleDebug assembleRelease --no-daemon
+          else
+            ./gradlew assembleDebug --no-daemon
+          fi
 
-      - name: Upload APK
+      - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
         with:
           name: MMP-COIN-AI-Android-APK
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: |
+            android/app/build/outputs/apk/debug/app-debug.apk
+            android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 30
+
+      - name: Publish signed update release
+        if: \${{ secrets.ANDROID_SIGNING_CONFIG != '' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: app-v1.0.\${{ github.run_number }}
+          name: MMP COIN AI Android v1.0.\${{ github.run_number }}
+          files: android/app/build/outputs/apk/release/app-release.apk
+          generate_release_notes: true
