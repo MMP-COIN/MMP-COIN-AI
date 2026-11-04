@@ -900,16 +900,33 @@ const NON_TRADABLE_SYMBOLS = new Set([
 ]);
 
 async function enrichWithBinance(coins){
+ let tickers=[],priceSource="Binance Spot";
  try{
-  const controller=new AbortController();
-  const timer=setTimeout(()=>controller.abort(),8000);
-  let response;
   try{
-   response=await fetch(AI_ANALYSIS_ENDPOINT+'/market-proxy?source=binance-tickers',{cache:'no-store',signal:controller.signal});
-  }finally{clearTimeout(timer);}
-  if(!response.ok)throw new Error('Binance HTTP '+response.status);
-  const tickers=await response.json();
-  if(!Array.isArray(tickers))throw new Error('Invalid Binance ticker response');
+   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),8000);
+   let response;
+   try{response=await fetch(AI_ANALYSIS_ENDPOINT+'/market-proxy?source=binance-tickers',{cache:'no-store',signal:controller.signal});}
+   finally{clearTimeout(timer);}
+   if(!response.ok)throw new Error('Binance HTTP '+response.status);
+   tickers=await response.json();
+   if(!Array.isArray(tickers))throw new Error('Invalid Binance ticker response');
+  }catch(binanceError){
+   console.warn('Binance ticker feed unavailable; trying Bitget Spot:',binanceError);
+   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),9000);
+   let response,payload;
+   try{response=await fetch(AI_ANALYSIS_ENDPOINT+'/market-proxy?source=bitget-tickers',{cache:'no-store',signal:controller.signal});}
+   finally{clearTimeout(timer);}
+   if(!response.ok)throw new Error('Bitget HTTP '+response.status);
+   payload=await response.json();
+   if(payload?.code!=="00000"||!Array.isArray(payload.data))throw new Error('Invalid Bitget ticker response');
+   tickers=payload.data.map(t=>({
+    symbol:t.symbol,
+    lastPrice:t.lastPrice,
+    priceChangePercent:Number(t.price24hPcnt)*100,
+    closeTime:t.ts
+   }));
+   priceSource="Bitget Spot";
+  }
   const bySymbol=new Map();
   tickers.forEach(t=>{
    if(typeof t.symbol==='string'&&t.symbol.endsWith('USDT'))bySymbol.set(t.symbol,t);
@@ -925,12 +942,12 @@ async function enrichWithBinance(coins){
    const price=Number(ticker?.lastPrice);
    const change=Number(ticker?.priceChangePercent);
    if(ticker&&Number.isFinite(price)&&price>0){
-    return {...c,current_price:price,price_change_percentage_24h:Number.isFinite(change)?change:c.price_change_percentage_24h,price_source:'Binance',price_updated_at:new Date(Number(ticker.closeTime)||Date.now()).toISOString()};
+    return {...c,current_price:price,price_change_percentage_24h:Number.isFinite(change)?change:c.price_change_percentage_24h,price_source:priceSource,price_updated_at:new Date(Number(ticker.closeTime)||Date.now()).toISOString()};
    }
    return {...c,price_source:'CoinGecko',price_updated_at:c.last_updated||null};
   });
  }catch(e){
-  console.warn('Binance live quotes unavailable; using CoinGecko fallback:',e);
+  console.warn('Binance and Bitget live quotes unavailable; using CoinGecko fallback:',e);
   return coins.map(c=>({...c,price_source:'CoinGecko'}));
  }
 }
