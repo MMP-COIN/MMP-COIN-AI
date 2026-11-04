@@ -1,14 +1,6 @@
-name: Build Android APK
+name: Build Android APK (Manual)
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'package.json'
-      - 'package-lock.json'
-      - 'capacitor.config.json'
-      - 'www/**'
-      - '.github/workflows/android.yml'
   workflow_dispatch:
 
 permissions:
@@ -34,6 +26,8 @@ jobs:
       - name: Add Android platform if missing
         run: |
           if [ ! -d android ]; then npx cap add android; fi
+      - name: Copy the full dashboard into the Android app
+        run: cp index.html www/index.html
       - name: Sync Capacitor
         run: npx cap sync android
       - name: Build debug APK
@@ -44,7 +38,7 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: MMP-COIN-AI-APK
+          name: MMP-COIN-AI-APK-Manual
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
