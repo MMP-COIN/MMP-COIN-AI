@@ -888,8 +888,6 @@ async function enrichWithBinance(coins){
 }
 
 
-let currentTetherSources=[];
-let currentTetherWarning="";
 async function fetchTetherRate(){
  const requests=[
   {source:"Nobitex",url:"https://apiv2.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls",read:d=>Number(d?.stats?.["usdt-rls"]?.latest)/10},
