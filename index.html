@@ -951,12 +951,22 @@ async function refreshAll(){
     fetch(AI_ANALYSIS_ENDPOINT+'/market-proxy?source=coingecko-extra&ids='+encodeURIComponent(EXTRA_COIN_IDS.join(',')),{cache:'no-store',signal:marketController.signal})
    ]);
   }finally{clearTimeout(marketTimer);}
-  if(!topRes.ok) throw new Error('CoinGecko top-100 HTTP '+topRes.status);
-  const topData = await topRes.json();
+  let topData;
+  if(topRes.ok) topData=await topRes.json();
+  else {
+    const directTop=await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=false&price_change_percentage=1h%2C24h%2C7d',{cache:'no-store'});
+    if(!directTop.ok) throw new Error('CoinGecko top-100 HTTP '+directTop.status);
+    topData=await directTop.json();
+  }
   let extraData = [];
   if(extraRes.ok) {
     const payload = await extraRes.json();
     if(Array.isArray(payload)) extraData = payload;
+  } else {
+    try {
+      const directExtra=await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids='+encodeURIComponent(EXTRA_COIN_IDS.join(','))+'&order=market_cap_desc&sparkline=false&price_change_percentage=1h%2C24h%2C7d',{cache:'no-store'});
+      if(directExtra.ok) { const payload=await directExtra.json(); if(Array.isArray(payload)) extraData=payload; }
+    } catch(error) { console.warn('CoinGecko extra direct fallback unavailable:',error); }
   }
   if(!Array.isArray(topData)) throw new Error('CoinGecko returned invalid top-100 data');
 
