@@ -14,7 +14,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: android-apk
@@ -23,19 +23,21 @@ concurrency:
 jobs:
   build-android:
     runs-on: ubuntu-latest
-    env:
-      ANDROID_SIGNING_CONFIG: ${{ secrets.ANDROID_SIGNING_CONFIG }}
+    permissions:
+      contents: read
+    outputs:
+      signing_ready: ${{ steps.prepare_signing.outputs.signing_ready }}
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 20
 
       - name: Set up Java 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
         with:
           distribution: temurin
           java-version: 17
@@ -91,8 +93,12 @@ jobs:
           NODE
 
       - name: Prepare persistent Android signing key
+        id: prepare_signing
+        env:
+          ANDROID_SIGNING_CONFIG: ${{ secrets.ANDROID_SIGNING_CONFIG }}
         run: |
           if [ -z "$ANDROID_SIGNING_CONFIG" ]; then
+            echo "signing_ready=false" >> "$GITHUB_OUTPUT"
             echo "No persistent signing secret configured; building a debug APK only."
             exit 0
           fi
@@ -100,19 +106,18 @@ jobs:
           node <<'NODE'
           const fs = require('fs');
           const cfg = JSON.parse(fs.readFileSync('/tmp/mmp-signing.json', 'utf8'));
+          if (!cfg.keystoreBase64 || !cfg.storePassword || !cfg.keyAlias || !cfg.keyPassword) {
+            throw new Error('Android signing configuration is incomplete.');
+          }
           fs.writeFileSync('android/app/mmp-release-key.jks', Buffer.from(cfg.keystoreBase64, 'base64'));
-          const env = [
-            `ANDROID_STORE_PASSWORD=${cfg.storePassword}`,
-            `ANDROID_KEY_ALIAS=${cfg.keyAlias}`,
-            `ANDROID_KEY_PASSWORD=${cfg.keyPassword}`,
-            'ANDROID_SIGNING_READY=true'
-          ].join('\n') + '\n';
-          fs.appendFileSync(process.env.GITHUB_ENV, env);
           NODE
+          rm -f /tmp/mmp-signing.json
+          echo "signing_ready=true" >> "$GITHUB_OUTPUT"
 
       - name: Configure Android version and release signing
         env:
           BUILD_NUMBER: ${{ github.run_number }}
+          SIGNING_READY: ${{ steps.prepare_signing.outputs.signing_ready }}
         run: |
           node <<'NODE'
           const fs = require('fs');
@@ -120,7 +125,7 @@ jobs:
           let gradle = fs.readFileSync(file, 'utf8');
           gradle = gradle.replace(/versionCode\s+\d+/, `versionCode ${process.env.BUILD_NUMBER}`);
           gradle = gradle.replace(/versionName\s+"[^"]+"/, `versionName "1.0.${process.env.BUILD_NUMBER}"`);
-          if (process.env.ANDROID_SIGNING_READY === 'true') {
+          if (process.env.SIGNING_READY === 'true') {
             gradle = gradle.replace(/buildTypes\s*\{\s*release\s*\{/, `signingConfigs {
                   release {
                       storeFile file("mmp-release-key.jks")
@@ -140,29 +145,56 @@ jobs:
         run: npx cap sync android
 
       - name: Build installable APK
+        env:
+          SIGNING_READY: ${{ steps.prepare_signing.outputs.signing_ready }}
+          ANDROID_SIGNING_CONFIG: ${{ secrets.ANDROID_SIGNING_CONFIG }}
         run: |
           cd android
-          if [ "$ANDROID_SIGNING_READY" = "true" ]; then
+          trap 'rm -f app/mmp-release-key.jks' EXIT
+          if [ "$SIGNING_READY" = "true" ]; then
+            export ANDROID_STORE_PASSWORD="$(node -e 'const c=JSON.parse(Buffer.from(process.env.ANDROID_SIGNING_CONFIG,"base64").toString("utf8"));process.stdout.write(c.storePassword)')"
+            export ANDROID_KEY_ALIAS="$(node -e 'const c=JSON.parse(Buffer.from(process.env.ANDROID_SIGNING_CONFIG,"base64").toString("utf8"));process.stdout.write(c.keyAlias)')"
+            export ANDROID_KEY_PASSWORD="$(node -e 'const c=JSON.parse(Buffer.from(process.env.ANDROID_SIGNING_CONFIG,"base64").toString("utf8"));process.stdout.write(c.keyPassword)')"
             ./gradlew assembleDebug assembleRelease --no-daemon
           else
             ./gradlew assembleDebug --no-daemon
           fi
 
-      - name: Upload APK artifacts
-        uses: actions/upload-artifact@v4
+      - name: Upload debug APK
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: MMP-COIN-AI-Android-APK
-          path: |
-            android/app/build/outputs/apk/debug/app-debug.apk
-            android/app/build/outputs/apk/release/app-release.apk
+          name: MMP-COIN-AI-Android-debug
+          path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
 
+      - name: Upload signed release APK
+        if: ${{ steps.prepare_signing.outputs.signing_ready == 'true' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: MMP-COIN-AI-Android-release
+          path: android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+          retention-days: 30
+
+  publish-release:
+    needs: build-android
+    if: ${{ needs.build-android.outputs.signing_ready == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download signed release APK
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: MMP-COIN-AI-Android-release
+          path: dist
+
       - name: Publish signed update release
-        if: ${{ env.ANDROID_SIGNING_CONFIG != '' }}
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           tag_name: app-v1.0.${{ github.run_number }}
+          target_commitish: main
           name: MMP COIN AI Android v1.0.${{ github.run_number }}
-          files: android/app/build/outputs/apk/release/app-release.apk
+          files: dist/app-release.apk
           generate_release_notes: true
