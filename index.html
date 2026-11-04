@@ -1468,8 +1468,10 @@ html.mmp-native-app .native-brand small{display:block;color:#8fa8bb;font-size:9p
 html.mmp-native-app .native-live{display:flex;align-items:center;gap:7px;color:#a7c0cf;font-size:10px;border:1px solid #355367;border-radius:30px;padding:7px 10px;background:#112331}
 html.mmp-native-app .native-live i{width:7px;height:7px;border-radius:50%;background:#36dfad;box-shadow:0 0 12px #36dfad;display:inline-block}
 html.mmp-native-app .native-appbar-actions{display:flex;align-items:center;gap:8px}
-html.mmp-native-app .native-refresh-btn{width:38px;height:38px;display:grid;place-items:center;border:1px solid #8d754a;border-radius:12px;background:linear-gradient(145deg,#26394a,#142332);color:#f5dda2;font-size:25px;line-height:1;box-shadow:0 4px 14px #0005}
-html.mmp-native-app .native-refresh-btn:disabled{opacity:.6}
+html.mmp-native-app .native-refresh-btn,html.mmp-native-app .native-update-check-btn{width:38px;height:38px;display:grid;place-items:center;border:1px solid #8d754a;border-radius:12px;background:linear-gradient(145deg,#26394a,#142332);color:#f5dda2;font-size:23px;line-height:1;box-shadow:0 4px 14px #0005}
+html.mmp-native-app .native-update-check-btn{font-size:21px;color:#f4d58e;border-color:#647b8c}
+html.mmp-native-app .native-refresh-btn:disabled,html.mmp-native-app .native-update-check-btn:disabled{opacity:.55}
+html.mmp-native-app .native-update-check-btn.is-checking{animation:mmp-refresh-spin .8s linear infinite}
 html.mmp-native-app .native-refresh-btn.is-refreshing{animation:mmp-refresh-spin .8s linear infinite}
 @keyframes mmp-refresh-spin{to{transform:rotate(360deg)}}
 html.mmp-native-app .mmp-mobile-dock{display:none!important}
@@ -1502,8 +1504,13 @@ html.mmp-native-app .mmp-mobile-dock a{display:flex;flex-direction:column;align-
 html.mmp-native-app .mmp-mobile-dock a i{font-style:normal;font-size:19px;line-height:1.1}
 html.mmp-native-app .mmp-mobile-dock a.dock-ai i{background:linear-gradient(145deg,#f1d48f,#a77a38);color:#16130d;width:36px;height:31px;display:grid;place-items:center;border-radius:11px}
 html.mmp-native-app .mmp-mobile-dock a.native-active{color:#f5d991;background:linear-gradient(145deg,#3b301d,#1c2430);border:1px solid #9e804a;box-shadow:0 0 18px #d7b46a30}
-html.mmp-native-app .native-update-banner{position:fixed;z-index:1200;left:14px;right:14px;top:calc(12px + env(safe-area-inset-top));display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid #b8914d;border-radius:15px;background:linear-gradient(120deg,#172638,#121923);box-shadow:0 12px 35px #000b;color:#f4e1b5;font-size:11px}
-html.mmp-native-app .native-update-banner a{flex:none;padding:8px 12px;border-radius:10px;background:linear-gradient(145deg,#f1d48f,#a77a38);color:#15120b;text-decoration:none;font-weight:900}
+html.mmp-native-app .native-update-banner{position:fixed;z-index:1200;left:14px;right:14px;top:calc(70px + env(safe-area-inset-top));display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 13px;border:1px solid #b8914d;border-radius:15px;background:linear-gradient(120deg,#172638,#121923);box-shadow:0 12px 35px #000b;color:#f4e1b5;font-size:11px}
+html.mmp-native-app .native-update-copy{display:flex;flex-direction:column;gap:4px;min-width:0;line-height:1.6}
+html.mmp-native-app .native-update-copy strong{font-size:12px;color:#ffe4a7}
+html.mmp-native-app .native-update-copy small{font-size:10px;color:#b9c5d0}
+html.mmp-native-app .native-update-actions{display:flex;align-items:center;gap:6px;flex:none}
+html.mmp-native-app .native-update-banner button{border:0;cursor:pointer;font:700 10px var(--font-fa);padding:9px 10px;border-radius:10px;background:linear-gradient(145deg,#f1d48f,#a77a38);color:#15120b}
+html.mmp-native-app .native-update-banner .native-update-close{padding:7px 9px;background:#26394a;border:1px solid #53677a;color:#d9e4ed;font-size:13px}
 html.mmp-native-app #chart-container,html.mmp-native-app #tradingview_widget{height:420px;min-height:420px}
 html.mmp-native-app .connection-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 html.mmp-native-app .ai-toolbar{grid-template-columns:1fr 1fr}
@@ -1522,7 +1529,7 @@ html.mmp-native-app .footer{padding-bottom:12px}
   document.addEventListener("DOMContentLoaded",function(){
    if(document.querySelector(".native-appbar"))return;
    var header=document.createElement("header");header.className="native-appbar";
-   header.innerHTML='<div class="native-brand"><div class="native-mark"><img src="assets/mmp-coin-ai-icon.svg" alt="MMP COIN AI"></div><div><b>MMP COIN AI</b><small>SMART MARKET TERMINAL</small></div></div><div class="native-appbar-actions"><div class="native-live"><i></i><span>بازار زنده</span></div><button type="button" class="native-refresh-btn" id="native-refresh-btn" aria-label="بروزرسانی بازار" title="بروزرسانی">⟳</button></div>';
+   header.innerHTML='<div class="native-brand"><div class="native-mark"><img src="assets/mmp-coin-ai-icon.svg" alt="MMP COIN AI"></div><div><b>MMP COIN AI</b><small>SMART MARKET TERMINAL</small></div></div><div class="native-appbar-actions"><div class="native-live"><i></i><span>بازار زنده</span></div><button type="button" class="native-update-check-btn" id="native-update-check-btn" aria-label="بررسی نسخه جدید" title="بررسی نسخه جدید">⇧</button><button type="button" class="native-refresh-btn" id="native-refresh-btn" aria-label="بروزرسانی بازار" title="بروزرسانی بازار">⟳</button></div>';
    document.body.insertBefore(header,document.body.firstChild);
    var refreshButton=header.querySelector("#native-refresh-btn");
    if(refreshButton){refreshButton.addEventListener("click",function(){if(refreshButton.disabled)return;refreshButton.disabled=true;refreshButton.classList.add("is-refreshing");try{if(typeof refreshAll==="function")refreshAll();if(typeof checkConnections==="function")checkConnections();}finally{setTimeout(function(){refreshButton.disabled=false;refreshButton.classList.remove("is-refreshing");},1800);}});}
@@ -1545,24 +1552,67 @@ html.mmp-native-app .footer{padding-bottom:12px}
     }
     links.forEach(function(a){a.addEventListener("click",function(e){var target=document.querySelector(a.getAttribute("href"));if(target){e.preventDefault();target.scrollIntoView({behavior:"smooth",block:"start"});history.replaceState(null,"",a.getAttribute("href"))}})});
    }
-   function checkNativeUpdate(){
-    var current=document.querySelector('meta[name="mmp-app-version"]')?.content||"1.0.0";
-    fetch("https://api.github.com/repos/MMP-COIN/MMP-COIN-AI/releases/latest",{headers:{Accept:"application/vnd.github+json"}})
-     .then(function(r){return r.ok?r.json():null}).then(function(release){
-      if(!release||!release.tag_name||release.tag_name==="app-v"+current)return;
-      var apk=(release.assets||[]).find(function(asset){return asset.name&&asset.name.toLowerCase().endsWith(".apk")});
-      if(!apk||document.querySelector(".native-update-banner"))return;
-      var banner=document.createElement("div");banner.className="native-update-banner";
-      banner.innerHTML='<span>نسخه جدید MMP COIN AI آماده است</span><a href="'+apk.browser_download_url+'" target="_blank" rel="noopener">دریافت بروزرسانی</a>';
-      document.body.appendChild(banner);
-      var updateLink=banner.querySelector("a");
-      updateLink.addEventListener("click",function(event){
-       var browser=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.Browser;
-       if(browser&&browser.open){event.preventDefault();browser.open({url:apk.browser_download_url});}
-      });
-     }).catch(function(){});
+   var nativeUpdateChecking=false;
+   function showNativeUpdateMessage(message){
+    var old=document.querySelector(".mmp-update-toast");if(old)old.remove();
+    var toast=document.createElement("div");toast.className="mmp-share-toast mmp-update-toast";toast.textContent=message;document.body.appendChild(toast);
+    setTimeout(function(){if(toast.parentNode)toast.remove();},3200);
    }
-   checkNativeUpdate();
+   function versionParts(value){return String(value||"").replace(/^app-v/i,"").split(".").map(function(part){var n=parseInt(part,10);return Number.isFinite(n)?n:0;});}
+   function compareVersions(a,b){
+    var aa=versionParts(a),bb=versionParts(b),length=Math.max(aa.length,bb.length);
+    for(var i=0;i<length;i++){var x=aa[i]||0,y=bb[i]||0;if(x>y)return 1;if(x<y)return -1;}
+    return 0;
+   }
+   function openNativeApk(url){
+    if(!/^https:\/\/github\.com\/MMP-COIN\/MMP-COIN-AI\/releases\/download\//.test(url)){showNativeUpdateMessage("پیوند بروزرسانی معتبر نیست.");return;}
+    var browser=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.Browser;
+    if(browser&&typeof browser.open==="function"){browser.open({url:url}).catch(function(){window.open(url,"_blank");});}
+    else{window.open(url,"_blank");}
+    showNativeUpdateMessage("فایل بروزرسانی را دانلود کنید؛ سپس نصب را تأیید کنید.");
+   }
+   function showNativeUpdateBanner(version,url){
+    var existing=document.querySelector(".native-update-banner");if(existing)existing.remove();
+    var banner=document.createElement("div");banner.className="native-update-banner";
+    var copy=document.createElement("div");copy.className="native-update-copy";
+    var title=document.createElement("strong");title.textContent="نسخه جدید MMP COIN AI موجود است";
+    var detail=document.createElement("small");detail.textContent="نسخه فعلی "+currentNativeVersion+"  ←  نسخه جدید "+version;
+    copy.appendChild(title);copy.appendChild(detail);
+    var actions=document.createElement("div");actions.className="native-update-actions";
+    var download=document.createElement("button");download.type="button";download.textContent="دانلود و بروزرسانی";
+    download.addEventListener("click",function(){openNativeApk(url);});
+    var close=document.createElement("button");close.type="button";close.className="native-update-close";close.setAttribute("aria-label","بستن");close.textContent="×";
+    close.addEventListener("click",function(){banner.remove();});
+    actions.appendChild(download);actions.appendChild(close);banner.appendChild(copy);banner.appendChild(actions);document.body.appendChild(banner);
+   }
+   var currentNativeVersion=document.querySelector('meta[name="mmp-app-version"]')?.content||"1.0.0";
+   function checkNativeUpdate(manual){
+    if(nativeUpdateChecking)return;
+    nativeUpdateChecking=true;
+    var checkButton=document.getElementById("native-update-check-btn");
+    if(checkButton){checkButton.disabled=true;checkButton.classList.add("is-checking");}
+    var controller=new AbortController();var timeout=setTimeout(function(){controller.abort();},12000);
+    fetch("https://api.github.com/repos/MMP-COIN/MMP-COIN-AI/releases/latest",{cache:"no-store",headers:{Accept:"application/vnd.github+json"},signal:controller.signal})
+     .then(function(response){if(!response.ok)throw new Error("HTTP "+response.status);return response.json();})
+     .then(function(release){
+      var version=String(release&&release.tag_name||"").replace(/^app-v/i,"");
+      var apk=(release&&Array.isArray(release.assets)?release.assets:[]).find(function(asset){return String(asset.name||"").toLowerCase()==="app-release.apk";});
+      if(!version||!apk||!apk.browser_download_url)throw new Error("APK release unavailable");
+      if(compareVersions(version,currentNativeVersion)<=0){
+       if(manual)showNativeUpdateMessage("اپلیکیشن به‌روز است · نسخه "+currentNativeVersion);
+       return;
+      }
+      showNativeUpdateBanner(version,apk.browser_download_url);
+     })
+     .catch(function(){if(manual)showNativeUpdateMessage("بررسی نسخه جدید انجام نشد؛ اتصال اینترنت را بررسی کنید.");})
+     .finally(function(){
+      clearTimeout(timeout);nativeUpdateChecking=false;
+      if(checkButton){checkButton.disabled=false;checkButton.classList.remove("is-checking");}
+     });
+   }
+   var updateCheckButton=document.getElementById("native-update-check-btn");
+   if(updateCheckButton)updateCheckButton.addEventListener("click",function(){checkNativeUpdate(true);});
+   checkNativeUpdate(false);
    var wrap=document.querySelector(".wrap");
    if(wrap){
     var ticker=document.getElementById("market-ticker");
