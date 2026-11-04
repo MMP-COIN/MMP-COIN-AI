@@ -323,7 +323,7 @@ async function handle(request,env){
    // In "both" mode, either valid market is enough to continue. Prefer spot,
    // but fall back to futures when spot candles are unavailable.
    if(spotMarket){market=spotMarket;candleMarket="spot";}
-   else if(futuresMarket){market=futuresMarket;candleMarket="futures";}
+   else if(futuresMarket){market=futuresMarket;candleMarket="futures";pair=futuresPair;}
    else{
     const spotError=String(settled[0].reason?.message||"داده اسپات در دسترس نیست");
     const futuresError=String(settled[1].reason?.message||"داده فیوچرز در دسترس نیست");
