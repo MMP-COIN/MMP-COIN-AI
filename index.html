@@ -512,7 +512,7 @@ body:after{content:"";position:fixed;width:42vw;height:42vw;max-width:620px;max-
 #chart-section .chart-top-bar h2{font-size:clamp(20px,2.4vw,27px)!important;font-weight:900!important;color:#e7bd62!important}
 .section-kicker,.side-caption{color:#c6a04f!important}
 
-</style>
+.ai-reference-usdt,.ai-reference-irt{display:block;line-height:1.65;white-space:nowrap}.ai-reference-usdt{color:#f7d77f;font-weight:900}.ai-reference-irt{color:#e7bd62;font-size:.88em;font-weight:800;margin-top:2px}\n</style>
 <link href="https://fonts.googleapis.com/css2?family=Estedad:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
 <body class="mmp-app-mode">
@@ -1080,7 +1080,7 @@ function renderAiReport(r,c,market={}){
  $("ai-confidence-label").textContent=(r.confidence??"—")+(r.confidence!=null?" از ۱۰۰":"");
  $("ai-confidence-fill").style.width=Math.max(0,Math.min(100,Number(r.confidence)||0))+"%";
  $("ai-risk").textContent=r.risk_level||"نامشخص";
- $("ai-live-price").textContent=aiPrice(r.market?.price_usd??c?.current_price);
+ const referencePrice=aiNum(r.market?.price_usd??c?.current_price);\n if(referencePrice==null){$("ai-live-price").textContent="—";}else{$("ai-live-price").innerHTML='<span class="ai-reference-usdt">$ '+money(referencePrice,referencePrice<1?6:2)+' USDT</span>'+(currentTetherPrice>0?'<span class="ai-reference-irt">'+toman(referencePrice*currentTetherPrice)+' تومان</span>':"");}
  const tfNames={"15m":"۱۵ دقیقه","1h":"۱ ساعت","4h":"۴ ساعت","1d":"روزانه"};
  const tfHtml=Object.entries(market.timeframes||{}).map(([tf,v])=>{
   const trend=v.ema_trend==="bullish"?"صعودی":v.ema_trend==="bearish"?"نزولی":"خنثی / متناقض";
