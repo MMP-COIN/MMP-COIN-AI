@@ -446,6 +446,15 @@ body:after{content:"";position:fixed;width:42vw;height:42vw;max-width:620px;max-
 .full-coins-close-dock{position:sticky;bottom:10px;z-index:12;display:flex;justify-content:center;padding:10px 0 2px;pointer-events:none;background:linear-gradient(180deg,transparent,#0b111bd9 35%)}
 .full-coins-close-btn{pointer-events:auto;width:min(100%,460px);border:1px solid #b8954c;background:linear-gradient(135deg,#3b301b,#171b22);color:#f5d58c;border-radius:12px;padding:12px 16px;font-size:12px;font-weight:800;box-shadow:0 8px 24px #0009;cursor:pointer;backdrop-filter:blur(12px)}
 .full-coins-close-btn:active{transform:translateY(1px)}
+
+.risk-row{align-items:flex-start}
+.risk-field{display:block;flex:1;min-width:0;color:#dce5ee;font-size:11px;font-weight:800}
+.risk-field>span{display:block;margin:0 2px 5px;line-height:1.4}
+.risk-field-stop>span{font-size:10px}
+.risk-input-wrap{display:flex;align-items:center;min-width:0;background:#0b141f;border:1px solid #344b5d;border-radius:10px;overflow:hidden}
+.risk-input-wrap input{width:100%;min-width:0;flex:1;background:transparent!important;border:0!important;outline:0;color:#fff;padding:10px 7px;font-size:13px}
+.risk-input-wrap small{flex:0 0 auto;padding:0 7px;color:#f0d58f;font-size:10px;font-weight:900;white-space:nowrap}
+
 </style>
 </head>
 <body>
@@ -575,8 +584,14 @@ body:after{content:"";position:fixed;width:42vw;height:42vw;max-width:620px;max-
 <div class="section-head"><div><div class="section-kicker">TRADER TOOLKIT</div><h2>ابزارهای حرفه‌ای معامله‌گر</h2></div><span class="badge">محاسبه در همین دستگاه</span></div>
 <div class="tool-grid">
 <div class="tool-card"><h3>محاسبه‌گر ریسک و حجم معامله</h3><p>سرمایه، درصد ریسک، قیمت ورود و حد ضرر را وارد کن تا اندازه موقعیت پیشنهادی محاسبه شود.</p>
-<div class="tool-row"><input id="risk-capital" type="number" min="0" placeholder="سرمایه حساب (USDT)" aria-label="سرمایه حساب به USDT" value="1000"><input id="risk-percent" type="number" min="0.1" max="100" step="0.1" placeholder="درصد ریسک (%)" aria-label="درصد ریسک" value="2"></div>
-<div class="tool-row" style="margin-top:7px"><input id="risk-entry" type="number" min="0" step="any" placeholder="قیمت ورود (USDT)" aria-label="قیمت ورود به USDT"><input id="risk-stop" type="number" min="0" step="any" placeholder="قیمت حد ضرر (USDT)" aria-label="قیمت حد ضرر به USDT"></div>
+<div class="tool-row risk-row">
+<label class="risk-field"><span>سرمایه حساب</span><div class="risk-input-wrap"><input id="risk-capital" type="number" min="0" aria-label="سرمایه حساب به USDT" value="1000"><small>USDT</small></div></label>
+<label class="risk-field"><span>درصد ریسک</span><div class="risk-input-wrap"><input id="risk-percent" type="number" min="0.1" max="100" step="0.1" aria-label="درصد ریسک" value="2"><small>%</small></div></label>
+</div>
+<div class="tool-row risk-row" style="margin-top:7px">
+<label class="risk-field"><span>قیمت ورود</span><div class="risk-input-wrap"><input id="risk-entry" type="number" min="0" step="any" aria-label="قیمت ورود به USDT"><small>USDT</small></div></label>
+<label class="risk-field risk-field-stop"><span>قیمت حد ضرر</span><div class="risk-input-wrap"><input id="risk-stop" type="number" min="0" step="any" aria-label="قیمت حد ضرر به USDT"><small>USDT</small></div></label>
+</div>
 <button class="btn primary" id="risk-calc" style="margin-top:9px">محاسبه حجم معامله</button><div id="risk-result" class="ai-status" style="margin-top:10px">اطلاعات معامله را وارد کنید.</div></div>
 <div class="tool-card"><h3>هشدار قیمت و محدوده</h3><p>قیمت هدف را تعیین کن؛ با رسیدن قیمت، هشدار داخل برنامه نمایش داده می‌شود. اعلان دستگاه به پشتیبانی مرورگر و مجوز آن وابسته است.</p><div class="tool-row"><select id="alert-coin" aria-label="ارز هشدار"></select><select id="alert-direction"><option value="above">بالاتر از</option><option value="below">پایین‌تر از</option></select></div><div class="tool-row" style="margin-top:7px"><input id="alert-price" type="number" min="0" step="any" placeholder="قیمت هدف به دلار"><button class="btn primary" id="alert-add">ثبت هشدار</button></div><div id="price-alert-list" class="tool-list" style="margin-top:9px"></div><button class="btn secondary" id="alert-notify" style="margin-top:8px">فعال‌سازی اعلان دستگاه</button></div><div class="tool-card"><h3>دفتر ثبت تحلیل‌ها</h3><p>تحلیل‌های اجراشده روی همین دستگاه ثبت می‌شوند تا سوابق تصمیم‌ها قابل مرور باشد. ثبت تحلیل به معنی نتیجه سود یا زیان نیست.</p><div id="analysis-journal" class="tool-list"><p class="sub">هنوز تحلیلی ثبت نشده است.</p></div><button class="btn secondary" id="journal-clear" style="margin-top:9px">پاک‌کردن سوابق محلی</button></div>
 </div></section>
