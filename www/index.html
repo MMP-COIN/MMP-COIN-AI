@@ -817,10 +817,10 @@ async function refreshAll(){
   }
 
   const [topRes, extraRes] = await Promise.all([
-    fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=false&price_change_percentage=1h%2C24h%2C7d'),
+    fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&sparkline=false&price_change_percentage=1h%2C24h%2C7d'),
     fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids='+EXTRA_COIN_IDS.join(',')+'&order=market_cap_desc&sparkline=false&price_change_percentage=1h%2C24h%2C7d')
   ]);
-  if(!topRes.ok) throw new Error('CoinGecko top-50 HTTP '+topRes.status);
+  if(!topRes.ok) throw new Error('CoinGecko top-100 HTTP '+topRes.status);
   const topData = await topRes.json();
   let extraData = [];
   if(extraRes.ok) {
@@ -829,15 +829,18 @@ async function refreshAll(){
   }
   if(!Array.isArray(topData)) throw new Error('CoinGecko returned invalid top-50 data');
 
-  // نگه‌داشتن ۵۰ ارز اصلیِ قابل معامله و افزودن ارزهای منتخب؛ استیبل‌کوین‌ها و توکن‌های رَپ‌شده از منوی کندل/تحلیل کنار گذاشته می‌شوند.
+  // انتخاب ۱۰۰ دارایی با شناسه و نماد یکتا؛ در صورت حذف نمادهای تکراری، از فهرست تکمیلی جایگزین می‌شود.
   const merged = new Map();
+  const seenSymbols = new Set();
   [...topData,...extraData].forEach(c => {
     if(!c || !c.id || !c.symbol) return;
-    if(NON_TRADABLE_COIN_IDS.has(c.id) || NON_TRADABLE_SYMBOLS.has(String(c.symbol).toUpperCase())) return;
-    if(!merged.has(c.id)) merged.set(c.id,c);
+    const symbol=String(c.symbol).toUpperCase();
+    if(NON_TRADABLE_COIN_IDS.has(c.id) || NON_TRADABLE_SYMBOLS.has(symbol)) return;
+    if(merged.has(c.id)||seenSymbols.has(symbol)) return;
+    merged.set(c.id,c);seenSymbols.add(symbol);
   });
-  let data = [...merged.values()].sort((a,b)=>(a.market_cap_rank||999999)-(b.market_cap_rank||999999));
-  if(data.length < 50) throw new Error('Only '+data.length+' tradable assets received from CoinGecko; retry on next refresh');
+  let data = [...merged.values()].sort((a,b)=>(a.market_cap_rank||999999)-(b.market_cap_rank||999999)).slice(0,100);
+  if(data.length < 100) throw new Error('Only '+data.length+' unique tradable assets received from CoinGecko; retry on next refresh');
   data = await enrichWithBinance(data);
   cachedCoinsData = data;
   
@@ -884,7 +887,7 @@ function renderCoinsTables(data) {
   let rowHtml = (arr) => arr.map(c=>`
     <tr>
       <td class="coin-identity" data-label="ارز"><img class="coin-icon" src="${c.image||''}" alt="" loading="lazy"><span><b>${c.name}</b> <span class="muted">${c.symbol.toUpperCase()}</span></span></td>
-      <td class="num" data-label="قیمت دلاری">${money(c.current_price, c.current_price < 1 ? 4 : 2)} $<small class="muted" style="display:block;font-size:10px;margin-top:3px;">منبع: ${c.price_source||"CoinGecko"}</small></td>
+      <td class="num" data-label="قیمت دلاری">${money(c.current_price, c.current_price < 1 ? 4 : 2)} $<small class="muted" style="display:block;font-size:10px;margin-top:3px;">منبع قیمت: ${c.price_source||"CoinGecko"} · ${c.exchange_support?(c.exchange_support.spot?.confirmed?"اسپات: "+c.exchange_support.spot.providers.join("، "):c.exchange_support.futures?.confirmed?"فیوچرز: "+c.exchange_support.futures.providers.join("، "):"فقط قیمت مرجع"):"در حال بررسی جفت‌ها"}</small></td>
       <td class="num" data-label="قیمت تومانی" style="color:var(--gold2); font-weight:bold;">${toman(c.current_price * currentTetherPrice)} تومان</td>
       <td class="${(c.price_change_percentage_24h||0)>=0?'positive':'negative'} num" data-label="تغییر ۲۴ ساعت">${(c.price_change_percentage_24h||0)>=0?'+':''}${c.price_change_percentage_24h?.toFixed(2)||0}%</td>
       <td class="num" data-label="ارزش بازار">${money(c.market_cap,0)}</td>
@@ -957,7 +960,7 @@ let exchangeAuditPromise=null;
 let exchangeAuditAt=0;
 async function auditExchangeSupport(coins,force=false){
  if(exchangeAuditPromise)return exchangeAuditPromise;
- if(!force&&Date.now()-exchangeAuditAt<600000)return;
+ if(!force&&Date.now()-exchangeAuditAt<60000)return;
  const symbols=[...new Set((coins||[]).map(x=>String(x.symbol||"").toUpperCase()).filter(Boolean))];
  if(!symbols.length)return;
  exchangeAuditPromise=(async()=>{
@@ -967,6 +970,8 @@ async function auditExchangeSupport(coins,force=false){
    const payload=await response.json();
    if(!response.ok||!Array.isArray(payload.assets))throw new Error(payload.error||"تأیید صرافی‌ها ناموفق بود");
    exchangeSupportBySymbol=Object.fromEntries(payload.assets.map(x=>[x.symbol.replace(/USDT$/,""),x]));
+   (coins||[]).forEach(coin=>{coin.exchange_support=exchangeSupportBySymbol[String(coin.symbol||"").toUpperCase()]||null;});
+   if(coins===cachedCoinsData&&typeof renderCoinsTables==="function")renderCoinsTables(coins);
    exchangeAuditAt=Date.now();
    const select=$("ai-coin-select");
    [...select.options].forEach(option=>{
