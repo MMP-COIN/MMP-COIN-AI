@@ -553,6 +553,11 @@ body:after{content:"";position:fixed;width:42vw;height:42vw;max-width:620px;max-
 @media(max-width:760px){#coins-section .market-table tbody{grid-template-columns:minmax(0,1fr);gap:10px}#coins-section .market-table tbody tr.coin-card-row{padding:13px;gap:8px 10px}}
 @media(max-width:380px){#coins-section .market-table tbody tr.coin-card-row{padding:11px;gap:7px}#coins-section .market-table tbody td{font-size:10px}#coins-section .market-table tbody td:before{font-size:9px}}
 
+
+/* دکمه بازگشت همیشه داخل محدوده تمام‌صفحه نمودار باقی می‌ماند */
+.chart-exit-fullscreen-btn{display:none;position:absolute;top:max(14px,env(safe-area-inset-top));right:max(14px,env(safe-area-inset-right));z-index:100000;padding:11px 16px;border:1px solid #d7b46a;border-radius:12px;background:#111923ed;color:#f5dda2;font:700 13px Tahoma,Arial,sans-serif;box-shadow:0 6px 24px #0009;cursor:pointer;touch-action:manipulation}
+#chart-container:fullscreen .chart-exit-fullscreen-btn,#chart-container:-webkit-full-screen .chart-exit-fullscreen-btn,#chart-container.chart-fullscreen-fallback .chart-exit-fullscreen-btn{display:inline-flex;align-items:center;gap:7px}
+@media(max-width:600px){.chart-exit-fullscreen-btn{top:max(10px,env(safe-area-inset-top));right:max(10px,env(safe-area-inset-right));padding:12px 14px;font-size:12px}}
 </style>
 <link href="https://fonts.googleapis.com/css2?family=Estedad:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
@@ -629,6 +634,7 @@ body:after{content:"";position:fixed;width:42vw;height:42vw;max-width:620px;max-
   </div>
 </div>
 <div id="chart-container">
+  <button class="chart-exit-fullscreen-btn" id="chart-exit-fullscreen-btn" type="button" aria-label="بازگشت از حالت تمام‌صفحه نمودار" onclick="toggleChartFullscreen()">↙ بازگشت به صفحه</button>
   <div id="tradingview_widget" style="width:100%; height:100%;"></div>
 </div>
 </section>
@@ -856,13 +862,20 @@ function changeTradingViewSymbol() {
 
 async function toggleChartFullscreen() {
   const chart = $('chart-container');
+  const fallbackActive = chart.classList.contains('chart-fullscreen-fallback');
   try {
-    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-      if (chart.requestFullscreen) await chart.requestFullscreen();
-      else if (chart.webkitRequestFullscreen) chart.webkitRequestFullscreen();
-      else setChartFullscreenFallback(true);
-    } else if (document.exitFullscreen) await document.exitFullscreen();
-    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+    if (fallbackActive) {
+      setChartFullscreenFallback(false);
+      return;
+    }
+    if (document.fullscreenElement || document.webkitFullscreenElement) {
+      if (document.exitFullscreen) await document.exitFullscreen();
+      else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+      return;
+    }
+    if (chart.requestFullscreen) await chart.requestFullscreen();
+    else if (chart.webkitRequestFullscreen) chart.webkitRequestFullscreen();
+    else setChartFullscreenFallback(true);
   } catch (error) {
     setChartFullscreenFallback(!chart.classList.contains('chart-fullscreen-fallback'));
   }
@@ -874,8 +887,10 @@ function setChartFullscreenFallback(enabled) {
   syncChartFullscreenButton();
 }
 function syncChartFullscreenButton() {
-  const active = !!(document.fullscreenElement || document.webkitFullscreenElement || $('chart-container').classList.contains('chart-fullscreen-fallback'));
-  $('chart-fullscreen-btn').textContent = active ? '✕ خروج از تمام‌صفحه' : '⛶ تمام‌صفحه';
+  const chart = $('chart-container');
+  const active = !!(document.fullscreenElement || document.webkitFullscreenElement || chart.classList.contains('chart-fullscreen-fallback'));
+  const button = $('chart-fullscreen-btn');
+  if (button) button.textContent = active ? '✕ خروج از تمام‌صفحه' : '⛶ تمام‌صفحه';
 }
 document.addEventListener('fullscreenchange', syncChartFullscreenButton);
 document.addEventListener('webkitfullscreenchange', syncChartFullscreenButton);
