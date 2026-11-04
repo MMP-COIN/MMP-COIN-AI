@@ -3,6 +3,7 @@ const MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 const ASSET_SYMBOL_OVERRIDES = { layerzero: "ZRO" };
 const ALLOWED_ORIGINS = new Set([
  "https://mmp1988.github.io",
+ "https://mmp-coin.github.io",
  "https://localhost",
  "capacitor://localhost",
  "http://localhost"
