@@ -1,8 +1,35 @@
 const MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 // Canonical exchange symbols for selected assets (CoinGecko ID -> ticker).
 const ASSET_SYMBOL_OVERRIDES = { layerzero: "ZRO" };
-const CORS = {"Access-Control-Allow-Origin":"*","Access-Control-Allow-Methods":"GET, POST, OPTIONS","Access-Control-Allow-Headers":"Content-Type"};
-const json=(obj,status=200)=>new Response(JSON.stringify(obj),{status,headers:{...CORS,"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store"}});
+const ALLOWED_ORIGINS = new Set([
+ "https://mmp1988.github.io",
+ "https://localhost",
+ "capacitor://localhost",
+ "http://localhost"
+]);
+function corsHeaders(request){
+ const origin=request?.headers.get("Origin");
+ const headers={"Vary":"Origin"};
+ if(origin&&ALLOWED_ORIGINS.has(origin)){
+  headers["Access-Control-Allow-Origin"]=origin;
+  headers["Access-Control-Allow-Methods"]="GET, POST, OPTIONS";
+  headers["Access-Control-Allow-Headers"]="Content-Type";
+  headers["Access-Control-Max-Age"]="86400";
+ }
+ return headers;
+}
+const json=(obj,status=200,request=null,extraHeaders={})=>new Response(JSON.stringify(obj),{status,headers:{...corsHeaders(request),...extraHeaders,"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store","X-Content-Type-Options":"nosniff","Referrer-Policy":"no-referrer"}});
+async function checkRateLimit(binding,request,scope){
+ if(!binding)return "unavailable";
+ const ip=request.headers.get("CF-Connecting-IP")||"unknown";
+ try{const result=await binding.limit({key:ip+":"+scope});return result?.success?"ok":"limited";}
+ catch{return "unavailable";}
+}
+function rateLimitReply(result,request){
+ if(result==="ok")return null;
+ if(result==="limited")return json({error:"تعداد درخواست‌ها بیش از حد مجاز است؛ یک دقیقه دیگر دوباره تلاش کنید."},429,request,{"Retry-After":"60"});
+ return json({error:"محافظت امنیتی سرویس موقتاً در دسترس نیست."},503,request);
+}
 function mean(a){return a.length?a.reduce((x,y)=>x+y,0)/a.length:0}
 function ema(values,period){if(values.length<period)return null;let k=2/(period+1),v=mean(values.slice(0,period));for(let i=period;i<values.length;i++)v=values[i]*k+v*(1-k);return v}
 function rsi(values,p=14){if(values.length<=p)return null;let up=0,dn=0;for(let i=values.length-p;i<values.length;i++){let d=values[i]-values[i-1];if(d>0)up+=d;else dn-=d;}if(dn===0)return 100;let rs=(up/p)/(dn/p);return 100-100/(1+rs)}
@@ -229,31 +256,46 @@ function persianize(value){
 }
 
 async function handle(request,env){
- if(request.method==="OPTIONS")return new Response(null,{headers:CORS});
+ if(request.method==="OPTIONS"){
+  const origin=request.headers.get("Origin");
+  if(origin&&!ALLOWED_ORIGINS.has(origin))return new Response(null,{status:403,headers:{"Vary":"Origin"}});
+  return new Response(null,{status:204,headers:{...corsHeaders(request),"X-Content-Type-Options":"nosniff","Referrer-Policy":"no-referrer"}});
+ }
  if(request.method==="GET"&&new URL(request.url).pathname==="/support-check"){
+  const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"support-check");
+  const limited=rateLimitReply(limitResult,request);if(limited)return limited;
   const url=new URL(request.url);
   const symbols=[...new Set((url.searchParams.get("symbols")||"").split(",").map(x=>x.toUpperCase().replace(/[^A-Z0-9]/g,"")).filter(validSymbol))].slice(0,150);
-  if(!symbols.length)return json({error:"Provide comma-separated symbols"},400);
+  if(!symbols.length)return json({error:"Provide comma-separated symbols"},400,request);
   const catalogs=await getExchangeCatalogs();
   const assets=symbols.map(symbol=>exchangeSupport(symbol,catalogs));
   const sources=Object.fromEntries(Object.entries(catalogs).map(([k,v])=>[k,{ok:!!v?.ok,status:v?.status||0,error:v?.error||null,source:v?.source||null}]));
-  return json({checked_at:new Date().toISOString(),assets,sources});
+  return json({checked_at:new Date().toISOString(),assets,sources},200,request);
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/health"){
+  const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"health");
+  const limited=rateLimitReply(limitResult,request);if(limited)return limited;
   const probe=async(url)=>{try{const r=await fetch(url,{headers:{"Accept":"application/json"}});return {ok:r.ok,status:r.status};}catch(e){return {ok:false,error:e.message||"network error"};}};
   const [spot,futures,bybit]=await Promise.all([
    probe("https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1h&limit=1"),
    probe("https://fapi.binance.com/fapi/v1/klines?symbol=BTCUSDT&interval=1h&limit=1"),
    probe("https://api.bybit.com/v5/market/kline?category=linear&symbol=BTCUSDT&interval=60&limit=1")
   ]);
-  return json({service:"MMP COIN AI",worker:"online",ai_binding:!!env.AI,providers:{spot_binance:spot,futures_binance:futures,futures_bybit_fallback:bybit},checked_at:new Date().toISOString()});
+  return json({service:"MMP COIN AI",worker:"online",ai_binding:!!env.AI,providers:{spot_binance:spot,futures_binance:futures,futures_bybit_fallback:bybit},checked_at:new Date().toISOString()},200,request);
  }
- if(request.method!=="POST")return json({error:"Method not allowed"},405);
- if(!env.AI)return json({error:"AI binding is not configured in Cloudflare Worker."},503);
- let body;try{body=await request.json()}catch{return json({error:"Invalid JSON"},400)}
+ if(request.method!=="POST")return json({error:"Method not allowed"},405,request);
+ const limitResult=await checkRateLimit(env.AI_ANALYSIS_LIMITER,request,"ai-analysis");
+ const limited=rateLimitReply(limitResult,request);if(limited)return limited;
+ if(!env.AI)return json({error:"AI binding is not configured in Cloudflare Worker."},503,request);
+ const contentType=request.headers.get("Content-Type")||"";
+ if(!contentType.toLowerCase().includes("application/json"))return json({error:"Content-Type must be application/json"},415,request);
+ const declaredLength=Number(request.headers.get("Content-Length")||0);
+ if(declaredLength>16384)return json({error:"Request body is too large"},413,request);
+ let body;try{const rawBody=await request.text();if(new TextEncoder().encode(rawBody).length>16384)return json({error:"Request body is too large"},413,request);body=JSON.parse(rawBody);}catch{return json({error:"Invalid JSON"},400,request);}
+ if(!body||typeof body!=="object"||Array.isArray(body))return json({error:"Invalid request body"},400,request);
  const coinId=String(body.coin_id||"").toLowerCase();
  const symbol=String(ASSET_SYMBOL_OVERRIDES[coinId]||body.symbol||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
- if(!validSymbol(symbol))return json({error:"Invalid asset symbol"},400);
+ if(!validSymbol(symbol))return json({error:"Invalid asset symbol"},400,request);
  const pair=symbol.endsWith("USDT")?symbol:symbol+"USDT";
  const mode=["spot","futures","both"].includes(body.market_mode)?body.market_mode:"both";
  let stage="دریافت کندل‌های بازار";
@@ -337,7 +379,7 @@ async function handle(request,env){
   analysis.plan_method="سطوح محاسبه‌شده از داده ۴ ساعته، ATR و حمایت/مقاومت؛ ورود مشروط به بسته‌شدن کندل ۴ ساعته";
   analysis.holding_horizon=analysis.holding_horizon||"تا بسته‌شدن و تأیید کندل ۴ ساعته بعدی";
   if(!analysis.recommendations.length)analysis.recommendations=["برای ورود LONG منتظر بسته‌شدن کندل ۱ ساعته بالای مقاومت و تثبیت قیمت بمان.","برای ورود SHORT منتظر بسته‌شدن کندل ۱ ساعته زیر حمایت و تثبیت قیمت بمان.","پس از ورود، حد ضرر و اهداف عددی برنامه را رعایت کن.","اگر هیچ‌کدام از شکست‌ها تأیید نشد، معامله نکن."];
-  return json({analysis,market:snapshot});
- }catch(e){return json({error:e.message||"Analysis failed",stage,symbol:pair,market_mode:mode},502)}
+  return json({analysis,market:snapshot},200,request);
+ }catch(e){return json({error:String(e?.message||"Analysis failed").slice(0,300),stage,symbol:pair,market_mode:mode},502,request)}
 }
 export default {fetch:handle};
