@@ -497,6 +497,17 @@ body:after{content:"";position:fixed;width:42vw;height:42vw;max-width:620px;max-
 .mmp-app-mode .mmp-sidebar{border-color:#35465b;background:#0c1420}
 .mmp-app-mode .radar-group{background:linear-gradient(145deg,#182536,#101722)}
 @media(min-width:900px){.mmp-app-mode .app-tabbar{left:50%;right:auto;transform:translateX(-50%);width:min(520px,calc(100% - 32px))}}
+
+/* هویت بصری تیترهای بخش‌ها */
+.section-head h2{font-family:'Estedad','Vazirmatn',sans-serif;font-size:clamp(20px,2.45vw,27px);font-weight:900;letter-spacing:-.35px;line-height:1.55}
+#ai-section .section-head h2{color:#c5a4ff;text-shadow:0 2px 18px #9b72ff35}
+#chart-section .chart-top-bar h2{font-family:'Estedad','Vazirmatn',sans-serif!important;font-size:clamp(19px,2.2vw,25px)!important;font-weight:900!important;color:#75c9ff}
+#opportunities .section-head h2{color:#62dfad;text-shadow:0 2px 16px #36c98b30}
+#watchlist .section-head h2{color:#6fd9e8}
+#market-hours .section-head h2{color:#f0bd72}
+#coins-section .section-head h2{color:#f3d17c}
+#trading-tools .section-head h2{color:#ff9c83}
+
 </style>
 <link href="https://fonts.googleapis.com/css2?family=Estedad:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
@@ -646,7 +657,7 @@ body:after{content:"";position:fixed;width:42vw;height:42vw;max-width:620px;max-
 </div>
 
 <div class="table-wrap"><table class="market-table">
-<thead><tr><th>دارایی</th><th>قیمت دلاری (USD)</th><th>قیمت تومانی (IRT)</th><th>تغییر ۲۴ساعته</th><th>ارزش بازار</th></tr></thead>
+<thead><tr><th>دارایی</th><th>قیمت دلاری (USDT)</th><th>قیمت تومانی (IRT)</th><th>تغییر ۲۴ساعته</th><th>ارزش بازار</th></tr></thead>
 <tbody id="top-coins"><tr><td colspan="5" class="muted">در حال دریافت داده…</td></tr></tbody>
 </table></div>
 
@@ -659,10 +670,10 @@ body:after{content:"";position:fixed;width:42vw;height:42vw;max-width:620px;max-
 <div class="full-coins-list" id="full-coins-box" aria-hidden="true">
   <div class="full-coins-toolbar">
     <div><b>سایر ارزهای بازار</b><small>همان چینش و اطلاعات فهرست اصلی</small></div>
-    <span class="badge">قیمت زنده · USD / IRT</span>
+    <span class="badge">قیمت زنده · USDT / IRT</span>
   </div>
   <div class="table-wrap"><table class="market-table">
-    <thead><tr><th>دارایی</th><th>قیمت دلاری (USD)</th><th>قیمت تومانی (IRT)</th><th>تغییر ۲۴ساعته</th><th>ارزش بازار</th></tr></thead>
+    <thead><tr><th>دارایی</th><th>قیمت دلاری (USDT)</th><th>قیمت تومانی (IRT)</th><th>تغییر ۲۴ساعته</th><th>ارزش بازار</th></tr></thead>
     <tbody id="full-coins"></tbody>
   </table></div>
   <div class="full-coins-close-dock"><button class="full-coins-close-btn" type="button" onclick="toggleFullCoinsList()" aria-label="بستن فهرست ارزهای بیشتر">⌃ بستن فهرست ارزها و بازگشت به ابتدای لیست</button></div>
@@ -855,17 +866,17 @@ async function refreshAll(){
   }
 
   const [topRes, extraRes] = await Promise.all([
-    fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=false&price_change_percentage=1h%2C24h%2C7d'),
+    fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&sparkline=false&price_change_percentage=1h%2C24h%2C7d'),
     fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids='+EXTRA_COIN_IDS.join(',')+'&order=market_cap_desc&sparkline=false&price_change_percentage=1h%2C24h%2C7d')
   ]);
-  if(!topRes.ok) throw new Error('CoinGecko top-50 HTTP '+topRes.status);
+  if(!topRes.ok) throw new Error('CoinGecko top-100 HTTP '+topRes.status);
   const topData = await topRes.json();
   let extraData = [];
   if(extraRes.ok) {
     const payload = await extraRes.json();
     if(Array.isArray(payload)) extraData = payload;
   }
-  if(!Array.isArray(topData)) throw new Error('CoinGecko returned invalid top-50 data');
+  if(!Array.isArray(topData)) throw new Error('CoinGecko returned invalid top-100 data');
 
   // نگه‌داشتن ۵۰ ارز اصلیِ قابل معامله و افزودن ارزهای منتخب؛ استیبل‌کوین‌ها و توکن‌های رَپ‌شده از منوی کندل/تحلیل کنار گذاشته می‌شوند.
   const merged = new Map();
@@ -922,8 +933,8 @@ function renderCoinsTables(data) {
   let rowHtml = (arr) => arr.map(c=>`
     <tr>
       <td class="coin-identity" data-label="ارز"><img class="coin-icon" src="${c.image||''}" alt="" loading="lazy"><span><b>${c.name}</b> <span class="muted">${c.symbol.toUpperCase()}</span></span></td>
-      <td class="num" data-label="قیمت دلاری">${money(c.current_price, c.current_price < 1 ? 4 : 2)} $<small class="muted" style="display:block;font-size:10px;margin-top:3px;">منبع: ${c.price_source||"CoinGecko"}</small></td>
-      <td class="num" data-label="قیمت تومانی" style="color:var(--gold2); font-weight:bold;">${toman(c.current_price * currentTetherPrice)} تومان</td>
+      <td class="num" data-label="قیمت دلاری (USDT)">${money(c.current_price, c.current_price < 1 ? 4 : 2)} $<small class="muted" style="display:block;font-size:10px;margin-top:3px;">منبع: ${c.price_source||"CoinGecko"}</small></td>
+      <td class="num" data-label="قیمت تومانی (IRT)" style="color:var(--gold2); font-weight:bold;">${toman(c.current_price * currentTetherPrice)} تومان</td>
       <td class="${(c.price_change_percentage_24h||0)>=0?'positive':'negative'} num" data-label="تغییر ۲۴ ساعت">${(c.price_change_percentage_24h||0)>=0?'+':''}${c.price_change_percentage_24h?.toFixed(2)||0}%</td>
       <td class="num" data-label="ارزش بازار">${money(c.market_cap,0)}</td>
     </tr>
