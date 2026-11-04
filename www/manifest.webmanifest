@@ -1,0 +1,19 @@
+{
+  "name": "MMP COIN AI",
+  "short_name": "MMP COIN",
+  "description": "ترمینال هوشمند پایش و تحلیل بازار رمزارزها",
+  "start_url": "./?source=pwa",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#08090d",
+  "theme_color": "#08090d",
+  "icons": [
+    {
+      "src": "assets/mmp-coin-ai-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
