@@ -788,7 +788,7 @@ async function enrichWithBinance(coins){
   const timer=setTimeout(()=>controller.abort(),8000);
   let response;
   try{
-   response=await fetch('https://api.binance.com/api/v3/ticker/24hr',{cache:'no-store',signal:controller.signal});
+   response=await fetch('${AI_ANALYSIS_ENDPOINT}/market-proxy?source=binance-tickers',{cache:'no-store',signal:controller.signal});
   }finally{clearTimeout(timer);}
   if(!response.ok)throw new Error('Binance HTTP '+response.status);
   const tickers=await response.json();
@@ -821,8 +821,8 @@ async function enrichWithBinance(coins){
 
 async function fetchTetherRate(){
  const requests=[
-  {source:"Nobitex",url:"https://apiv2.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls",read:d=>Number(d?.stats?.["usdt-rls"]?.latest)/10},
-  {source:"Wallex",url:"https://api.wallex.ir/v1/markets",read:d=>Number(d?.result?.symbols?.USDTIRT?.stats?.lastPrice)/10}
+  {source:"Nobitex",url:"${AI_ANALYSIS_ENDPOINT}/market-proxy?source=nobitex-tether",read:d=>Number(d?.stats?.["usdt-rls"]?.latest)/10},
+  {source:"Wallex",url:"${AI_ANALYSIS_ENDPOINT}/market-proxy?source=wallex-markets",read:d=>Number(d?.result?.symbols?.USDTIRT?.stats?.lastPrice)/10}
  ];
  const results=await Promise.all(requests.map(async item=>{
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),6500);
@@ -855,8 +855,8 @@ async function refreshAll(){
   else{$("usdt").textContent="داده در دسترس نیست";$("usdt-source").textContent=currentTetherWarning;}
 
   const [topRes, extraRes] = await Promise.all([
-    fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=false&price_change_percentage=1h%2C24h%2C7d'),
-    fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids='+EXTRA_COIN_IDS.join(',')+'&order=market_cap_desc&sparkline=false&price_change_percentage=1h%2C24h%2C7d')
+    fetch('${AI_ANALYSIS_ENDPOINT}/market-proxy?source=coingecko-top'),
+    fetch('${AI_ANALYSIS_ENDPOINT}/market-proxy?source=coingecko-extra&ids='+encodeURIComponent(EXTRA_COIN_IDS.join(','))+'')
   ]);
   if(!topRes.ok) throw new Error('CoinGecko top-100 HTTP '+topRes.status);
   const topData = await topRes.json();
