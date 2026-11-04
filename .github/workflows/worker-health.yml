@@ -1,0 +1,63 @@
+name: MMP COIN AI Worker Health Check
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 */6 * * *"
+  push:
+    branches: ["main"]
+    paths:
+      - "cloudflare-worker/**"
+      - ".github/workflows/worker-health.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: worker-health
+  cancel-in-progress: true
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check Worker health endpoint
+        env:
+          WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 2 --retry-delay 3 --max-time 25 "$WORKER_URL/health" -o /tmp/health.json
+          jq -e '.worker == "online" and .ai_binding == true' /tmp/health.json >/dev/null
+          {
+            echo "## Worker health"
+            echo "- Worker: online"
+            echo "- AI binding: available"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Check exchange connection monitor
+        env:
+          WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 2 --retry-delay 3 --max-time 25 "$WORKER_URL/connections-health" -o /tmp/connections.json
+          jq -e '.checks | length == 5' /tmp/connections.json >/dev/null
+          jq -r '.checks[] | "- " + .name + ": " + .status + (if .ping == null then "" else " (" + (.ping|tostring) + " ms)" end)' /tmp/connections.json >> "$GITHUB_STEP_SUMMARY"
+          if ! jq -e 'any(.checks[]; .status == "ok")' /tmp/connections.json >/dev/null; then
+            echo "No exchange data source is currently healthy." >&2
+            exit 1
+          fi
+
+      - name: Check market data proxy
+        env:
+          WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 1 --max-time 25 "$WORKER_URL/market-proxy?source=binance-tickers" -o /tmp/binance.json
+          jq -e 'type == "array" and any(.[]; .symbol == "BTCUSDT")' /tmp/binance.json >/dev/null
+          curl --fail --silent --show-error --retry 1 --max-time 25 "$WORKER_URL/market-proxy?source=coingecko-top" -o /tmp/coingecko.json
+          jq -e 'type == "array" and length > 0' /tmp/coingecko.json >/dev/null
+          {
+            echo "- Binance ticker proxy: responding"
+            echo "- CoinGecko market proxy: responding"
+          } >> "$GITHUB_STEP_SUMMARY"
