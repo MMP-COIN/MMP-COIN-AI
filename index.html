@@ -1451,6 +1451,12 @@ html.mmp-native-app .chart-box-wrapper,html.mmp-native-app .card,html.mmp-native
 html.mmp-native-app .section-head{border-bottom:1px solid #2d4354;padding-bottom:11px}
 html.mmp-native-app .section-head h2{font-size:14px;color:#f0dfb7}
 html.mmp-native-app .mmp-mobile-dock{position:fixed!important;z-index:980;left:12px!important;right:12px!important;bottom:max(10px,env(safe-area-inset-bottom))!important;display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr));gap:3px;align-items:center;padding:7px 6px!important;border:1px solid #52617a!important;border-radius:20px!important;background:linear-gradient(110deg,#142535f5,#0b141ff7)!important;box-shadow:0 12px 35px #000b!important;backdrop-filter:blur(22px)}
+html.mmp-native-app .mmp-mobile-dock{grid-template-columns:repeat(6,minmax(0,1fr))}
+html.mmp-native-app .mmp-mobile-dock .dock-share{appearance:none;border:0;background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:0;padding:6px 1px;border-radius:13px;color:#e7c77e;font:700 9px Tahoma,Arial,sans-serif;white-space:nowrap}
+html.mmp-native-app .mmp-mobile-dock .dock-share i{font-style:normal;font-size:20px;line-height:1.1;color:#f2d99b}
+html.mmp-native-app .mmp-mobile-dock .dock-share:active{background:#d9b66d20;transform:scale(.96)}
+html.mmp-native-app #app-download{display:none!important}
+html.mmp-native-app .mmp-share-toast{position:fixed;z-index:1400;left:18px;right:18px;bottom:calc(88px + env(safe-area-inset-bottom));padding:12px 15px;border:1px solid #8d754a;border-radius:13px;background:#142332;color:#f5dfaa;text-align:center;font-size:12px;box-shadow:0 10px 28px #0009}
 html.mmp-native-app .mmp-mobile-dock a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:0;padding:6px 2px;border-radius:13px;color:#9eacbf;font-size:9px;font-weight:700;text-decoration:none;white-space:nowrap}
 html.mmp-native-app .mmp-mobile-dock a i{font-style:normal;font-size:19px;line-height:1.1}
 html.mmp-native-app .mmp-mobile-dock a.dock-ai i{background:linear-gradient(145deg,#f1d48f,#a77a38);color:#16130d;width:36px;height:31px;display:grid;place-items:center;border-radius:11px}
@@ -1479,8 +1485,11 @@ html.mmp-native-app .footer{padding-bottom:12px}
    document.body.insertBefore(header,document.body.firstChild);
    var nav=document.querySelector(".mmp-mobile-dock");
    if(nav){
-    nav.innerHTML='<a href="#hero" data-native-tab="hero"><i>⌂</i><span>خانه</span></a><a href="#opportunities" data-native-tab="opportunities"><i>◈</i><span>رادار</span></a><a href="#watchlist" data-native-tab="watchlist"><i>☆</i><span>دیده‌بان</span></a><a href="#ai-section" data-native-tab="ai-section" class="dock-ai"><i>✧</i><span>تحلیل AI</span></a><a href="#trading-tools" data-native-tab="trading-tools"><i>⌗</i><span>ابزارها</span></a>'
+    nav.innerHTML='<a href="#hero" data-native-tab="hero"><i>⌂</i><span>خانه</span></a><a href="#opportunities" data-native-tab="opportunities"><i>◈</i><span>رادار</span></a><a href="#watchlist" data-native-tab="watchlist"><i>☆</i><span>دیده‌بان</span></a><a href="#ai-section" data-native-tab="ai-section" class="dock-ai"><i>✧</i><span>تحلیل AI</span></a><a href="#trading-tools" data-native-tab="trading-tools"><i>⌗</i><span>ابزارها</span></a><button type="button" class="dock-share" id="mmp-share-app" aria-label="ارسال لینک اپ"><i>↗</i><span>ارسال اپ</span></button>'
     var links=nav.querySelectorAll("a");
+    var shareButton=nav.querySelector("#mmp-share-app");
+    function showShareToast(message){var old=document.querySelector(".mmp-share-toast");if(old)old.remove();var toast=document.createElement("div");toast.className="mmp-share-toast";toast.textContent=message;document.body.appendChild(toast);setTimeout(function(){toast.remove()},2600)}
+    if(shareButton){shareButton.addEventListener("click",async function(){var shareUrl="https://mmp-coin.github.io/";var shareData={title:"MMP COIN AI",text:"ترمینال هوشمند تحلیل بازار رمزارزها",url:shareUrl};try{if(navigator.share){await navigator.share(shareData)}else if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(shareUrl);showShareToast("لینک دانلود اپ کپی شد؛ برای دوستانتان ارسال کنید")}else{var field=document.createElement("textarea");field.value=shareUrl;field.style.position="fixed";field.style.opacity="0";document.body.appendChild(field);field.select();document.execCommand("copy");field.remove();showShareToast("لینک دانلود اپ کپی شد؛ برای دوستانتان ارسال کنید")}}catch(error){if(error&&error.name!=="AbortError")showShareToast("برای اشتراک‌گذاری دوباره تلاش کنید")}})}
     function setActive(id){links.forEach(function(a){a.classList.toggle("native-active",a.getAttribute("data-native-tab")===id)})}
     links.forEach(function(a){a.addEventListener("click",function(){setActive(a.getAttribute("data-native-tab"))})});
     setActive("hero");
