@@ -85,15 +85,18 @@ jobs:
           echo "Binance ticker proxy HTTP $binance_status"
           if [ "$binance_status" != "200" ]; then jq -r '.detail // .error // .' /tmp/binance.json; exit 1; fi
           jq -e 'type == "array" and any(.[]; .symbol == "BTCUSDT")' /tmp/binance.json >/dev/null
-          bitget_status=$(curl --silent --show-error --retry 1 --max-time 25 -o /tmp/bitget.json -w "%{http_code}" "$WORKER_URL/market-proxy?source=bitget-tickers")
-          echo "Bitget ticker proxy HTTP $bitget_status"
-          if [ "$bitget_status" != "200" ]; then jq -r '.detail // .error // .' /tmp/bitget.json; exit 1; fi
-          jq -e '.code == "00000" and any(.data[]; .symbol == "BTCUSDT")' /tmp/bitget.json >/dev/null
           coingecko_status=$(curl --silent --show-error --retry 1 --max-time 25 -o /tmp/coingecko.json -w "%{http_code}" "$WORKER_URL/market-proxy?source=coingecko-top")
           echo "CoinGecko market proxy HTTP $coingecko_status"
-          if [ "$coingecko_status" != "200" ]; then jq -r '.detail // .error // .' /tmp/coingecko.json; exit 1; fi
-          jq -e 'type == "array" and length > 0' /tmp/coingecko.json >/dev/null
+          if [ "$coingecko_status" = "200" ]; then
+            jq -e 'type == "array" and length > 0' /tmp/coingecko.json >/dev/null
+            echo "- CoinGecko market proxy: responding" >> "$GITHUB_STEP_SUMMARY"
+          else
+            detail=$(jq -r '.detail // .error // .' /tmp/coingecko.json)
+            if ! echo "$detail" | grep -q "429"; then echo "$detail"; exit 1; fi
+            echo "::warning::CoinGecko rate limited the shared Worker IP (HTTP 429); cached/alternate prices remain available."
+            echo "- CoinGecko market proxy: rate-limited (HTTP 429)" >> "$GITHUB_STEP_SUMMARY"
+          fi
           {
             echo "- Binance ticker proxy: responding"
-            echo "- CoinGecko market proxy: responding"
+            echo "- Bitget direct API: checked separately with browser CORS"
           } >> "$GITHUB_STEP_SUMMARY"
