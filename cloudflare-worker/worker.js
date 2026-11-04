@@ -296,6 +296,44 @@ async function handle(request,env){
   const sources=Object.fromEntries(Object.entries(catalogs).map(([k,v])=>[k,{ok:!!v?.ok,status:v?.status||0,error:v?.error||null,source:v?.source||null}]));
   return json({checked_at:new Date().toISOString(),assets,sources},200,request);
  }
+ if(request.method==="GET"&&new URL(request.url).pathname==="/connections-health"){
+  const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"connections-health");
+  const limited=rateLimitReply(limitResult,request);if(limited)return limited;
+  const timeoutFetch=async(url,valid,timeout=5500)=>{
+   const started=Date.now(),controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeout);
+   try{
+    const response=await fetch(url,{headers:{"Accept":"application/json"},signal:controller.signal,cf:{cacheTtl:0,cacheEverything:false}});
+    if(!response.ok)throw new Error("HTTP "+response.status);
+    const data=await response.json();
+    if(!valid(data))throw new Error("پاسخ معتبر دریافت نشد");
+    const ping=Date.now()-started;
+    return {status:ping>2500?"slow":"ok",ping};
+   }catch(error){return {status:"down",ping:null,error:String(error?.message||"network error").slice(0,100)};}
+   finally{clearTimeout(timer);}
+  };
+  const probeBinance=async()=>{
+   let last=null;
+   for(const host of ["https://api.binance.com","https://api1.binance.com","https://api2.binance.com","https://api3.binance.com"]){
+    const result=await timeoutFetch(host+"/api/v3/ticker/price?symbol=BTCUSDT",d=>Number(d?.price)>0,4500);
+    if(result.status!=="down")return {...result,endpoint:host};
+    last=result;
+   }
+   return last||{status:"down",ping:null};
+  };
+  const targets=[
+   ["Bybit Spot","قیمت و معاملات اسپات","https://api.bybit.com/v5/market/tickers?category=spot&symbol=BTCUSDT",d=>d?.retCode===0&&Number(d?.result?.list?.[0]?.lastPrice)>0],
+   ["OKX Spot","قیمت و معاملات اسپات","https://www.okx.com/api/v5/market/ticker?instId=BTC-USDT",d=>d?.code==="0"&&Number(d?.data?.[0]?.last)>0],
+   ["CoinGecko","قیمت مرجع و اطلاعات بازار","https://api.coingecko.com/api/v3/ping",d=>typeof d?.gecko_says==="string"],
+   ["Nobitex","نرخ تتر به تومان","https://apiv2.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls",d=>Number(d?.stats?.["usdt-rls"]?.latest)>0],
+   ["Wallex","نرخ تتر به تومان","https://api.wallex.ir/v1/markets",d=>Number(d?.result?.symbols?.USDTIRT?.stats?.lastPrice)>0]
+  ];
+  const [binanceResult,...others]=await Promise.all([
+   probeBinance(),
+   ...targets.map(async ([name,purpose,url,valid])=>({name,purpose,...await timeoutFetch(url,valid)}))
+  ]);
+  const checks=[{name:"Binance Spot",purpose:"قیمت و معاملات اسپات",...binanceResult},...others];
+  return json({checked_at:new Date().toISOString(),checks},200,request);
+ }
  if(request.method==="GET"&&new URL(request.url).pathname==="/health"){
   const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"health");
   const limited=rateLimitReply(limitResult,request);if(limited)return limited;
