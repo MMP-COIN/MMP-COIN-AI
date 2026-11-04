@@ -35,9 +35,25 @@ jobs:
             echo "- AI binding: available"
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Diagnose exchange API access from GitHub runner
+        continue-on-error: true
+        run: |
+          set -u
+          probe() {
+            label="$1"
+            url="$2"
+            shift 2
+            code=$(curl --silent --show-error --max-time 15 -o /dev/null -w "%{http_code}" "$@" "$url" || true)
+            echo "$label: HTTP $code"
+          }
+          probe "Bybit EU" "https://api.bybit.eu/v5/market/tickers?category=spot&symbol=BTCUSDT"
+          probe "Bybit EU alternate" "https://api.bytick.eu/v5/market/tickers?category=spot&symbol=BTCUSDT"
+          probe "Bybit global" "https://api.bybit.com/v5/market/tickers?category=spot&symbol=BTCUSDT"
+          probe "Wallex with browser headers" "https://api.wallex.ir/v1/markets" -H "Origin: https://wallex.ir" -H "Referer: https://wallex.ir/"
+
       - name: Check exchange connection monitor
         env:
-          WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
+          WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmmp1988.workers.dev
         run: |
           set -euo pipefail
           curl --fail --silent --show-error --retry 2 --retry-delay 3 --max-time 25 "$WORKER_URL/connections-health" -o /tmp/connections.json
