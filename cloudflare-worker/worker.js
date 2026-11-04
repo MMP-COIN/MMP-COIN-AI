@@ -381,7 +381,7 @@ async function handle(request,env){
    const good=results.filter(x=>x.status!=="down").sort((a,b)=>a.ping-b.ping);
    return good[0]||results[results.length-1]||{status:"down",ping:null,error:"no Wallex endpoint responded"};
   };
-  const [binance,bybit,okx,nobitex,wallex]=await Promise.all([
+  const [binance,bybit,okx,nobitex,wallex,bitget]=await Promise.all([
    probeAny(["https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://api.binance.us/api/v3/ticker/price?symbol=BTCUSDT","https://api1.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://api2.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://api3.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://data-api.binance.vision/api/v3/ticker/price?symbol=BTCUSDT"],d=>Number(d?.price)>0),
    probeAny([
     "https://api.bybit.eu/v5/market/tickers?category=spot&symbol=BTCUSDT",
@@ -397,14 +397,16 @@ async function handle(request,env){
     if(Array.isArray(raw))return raw.length>0;
     if(raw&&typeof raw==="object")return Object.keys(raw).length>0;
     return false;
-   },12000,{"Origin":"https://wallex.ir","Referer":"https://wallex.ir/"})
+   },12000,{"Origin":"https://wallex.ir","Referer":"https://wallex.ir/"}),
+   timeoutFetch("https://api.bitget.com/api/v3/market/tickers?category=SPOT&symbol=BTCUSDT",d=>d?.code==="00000"&&Number(d?.data?.[0]?.lastPrice)>0,7000)
   ]);
   const checks=[
    {name:"Binance Spot",purpose:"قیمت و معاملات اسپات",...binance},
    {name:"Bybit Spot",purpose:"قیمت و معاملات اسپات",...bybit},
    {name:"OKX Spot",purpose:"قیمت و معاملات اسپات",...okx},
    {name:"Nobitex",purpose:"نرخ تتر به تومان",...nobitex},
-   {name:"Wallex",purpose:"نرخ تتر به تومان",...wallex}
+   {name:"Wallex",purpose:"نرخ تتر به تومان",...wallex},
+   {name:"Bitget Spot",purpose:"قیمت و معاملات اسپات",...bitget}
   ];
   return json({checked_at:new Date().toISOString(),checks},200,request);
  }
