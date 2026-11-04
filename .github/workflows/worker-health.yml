@@ -55,9 +55,13 @@ jobs:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
           set -euo pipefail
-          curl --fail --silent --show-error --retry 1 --max-time 25 "$WORKER_URL/market-proxy?source=binance-tickers" -o /tmp/binance.json
+          binance_status=$(curl --silent --show-error --retry 1 --max-time 25 -o /tmp/binance.json -w "%{http_code}" "$WORKER_URL/market-proxy?source=binance-tickers")
+          echo "Binance ticker proxy HTTP $binance_status"
+          if [ "$binance_status" != "200" ]; then jq -r '.detail // .error // .' /tmp/binance.json; exit 1; fi
           jq -e 'type == "array" and any(.[]; .symbol == "BTCUSDT")' /tmp/binance.json >/dev/null
-          curl --fail --silent --show-error --retry 1 --max-time 25 "$WORKER_URL/market-proxy?source=coingecko-top" -o /tmp/coingecko.json
+          coingecko_status=$(curl --silent --show-error --retry 1 --max-time 25 -o /tmp/coingecko.json -w "%{http_code}" "$WORKER_URL/market-proxy?source=coingecko-top")
+          echo "CoinGecko market proxy HTTP $coingecko_status"
+          if [ "$coingecko_status" != "200" ]; then jq -r '.detail // .error // .' /tmp/coingecko.json; exit 1; fi
           jq -e 'type == "array" and length > 0' /tmp/coingecko.json >/dev/null
           {
             echo "- Binance ticker proxy: responding"
