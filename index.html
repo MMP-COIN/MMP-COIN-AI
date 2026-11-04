@@ -226,6 +226,107 @@ body{background:radial-gradient(ellipse at 50% -20%,#46351d55,transparent 40%),r
 @media(max-width:900px){.terminal-grid{grid-template-columns:1fr}.market-hours-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.hero{padding:18px 15px}.tool-grid{grid-template-columns:1fr}.market-hours-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ticker-item{min-width:135px}}
 
+
+/* MMP VISION X — complete premium trading terminal interface */
+:root{--bg:#070a10;--panel:#101722;--panel2:#151f2c;--line:#263648;--gold:#d7b46a;--gold2:#f4d995;--cyan:#45e0d0;--green:#29dda5;--red:#ff647d;--muted:#8e9caf;--sidebar:252px}
+html{scroll-behavior:smooth;scroll-padding-top:100px}
+body{min-height:100vh;overflow-x:hidden;background:radial-gradient(ellipse at 78% 2%,#193e4a66,transparent 28%),radial-gradient(ellipse at 22% 18%,#5a40252c,transparent 26%),linear-gradient(145deg,#070a10,#0a1019 48%,#080b12);font-family:var(--font-fa);background-attachment:fixed}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;opacity:.17;background-image:linear-gradient(#7e9db00b 1px,transparent 1px),linear-gradient(90deg,#7e9db00b 1px,transparent 1px);background-size:42px 42px;mask-image:linear-gradient(to bottom,#000,transparent 85%)}
+body:after{content:"";position:fixed;width:42vw;height:42vw;max-width:620px;max-height:620px;right:22%;top:8%;border-radius:50%;pointer-events:none;z-index:-1;background:radial-gradient(circle,#20cbb30c,transparent 68%);filter:blur(30px);animation:ambientDrift 16s ease-in-out infinite alternate}
+@keyframes ambientDrift{to{transform:translate(-70px,65px) scale(1.2)}}
+.top{height:78px;position:sticky;top:0;z-index:500;padding:0 30px 0 calc(var(--sidebar) + 30px);background:linear-gradient(90deg,#0b1119f5,#0b1119e8);border-bottom:1px solid #344458;box-shadow:0 12px 40px #0008;backdrop-filter:blur(22px)}
+.brand{gap:13px}.brand .logo{width:46px;height:46px;border-radius:14px;background:linear-gradient(145deg,#f4d995,#8c682f);color:#10151d;font-size:22px;box-shadow:0 5px 22px #d7b46a35,inset 0 1px #fff9;border:1px solid #f8e4ad}
+.brand b{font-size:15px;letter-spacing:2px;color:#f3d996}.brand small{letter-spacing:.5px}
+.top-actions{gap:10px}.pill,.btn{border-radius:11px;border-color:#354459;background:linear-gradient(145deg,#192433,#101722);box-shadow:inset 0 1px #ffffff0c,0 5px 14px #0004;transition:.2s}
+.btn:hover,.pill:hover{border-color:#b99a5c;transform:translateY(-1px);box-shadow:0 7px 20px #0007}
+.btn.primary{background:linear-gradient(120deg,#94703a,#f0d48d 55%,#b58a48);box-shadow:0 5px 20px #c39b4b32,inset 0 1px #fff8}
+.menu-btn{display:none}
+.dropdown-menu{display:none!important}
+.mmp-sidebar{position:fixed;z-index:450;right:0;top:78px;bottom:0;width:var(--sidebar);padding:25px 16px 18px;background:linear-gradient(180deg,#101a27f7,#0b111bf7);border-left:1px solid #34465b;box-shadow:-15px 0 50px #0005;display:flex;flex-direction:column;gap:7px;backdrop-filter:blur(20px)}
+.side-brand{display:flex;align-items:center;gap:12px;padding:0 8px 24px;border-bottom:1px solid #ffffff12;margin-bottom:10px}
+.side-emblem{width:43px;height:43px;display:grid;place-items:center;border-radius:13px;background:linear-gradient(145deg,#f0d18a,#88632e);color:#121821;font-size:22px;font-weight:900;box-shadow:0 7px 20px #d7b46a35,inset 0 1px #fff8}
+.side-brand b{font-size:13px;letter-spacing:1.2px;color:#f4d995}.side-brand b span{color:#e9eef6}.side-brand small{display:block;font-size:8px;letter-spacing:1.5px;color:#8292a6;margin-top:4px}
+.side-caption{font-size:9px;letter-spacing:2px;color:#61758b;padding:14px 12px 5px;font-weight:800}
+.side-link{display:flex;align-items:center;gap:11px;min-height:43px;padding:9px 12px;border:1px solid transparent;border-radius:11px;text-decoration:none;color:#aab8c8;font-size:12px;transition:all .22s;position:relative;overflow:hidden}
+.side-link i{font-style:normal;font-size:18px;width:22px;text-align:center;color:#92a9bc}
+.side-link em{font-style:normal;font-size:9px;color:#52657a;margin-right:auto}
+.side-link:hover{color:#fff;background:linear-gradient(100deg,#243446,#172333);border-color:#3b5068;transform:translateX(-3px)}
+.side-link.active{color:#f8e3ae;background:linear-gradient(100deg,#b58b4226,#1b2c3a);border-color:#b58b4266;box-shadow:inset -3px 0 #d8b66d,0 6px 20px #0004}
+.side-link.active i{color:#f1d38f;text-shadow:0 0 15px #e5bd6b}
+.side-footer{margin-top:auto;padding:15px 12px;border:1px solid #294a49;border-radius:13px;background:linear-gradient(130deg,#102c2b,#111a25);font-size:11px;color:#c1d5d6;display:grid;grid-template-columns:10px 1fr;gap:6px;align-items:center}
+.side-footer small{grid-column:2;color:#648f8d;font-size:8px;letter-spacing:1.5px}
+.live-dot{width:8px;height:8px;background:#35e5ae;border-radius:50%;box-shadow:0 0 12px #35e5ae;animation:pulse 1.8s infinite}
+.wrap{max-width:none;width:calc(100% - var(--sidebar));margin:0 0 0 auto;padding:28px clamp(18px,2.4vw,42px) 90px}
+.hero{position:relative;isolation:isolate;min-height:245px;overflow:hidden;display:flex;justify-content:space-between;align-items:center;gap:20px;margin:0 0 22px;padding:34px 38px;border:1px solid #546b7c;border-radius:24px;background:radial-gradient(ellipse at 80% 40%,#1e676a55,transparent 36%),radial-gradient(ellipse at 10% 0,#a17b392e,transparent 40%),linear-gradient(115deg,#111a25 0%,#172431 48%,#101720 100%);box-shadow:0 25px 65px #0008,inset 0 1px #ffffff16,inset 0 -1px #0009}
+.hero:before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(115deg,transparent 30%,#ffffff08 48%,transparent 64%);transform:translateX(-100%);animation:heroShine 9s ease-in-out infinite}
+.hero:after{content:"";position:absolute;inset:0;z-index:-1;opacity:.24;background-image:radial-gradient(#a9d2db66 .7px,transparent .7px);background-size:17px 17px;mask-image:linear-gradient(90deg,transparent,#000)}
+@keyframes heroShine{0%,55%{transform:translateX(-100%)}75%,100%{transform:translateX(100%)}}
+.hero>div:first-child{max-width:650px;z-index:2}
+.hero .eyebrow{font-size:10px;letter-spacing:3px;color:#e5c780}
+.hero h1{font-size:clamp(26px,3.2vw,47px);line-height:1.45;font-weight:900;letter-spacing:-1.2px;margin:12px 0;color:#f3f6fa;text-shadow:0 4px 24px #0008}
+.hero p{font-size:13px;line-height:2;color:#aebdca;max-width:550px}
+.hero>#updated{position:absolute;left:22px;bottom:18px;background:#071019aa;border-color:#567079;color:#9fc9c5;backdrop-filter:blur(10px)}
+.hero-visual{position:absolute!important;left:7%;top:50%;width:230px;height:220px;transform:translateY(-50%);display:grid;place-items:center;pointer-events:none}
+.hero-coin{position:relative;width:118px;height:118px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 33% 25%,#fff1bc,#e1b85e 23%,#8b6029 57%,#32251a 72%,#d5a64d 76%,#50391e);border:5px solid #d8b46b;box-shadow:0 0 0 9px #d7b46a12,0 0 0 20px #d7b46a0a,0 18px 35px #000a,inset 0 5px 9px #fff9,inset 0 -10px 16px #39250e;transform:rotateY(-18deg) rotateX(12deg);animation:coinFloat 6s ease-in-out infinite}
+.hero-coin:before{content:"";position:absolute;inset:9px;border:1px solid #fff8;border-radius:50%}
+.hero-coin b{font-size:54px;color:#4a3215;text-shadow:0 2px #fff7,0 -2px #5c3c18;line-height:1}
+.hero-coin small{position:absolute;bottom:18px;font-size:8px;letter-spacing:3px;color:#503516;font-weight:900}
+@keyframes coinFloat{0%,100%{transform:translateY(0) rotateY(-18deg) rotateX(12deg)}50%{transform:translateY(-13px) rotateY(18deg) rotateX(-7deg)}}
+.hero-orbit{position:absolute;border:1px solid #6ce4d055;border-radius:50%;width:200px;height:74px;transform:rotate(-28deg);box-shadow:0 0 22px #4de0cf12}
+.orbit-b{transform:rotate(54deg);width:185px;height:90px;border-color:#e0bd6a55}
+.hero-spark{position:absolute;width:6px;height:6px;border-radius:50%;background:#f4d995;box-shadow:0 0 16px 5px #e9c36c88}
+.spark-a{top:30px;right:25px}.spark-b{bottom:33px;left:22px;background:#54ebd6;box-shadow:0 0 15px 5px #54ebd688}
+.hero-visual-label{position:absolute;bottom:-3px;white-space:nowrap;font-size:8px;letter-spacing:2px;color:#718c9b}
+.hero-visual-label span{color:#45e0b5}
+.market-ticker{margin:0 0 22px;padding:10px;gap:10px;border:1px solid #263a4a;border-radius:16px;background:linear-gradient(100deg,#101a25,#0c131d);box-shadow:0 12px 28px #0005}
+.ticker-item{min-width:175px;border:1px solid #2a3c4d;border-radius:11px;background:linear-gradient(145deg,#192635,#111a25);box-shadow:inset 0 1px #ffffff0b}
+.terminal-nav{display:none!important}
+.grid{gap:14px;margin-bottom:20px}
+.grid .card{position:relative;overflow:hidden;min-height:130px;padding:20px 21px;border-radius:17px;background:linear-gradient(145deg,#1a2734,#101823 72%);border:1px solid #354a5b;box-shadow:0 13px 28px #0005,inset 0 1px #ffffff0c;transition:transform .25s,border-color .25s,box-shadow .25s}
+.grid .card:before{content:"";position:absolute;inset:0 0 auto;height:2px;background:linear-gradient(90deg,transparent,#d7b46a,#4ce0cf,transparent);opacity:.6}
+.grid .card:hover{transform:translateY(-5px) perspective(700px) rotateX(2deg);border-color:#7e9aa7;box-shadow:0 23px 40px #0008,0 0 25px #4bdccf0c}
+.stat-label{color:#91a7b8;font-size:11px}.stat-value{font-size:clamp(19px,2vw,28px);color:#f3f6fa;margin:13px 0 6px;text-shadow:0 2px 12px #0008}.sub{color:#8396a8}
+.chart-box-wrapper,.card,.collapsible-coins-container{position:relative;border:1px solid #304253;border-radius:19px;background:linear-gradient(145deg,#141f2c,#0d141e 75%);box-shadow:0 17px 42px #0007,inset 0 1px #ffffff0b;margin-bottom:18px}
+.chart-box-wrapper{padding:20px}
+.chart-top-bar{padding-bottom:13px;border-bottom:1px solid #2b3b4a;margin-bottom:16px}
+.chart-top-bar h2{font-size:16px!important;color:#e7d3a1}
+.chart-top-bar select{background:#0c1520;border:1px solid #42576a;color:#e9d6a7}
+#chart-container{height:560px;min-height:560px;border:1px solid #31495a;border-radius:14px;background:#080f17;box-shadow:inset 0 0 40px #0007}
+#tradingview_widget{min-height:560px}
+.card{padding:21px}
+.section-head{padding-bottom:13px;border-bottom:1px solid #2b3b4a;margin-bottom:17px}
+.section-head h2{font-size:15px;color:#e9eef5;font-weight:800}
+.section-kicker{color:#d8b76d;letter-spacing:2px}
+.badge{background:#182533;border-color:#3c5262;color:#9eb4c1}
+.ai-metric,.tf-card,.ai-confidence-box{background:linear-gradient(145deg,#192635,#101823);border-color:#34495b;box-shadow:inset 0 1px #ffffff0b}
+.ai-metric{border-radius:13px;padding:15px}
+.ai-metric small{color:#8ea4b4}
+.ai-metric b{color:#f2e5c5}
+.ai-status{background:#101d26;border-color:#385260;color:#a5c1c5}
+.ai-report{background:linear-gradient(145deg,#0e1823,#101720);border:1px solid #304455;border-radius:15px}
+.ai-report h3{color:#f0d58f}
+.ai-report .ai-level{background:linear-gradient(145deg,#192736,#101823);border-color:#34495b}
+.ai-empty{background:linear-gradient(145deg,#152431,#0e1721);border-color:#395062}
+.terminal-grid{gap:15px}
+.tool-card,.market-session,.conn{background:linear-gradient(145deg,#192735,#101823);border:1px solid #34495a;border-radius:15px;box-shadow:inset 0 1px #ffffff0a,0 8px 20px #0003}
+.tool-card h3{color:#f0d58f}
+.tool-row input,.tool-row select,.dropdown-select-box{background:#0b141f;border:1px solid #344b5d;color:#eaf0f4;border-radius:10px}
+.btn.secondary{background:linear-gradient(145deg,#1a2a38,#101a26);border-color:#3b5264;color:#e6ce94}
+.market-table th{color:#91a8b8;background:#14212c}
+.market-table td{border-color:#283a49}
+.market-table tr:hover td{background:#233c4b66}
+.table-wrap{border:1px solid #2d4050;border-radius:13px}
+.collapsible-coins-container{padding:20px}
+.expand-coins-btn{background:linear-gradient(100deg,#1b2d3b,#13202c);border-color:#40596a;color:#e6cb8b}
+.connection-grid{gap:12px}
+.conn{padding:14px}
+.mmp-mobile-dock{display:none}
+.footer{color:#687d8e!important;border-top:1px solid #243747;margin-top:28px}
+@media(max-width:1120px){:root{--sidebar:220px}.hero-visual{left:3%;opacity:.8}.top{padding-left:18px}.side-brand b{font-size:11px}}
+@media(max-width:900px){:root{--sidebar:0px}.mmp-sidebar{display:none}.top{height:68px;padding:0 15px}.wrap{width:100%;margin:0;padding:18px 16px 100px}.hero{min-height:220px}.hero-visual{left:2%;transform:translateY(-50%) scale(.8);opacity:.65}.mmp-mobile-dock{position:fixed;z-index:900;bottom:max(9px,env(safe-area-inset-bottom));left:12px;right:12px;display:flex;justify-content:space-around;align-items:center;padding:9px 6px;border:1px solid #43596b;border-radius:18px;background:linear-gradient(110deg,#121e2bf2,#0b141ef5);box-shadow:0 12px 40px #000b,inset 0 1px #ffffff19;backdrop-filter:blur(22px)}.mmp-mobile-dock a{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:48px;color:#91a7b8;text-decoration:none;font-size:9px}.mmp-mobile-dock i{font-style:normal;font-size:20px;line-height:1.1}.mmp-mobile-dock .dock-ai{color:#f0d28b}.mmp-mobile-dock .dock-ai i{width:37px;height:30px;border-radius:10px;display:grid;place-items:center;background:linear-gradient(145deg,#e9cc88,#96713b);color:#111923;box-shadow:0 4px 15px #d7b46a55}.terminal-grid{grid-template-columns:1fr}}
+@media(max-width:560px){.top{height:62px;padding:0 10px}.brand .logo{width:37px;height:37px}.brand b{font-size:11px;letter-spacing:1px}.brand small{font-size:8px}.top-actions{gap:5px}.top-actions .btn{padding:8px;font-size:10px}.currency-switch{transform:scale(.9);transform-origin:right}.wrap{padding:12px 10px 105px}.hero{min-height:195px;padding:23px 18px;border-radius:19px}.hero>div:first-child{max-width:100%;padding-left:45px}.hero h1{font-size:24px;max-width:340px}.hero p{font-size:11px;max-width:300px}.hero .eyebrow{font-size:8px;letter-spacing:1.5px}.hero-visual{left:-47px;transform:translateY(-50%) scale(.57);opacity:.42}.hero>#updated{left:12px;bottom:10px;font-size:8px}.market-ticker{margin-bottom:13px;padding:7px}.ticker-item{min-width:148px;padding:8px}.grid{gap:8px}.grid .card{min-height:105px;padding:13px 12px;border-radius:13px}.stat-label{font-size:10px}.stat-value{font-size:17px}.card{padding:14px;border-radius:15px}.chart-box-wrapper{padding:11px}#chart-container,#tradingview_widget{height:440px;min-height:440px}.section-head h2{font-size:13px}.ai-toolbar{grid-template-columns:1fr 1fr}.ai-toolbar button{font-size:10px;padding:10px 5px}.ai-grid{gap:7px}.ai-metric{min-height:74px;padding:10px}.market-hours-grid{gap:7px}.market-session{padding:9px}.market-session b{font-size:10px}.tool-grid{grid-template-columns:1fr}.connection-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.mmp-mobile-dock{left:8px;right:8px;bottom:max(7px,env(safe-area-inset-bottom));padding:8px 2px}.mmp-mobile-dock a{min-width:43px;font-size:8px}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition:none!important}}
+
 </style>
 </head>
 <body>
@@ -252,6 +353,23 @@ body{background:radial-gradient(ellipse at 50% -20%,#46351d55,transparent 40%),r
 </div>
 </header>
 
+<aside class="mmp-sidebar" id="mmp-sidebar">
+  <div class="side-brand"><div class="side-emblem">M</div><div><b>MMP <span>COIN AI</span></b><small>PRO TRADING TERMINAL</small></div></div>
+  <div class="side-caption">WORKSPACE</div>
+  <a class="side-link active" href="#hero"><i>◈</i><span>نمای کلی بازار</span><em>01</em></a>
+  <a class="side-link" href="#chart-section"><i>⌁</i><span>نمودار حرفه‌ای</span><em>02</em></a>
+  <a class="side-link" href="#ai-section"><i>✧</i><span>تحلیل هوشمند AI</span><em>03</em></a>
+  <div class="side-caption">MARKET INTELLIGENCE</div>
+  <a class="side-link" href="#opportunities"><i>⌖</i><span>رادار فرصت‌ها</span><em>04</em></a>
+  <a class="side-link" href="#market-hours"><i>◷</i><span>ساعت بازارهای جهان</span><em>05</em></a>
+  <a class="side-link" href="#coins-section"><i>▤</i><span>بازار رمزارزها</span><em>06</em></a>
+  <div class="side-caption">TRADING DESK</div>
+  <a class="side-link" href="#trading-tools"><i>⌗</i><span>ابزارهای معامله‌گری</span><em>07</em></a>
+  <div class="side-footer"><span class="live-dot"></span><span>اتصال زنده بازار</span><small>DATA STREAM ACTIVE</small></div>
+</aside>
+<nav class="mmp-mobile-dock" aria-label="منوی اصلی موبایل">
+  <a href="#hero"><i>◈</i><span>خانه</span></a><a href="#chart-section"><i>⌁</i><span>نمودار</span></a><a href="#ai-section" class="dock-ai"><i>✧</i><span>هوش مصنوعی</span></a><a href="#opportunities"><i>⌖</i><span>فرصت‌ها</span></a><a href="#trading-tools"><i>⌗</i><span>معامله</span></a>
+</nav>
 <main class="wrap" id="hero">
 <section class="hero">
 <div>
@@ -259,7 +377,7 @@ body{background:radial-gradient(ellipse at 50% -20%,#46351d55,transparent 40%),r
   <h1>ترمینال جامع و هوشمند بازارهای مالی</h1>
   <p>پایش لحظه‌ای قیمت‌ها به تومان و تتر، نمودار استاندارد تریدینگ‌ویو و تحلیلگر هوش مصنوعی</p>
 </div>
-<span class="badge" id="updated">در حال دریافت داده…</span>
+<div class="hero-visual"><div class="hero-orbit orbit-a"></div><div class="hero-orbit orbit-b"></div><div class="hero-coin"><b>M</b><small>AI</small></div><div class="hero-spark spark-a"></div><div class="hero-spark spark-b"></div><div class="hero-visual-label">MARKET INTELLIGENCE <span>● LIVE</span></div></div><span class="badge" id="updated">در حال دریافت داده…</span>
 </section>
 
 <section class="market-ticker" id="market-ticker" aria-label="نوار قیمت‌های بازار"><div class="ticker-item"><b>BTC / Bitcoin</b><strong>در حال دریافت…</strong><small>بازار رمزارز</small></div></section>
