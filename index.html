@@ -486,6 +486,23 @@ body:after{content:"";position:fixed;width:42vw;height:42vw;max-width:620px;max-
 .radar-empty{padding:15px;border:1px dashed #394557;border-radius:11px;color:var(--muted);font-size:11px;text-align:center}
 @media(max-width:650px){.radar-group{padding:10px}.radar-group-title b{font-size:16px}.radar-group .radar-item{grid-template-columns:minmax(0,1fr) 52px;gap:8px}.radar-group .radar-stats{grid-column:1/-1}.radar-group .radar-action{grid-column:1/-1;justify-content:space-between}.radar-more>summary{padding:11px}.radar-live-note{align-items:flex-start}.radar-live-note .sub{width:100%;margin:0}}
 
+/* Currency selector parity: keep the same site switch visible in the Android app header */
+.mmp-app-mode .top{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}
+.mmp-app-mode .top-actions{display:flex;align-items:center;gap:8px;flex:0 0 auto;min-width:0}
+.mmp-app-mode .currency-switch{display:flex!important;flex:0 0 auto;visibility:visible!important;opacity:1!important;position:relative;z-index:2}
+.mmp-app-mode .currency-switch .curr-btn{min-width:48px;padding:7px 11px;font-size:11px}
+@media(max-width:420px){
+  .mmp-app-mode .top{padding-left:8px;padding-right:8px;gap:6px}
+  .mmp-app-mode .brand{gap:7px;min-width:0}
+  .mmp-app-mode .brand .logo{width:34px;height:34px;flex:0 0 34px}
+  .mmp-app-mode .brand b{font-size:10px;letter-spacing:.5px}
+  .mmp-app-mode .brand small{font-size:7px}
+  .mmp-app-mode .top-actions{gap:5px}
+  .mmp-app-mode .top-actions>.btn{display:none}
+  .mmp-app-mode .currency-switch{transform:none;gap:2px;padding:3px}
+  .mmp-app-mode .currency-switch .curr-btn{min-width:45px;padding:7px 9px;font-size:10px}
+}
+
 /* MMP COIN AI — dedicated Android app presentation */
 .mmp-app-mode{--app-accent:#c7a45d;background:radial-gradient(ellipse at 50% -15%,#253a4b 0,transparent 42%),#080d14;padding-bottom:82px}
 .mmp-app-mode .top{background:#0a111bef;border-bottom-color:#344458}
