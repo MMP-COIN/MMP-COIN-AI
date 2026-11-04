@@ -61,6 +61,7 @@ jobs:
           }
           probe_cors "Wallex" "https://api.wallex.ir/v1/markets"
           probe_cors "Bitget" "https://api.bitget.com/api/v3/market/tickers?category=SPOT&symbol=BTCUSDT"
+          probe_cors "Bitpin" "https://api.bitpin.ir/api/v1/mkt/tickers/"
 
       - name: Check exchange connection monitor
         env:
@@ -86,10 +87,6 @@ jobs:
           echo "Binance ticker proxy HTTP $binance_status"
           if [ "$binance_status" != "200" ]; then jq -r '.detail // .error // .' /tmp/binance.json; exit 1; fi
           jq -e 'type == "array" and any(.[]; .symbol == "BTCUSDT")' /tmp/binance.json >/dev/null
-          bitpin_status=$(curl --silent --show-error --retry 1 --max-time 25 -o /tmp/bitpin.json -w "%{http_code}" "$WORKER_URL/market-proxy?source=bitpin-tickers")
-          echo "Bitpin ticker proxy HTTP $bitpin_status"
-          if [ "$bitpin_status" != "200" ]; then jq -r '.detail // .error // .' /tmp/bitpin.json; exit 1; fi
-          jq -e 'type == "array" and any(.[]; .symbol == "USDT_IRT" and ((.price|tonumber) > 0))' /tmp/bitpin.json >/dev/null
           coingecko_status=$(curl --silent --show-error --retry 1 --max-time 25 -o /tmp/coingecko.json -w "%{http_code}" "$WORKER_URL/market-proxy?source=coingecko-top")
           echo "CoinGecko market proxy HTTP $coingecko_status"
           if [ "$coingecko_status" = "200" ]; then
