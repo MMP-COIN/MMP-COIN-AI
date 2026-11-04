@@ -1412,5 +1412,84 @@ var list=document.getElementById("price-alert-list");if(list)list.addEventListen
 var notify=document.getElementById("alert-notify");if(notify)notify.addEventListener("click",function(){if(!("Notification" in window)){alert("اعلان سیستم پشتیبانی نمی‌شود؛ هشدار داخل برنامه فعال است.");return;}Notification.requestPermission().then(function(p){alert(p==="granted"?"اعلان دستگاه فعال شد.":"مجوز اعلان داده نشد؛ هشدار داخل برنامه فعال است.");});});
 syncAlerts();drawAlerts();setInterval(function(){syncAlerts();checkAlerts();},15000);
 })();</script>
+
+<style id="mmp-native-app-theme">
+/* Native-only MMP COIN app experience: intentionally distinct from the website */
+html.mmp-native-app{scroll-behavior:smooth;background:#070b12}
+html.mmp-native-app body{background:radial-gradient(ellipse at 50% -12%,#253b50 0,transparent 43%),linear-gradient(180deg,#080e17,#070a10 70%);padding-bottom:calc(94px + env(safe-area-inset-bottom));}
+html.mmp-native-app .top,html.mmp-native-app .mmp-sidebar{display:none!important}
+html.mmp-native-app .wrap{max-width:100%;padding:12px 13px calc(112px + env(safe-area-inset-bottom));}
+html.mmp-native-app .native-appbar{position:sticky;top:0;z-index:950;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:calc(9px + env(safe-area-inset-top)) 15px 11px;margin:0 -13px 13px;background:linear-gradient(110deg,#101e2cF5,#0a111bf5);border-bottom:1px solid #40586b;box-shadow:0 8px 28px #0006;backdrop-filter:blur(20px)}
+html.mmp-native-app .native-brand{display:flex;align-items:center;gap:10px}
+html.mmp-native-app .native-mark{width:39px;height:39px;display:grid;place-items:center;border-radius:13px;background:linear-gradient(145deg,#f4d895,#a77a36);color:#17130b;font-size:23px;font-weight:1000;box-shadow:0 5px 18px #d9b66d44}
+html.mmp-native-app .native-brand b{display:block;color:#f3d995;font-size:13px;letter-spacing:1px}
+html.mmp-native-app .native-brand small{display:block;color:#8fa8bb;font-size:9px;margin-top:3px;letter-spacing:1.4px}
+html.mmp-native-app .native-live{display:flex;align-items:center;gap:7px;color:#a7c0cf;font-size:10px;border:1px solid #355367;border-radius:30px;padding:7px 10px;background:#112331}
+html.mmp-native-app .native-live i{width:7px;height:7px;border-radius:50%;background:#36dfad;box-shadow:0 0 12px #36dfad;display:inline-block}
+html.mmp-native-app .hero{min-height:0;padding:19px 17px;margin:0 0 13px;border:1px solid #42596c;border-radius:20px;background:linear-gradient(120deg,#172b3b,#10202d 55%,#172333);box-shadow:0 15px 35px #0005;position:relative;overflow:hidden}
+html.mmp-native-app .hero:after{content:"";position:absolute;width:180px;height:180px;border-radius:50%;border:1px solid #d9b66d33;left:-65px;top:-90px;box-shadow:0 0 0 18px #d9b66d08,0 0 0 38px #d9b66d06}
+html.mmp-native-app .hero>div:first-child{position:relative;z-index:1;max-width:78%;padding:0}
+html.mmp-native-app .hero h1{font-size:21px;line-height:1.65;margin:6px 0;color:#f6e6c4}
+html.mmp-native-app .hero p{font-size:10px;line-height:1.9;color:#a5b8c6}
+html.mmp-native-app .hero .eyebrow{font-size:8px;letter-spacing:1.5px}
+html.mmp-native-app .hero-visual{left:-22px;opacity:.35;transform:translateY(-50%) scale(.63)}
+html.mmp-native-app .hero>#updated{position:relative;display:inline-flex;margin-top:12px;left:auto;bottom:auto}
+html.mmp-native-app .market-ticker{margin-bottom:13px;border-color:#344d60;background:#0c1824}
+html.mmp-native-app .ticker-item{min-width:150px}
+html.mmp-native-app .grid{gap:9px;margin-bottom:14px}
+html.mmp-native-app .grid .card{min-height:100px;padding:13px;border-radius:15px;background:linear-gradient(145deg,#1a2b3b,#101a26);border-color:#354b5d}
+html.mmp-native-app .stat-value{font-size:18px}
+html.mmp-native-app .chart-box-wrapper,html.mmp-native-app .card,html.mmp-native-app .collapsible-coins-container{border-radius:17px;border-color:#30495c;background:linear-gradient(145deg,#142332,#0c151f);box-shadow:0 12px 28px #0005}
+html.mmp-native-app .section-head{border-bottom:1px solid #2d4354;padding-bottom:11px}
+html.mmp-native-app .section-head h2{font-size:14px;color:#f0dfb7}
+html.mmp-native-app .mmp-mobile-dock{position:fixed!important;z-index:980;bottom:calc(8px + env(safe-area-inset-bottom))!important;left:10px!important;right:10px!important;display:flex!important;justify-content:space-around;align-items:center;padding:8px 5px!important;border:1px solid #526b7d!important;border-radius:19px!important;background:linear-gradient(110deg,#142535f5,#0b141ff7)!important;box-shadow:0 13px 36px #000b,inset 0 1px #ffffff1c!important;backdrop-filter:blur(24px)}
+html.mmp-native-app .mmp-mobile-dock a{min-width:48px;color:#9bb0bf;font-size:9px;gap:4px}
+html.mmp-native-app .mmp-mobile-dock a i{font-size:19px}
+html.mmp-native-app .mmp-mobile-dock a.dock-ai i{background:linear-gradient(145deg,#f1d48f,#a77a38);color:#16130d;width:36px;height:31px;border-radius:11px}
+html.mmp-native-app .mmp-mobile-dock a.native-active{color:#f5d991}
+html.mmp-native-app #chart-container,html.mmp-native-app #tradingview_widget{height:420px;min-height:420px}
+html.mmp-native-app .connection-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+html.mmp-native-app .ai-toolbar{grid-template-columns:1fr 1fr}
+html.mmp-native-app .ai-toolbar button{grid-column:1/-1}
+html.mmp-native-app .native-section-label{display:flex;align-items:center;gap:8px;margin:19px 3px 9px;color:#d8bb7a;font-size:10px;letter-spacing:1.2px;font-weight:800}
+html.mmp-native-app .native-section-label:after{content:"";height:1px;flex:1;background:linear-gradient(90deg,#40576a,transparent)}
+html.mmp-native-app .footer{padding-bottom:12px}
+@media(min-width:901px){html.mmp-native-app .wrap{max-width:760px;margin:auto}}
+</style>
+<script>
+(function(){
+ try{
+  var native=!!(window.Capacitor&&(window.Capacitor.isNativePlatform?.()||window.Capacitor.getPlatform?.()==="android"))||location.protocol==="capacitor:";
+  if(!native)return;
+  document.documentElement.classList.add("mmp-native-app");
+  document.addEventListener("DOMContentLoaded",function(){
+   if(document.querySelector(".native-appbar"))return;
+   var header=document.createElement("header");header.className="native-appbar";
+   header.innerHTML='<div class="native-brand"><div class="native-mark">M</div><div><b>MMP COIN AI</b><small>SMART MARKET TERMINAL</small></div></div><div class="native-live"><i></i><span>بازار زنده</span></div>';
+   document.body.insertBefore(header,document.body.firstChild);
+   var nav=document.querySelector(".mmp-mobile-dock");
+   if(nav){
+    nav.innerHTML='<a href="#hero" data-native-tab="hero"><i>⌂</i><span>خانه</span></a><a href="#opportunities" data-native-tab="opportunities"><i>◈</i><span>رادار</span></a><a href="#watchlist" data-native-tab="watchlist"><i>☆</i><span>دیده‌بان</span></a><a href="#ai-section" data-native-tab="ai-section" class="dock-ai"><i>✧</i><span>تحلیل AI</span></a><a href="#trading-tools" data-native-tab="trading-tools"><i>⌗</i><span>ابزارها</span></a>';
+    var links=nav.querySelectorAll("a");
+    links.forEach(function(a){a.addEventListener("click",function(){links.forEach(function(x){x.classList.remove("native-active")});a.classList.add("native-active")})});
+    links[0]?.classList.add("native-active");
+   }
+   var wrap=document.querySelector(".wrap");
+   if(wrap){
+    var ticker=document.getElementById("market-ticker");
+    if(ticker&&ticker.parentNode===wrap)wrap.insertBefore(ticker,wrap.children[1]||null);
+   }
+   document.querySelectorAll("#chart-section,#ai-section,#opportunities,#watchlist,#trading-tools,#coins-section").forEach(function(el){
+    if(!el.querySelector(".native-section-label")){
+     var label=document.createElement("div");label.className="native-section-label";
+     label.textContent=({ "chart-section":"نمودار حرفه‌ای","ai-section":"دستیار هوشمند","opportunities":"رادار بازار","watchlist":"واچ‌لیست شخصی","trading-tools":"ابزارهای معامله‌گری","coins-section":"بازار رمزارزها"})[el.id]||"MMP COIN";
+     el.insertBefore(label,el.firstChild);
+    }
+   });
+  });
+ }catch(e){console.warn("MMP native UI init:",e)}
+})();
+</script>
+
 </body>
 </html>
