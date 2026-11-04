@@ -305,7 +305,7 @@ async function handle(request,env){
    "binance-tickers":["https://api.binance.com/api/v3/ticker/24hr","https://api.binance.us/api/v3/ticker/24hr","https://api1.binance.com/api/v3/ticker/24hr","https://api2.binance.com/api/v3/ticker/24hr","https://api3.binance.com/api/v3/ticker/24hr","https://data-api.binance.vision/api/v3/ticker/24hr"],
    "coingecko-top":["https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=false&price_change_percentage=1h%2C24h%2C7d"],
    "nobitex-tether":["https://apiv2.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls","https://api.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls"],
-   "wallex-markets":["https://api.wallex.ir/hector/web/v1/markets","https://api.wallex.ir/v1/markets"]
+   "wallex-markets":["https://api.wallex.ir/v1/markets","https://api.wallex.ir/hector/web/v1/markets","https://api.wallex.ir/v1/otc/markets"]
   };
   let candidates=urls[source]||null;
   if(source==="coingecko-extra"){
@@ -331,7 +331,7 @@ async function handle(request,env){
  if(request.method==="GET"&&new URL(request.url).pathname==="/connections-health"){
   const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"connections-health");
   const limited=rateLimitReply(limitResult,request);if(limited)return limited;
-  const timeoutFetch=async(url,valid,timeout=4500)=>{
+  const timeoutFetch=async(url,valid,timeout=9000)=>{
    const started=Date.now(),controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeout);
    try{
     const response=await fetch(url,{headers:{"Accept":"application/json, text/plain, */*","User-Agent":"MMP-COIN-AI/1.0","Accept-Language":"en-US,en;q=0.9"},signal:controller.signal,cf:{cacheTtl:5,cacheEverything:true}});
@@ -342,17 +342,23 @@ async function handle(request,env){
    }catch(error){return {status:"down",ping:null,error:String(error?.message||"network error").slice(0,100)};}
    finally{clearTimeout(timer);}
   };
-  const probeAny=async(urls,valid)=>{
-   const results=await Promise.all(urls.map(url=>timeoutFetch(url,valid)));
+  const probeAny=async(urls,valid,timeout=9000)=>{
+   const results=await Promise.all(urls.map(url=>timeoutFetch(url,valid,timeout)));
    const good=results.filter(x=>x.status!=="down").sort((a,b)=>a.ping-b.ping);
-   return good[0]||results[results.length-1]||{status:"down",ping:null};
+   return good[0]||results[results.length-1]||{status:"down",ping:null,error:"no Wallex endpoint responded"};
   };
   const [binance,bybit,okx,nobitex,wallex]=await Promise.all([
    probeAny(["https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://api.binance.us/api/v3/ticker/price?symbol=BTCUSDT","https://api1.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://api2.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://api3.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://data-api.binance.vision/api/v3/ticker/price?symbol=BTCUSDT"],d=>Number(d?.price)>0),
    probeAny(["https://api.bybit.com/v5/market/tickers?category=spot&symbol=BTCUSDT","https://api.bytick.com/v5/market/tickers?category=spot&symbol=BTCUSDT"],d=>d?.retCode===0&&Number(d?.result?.list?.[0]?.lastPrice)>0),
    probeAny(["https://www.okx.com/api/v5/market/ticker?instId=BTC-USDT","https://us.okx.com/api/v5/market/ticker?instId=BTC-USDT","https://openapi.okx.com/api/v5/market/ticker?instId=BTC-USDT"],d=>d?.code==="0"&&Number(d?.data?.[0]?.last)>0),
    timeoutFetch("https://apiv2.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls",d=>d?.status==="ok"&&Number(d?.stats?.["usdt-rls"]?.latest)>0,5500),
-   probeAny(["https://api.wallex.ir/hector/web/v1/markets","https://api.wallex.ir/v1/markets"],d=>d?.success===true&&((Array.isArray(d?.result?.markets)&&d.result.markets.length>0)||(d?.result?.symbols&&Object.keys(d.result.symbols).length>0)),5500)
+   probeAny(["https://api.wallex.ir/v1/markets","https://api.wallex.ir/hector/web/v1/markets","https://api.wallex.ir/v1/otc/markets"],d=>{
+    if(d?.success!==true)return false;
+    const raw=d?.result?.symbols??d?.result?.markets;
+    if(Array.isArray(raw))return raw.length>0;
+    if(raw&&typeof raw==="object")return Object.keys(raw).length>0;
+    return false;
+   },12000)
   ]);
   const checks=[
    {name:"Binance Spot",purpose:"قیمت و معاملات اسپات",...binance},
