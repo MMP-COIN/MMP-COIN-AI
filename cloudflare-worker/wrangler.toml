@@ -4,3 +4,19 @@ compatibility_date = "2026-11-04"
 
 [ai]
 binding = "AI"
+
+[[ratelimits]]
+name = "AI_ANALYSIS_LIMITER"
+namespace_id = "2026110401"
+
+[ratelimits.simple]
+limit = 5
+period = 60
+
+[[ratelimits]]
+name = "PUBLIC_API_LIMITER"
+namespace_id = "2026110402"
+
+[ratelimits.simple]
+limit = 60
+period = 60
