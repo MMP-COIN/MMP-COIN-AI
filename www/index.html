@@ -817,7 +817,7 @@ async function refreshAll(){
   }
 
   const [topRes, extraRes] = await Promise.all([
-    fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&sparkline=false&price_change_percentage=1h%2C24h%2C7d'),
+    fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=false&price_change_percentage=1h%2C24h%2C7d'),
     fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids='+EXTRA_COIN_IDS.join(',')+'&order=market_cap_desc&sparkline=false&price_change_percentage=1h%2C24h%2C7d')
   ]);
   if(!topRes.ok) throw new Error('CoinGecko top-100 HTTP '+topRes.status);
