@@ -187,6 +187,15 @@ async function readPublicJson(url){
   const data=await r.json();return {ok:true,status:r.status,data};
  }catch(e){return {ok:false,status:0,error:e.message||"network error"};}
 }
+async function readAnyPublicJson(urls){
+ let last=null;
+ for(const url of urls){
+  const result=await readPublicJson(url);
+  if(result.ok)return {...result,source:url};
+  last=result;
+ }
+ return last||{ok:false,status:0,error:"No public endpoint responded"};
+}
 async function readOkxCatalog(instType){
  let last=null;
  for(const host of ["https://www.okx.com","https://us.okx.com","https://openapi.okx.com"]){
@@ -200,12 +209,22 @@ async function getExchangeCatalogs(){
  if(exchangeCatalogCache&&Date.now()-exchangeCatalogCacheAt<300000)return exchangeCatalogCache;
  const urls=[
   ["binance_spot","https://api.binance.com/api/v3/exchangeInfo"],
-  ["bybit_spot","https://api.bybit.com/v5/market/instruments-info?category=spot&limit=1000"],
+  ["bybit_spot",[
+   "https://api.bybit.eu/v5/market/instruments-info?category=spot&limit=1000",
+   "https://api.bytick.eu/v5/market/instruments-info?category=spot&limit=1000",
+   "https://api.bybit.com/v5/market/instruments-info?category=spot&limit=1000",
+   "https://api.bytick.com/v5/market/instruments-info?category=spot&limit=1000"
+  ]],
   ["binance_futures","https://fapi.binance.com/fapi/v1/exchangeInfo"],
-  ["bybit_futures","https://api.bybit.com/v5/market/instruments-info?category=linear&limit=1000"],
+  ["bybit_futures",[
+   "https://api.bybit.eu/v5/market/instruments-info?category=linear&limit=1000",
+   "https://api.bytick.eu/v5/market/instruments-info?category=linear&limit=1000",
+   "https://api.bybit.com/v5/market/instruments-info?category=linear&limit=1000",
+   "https://api.bytick.com/v5/market/instruments-info?category=linear&limit=1000"
+  ]],
   ["bitget_spot","https://api.bitget.com/api/v3/market/instruments?category=SPOT"]
  ];
- const results=await Promise.all(urls.map(async ([key,url])=>[key,await readPublicJson(url)]));
+ const results=await Promise.all(urls.map(async ([key,endpoint])=>[key,Array.isArray(endpoint)?await readAnyPublicJson(endpoint):await readPublicJson(endpoint)]));
  const out=Object.fromEntries(results);
  const [okxSpot,okxSwap]=await Promise.all([readOkxCatalog("SPOT"),readOkxCatalog("SWAP")]);
  out.okx_spot=okxSpot;out.okx_futures=okxSwap;
@@ -331,7 +350,9 @@ async function handle(request,env){
   for(const endpoint of candidates){
    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),9000);
    try{
-    const upstream=await fetch(endpoint,{headers:{"Accept":"application/json, text/plain, */*","User-Agent":"MMP-COIN-AI/1.0","Accept-Language":"en-US,en;q=0.9"},signal:controller.signal,cf:{cacheTtl:source.startsWith("coingecko")?30:source.includes("tether")||source.includes("wallex")?10:5,cacheEverything:true}});
+    const upstreamHeaders={"Accept":"application/json, text/plain, */*","User-Agent":"MMP-COIN-AI/1.0","Accept-Language":"en-US,en;q=0.9"};
+   if(source==="wallex-markets"){upstreamHeaders.Origin="https://wallex.ir";upstreamHeaders.Referer="https://wallex.ir/";}
+   const upstream=await fetch(endpoint,{headers:upstreamHeaders,signal:controller.signal,cf:{cacheTtl:source.startsWith("coingecko")?30:source.includes("tether")||source.includes("wallex")?10:5,cacheEverything:true}});
     if(!upstream.ok){lastError="Upstream HTTP "+upstream.status;continue;}
     const data=await upstream.json();
     if(data===null||typeof data!=="object")throw new Error("Invalid upstream JSON");
@@ -344,10 +365,10 @@ async function handle(request,env){
  if(request.method==="GET"&&new URL(request.url).pathname==="/connections-health"){
   const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"connections-health");
   const limited=rateLimitReply(limitResult,request);if(limited)return limited;
-  const timeoutFetch=async(url,valid,timeout=9000)=>{
+  const timeoutFetch=async(url,valid,timeout=9000,extraHeaders={})=>{
    const started=Date.now(),controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeout);
    try{
-    const response=await fetch(url,{headers:{"Accept":"application/json, text/plain, */*","User-Agent":"MMP-COIN-AI/1.0","Accept-Language":"en-US,en;q=0.9"},signal:controller.signal,cf:{cacheTtl:5,cacheEverything:true}});
+    const response=await fetch(url,{headers:{"Accept":"application/json, text/plain, */*","User-Agent":"MMP-COIN-AI/1.0","Accept-Language":"en-US,en;q=0.9",...extraHeaders},signal:controller.signal,cf:{cacheTtl:5,cacheEverything:true}});
     if(!response.ok)throw new Error("HTTP "+response.status);
     const data=await response.json();
     if(!valid(data))throw new Error("پاسخ معتبر دریافت نشد");
@@ -355,14 +376,19 @@ async function handle(request,env){
    }catch(error){return {status:"down",ping:null,error:String(error?.message||"network error").slice(0,100)};}
    finally{clearTimeout(timer);}
   };
-  const probeAny=async(urls,valid,timeout=9000)=>{
-   const results=await Promise.all(urls.map(url=>timeoutFetch(url,valid,timeout)));
+  const probeAny=async(urls,valid,timeout=9000,extraHeaders={})=>{
+   const results=await Promise.all(urls.map(url=>timeoutFetch(url,valid,timeout,extraHeaders)));
    const good=results.filter(x=>x.status!=="down").sort((a,b)=>a.ping-b.ping);
    return good[0]||results[results.length-1]||{status:"down",ping:null,error:"no Wallex endpoint responded"};
   };
   const [binance,bybit,okx,nobitex,wallex]=await Promise.all([
    probeAny(["https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://api.binance.us/api/v3/ticker/price?symbol=BTCUSDT","https://api1.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://api2.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://api3.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://data-api.binance.vision/api/v3/ticker/price?symbol=BTCUSDT"],d=>Number(d?.price)>0),
-   probeAny(["https://api.bybit.com/v5/market/tickers?category=spot&symbol=BTCUSDT","https://api.bytick.com/v5/market/tickers?category=spot&symbol=BTCUSDT"],d=>d?.retCode===0&&Number(d?.result?.list?.[0]?.lastPrice)>0),
+   probeAny([
+    "https://api.bybit.eu/v5/market/tickers?category=spot&symbol=BTCUSDT",
+    "https://api.bytick.eu/v5/market/tickers?category=spot&symbol=BTCUSDT",
+    "https://api.bybit.com/v5/market/tickers?category=spot&symbol=BTCUSDT",
+    "https://api.bytick.com/v5/market/tickers?category=spot&symbol=BTCUSDT"
+   ],d=>d?.retCode===0&&Number(d?.result?.list?.[0]?.lastPrice)>0),
    probeAny(["https://www.okx.com/api/v5/market/ticker?instId=BTC-USDT","https://us.okx.com/api/v5/market/ticker?instId=BTC-USDT","https://openapi.okx.com/api/v5/market/ticker?instId=BTC-USDT"],d=>d?.code==="0"&&Number(d?.data?.[0]?.last)>0),
    timeoutFetch("https://apiv2.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls",d=>d?.status==="ok"&&Number(d?.stats?.["usdt-rls"]?.latest)>0,5500),
    probeAny(["https://api.wallex.ir/v1/markets","https://api.wallex.ir/hector/web/v1/markets","https://api.wallex.ir/v1/otc/markets"],d=>{
@@ -371,7 +397,7 @@ async function handle(request,env){
     if(Array.isArray(raw))return raw.length>0;
     if(raw&&typeof raw==="object")return Object.keys(raw).length>0;
     return false;
-   },12000)
+   },12000,{"Origin":"https://wallex.ir","Referer":"https://wallex.ir/"})
   ]);
   const checks=[
    {name:"Binance Spot",purpose:"قیمت و معاملات اسپات",...binance},
