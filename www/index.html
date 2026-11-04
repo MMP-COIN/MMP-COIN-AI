@@ -941,10 +941,14 @@ async function refreshAll(){
   }
   if(currentTetherPrice>0){$("usdt").textContent=money(currentTetherPrice,0)+" تومان";$("usdt-source").textContent="منبع: "+currentTetherSources.join(" + ")+(currentTetherWarning?" · "+currentTetherWarning:"");}
   else{$("usdt").textContent="داده در دسترس نیست";$("usdt-source").textContent=currentTetherWarning;}
-  const [topRes, extraRes] = await Promise.all([
-    fetch(AI_ANALYSIS_ENDPOINT+'/market-proxy?source=coingecko-top'),
-    fetch(AI_ANALYSIS_ENDPOINT+'/market-proxy?source=coingecko-extra&ids='+encodeURIComponent(EXTRA_COIN_IDS.join(',')))
-  ]);
+  const marketController=new AbortController(),marketTimer=setTimeout(()=>marketController.abort(),16000);
+  let topRes,extraRes;
+  try{
+   [topRes,extraRes]=await Promise.all([
+    fetch(AI_ANALYSIS_ENDPOINT+'/market-proxy?source=coingecko-top',{cache:'no-store',signal:marketController.signal}),
+    fetch(AI_ANALYSIS_ENDPOINT+'/market-proxy?source=coingecko-extra&ids='+encodeURIComponent(EXTRA_COIN_IDS.join(',')),{cache:'no-store',signal:marketController.signal})
+   ]);
+  }finally{clearTimeout(marketTimer);}
   if(!topRes.ok) throw new Error('CoinGecko top-100 HTTP '+topRes.status);
   const topData = await topRes.json();
   let extraData = [];
@@ -982,11 +986,14 @@ async function refreshAll(){
   renderMarketTicker(); renderOpportunities(); renderWatch(); syncWatchSelect();
   auditExchangeSupport(data);
 
+  const goldController=new AbortController(),goldTimer=setTimeout(()=>goldController.abort(),5000);
   try{
-   let goldRes = await fetch('https://api.gold-api.com/price/XAU');
-   let goldData = await goldRes.json();
-   if(goldData.price) $('gold').textContent = '$'+money(goldData.price);
+   const goldRes=await fetch('https://api.gold-api.com/price/XAU',{cache:'no-store',signal:goldController.signal});
+   if(!goldRes.ok)throw new Error('Gold API HTTP '+goldRes.status);
+   const goldData=await goldRes.json();
+   if(goldData.price)$('gold').textContent='$'+money(goldData.price);
   }catch(e){$('gold').textContent='—';}
+  finally{clearTimeout(goldTimer);}
 
   $('updated').textContent='بروزرسانی شد: '+new Date().toLocaleTimeString('fa-IR');
  }catch(e){$('updated').textContent='خطا در دریافت داده';}
