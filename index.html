@@ -830,19 +830,18 @@ window.onclick = function(event) {
 }
 
 function setCurrency(curr) {
-  currentCurrency = curr;
-  if(curr === 'IRT') {
-    $('btn-irt').classList.add('active');
-    $('btn-usdt').classList.remove('active');
-    $('currency-indicator').innerText = 'نمایش هم‌زمان: USDT + تومان';
-  } else {
-    $('btn-usdt').classList.add('active');
-    $('btn-irt').classList.remove('active');
-    $('currency-indicator').innerText = 'نمایش هم‌زمان: USDT + تومان';
-  }
+  currentCurrency = curr === 'USDT' ? 'USDT' : 'IRT';
+  const isToman=currentCurrency==='IRT';
+  [['btn-irt',isToman],['btn-usdt',!isToman],['native-currency-irt',isToman],['native-currency-usdt',!isToman]].forEach(([id,active])=>{
+    const button=$(id);if(button){button.classList.toggle('active',active);button.setAttribute('aria-pressed',active?'true':'false');}
+  });
+  const indicator=$('currency-indicator');
+  if(indicator)indicator.innerText='واحد انتخاب‌شده: '+(isToman?'تومان':'تتر · USDT');
   if(cachedCoinsData.length > 0) {
     renderCoinsTables(cachedCoinsData);
     renderHeroCards();
+    renderMarketTicker();
+    renderWatch();
   }
 }
 
@@ -1537,6 +1536,10 @@ html.mmp-native-app .native-brand small{display:block;color:#8fa8bb;font-size:9p
 html.mmp-native-app .native-live{display:flex;align-items:center;gap:7px;color:#a7c0cf;font-size:10px;border:1px solid #355367;border-radius:30px;padding:7px 10px;background:#112331}
 html.mmp-native-app .native-live i{width:7px;height:7px;border-radius:50%;background:#36dfad;box-shadow:0 0 12px #36dfad;display:inline-block}
 html.mmp-native-app .native-appbar-actions{display:flex;align-items:center;gap:8px}
+html.mmp-native-app .native-currency-switch{display:flex;align-items:center;gap:2px;padding:3px;border:1px solid #52677a;border-radius:11px;background:#091522}
+html.mmp-native-app .native-currency-switch button{min-width:43px;padding:7px 8px;border:0;border-radius:8px;background:transparent;color:#a9bac9;font:700 10px Tahoma,Arial,sans-serif}
+html.mmp-native-app .native-currency-switch button.active{background:linear-gradient(145deg,#f1d48f,#a77a38);color:#17130a}
+@media(max-width:390px){html.mmp-native-app .native-appbar{gap:6px;padding-left:9px;padding-right:9px}html.mmp-native-app .native-brand{gap:6px}html.mmp-native-app .native-mark{width:34px;height:34px}html.mmp-native-app .native-brand b{font-size:10px}html.mmp-native-app .native-brand small{font-size:7px}html.mmp-native-app .native-appbar-actions{gap:4px}html.mmp-native-app .native-currency-switch button{min-width:37px;padding:7px 5px}html.mmp-native-app .native-refresh-btn,html.mmp-native-app .native-update-check-btn{width:32px;height:32px}}
 html.mmp-native-app .native-refresh-btn,html.mmp-native-app .native-update-check-btn{width:38px;height:38px;display:grid;place-items:center;border:1px solid #8d754a;border-radius:12px;background:linear-gradient(145deg,#26394a,#142332);color:#f5dda2;font-size:23px;line-height:1;box-shadow:0 4px 14px #0005}
 html.mmp-native-app .native-update-check-btn{font-size:21px;color:#f4d58e;border-color:#647b8c}
 html.mmp-native-app .native-refresh-btn:disabled,html.mmp-native-app .native-update-check-btn:disabled{opacity:.55}
@@ -1598,7 +1601,7 @@ html.mmp-native-app .footer{padding-bottom:12px}
   document.addEventListener("DOMContentLoaded",function(){
    if(document.querySelector(".native-appbar"))return;
    var header=document.createElement("header");header.className="native-appbar";
-   header.innerHTML='<div class="native-brand"><div class="native-mark"><img src="assets/mmp-coin-ai-icon.svg" alt="MMP COIN AI"></div><div><b>MMP COIN AI</b><small>SMART MARKET TERMINAL</small></div></div><div class="native-appbar-actions"><div class="native-live"><i></i><span>بازار زنده</span></div><button type="button" class="native-update-check-btn" id="native-update-check-btn" aria-label="بررسی نسخه جدید" title="بررسی نسخه جدید">⇧</button><button type="button" class="native-refresh-btn" id="native-refresh-btn" aria-label="بروزرسانی بازار" title="بروزرسانی بازار">⟳</button></div>';
+   header.innerHTML='<div class="native-brand"><div class="native-mark"><img src="assets/mmp-coin-ai-icon.svg" alt="MMP COIN AI"></div><div><b>MMP COIN AI</b><small>SMART MARKET TERMINAL</small></div></div><div class="native-appbar-actions"><div class="native-currency-switch" role="group" aria-label="واحد نمایش قیمت"><button type="button" id="native-currency-irt" class="active" aria-pressed="true" onclick="setCurrency(\'IRT\')">تومان</button><button type="button" id="native-currency-usdt" aria-pressed="false" onclick="setCurrency(\'USDT\')">تتر</button></div><button type="button" class="native-update-check-btn" id="native-update-check-btn" aria-label="بررسی نسخه جدید" title="بررسی نسخه جدید">⇧</button><button type="button" class="native-refresh-btn" id="native-refresh-btn" aria-label="بروزرسانی بازار" title="بروزرسانی بازار">⟳</button></div>';
    document.body.insertBefore(header,document.body.firstChild);
    var refreshButton=header.querySelector("#native-refresh-btn");
    if(refreshButton){refreshButton.addEventListener("click",function(){if(refreshButton.disabled)return;refreshButton.disabled=true;refreshButton.classList.add("is-refreshing");try{if(typeof refreshAll==="function")refreshAll();if(typeof checkConnections==="function")checkConnections();}finally{setTimeout(function(){refreshButton.disabled=false;refreshButton.classList.remove("is-refreshing");},1800);}});}
