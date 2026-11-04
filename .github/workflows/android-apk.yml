@@ -55,13 +55,13 @@ jobs:
 
       - name: Stamp app version into the bundled dashboard
         env:
-          BUILD_VERSION: 1.0.\${{ github.run_number }}
+          BUILD_VERSION: 1.0.${{ github.run_number }}
         run: |
           node <<'NODE'
           const fs = require('fs');
           const file = 'www/index.html';
           let html = fs.readFileSync(file, 'utf8');
-          html = html.replace(/(<meta name="mmp-app-version" content=")[^"]*(")/, \`$1\${process.env.BUILD_VERSION}$2\`);
+          html = html.replace(/(<meta name="mmp-app-version" content=")[^"]*(")/, `$1${process.env.BUILD_VERSION}$2`);
           fs.writeFileSync(file, html);
           NODE
 
@@ -80,30 +80,31 @@ jobs:
               xxxhdpi: { icon: 192, foreground: 432 }
             };
             for (const [density, sizes] of Object.entries(densities)) {
-              const dir = \`android/app/src/main/res/mipmap-\${density}\`;
+              const dir = `android/app/src/main/res/mipmap-${density}`;
               fs.mkdirSync(dir, { recursive: true });
               for (const name of ['ic_launcher.png', 'ic_launcher_round.png']) {
-                await sharp(svg).resize(sizes.icon, sizes.icon).png().toFile(\`\${dir}/\${name}\`);
+                await sharp(svg).resize(sizes.icon, sizes.icon).png().toFile(`${dir}/${name}`);
               }
-              await sharp(svg).resize(sizes.foreground, sizes.foreground).png().toFile(\`\${dir}/ic_launcher_foreground.png\`);
+              await sharp(svg).resize(sizes.foreground, sizes.foreground).png().toFile(`${dir}/ic_launcher_foreground.png`);
             }
           })().catch(err => { console.error(err); process.exit(1); });
           NODE
 
       - name: Prepare persistent Android signing key
-        if: \${{ secrets.ANDROID_SIGNING_CONFIG != '' }}
-        env:
-          ANDROID_SIGNING_CONFIG: \${{ secrets.ANDROID_SIGNING_CONFIG }}
         run: |
+          if [ -z "$ANDROID_SIGNING_CONFIG" ]; then
+            echo "No persistent signing secret configured; building a debug APK only."
+            exit 0
+          fi
           echo "$ANDROID_SIGNING_CONFIG" | base64 --decode > /tmp/mmp-signing.json
           node <<'NODE'
           const fs = require('fs');
           const cfg = JSON.parse(fs.readFileSync('/tmp/mmp-signing.json', 'utf8'));
           fs.writeFileSync('android/app/mmp-release-key.jks', Buffer.from(cfg.keystoreBase64, 'base64'));
           const env = [
-            \`ANDROID_STORE_PASSWORD=\${cfg.storePassword}\`,
-            \`ANDROID_KEY_ALIAS=\${cfg.keyAlias}\`,
-            \`ANDROID_KEY_PASSWORD=\${cfg.keyPassword}\`,
+            `ANDROID_STORE_PASSWORD=${cfg.storePassword}`,
+            `ANDROID_KEY_ALIAS=${cfg.keyAlias}`,
+            `ANDROID_KEY_PASSWORD=${cfg.keyPassword}`,
             'ANDROID_SIGNING_READY=true'
           ].join('\n') + '\n';
           fs.appendFileSync(process.env.GITHUB_ENV, env);
@@ -111,16 +112,16 @@ jobs:
 
       - name: Configure Android version and release signing
         env:
-          BUILD_NUMBER: \${{ github.run_number }}
+          BUILD_NUMBER: ${{ github.run_number }}
         run: |
           node <<'NODE'
           const fs = require('fs');
           const file = 'android/app/build.gradle';
           let gradle = fs.readFileSync(file, 'utf8');
-          gradle = gradle.replace(/versionCode\s+\d+/, \`versionCode \${process.env.BUILD_NUMBER}\`);
-          gradle = gradle.replace(/versionName\s+"[^"]+"/, \`versionName "1.0.\${process.env.BUILD_NUMBER}"\`);
+          gradle = gradle.replace(/versionCode\s+\d+/, `versionCode ${process.env.BUILD_NUMBER}`);
+          gradle = gradle.replace(/versionName\s+"[^"]+"/, `versionName "1.0.${process.env.BUILD_NUMBER}"`);
           if (process.env.ANDROID_SIGNING_READY === 'true') {
-            gradle = gradle.replace(/buildTypes\s*\{\s*release\s*\{/, \`signingConfigs {
+            gradle = gradle.replace(/buildTypes\s*\{\s*release\s*\{/, `signingConfigs {
                   release {
                       storeFile file("mmp-release-key.jks")
                       storePassword System.getenv("ANDROID_STORE_PASSWORD")
@@ -130,7 +131,7 @@ jobs:
               }
               buildTypes {
                   release {
-                      signingConfig signingConfigs.release\`);
+                      signingConfig signingConfigs.release`);
           }
           fs.writeFileSync(file, gradle);
           NODE
@@ -158,10 +159,10 @@ jobs:
           retention-days: 30
 
       - name: Publish signed update release
-        if: \${{ secrets.ANDROID_SIGNING_CONFIG != '' }}
+        if: ${{ env.ANDROID_SIGNING_CONFIG != '' }}
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: app-v1.0.\${{ github.run_number }}
-          name: MMP COIN AI Android v1.0.\${{ github.run_number }}
+          tag_name: app-v1.0.${{ github.run_number }}
+          name: MMP COIN AI Android v1.0.${{ github.run_number }}
           files: android/app/build/outputs/apk/release/app-release.apk
           generate_release_notes: true
