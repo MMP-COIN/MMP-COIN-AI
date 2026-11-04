@@ -933,7 +933,7 @@ function renderCoinsTables(data) {
   const updatedAt=c.price_updated_at||c.last_updated;
   const updatedText=updatedAt&&!Number.isNaN(Date.parse(updatedAt))?new Date(updatedAt).toLocaleTimeString("fa-IR"):"زمان بروزرسانی نامشخص";
   const spot=c.exchange_support?.spot;
-  const spotText=spot?.confirmed?"جفت اسپات فعال: "+(spot.providers||[]).join("، "):"جفت اسپات تأییدشده در صرافی‌های بررسی‌شده پیدا نشد";
+  const spotText=!c.exchange_support?"در حال بررسی پشتیبانی اسپات":spot?.confirmed?"جفت اسپات فعال: "+(spot.providers||[]).join("، "):"جفت اسپات تأییدشده در صرافی‌های بررسی‌شده پیدا نشد";
   const change=Number(c.price_change_percentage_24h);
   const changeText=Number.isFinite(change)?(change>=0?"+":"")+change.toFixed(2)+"%":"—";
   const cap=Number(c.market_cap)>0?money(c.market_cap,0):"—";
@@ -944,7 +944,7 @@ function renderCoinsTables(data) {
     <td class="num coin-price-irt" data-label="قیمت به تومان">${tomanText}</td>
     <td class="num coin-change ${Number.isFinite(change)?(change>=0?"positive":"negative"):"muted"}" data-label="تغییر ۲۴ ساعت">${changeText}</td>
     <td class="num coin-market-cap" data-label="ارزش بازار">${cap}</td>
-    <td class="coin-source" data-label="منبع قیمت"><span>منبع قیمت: <b>${source}</b></span><small>${sourceLabel} · ${updatedText}</small><small>${aiEscape(spotText)}</small></td>
+    <td class="coin-source" data-label="منبع قیمت"><span>منبع قیمت: <b>${source}</b></span><small>${sourceLabel} · ${updatedText}</small><small>${aiEscape(spotText)}</small><small>نرخ تبدیل تتر: ${aiEscape(currentTetherSources.join(" + ")||"در دسترس نیست")}${currentTetherWarning?" · "+aiEscape(currentTetherWarning):""}</small></td>
    </tr>`;
  }).join("");
  $("top-coins").innerHTML=renderRows(data.slice(0,5));
