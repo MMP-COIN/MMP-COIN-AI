@@ -878,15 +878,19 @@ async function refreshAll(){
   }
   if(!Array.isArray(topData)) throw new Error('CoinGecko returned invalid top-100 data');
 
-  // نگه‌داشتن ۵۰ ارز اصلیِ قابل معامله و افزودن ارزهای منتخب؛ استیبل‌کوین‌ها و توکن‌های رَپ‌شده از منوی کندل/تحلیل کنار گذاشته می‌شوند.
+  // نگه‌داشتن ۱۰۰ دارایی قابل معامله با نمادهای یکتا؛ ارزهای تکراری حذف می‌شوند؛ استیبل‌کوین‌ها و توکن‌های رَپ‌شده از منوی کندل/تحلیل کنار گذاشته می‌شوند.
   const merged = new Map();
+  const seenSymbols = new Set();
   [...topData,...extraData].forEach(c => {
     if(!c || !c.id || !c.symbol) return;
-    if(NON_TRADABLE_COIN_IDS.has(c.id) || NON_TRADABLE_SYMBOLS.has(String(c.symbol).toUpperCase())) return;
-    if(!merged.has(c.id)) merged.set(c.id,c);
+    const symbol = String(c.symbol).toUpperCase();
+    if(NON_TRADABLE_COIN_IDS.has(c.id) || NON_TRADABLE_SYMBOLS.has(symbol)) return;
+    if(merged.has(c.id) || seenSymbols.has(symbol)) return;
+    merged.set(c.id,c);
+    seenSymbols.add(symbol);
   });
-  let data = [...merged.values()].sort((a,b)=>(a.market_cap_rank||999999)-(b.market_cap_rank||999999));
-  if(data.length < 50) throw new Error('Only '+data.length+' tradable assets received from CoinGecko; retry on next refresh');
+  let data = [...merged.values()].sort((a,b)=>(a.market_cap_rank||999999)-(b.market_cap_rank||999999)).slice(0,100);
+  if(data.length < 100) throw new Error('Only '+data.length+' unique tradable assets received from CoinGecko; retry on next refresh');
   data = await enrichWithBinance(data);
   cachedCoinsData = data;
   
