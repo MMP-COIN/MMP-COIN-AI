@@ -732,13 +732,34 @@ body:after{content:"";position:fixed;width:42vw;height:42vw;max-width:620px;max-
 </div>
 </section>
 
-<section id="app-download" aria-label="دانلود اپلیکیشن اندروید" style="margin:24px auto 8px;max-width:760px;padding:22px 18px;border:1px solid #80683f;border-radius:20px;background:linear-gradient(135deg,#171b24,#10131a 62%,#211b12);box-shadow:0 14px 34px #0006;text-align:center">
-  <div style="font-size:28px;line-height:1;margin-bottom:10px" aria-hidden="true">📱</div>
-  <div style="color:var(--gold2);font-size:16px;font-weight:900;margin-bottom:8px">اپلیکیشن اندروید MMP COIN AI</div>
-  <p style="color:var(--muted);font-size:12px;line-height:2;margin:0 auto 16px;max-width:520px">نسخه اندروید ترمینال هوشمند بازار را روی گوشی خود نصب کنید و سریع‌تر به ابزارهای تحلیل دسترسی داشته باشید.</p>
-  <a href="https://github.com/MMP-COIN/MMP-COIN-AI/releases/latest/download/app-release.apk" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;justify-content:center;gap:9px;padding:12px 22px;border-radius:12px;background:linear-gradient(120deg,#a77c35,#e8cd8c);color:#17130a;font-size:13px;font-weight:900;text-decoration:none;box-shadow:0 7px 20px #d9b66d30">⬇ دانلود اپلیکیشن اندروید</a>
-  <div style="color:#9a9eaa;font-size:10px;line-height:1.9;margin-top:11px">دانلود مستقیم فایل APK · بدون نیاز به استخراج ZIP · نسخه پایدار و به‌روز</div>
+<section id="app-download" aria-label="دانلود و اشتراک اپلیکیشن اندروید" style="margin:30px auto 12px;max-width:900px;padding:clamp(22px,4vw,34px) 20px;border:1px solid #8b7041;border-radius:22px;background:radial-gradient(ellipse at 50% 0,#d9b66d18,transparent 58%),linear-gradient(135deg,#17212d,#10151e 62%,#211b12);box-shadow:0 18px 42px #0008;text-align:center;position:relative;overflow:hidden">
+  <div style="display:inline-flex;align-items:center;gap:7px;border:1px solid #80683f;border-radius:30px;padding:6px 12px;color:#e8ce94;font-size:10px;font-weight:800;margin-bottom:14px">MMP COIN AI · ANDROID APP</div>
+  <div style="font-size:34px;line-height:1;margin-bottom:12px" aria-hidden="true">📲</div>
+  <h2 style="color:var(--gold2);font-size:clamp(17px,3vw,21px);font-weight:900;margin:0 0 9px">اپلیکیشن MMP COIN AI را نصب کنید</h2>
+  <p style="color:#aeb7c5;font-size:12px;line-height:2;margin:0 auto 20px;max-width:560px">نسخه اندروید ترمینال هوشمند بازار را مستقیم دریافت کنید؛ سپس لینک نصب را برای دوستانتان بفرستید تا آن‌ها هم به‌راحتی از اپ استفاده کنند.</p>
+  <div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap">
+    <a href="https://github.com/MMP-COIN/MMP-COIN-AI/releases/latest/download/app-release.apk" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;justify-content:center;gap:9px;min-width:190px;padding:13px 22px;border-radius:12px;background:linear-gradient(120deg,#a77c35,#f0d99c);color:#17130a;font-size:13px;font-weight:900;text-decoration:none;box-shadow:0 8px 22px #d9b66d35">⬇ دانلود و نصب اپ اندروید</a>
+    <button type="button" id="mmp-share-site-app" onclick="shareMmpSiteApp()" style="display:inline-flex;align-items:center;justify-content:center;gap:9px;min-width:190px;padding:13px 22px;border-radius:12px;border:1px solid #80683f;background:#172333;color:#f2d99b;font-size:13px;font-weight:900;cursor:pointer">↗ اشتراک‌گذاری لینک اپ</button>
+  </div>
+  <div id="mmp-app-share-status" role="status" aria-live="polite" style="color:#aeb7c5;font-size:10px;line-height:1.9;margin-top:13px">دانلود مستقیم فایل APK · ارسال لینک نصب برای دیگران</div>
 </section>
+<script>
+function shareMmpSiteApp(){
+  var url="https://github.com/MMP-COIN/MMP-COIN-AI/releases/latest/download/app-release.apk";
+  var data={title:"MMP COIN AI",text:"دانلود اپلیکیشن اندروید MMP COIN AI؛ ترمینال هوشمند تحلیل بازار رمزارزها",url:url};
+  var status=document.getElementById("mmp-app-share-status");
+  if(navigator.share){
+    navigator.share(data).then(function(){if(status)status.textContent="لینک اپلیکیشن با موفقیت برای اشتراک‌گذاری آماده شد."}).catch(function(error){if(error&&error.name!=="AbortError"&&status)status.textContent="اشتراک‌گذاری انجام نشد؛ لینک دانلود را کپی کنید."});
+    return;
+  }
+  var copy=navigator.clipboard&&navigator.clipboard.writeText?navigator.clipboard.writeText(url):Promise.reject();
+  copy.then(function(){if(status)status.textContent="لینک دانلود کپی شد؛ حالا آن را برای دوستانتان ارسال کنید."}).catch(function(){
+    var field=document.createElement("textarea");field.value=url;field.style.position="fixed";field.style.opacity="0";document.body.appendChild(field);field.select();
+    var ok=false;try{ok=document.execCommand("copy")}catch(e){}field.remove();
+    if(status)status.textContent=ok?"لینک دانلود کپی شد؛ برای دوستانتان ارسال کنید.":"لینک دانلود: "+url;
+  });
+}
+</script>
 <div class="footer" style="text-align:center; color:var(--muted); font-size:11px; padding:20px 0;">MMP COIN AI · ترمینال جامع، پایش و تحلیل هوش مصنوعی بازارهای مالی</div>
 </main>
 
