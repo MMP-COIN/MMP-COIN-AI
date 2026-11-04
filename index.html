@@ -446,9 +446,61 @@ body:after{content:"";position:fixed;width:42vw;height:42vw;max-width:620px;max-
 .full-coins-close-dock{position:sticky;bottom:10px;z-index:12;display:flex;justify-content:center;padding:10px 0 2px;pointer-events:none;background:linear-gradient(180deg,transparent,#0b111bd9 35%)}
 .full-coins-close-btn{pointer-events:auto;width:min(100%,460px);border:1px solid #b8954c;background:linear-gradient(135deg,#3b301b,#171b22);color:#f5d58c;border-radius:12px;padding:12px 16px;font-size:12px;font-weight:800;box-shadow:0 8px 24px #0009;cursor:pointer;backdrop-filter:blur(12px)}
 .full-coins-close-btn:active{transform:translateY(1px)}
+
+/* Radar clarity refresh */
+.section-head h2,.radar-group-title b{font-family:'Estedad',var(--font-fa,Tahoma),sans-serif;letter-spacing:-.25px}
+.radar-live-note{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:10px 12px;margin:12px 0 15px;border:1px solid #344052;border-radius:12px;background:linear-gradient(100deg,#141c28,#10151c);font-size:11px;color:#c4cbd6}
+.radar-live-note .sub{margin-right:auto;font-size:10px}
+.radar-live-dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 12px var(--green);flex:none}
+.radar-groups{display:grid;gap:16px}
+.radar-group{padding:13px;border:1px solid #303b4b;border-radius:16px;background:linear-gradient(145deg,#121a25,#0d121a);min-width:0}
+.radar-group-bull{border-top:3px solid #25d695}
+.radar-group-bear{border-top:3px solid #ff6576}
+.radar-group-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.radar-group-title{display:flex;align-items:center;gap:11px;min-width:0}
+.radar-group-title b{display:block;font-size:18px;font-weight:900}
+.radar-group-title small{display:block;color:var(--muted);font-size:10px;margin-top:3px}
+.radar-group-icon{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font-size:25px;font-weight:900;flex:none}
+.radar-group-bull .radar-group-icon{color:#25d695;background:#25d69518;border:1px solid #25d69555}
+.radar-group-bear .radar-group-icon{color:#ff6576;background:#ff657618;border:1px solid #ff657655}
+.radar-group-count{border:1px solid #394557;border-radius:30px;padding:6px 10px;font-size:10px;color:#d6deea;white-space:nowrap}
+.radar-group .radar-list{gap:8px}
+.radar-group .radar-item{grid-template-columns:minmax(115px,1.2fr) 54px minmax(130px,1.2fr) auto;padding:10px;gap:9px}
+.radar-more{margin-top:12px;border:1px solid #6e5b35;border-radius:13px;background:linear-gradient(110deg,#292315,#171b23);overflow:hidden}
+.radar-more>summary{display:flex;align-items:center;gap:12px;cursor:pointer;list-style:none;padding:13px 14px;color:#f5dda2;font-size:12px;font-weight:800;min-height:58px}
+.radar-more>summary::-webkit-details-marker{display:none}
+.radar-more>summary:after{content:none!important}
+.radar-expand-action{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;background:linear-gradient(145deg,#e8c879,#a77c35);color:#17130a;box-shadow:0 4px 14px #d9b66d33;flex:none}
+.radar-expand-action:before{content:'+';font-size:26px;line-height:1;font-weight:500}
+.radar-more[open] .radar-expand-action:before{content:'−';font-size:27px}
+.radar-toggle-copy{display:flex;flex-direction:column;gap:3px;min-width:0}
+.radar-toggle-copy b{font-size:12px}
+.radar-toggle-copy small{font-size:10px;color:#b6ad9a;font-weight:500}
+.radar-more .radar-list{padding:0 9px 10px}
+.radar-empty{padding:15px;border:1px dashed #394557;border-radius:11px;color:var(--muted);font-size:11px;text-align:center}
+@media(max-width:650px){.radar-group{padding:10px}.radar-group-title b{font-size:16px}.radar-group .radar-item{grid-template-columns:minmax(0,1fr) 52px;gap:8px}.radar-group .radar-stats{grid-column:1/-1}.radar-group .radar-action{grid-column:1/-1;justify-content:space-between}.radar-more>summary{padding:11px}.radar-live-note{align-items:flex-start}.radar-live-note .sub{width:100%;margin:0}}
+
+/* MMP COIN AI — dedicated Android app presentation */
+.mmp-app-mode{--app-accent:#c7a45d;background:radial-gradient(ellipse at 50% -15%,#253a4b 0,transparent 42%),#080d14;padding-bottom:82px}
+.mmp-app-mode .top{background:#0a111bef;border-bottom-color:#344458}
+.mmp-app-mode .brand .logo{border-radius:14px;background:linear-gradient(145deg,#f0d38d,#a77c35);color:#111;border:0}
+.mmp-app-mode .terminal-nav{display:none}
+.mmp-app-mode .hero{padding:18px;border:1px solid #35465b;border-radius:20px;background:linear-gradient(125deg,#162536,#101722 65%,#252116);box-shadow:0 14px 35px #0005}
+.mmp-app-mode .hero h1{font-family:'Estedad',sans-serif;font-size:clamp(21px,4vw,30px)}
+.mmp-app-mode .card{border-radius:19px;border-color:#344255;background:linear-gradient(145deg,#151f2d,#0f151f);box-shadow:0 12px 30px #0004}
+.mmp-app-mode .section-head h2{font-family:'Estedad',sans-serif;font-size:18px}
+.mmp-app-mode .app-tabbar{position:fixed;z-index:9999;left:12px;right:12px;bottom:max(10px,env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(5,1fr);gap:3px;padding:8px 6px;border:1px solid #52617a;border-radius:20px;background:#0d1725ed;box-shadow:0 12px 35px #000b;backdrop-filter:blur(20px)}
+.mmp-app-mode .app-tabbar a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-width:0;padding:7px 2px;border-radius:13px;color:#9eacbf;text-decoration:none;font-size:9px;font-weight:700}
+.mmp-app-mode .app-tabbar a i{font-style:normal;font-size:20px;line-height:1.1}
+.mmp-app-mode .app-tabbar a:active,.mmp-app-mode .app-tabbar a:hover{background:#d9b66d20;color:#f5dda2}
+.mmp-app-mode .app-tabbar .dock-ai{color:#f5dda2;background:linear-gradient(145deg,#3b301d,#1c2430);border:1px solid #9e804a}
+.mmp-app-mode .mmp-sidebar{border-color:#35465b;background:#0c1420}
+.mmp-app-mode .radar-group{background:linear-gradient(145deg,#182536,#101722)}
+@media(min-width:900px){.mmp-app-mode .app-tabbar{left:50%;right:auto;transform:translateX(-50%);width:min(520px,calc(100% - 32px))}}
 </style>
+<link href="https://fonts.googleapis.com/css2?family=Estedad:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
-<body>
+<body class="mmp-app-mode">
 
 <header class="top">
 <div class="brand">
@@ -480,14 +532,15 @@ body:after{content:"";position:fixed;width:42vw;height:42vw;max-width:620px;max-
   <a class="side-link" href="#ai-section"><i>✧</i><span>تحلیل هوشمند AI</span><em>03</em></a>
   <div class="side-caption">MARKET INTELLIGENCE</div>
   <a class="side-link" href="#opportunities"><i>⌖</i><span>رادار فرصت‌ها</span><em>04</em></a>
+  <a class="side-link" href="#watchlist"><i>☆</i><span>دیده‌بان شخصی</span><em>05</em></a>
   <a class="side-link" href="#market-hours"><i>◷</i><span>ساعت بازارهای جهان</span><em>05</em></a>
   <a class="side-link" href="#coins-section"><i>▤</i><span>بازار رمزارزها</span><em>06</em></a>
   <div class="side-caption">TRADING DESK</div>
   <a class="side-link" href="#trading-tools"><i>⌗</i><span>ابزارهای معامله‌گری</span><em>07</em></a>
   <div class="side-footer"><span class="live-dot"></span><span>اتصال زنده بازار</span><small>DATA STREAM ACTIVE</small></div>
 </aside>
-<nav class="mmp-mobile-dock" aria-label="منوی اصلی موبایل">
-  <a href="#hero"><i>◈</i><span>خانه</span></a><a href="#chart-section"><i>⌁</i><span>نمودار</span></a><a href="#ai-section" class="dock-ai"><i>✧</i><span>هوش مصنوعی</span></a><a href="#opportunities"><i>⌖</i><span>فرصت‌ها</span></a><a href="#trading-tools"><i>⌗</i><span>معامله</span></a>
+<nav class="mmp-mobile-dock app-tabbar" aria-label="منوی اختصاصی اپلیکیشن">
+  <a href="#hero"><i>◈</i><span>خانه</span></a><a href="#opportunities"><i>⌖</i><span>رادار</span></a><a href="#watchlist"><i>☆</i><span>دیده‌بان</span></a><a href="#ai-section" class="dock-ai"><i>✧</i><span>تحلیل AI</span></a><a href="#trading-tools"><i>⌗</i><span>ابزارها</span></a>
 </nav>
 <main class="wrap" id="hero">
 <section class="hero">
@@ -562,10 +615,10 @@ body:after{content:"";position:fixed;width:42vw;height:42vw;max-width:620px;max-
 </section>
 <section class="terminal-grid" id="opportunities">
 <section class="card radar-card"><div class="section-head"><div><div class="section-kicker">MMP MARKET SCANNER</div><h2>رادار فرصت‌های بازار</h2><p class="sub">غربالگری هوشمند بر پایه مومنتوم، روند هفتگی، نقدشوندگی نسبی و موقعیت قیمت در دامنه روز</p></div><span class="badge">امتیاز تحلیلی / ۱۰۰</span></div>
-<div class="radar-controls"><button type="button" class="radar-filter active" data-radar-filter="all">همه</button><button type="button" class="radar-filter" data-radar-filter="bull">تمایل صعودی</button><button type="button" class="radar-filter" data-radar-filter="bear">تمایل نزولی</button><span id="radar-updated" class="sub">در انتظار داده بازار…</span></div>
-<div id="opportunity-list" class="radar-list"><div class="ai-empty">پس از دریافت قیمت‌ها، رادار بازار را بررسی می‌کند.</div></div>
-<p class="sub radar-footnote">امتیاز، ابزار غربالگری است نه سیگنال قطعی. داده‌ها از بازار نقدی CoinGecko می‌آیند و برای تصمیم نهایی باید نمودار و حجم صرافی بررسی شود.</p></section>
-<section class="card watch-card"><div class="section-head"><div><div class="section-kicker">PERSONAL WATCHLIST</div><h2>دیده‌بان شخصی من</h2></div><span class="badge" id="watch-count">۰ دارایی</span></div>
+<div class="radar-live-note"><span class="radar-live-dot"></span><span>فهرست‌ها با دریافت داده‌های تازه بازار به‌روزرسانی می‌شوند</span><span id="radar-updated" class="sub">در انتظار داده بازار…</span></div>
+<div id="opportunity-list" class="radar-groups"><div class="ai-empty">پس از دریافت قیمت‌ها، رادار بازار را بررسی می‌کند.</div></div>
+<p class="sub radar-footnote">این دسته‌بندی یک غربالگر آماری است، نه توصیه قطعی خرید یا فروش. امتیاز بر پایه مومنتوم ۲۴ساعته، روند ۷روزه، حجم نسبی و موقعیت قیمت محاسبه می‌شود؛ پیش از تصمیم، نمودار و نقدشوندگی صرافی را بررسی کنید.</p></section>
+<section class="card watch-card" id="watchlist"><div class="section-head"><div><div class="section-kicker">PERSONAL WATCHLIST</div><h2>دیده‌بان شخصی من</h2></div><span class="badge" id="watch-count">۰ دارایی</span></div>
 <p class="sub">ارزهای دلخواهت را اضافه کن؛ قیمت و تغییراتشان با هر به‌روزرسانی بازار تازه می‌شود.</p>
 <div class="watch-add-row"><select id="watch-add-select" class="dropdown-select-box" style="margin:0"><option value="">جست‌وجو و انتخاب ارز…</option></select><button class="btn primary" id="watch-add-btn" type="button">+ افزودن به دیده‌بان</button></div>
 <div id="watch-feedback" class="watch-feedback" aria-live="polite"></div>
@@ -1141,24 +1194,33 @@ function renderOpportunities(){
  const el=$("opportunity-list");
  if(!el)return;
  if(!cachedCoinsData.length){el.innerHTML='<div class="ai-empty">داده بازار هنوز دریافت نشده است؛ پس از بروزرسانی دوباره تلاش می‌کنیم.</div>';return;}
- const scored=cachedCoinsData.map(c=>({coin:c,metrics:radarScore(c)})).sort((a,b)=>b.metrics.score-a.metrics.score);
- const filtered=scored.filter(x=>radarFilter==="all"||(radarFilter==="bull"&&x.metrics.trend==="bull")||(radarFilter==="bear"&&x.metrics.trend==="bear"));
+ const scored=cachedCoinsData.map(c=>({coin:c,metrics:radarScore(c)}));
+ const bullish=scored.filter(x=>x.metrics.trend==="bull").sort((a,b)=>b.metrics.score-a.metrics.score);
+ const bearish=scored.filter(x=>x.metrics.trend==="bear").sort((a,b)=>a.metrics.score-b.metrics.score);
  const updated=$("radar-updated");
- if(updated)updated.textContent="بررسی "+cachedCoinsData.length+" دارایی · بروزرسانی هر ۶۰ ثانیه";
+ if(updated)updated.textContent="بررسی "+cachedCoinsData.length+" دارایی · صعودی: "+bullish.length+" · نزولی: "+bearish.length;
  const renderCard=({coin:c,metrics:r})=>{
-  const trendLabel=r.trend==="bull"?"تمایل صعودی":r.trend==="bear"?"تمایل نزولی":"خنثی";
-  const trendClass=r.trend==="bull"?"positive":r.trend==="bear"?"negative":"";
+  const trendLabel=r.trend==="bull"?"تمایل صعودی":"تمایل نزولی";
+  const trendClass=r.trend==="bull"?"positive":"negative";
   const inWatch=loadWatch().includes(c.id);
   return '<article class="radar-item"><div class="radar-asset"><img src="'+aiEscape(c.image||"")+'" alt="" loading="lazy"><span><b>'+aiEscape(c.name)+'</b><small>'+c.symbol.toUpperCase()+' · رتبه بازار '+(c.market_cap_rank||"—")+'</small></span></div><div class="radar-score"><b>'+r.score+'</b><small>از ۱۰۰</small></div><div class="radar-stats"><span>۲۴ساعت <b class="'+(r.h===null?"":r.h>=0?"positive":"negative")+'">'+(r.h===null?"—":(r.h>=0?"+":"")+r.h.toFixed(2)+"%")+'</b></span><span>۷روز <b class="'+(r.d===null?"":r.d>=0?"positive":"negative")+'">'+(r.d===null?"—":(r.d>=0?"+":"")+r.d.toFixed(2)+"%")+'</b></span><span>حجم/ارزش بازار <b>'+(r.liquidity===null?"—":r.liquidity.toFixed(1)+"%")+'</b></span></div><div class="radar-action"><span class="radar-trend '+trendClass+'">'+trendLabel+'</span><button type="button" class="watch-btn '+(inWatch?"is-added":"")+'" data-watch-add="'+aiEscape(c.id)+'">'+(inWatch?"✓ در دیده‌بان":"+ افزودن")+'</button></div></article>';
  };
- if(!filtered.length){el.innerHTML='<div class="watch-empty">در این دسته فعلاً موردی پیدا نشد.</div>';return;}
- const visible=filtered.slice(0,3);
- const remaining=filtered.slice(3);
- el.innerHTML=visible.map(renderCard).join("")+(remaining.length?'<details class="radar-more"><summary><span class="radar-toggle-label">نمایش فرصت‌های بیشتر</span><small>'+remaining.length+' فرصت دیگر</small></summary><div class="radar-list">'+remaining.map(renderCard).join("")+'</div></details>':"");
- const more=el.querySelector(".radar-more");
- if(more){more.addEventListener("toggle",()=>{const label=more.querySelector(".radar-toggle-label");if(label)label.textContent=more.open?"بستن فرصت‌های بیشتر":"نمایش فرصت‌های بیشتر";});}
-}
-function syncWatchSelect(){const s=$("watch-add-select");if(!s)return;const old=s.value;s.innerHTML='<option value="">جست‌وجو و انتخاب ارز…</option>'+cachedCoinsData.map(c=>'<option value="'+aiEscape(c.id)+'">'+aiEscape(c.name)+' ('+c.symbol.toUpperCase()+')</option>').join("");if(old)s.value=old;}
+ const renderGroup=(items,type)=>{
+  const isBull=type==="bull";
+  const title=isBull?"تمایل به صعود":"تمایل به نزول";
+  const sub=isBull?"دارایی‌هایی با مومنتوم و روند قوی‌تر":"دارایی‌هایی با ضعف مومنتوم و روند";
+  const icon=isBull?"↗":"↘";
+  const count=items.length;
+  if(!count)return '<section class="radar-group radar-group-'+type+'"><div class="radar-group-head"><div class="radar-group-title"><span class="radar-group-icon">'+icon+'</span><span><b>'+title+'</b><small>'+sub+'</small></span></div><span class="radar-group-count">۰ ارز</span></div><div class="radar-empty">در حال حاضر ارزی با شرایط این دسته پیدا نشد.</div></section>';
+  const visible=items.slice(0,3),remaining=items.slice(3);
+  return '<section class="radar-group radar-group-'+type+'"><div class="radar-group-head"><div class="radar-group-title"><span class="radar-group-icon">'+icon+'</span><span><b>'+title+'</b><small>'+sub+'</small></span></div><span class="radar-group-count">'+count+' ارز</span></div><div class="radar-list">'+visible.map(renderCard).join("")+'</div>'+(remaining.length?'<details class="radar-more"><summary><span class="radar-expand-action" aria-hidden="true"></span><span class="radar-toggle-copy"><b>نمایش فهرست کامل '+(isBull?"صعودی":"نزولی")+'</b><small>'+remaining.length+' ارز دیگر · برای دیدن فهرست کامل لمس کنید</small></span></summary><div class="radar-list">'+remaining.map(renderCard).join("")+'</div></details>':"")+'</section>';
+ };
+ el.innerHTML=renderGroup(bullish,"bull")+renderGroup(bearish,"bear");
+ el.querySelectorAll(".radar-more").forEach(details=>details.addEventListener("toggle",()=>{
+  const title=details.querySelector(".radar-toggle-copy b");
+  if(title)title.textContent=details.open?"بستن فهرست کامل":"نمایش فهرست کامل "+(details.closest(".radar-group-bull")?"صعودی":"نزولی");
+ }));
+}function syncWatchSelect(){const s=$("watch-add-select");if(!s)return;const old=s.value;s.innerHTML='<option value="">جست‌وجو و انتخاب ارز…</option>'+cachedCoinsData.map(c=>'<option value="'+aiEscape(c.id)+'">'+aiEscape(c.name)+' ('+c.symbol.toUpperCase()+')</option>').join("");if(old)s.value=old;}
 function addWatch(id){if(!id){watchFeedback("ابتدا یک ارز انتخاب کن.");return;}const c=cachedCoinsData.find(x=>x.id===id);if(!c){watchFeedback("این ارز در داده فعلی بازار پیدا نشد.");return;}const a=loadWatch();if(a.includes(id)){watchFeedback(c.name+" از قبل در دیده‌بان است.");return;}a.push(id);if(saveWatch(a)){renderWatch();renderOpportunities();watchFeedback(c.name+" به دیده‌بان اضافه شد.");}const s=$("watch-add-select");if(s)s.value="";}
 function saveJournal(entry){try{const a=JSON.parse(localStorage.getItem(MMP_JOURNAL_KEY)||"[]");a.unshift(entry);localStorage.setItem(MMP_JOURNAL_KEY,JSON.stringify(a.slice(0,30)));renderJournal()}catch(e){}}
 function renderJournal(){const el=$("analysis-journal");if(!el)return;let a=[];try{a=JSON.parse(localStorage.getItem(MMP_JOURNAL_KEY)||"[]")}catch(e){}el.innerHTML=a.length?a.slice(0,8).map(x=>'<div class="tool-list-item"><span><b>'+aiEscape(x.name)+' ('+aiEscape(x.symbol)+')</b><small class="muted" style="display:block">'+new Date(x.time).toLocaleString("fa-IR")+'</small></span><span>'+aiEscape(x.action)+' · '+aiEscape(x.confidence)+'</span></div>').join(""):'<p class="sub">هنوز تحلیلی ثبت نشده است.</p>';}
