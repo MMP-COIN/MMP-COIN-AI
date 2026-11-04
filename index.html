@@ -1080,8 +1080,8 @@ async function checkConnections(){
   if(!response.ok)throw new Error("HTTP "+response.status);
   const payload=await response.json();
   if(!Array.isArray(payload?.checks))throw new Error("پاسخ بررسی اتصال کامل نیست");
-  const visibleChecks=payload.checks.filter(c=>!/(coinmarketcap|marketcap|cmc)/i.test(String(c?.name||"")));
-  if(visibleChecks.length<5)throw new Error("پاسخ بررسی اتصال کامل نیست");
+  const expectedExchanges=new Set(["binance spot","bybit spot","okx spot","nobitex","wallex"]);\n  const visibleChecks=payload.checks.filter(c=>expectedExchanges.has(String(c?.name||"").trim().toLowerCase()));
+  if(visibleChecks.length!==5)throw new Error("پاسخ بررسی اتصال کامل نیست");
   const cards=visibleChecks.map(c=>{
    const label=c.status==="down"?"قطع":c.status==="slow"?"کند":"متصل";
    const latency=c.ping===null||c.ping===undefined?"—":c.ping+" ms";
@@ -1090,8 +1090,8 @@ async function checkConnections(){
   });
   $("connections").innerHTML=cards.join("");
   const summary=$("conn-summary");
-  if(summary)summary.textContent=visibleChecks.filter(x=>x.status!=="down").length+" از ۶ منبع پاسخ‌گو";
-  return payload.checks;
+  if(summary)summary.textContent=visibleChecks.filter(x=>x.status!=="down").length+" از ۵ صرافی پاسخ‌گو";
+  return visibleChecks;
  }catch(error){
   const message=error.name==="AbortError"?"مهلت بررسی اتصال تمام شد":"سرویس بررسی اتصال پاسخ نداد";
   $("connections").innerHTML='<div class="conn"><div class="conn-name">'+message+'</div><small class="conn-purpose">چند لحظه دیگر دوباره تلاش کنید</small></div>';
