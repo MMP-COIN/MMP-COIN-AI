@@ -53,7 +53,7 @@ function splitQuotePair(symbol){
  return match?{base:match[1],quote:match[2]}:null;
 }
 async function candles(symbol,interval,env,marketType="spot"){
- const headers={"Accept":"application/json, text/plain, */*","User-Agent":"MMP-COIN-AI/1.0","Accept-Language":"en-US,en;q=0.9"};
+ const headers={"Accept":"application/json"};
  const spotUrls=[
   "https://api.binance.com/api/v3/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250",
   "https://api.binance.us/api/v3/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250",
@@ -171,7 +171,7 @@ function validSymbol(s){return /^[A-Z0-9]{2,20}$/.test(s||"")&&!s.includes("USDT
 let exchangeCatalogCache=null,exchangeCatalogCacheAt=0;
 async function readPublicJson(url){
  try{
-  const r=await fetch(url,{headers:{"Accept":"application/json, text/plain, */*","User-Agent":"MMP-COIN-AI/1.0","Accept-Language":"en-US,en;q=0.9"}});
+  const r=await fetch(url,{headers:{"Accept":"application/json"}});
   if(!r.ok)return {ok:false,status:r.status,error:"HTTP "+r.status};
   const data=await r.json();return {ok:true,status:r.status,data};
  }catch(e){return {ok:false,status:0,error:e.message||"network error"};}
@@ -318,7 +318,7 @@ async function handle(request,env){
   for(const endpoint of candidates){
    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),9000);
    try{
-    const upstream=await fetch(endpoint,{headers:{"Accept":"application/json, text/plain, */*","User-Agent":"MMP-COIN-AI/1.0","Accept-Language":"en-US,en;q=0.9"},signal:controller.signal,cf:{cacheTtl:source.startsWith("coingecko")?30:source.includes("tether")||source.includes("wallex")?10:5,cacheEverything:true}});
+    const upstream=await fetch(endpoint,{headers:{"Accept":"application/json"},signal:controller.signal,cf:{cacheTtl:source.startsWith("coingecko")?30:source.includes("tether")||source.includes("wallex")?10:5,cacheEverything:true}});
     if(!upstream.ok){lastError="Upstream HTTP "+upstream.status;continue;}
     const data=await upstream.json();
     if(data===null||typeof data!=="object")throw new Error("Invalid upstream JSON");
@@ -334,7 +334,7 @@ async function handle(request,env){
   const timeoutFetch=async(url,valid,timeout=4500)=>{
    const started=Date.now(),controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeout);
    try{
-    const response=await fetch(url,{headers:{"Accept":"application/json, text/plain, */*","User-Agent":"MMP-COIN-AI/1.0","Accept-Language":"en-US,en;q=0.9"},signal:controller.signal,cf:{cacheTtl:5,cacheEverything:true}});
+    const response=await fetch(url,{headers:{"Accept":"application/json"},signal:controller.signal,cf:{cacheTtl:5,cacheEverything:true}});
     if(!response.ok)throw new Error("HTTP "+response.status);
     const data=await response.json();
     if(!valid(data))throw new Error("پاسخ معتبر دریافت نشد");
@@ -366,7 +366,7 @@ async function handle(request,env){
 if(request.method==="GET"&&new URL(request.url).pathname==="/health"){
   const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"health");
   const limited=rateLimitReply(limitResult,request);if(limited)return limited;
-  const probe=async(url)=>{try{const r=await fetch(url,{headers:{"Accept":"application/json, text/plain, */*","User-Agent":"MMP-COIN-AI/1.0","Accept-Language":"en-US,en;q=0.9"}});return {ok:r.ok,status:r.status};}catch(e){return {ok:false,error:e.message||"network error"};}};
+  const probe=async(url)=>{try{const r=await fetch(url,{headers:{"Accept":"application/json"}});return {ok:r.ok,status:r.status};}catch(e){return {ok:false,error:e.message||"network error"};}};
   const [spot,futures,bybit]=await Promise.all([
    probe("https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1h&limit=1"),
    probe("https://fapi.binance.com/fapi/v1/klines?symbol=BTCUSDT&interval=1h&limit=1"),
