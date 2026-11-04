@@ -180,7 +180,7 @@ async function getExchangeCatalogs(){
  exchangeCatalogCache=out;exchangeCatalogCacheAt=Date.now();return out;
 }
 function exchangeSupport(symbol,catalogs){
- const base=String(symbol||"").toUpperCase().replace(/(USDT|USDC|FDUSD|BUSD|USD|BTC|ETH)$/,"");
+ const base=String(symbol||"").toUpperCase();
  const quotes=["USDT","USDC","FDUSD","BUSD","USD","BTC","ETH"];
  const choose=items=>items.filter(Boolean).sort((a,b)=>quotes.indexOf(a.quote)-quotes.indexOf(b.quote))[0]||null;
  const binanceSpotPair=(catalogs.binance_spot?.data?.symbols||[]).filter(x=>x.status==="TRADING"&&x.baseAsset===base&&quotes.includes(x.quoteAsset)).map(x=>({pair:x.symbol,quote:x.quoteAsset})).sort((a,b)=>quotes.indexOf(a.quote)-quotes.indexOf(b.quote))[0]||null;
