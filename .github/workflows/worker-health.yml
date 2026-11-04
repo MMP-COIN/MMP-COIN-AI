@@ -53,7 +53,7 @@ jobs:
 
       - name: Check exchange connection monitor
         env:
-          WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmmp1988.workers.dev
+          WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
           set -euo pipefail
           curl --fail --silent --show-error --retry 2 --retry-delay 3 --max-time 25 "$WORKER_URL/connections-health" -o /tmp/connections.json
