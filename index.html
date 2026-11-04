@@ -436,6 +436,11 @@ body:after{content:"";position:fixed;width:42vw;height:42vw;max-width:620px;max-
 .market-hours-more{margin-top:12px}
 .market-hours-more .market-hours-grid{padding:0 12px 12px}
 @media(max-width:560px){.ai-details>summary,.market-hours-more>summary{align-items:flex-start;flex-wrap:wrap}.ai-details summary small,.market-hours-more summary small{width:100%;padding-right:2px}.ai-intro{font-size:11px}}
+
+/* Sticky close control for the expanded coin list */
+.full-coins-close-dock{position:sticky;bottom:10px;z-index:12;display:flex;justify-content:center;padding:10px 0 2px;pointer-events:none;background:linear-gradient(180deg,transparent,#0b111bd9 35%)}
+.full-coins-close-btn{pointer-events:auto;width:min(100%,460px);border:1px solid #b8954c;background:linear-gradient(135deg,#3b301b,#171b22);color:#f5d58c;border-radius:12px;padding:12px 16px;font-size:12px;font-weight:800;box-shadow:0 8px 24px #0009;cursor:pointer;backdrop-filter:blur(12px)}
+.full-coins-close-btn:active{transform:translateY(1px)}
 </style>
 </head>
 <body>
@@ -602,6 +607,7 @@ body:after{content:"";position:fixed;width:42vw;height:42vw;max-width:620px;max-
     <thead><tr><th>دارایی</th><th>قیمت دلاری (USD)</th><th>قیمت تومانی (IRT)</th><th>تغییر ۲۴ساعته</th><th>ارزش بازار</th></tr></thead>
     <tbody id="full-coins"></tbody>
   </table></div>
+  <div class="full-coins-close-dock"><button class="full-coins-close-btn" type="button" onclick="toggleFullCoinsList()" aria-label="بستن فهرست ارزهای بیشتر">⌃ بستن فهرست ارزها و بازگشت به ابتدای لیست</button></div>
 </div>
 </section>
 
@@ -712,6 +718,7 @@ function toggleFullCoinsList() {
   box.setAttribute('aria-hidden', String(!isOpen));
   btn.querySelector('.expand-btn-label').textContent = isOpen ? 'بستن فهرست ارزها' : 'نمایش همه ارزها';
   btn.querySelector('.expand-chevron').textContent = isOpen ? '⌃' : '⌄';
+  if(!isOpen){$('coins-section').scrollIntoView({behavior:'smooth',block:'start'});}
 }
 
 const LAYERZERO_COIN_ID = 'layerzero';
