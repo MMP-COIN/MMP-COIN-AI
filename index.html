@@ -1472,13 +1472,13 @@ html.mmp-native-app .footer{padding-bottom:12px}
    document.body.insertBefore(header,document.body.firstChild);
    var nav=document.querySelector(".mmp-mobile-dock");
    if(nav){
-    nav.innerHTML='<a href="#hero" data-native-tab="hero"><i>⌂</i><span>خانه</span></a><a href="#chart-section" data-native-tab="chart-section"><i>▥</i><span>نمودار</span></a><a href="#opportunities" data-native-tab="opportunities"><i>◈</i><span>رادار</span></a><a href="#ai-section" data-native-tab="ai-section" class="dock-ai"><i>✧</i><span>تحلیل AI</span></a><a href="#trading-tools" data-native-tab="trading-tools"><i>⌗</i><span>ابزارها</span></a>';
+    nav.innerHTML='<a href="#hero" data-native-tab="hero"><i>⌂</i><span>خانه</span></a><a href="#opportunities" data-native-tab="opportunities"><i>◈</i><span>رادار</span></a><a href="#watchlist" data-native-tab="watchlist"><i>☆</i><span>دیده‌بان</span></a><a href="#ai-section" data-native-tab="ai-section" class="dock-ai"><i>✧</i><span>تحلیل AI</span></a><a href="#trading-tools" data-native-tab="trading-tools"><i>⌗</i><span>ابزارها</span></a>'
     var links=nav.querySelectorAll("a");
     function setActive(id){links.forEach(function(a){a.classList.toggle("native-active",a.getAttribute("data-native-tab")===id)})}
     links.forEach(function(a){a.addEventListener("click",function(){setActive(a.getAttribute("data-native-tab"))})});
     setActive("hero");
     if("IntersectionObserver" in window){
-     var sections=["hero","chart-section","opportunities","ai-section","trading-tools"].map(function(id){return document.getElementById(id)}).filter(Boolean);
+     var sections=["hero","opportunities","watchlist","ai-section","trading-tools"].map(function(id){return document.getElementById(id)}).filter(Boolean);
      var observer=new IntersectionObserver(function(entries){var visible=entries.filter(function(e){return e.isIntersecting}).sort(function(a,b){return b.intersectionRatio-a.intersectionRatio})[0];if(visible)setActive(visible.target.id)},{rootMargin:"-18% 0px -58% 0px",threshold:[0,.15,.35,.6]});
      sections.forEach(function(el){observer.observe(el)});
     }
@@ -1494,6 +1494,11 @@ html.mmp-native-app .footer{padding-bottom:12px}
       var banner=document.createElement("div");banner.className="native-update-banner";
       banner.innerHTML='<span>نسخه جدید MMP COIN AI آماده است</span><a href="'+apk.browser_download_url+'" target="_blank" rel="noopener">دریافت بروزرسانی</a>';
       document.body.appendChild(banner);
+      var updateLink=banner.querySelector("a");
+      updateLink.addEventListener("click",function(event){
+       var browser=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.Browser;
+       if(browser&&browser.open){event.preventDefault();browser.open({url:apk.browser_download_url});}
+      });
      }).catch(function(){});
    }
    checkNativeUpdate();
