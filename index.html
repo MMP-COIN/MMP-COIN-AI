@@ -1153,8 +1153,10 @@ function renderOpportunities(){
  };
  if(!filtered.length){el.innerHTML='<div class="watch-empty">در این دسته فعلاً موردی پیدا نشد.</div>';return;}
  const visible=filtered.slice(0,3);
- const remaining=filtered.slice(3,10);
- el.innerHTML=visible.map(renderCard).join("")+(remaining.length?'<details class="radar-more"><summary><span>نمایش فرصت‌های بیشتر</span><small>'+remaining.length+' فرصت دیگر</small></summary><div class="radar-list">'+remaining.map(renderCard).join("")+'</div></details>':"");
+ const remaining=filtered.slice(3);
+ el.innerHTML=visible.map(renderCard).join("")+(remaining.length?'<details class="radar-more"><summary><span class="radar-toggle-label">نمایش فرصت‌های بیشتر</span><small>'+remaining.length+' فرصت دیگر</small></summary><div class="radar-list">'+remaining.map(renderCard).join("")+'</div></details>':"");
+ const more=el.querySelector(".radar-more");
+ if(more){more.addEventListener("toggle",()=>{const label=more.querySelector(".radar-toggle-label");if(label)label.textContent=more.open?"بستن فرصت‌های بیشتر":"نمایش فرصت‌های بیشتر";});}
 }
 function syncWatchSelect(){const s=$("watch-add-select");if(!s)return;const old=s.value;s.innerHTML='<option value="">جست‌وجو و انتخاب ارز…</option>'+cachedCoinsData.map(c=>'<option value="'+aiEscape(c.id)+'">'+aiEscape(c.name)+' ('+c.symbol.toUpperCase()+')</option>').join("");if(old)s.value=old;}
 function addWatch(id){if(!id){watchFeedback("ابتدا یک ارز انتخاب کن.");return;}const c=cachedCoinsData.find(x=>x.id===id);if(!c){watchFeedback("این ارز در داده فعلی بازار پیدا نشد.");return;}const a=loadWatch();if(a.includes(id)){watchFeedback(c.name+" از قبل در دیده‌بان است.");return;}a.push(id);if(saveWatch(a)){renderWatch();renderOpportunities();watchFeedback(c.name+" به دیده‌بان اضافه شد.");}const s=$("watch-add-select");if(s)s.value="";}
