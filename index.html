@@ -914,7 +914,7 @@ async function enrichWithBinance(coins){
    console.warn('Binance ticker feed unavailable; trying Bitget Spot:',binanceError);
    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),9000);
    let response,payload;
-   try{response=await fetch(AI_ANALYSIS_ENDPOINT+'/market-proxy?source=bitget-tickers',{cache:'no-store',signal:controller.signal});}
+   try{response=await fetch('https://api.bitget.com/api/v3/market/tickers?category=SPOT',{cache:'no-store',signal:controller.signal});}
    finally{clearTimeout(timer);}
    if(!response.ok)throw new Error('Bitget HTTP '+response.status);
    payload=await response.json();
@@ -1176,6 +1176,21 @@ async function checkConnections(){
   if(!Array.isArray(payload?.checks))throw new Error("پاسخ بررسی اتصال کامل نیست");
   const expected=["binance spot","bybit spot","okx spot","nobitex","wallex","bitget spot"];
   const checks=new Map(payload.checks.map(c=>[String(c?.name||"").trim().toLowerCase(),c]));
+  const bitgetCheck=checks.get("bitget spot");
+  if(bitgetCheck?.status==="down"){
+   const started=Date.now(),bitgetController=new AbortController(),bitgetTimer=setTimeout(()=>bitgetController.abort(),7000);
+   try{
+    const direct=await fetch("https://api.bitget.com/api/v3/market/tickers?category=SPOT&symbol=BTCUSDT",{cache:"no-store",signal:bitgetController.signal});
+    if(!direct.ok)throw new Error("HTTP "+direct.status);
+    const data=await direct.json();
+    if(data?.code!=="00000"||!(Number(data?.data?.[0]?.lastPrice)>0))throw new Error("پاسخ معتبر دریافت نشد");
+    bitgetCheck.status=Date.now()-started>2500?"slow":"ok";
+    bitgetCheck.ping=Date.now()-started;
+    bitgetCheck.error=null;
+    bitgetCheck.purpose="اتصال مستقیم از مرورگر";
+   }catch(directError){bitgetCheck.error="اتصال مستقیم: "+String(directError?.message||"خطای شبکه").slice(0,80);}
+   finally{clearTimeout(bitgetTimer);}
+  }
   const ordered=expected.map(name=>checks.get(name)).filter(Boolean);
   if(ordered.length!==expected.length)throw new Error("پاسخ بررسی اتصال کامل نیست");
 
