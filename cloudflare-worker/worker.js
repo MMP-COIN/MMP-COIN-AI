@@ -296,6 +296,37 @@ async function handle(request,env){
   const sources=Object.fromEntries(Object.entries(catalogs).map(([k,v])=>[k,{ok:!!v?.ok,status:v?.status||0,error:v?.error||null,source:v?.source||null}]));
   return json({checked_at:new Date().toISOString(),assets,sources},200,request);
  }
+ if(request.method==="GET"&&new URL(request.url).pathname==="/market-proxy"){
+  const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"market-proxy");
+  const limited=rateLimitReply(limitResult,request);if(limited)return limited;
+  const url=new URL(request.url),source=url.searchParams.get("source")||"";
+  const urls={
+   "binance-tickers":["https://api.binance.com/api/v3/ticker/24hr","https://api1.binance.com/api/v3/ticker/24hr","https://api2.binance.com/api/v3/ticker/24hr","https://api3.binance.com/api/v3/ticker/24hr"],
+   "coingecko-top":["https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=false&price_change_percentage=1h%2C24h%2C7d"],
+   "nobitex-tether":["https://apiv2.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls"],
+   "wallex-markets":["https://api.wallex.ir/v1/markets"]
+  };
+  let candidates=urls[source]||null;
+  if(source==="coingecko-extra"){
+   const ids=url.searchParams.get("ids")||"";
+   if(!/^[a-z0-9,-]{1,1800}$/i.test(ids)||ids.split(",").length>60)return json({error:"Invalid asset id list"},400,request);
+   candidates=["https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids="+encodeURIComponent(ids)+"&order=market_cap_desc&sparkline=false&price_change_percentage=1h%2C24h%2C7d"];
+  }
+  if(!candidates)return json({error:"Unsupported market data source"},400,request);
+  let lastError=null;
+  for(const endpoint of candidates){
+   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),9000);
+   try{
+    const upstream=await fetch(endpoint,{headers:{"Accept":"application/json"},signal:controller.signal,cf:{cacheTtl:0,cacheEverything:false}});
+    if(!upstream.ok){lastError="Upstream HTTP "+upstream.status;continue;}
+    const data=await upstream.json();
+    if(data===null||typeof data!=="object")throw new Error("Invalid upstream JSON");
+    return json(data,200,request,{"X-MMP-Data-Source":source});
+   }catch(error){lastError=String(error?.message||"network error");}
+   finally{clearTimeout(timer);}
+  }
+  return json({error:"Market data source unavailable",source,detail:String(lastError||"upstream error").slice(0,120)},502,request);
+ }
  if(request.method==="GET"&&new URL(request.url).pathname==="/connections-health"){
   const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"connections-health");
   const limited=rateLimitReply(limitResult,request);if(limited)return limited;
