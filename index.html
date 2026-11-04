@@ -64,6 +64,7 @@ button{cursor:pointer}
 .negative{color:var(--red)}
 .muted{color:var(--muted)}
 .connection-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+ .connection-more{margin-top:10px}.connection-more-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 14px;background:var(--panel2);border:1px solid var(--line);color:var(--gold2);border-radius:11px;font-weight:700;cursor:pointer}.connection-more-btn .chevron{transition:transform .2s}.connection-more-btn[aria-expanded="true"] .chevron{transform:rotate(180deg)}.connection-extra{display:none;margin-top:10px}.connection-extra.show{display:grid}
 .conn{background:#0d1017;border:1px solid var(--line);border-radius:12px;padding:12px;min-width:0}
 .conn-top{display:flex;justify-content:space-between;gap:8px;align-items:center}
 .conn-name{font-size:13px;font-weight:bold}
@@ -696,6 +697,7 @@ body:after{content:"";position:fixed;width:42vw;height:42vw;max-width:620px;max-
 <section class="card">
 <div class="section-head"><h2>وضعیت اتصال صرافی‌ها و مراجع</h2><span class="badge" id="conn-summary">پایش لایو</span></div>
 <div class="connection-grid" id="connections"></div>
+ <div class="connection-more"><button class="connection-more-btn" id="connections-toggle" type="button" aria-expanded="false" aria-controls="connections-extra">نمایش ۲ منبع دیگر <span class="chevron" aria-hidden="true">⌄</span></button><div class="connection-grid connection-extra" id="connections-extra"></div></div>
 </section>
 
 <!-- فقط لیست ارزهای دیجیتال -->
@@ -971,6 +973,7 @@ async function refreshAll(){
   });
   let data = [...merged.values()].sort((a,b)=>(a.market_cap_rank||999999)-(b.market_cap_rank||999999)).slice(0,100);
   if(data.length < 100) throw new Error('Only '+data.length+' unique tradable assets received from CoinGecko; retry on next refresh');
+   coinGeckoConnectionStatus="ok";renderCoinGeckoConnection();
   data = await enrichWithBinance(data);
   cachedCoinsData = data;
   
@@ -996,7 +999,7 @@ async function refreshAll(){
   finally{clearTimeout(goldTimer);}
 
   $('updated').textContent='بروزرسانی شد: '+new Date().toLocaleTimeString('fa-IR');
- }catch(e){$('updated').textContent='خطا در دریافت داده';}
+ }catch(e){coinGeckoConnectionStatus='down';renderCoinGeckoConnection();$('updated').textContent='خطا در دریافت داده';}
  finally{refreshInFlight=false;}
 }
 
@@ -1072,6 +1075,25 @@ function updateDropdowns(data) {
 }
 
 
+let coinGeckoConnectionStatus="checking";
+function renderCoinGeckoConnection(){
+ const box=$("connections-extra");if(!box)return;
+ const status=coinGeckoConnectionStatus;
+ const label=status==="ok"?"متصل":status==="down"?"قطع":"در حال بررسی";
+ const detail=status==="ok"?"منبع قیمت و فهرست ارزها فعال است":status==="down"?"دریافت اطلاعات بازار ناموفق بود":"در انتظار دریافت اطلاعات بازار";
+ box.innerHTML='<div class="conn"><div class="conn-top"><span class="conn-name">CoinGecko · مرجع بازار</span><span class="lamp '+(status==="ok"?"ok":status==="down"?"down":"")+'"></span></div><div class="conn-meta"><span>'+label+'</span><b dir="ltr">—</b></div><small class="conn-purpose">'+detail+'</small></div>';
+}
+function setupConnectionsToggle(){
+ const button=$("connections-toggle"),extra=$("connections-extra");
+ if(!button||!extra||button.dataset.ready)return;
+ button.dataset.ready="1";
+ button.addEventListener("click",()=>{
+  const expanded=button.getAttribute("aria-expanded")==="true";
+  button.setAttribute("aria-expanded",String(!expanded));
+  extra.classList.toggle("show",!expanded);
+  button.innerHTML=(!expanded?"بستن منابع دیگر":"نمایش ۲ منبع دیگر")+' <span class="chevron" aria-hidden="true">⌄</span>';
+ });
+}
 async function checkConnections(){
  const endpoint="https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/connections-health";
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),22000);
@@ -1080,21 +1102,28 @@ async function checkConnections(){
   if(!response.ok)throw new Error("HTTP "+response.status);
   const payload=await response.json();
   if(!Array.isArray(payload?.checks))throw new Error("پاسخ بررسی اتصال کامل نیست");
-  const expectedExchanges=new Set(["binance spot","bybit spot","okx spot","nobitex","wallex"]);\n  const visibleChecks=payload.checks.filter(c=>expectedExchanges.has(String(c?.name||"").trim().toLowerCase()));
-  if(visibleChecks.length!==5)throw new Error("پاسخ بررسی اتصال کامل نیست");
-  const cards=visibleChecks.map(c=>{
+  const expected=["binance spot","bybit spot","okx spot","nobitex","wallex"];
+  const checks=new Map(payload.checks.map(c=>[String(c?.name||"").trim().toLowerCase(),c]));
+  const ordered=expected.map(name=>checks.get(name)).filter(Boolean);
+  if(ordered.length!==5)throw new Error("پاسخ بررسی اتصال کامل نیست");
+  const makeCard=c=>{
    const label=c.status==="down"?"قطع":c.status==="slow"?"کند":"متصل";
    const latency=c.ping===null||c.ping===undefined?"—":c.ping+" ms";
-   const detail=c.error?'<small class="conn-purpose">'+c.error+'</small>':'<small class="conn-purpose">'+c.purpose+'</small>';
-   return '<div class="conn"><div class="conn-top"><span class="conn-name">'+c.name+'</span><span class="lamp '+c.status+'"></span></div><div class="conn-meta"><span>'+label+'</span><b dir="ltr">'+latency+'</b></div>'+detail+'</div>';
-  });
-  $("connections").innerHTML=cards.join("");
+   const detail=c.error?'<small class="conn-purpose">'+c.error+'</small>':'<small class="conn-purpose">'+(c.purpose||"وضعیت اتصال صرافی")+'</small>';
+   const lamp=c.status==="ok"?"ok":c.status==="slow"?"slow":"down";
+   return '<div class="conn"><div class="conn-top"><span class="conn-name">'+c.name+'</span><span class="lamp '+lamp+'"></span></div><div class="conn-meta"><span>'+label+'</span><b dir="ltr">'+latency+'</b></div>'+detail+'</div>';
+  };
+  $("connections").innerHTML=ordered.slice(0,4).map(makeCard).join("");
+  $("connections-extra").innerHTML=ordered.slice(4).map(makeCard).join("");
+  renderCoinGeckoConnection();setupConnectionsToggle();
   const summary=$("conn-summary");
-  if(summary)summary.textContent=visibleChecks.filter(x=>x.status!=="down").length+" از ۵ صرافی پاسخ‌گو";
-  return visibleChecks;
+  if(summary)summary.textContent=ordered.filter(x=>x.status!=="down").length+" از ۵ صرافی پاسخ‌گو";
+  return ordered;
  }catch(error){
   const message=error.name==="AbortError"?"مهلت بررسی اتصال تمام شد":"سرویس بررسی اتصال پاسخ نداد";
   $("connections").innerHTML='<div class="conn"><div class="conn-name">'+message+'</div><small class="conn-purpose">چند لحظه دیگر دوباره تلاش کنید</small></div>';
+  $("connections-extra").innerHTML="";
+  renderCoinGeckoConnection();setupConnectionsToggle();
   const summary=$("conn-summary");if(summary)summary.textContent="وضعیت اتصال نامشخص";
   return [];
  }finally{clearTimeout(timer);}
