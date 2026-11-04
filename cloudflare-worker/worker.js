@@ -180,20 +180,25 @@ async function getExchangeCatalogs(){
  exchangeCatalogCache=out;exchangeCatalogCacheAt=Date.now();return out;
 }
 function exchangeSupport(symbol,catalogs){
- const pair=symbol.endsWith("USDT")?symbol:symbol+"USDT";
- const base=pair.slice(0,-4);
- const match=(entry,key)=>entry?.ok&&entry.data;
- const binanceSpot=match(catalogs.binance_spot)&&catalogs.binance_spot.data.symbols?.some(x=>x.symbol===pair&&x.status==="TRADING");
- const bybitSpot=match(catalogs.bybit_spot)&&catalogs.bybit_spot.data.result?.list?.some(x=>x.symbol===pair&&x.status==="Trading");
- const okxSpot=match(catalogs.okx_spot)&&catalogs.okx_spot.data.data?.some(x=>x.instId===base+"-USDT"&&x.state==="live");
- const binanceFutures=match(catalogs.binance_futures)&&catalogs.binance_futures.data.symbols?.some(x=>x.symbol===pair&&x.status==="TRADING");
- const bybitFutures=match(catalogs.bybit_futures)&&catalogs.bybit_futures.data.result?.list?.some(x=>x.symbol===pair&&x.status==="Trading");
- const okxFutures=match(catalogs.okx_futures)&&catalogs.okx_futures.data.data?.some(x=>x.instId===base+"-USDT-SWAP"&&x.state==="live");
- const providers={
-  spot:{Binance:catalogs.binance_spot?.ok?(binanceSpot?"فعال":"جفت فعال پیدا نشد"):(catalogs.binance_spot?.error||"تأیید نشد"),Bybit:catalogs.bybit_spot?.ok?(bybitSpot?"فعال":"جفت فعال پیدا نشد"):(catalogs.bybit_spot?.error||"تأیید نشد"),OKX:catalogs.okx_spot?.ok?(okxSpot?"فعال":"جفت فعال پیدا نشد"):(catalogs.okx_spot?.error||"تأیید نشد")},
-  futures:{Binance:catalogs.binance_futures?.ok?(binanceFutures?"فعال":"جفت فعال پیدا نشد"):(catalogs.binance_futures?.error||"تأیید نشد"),Bybit:catalogs.bybit_futures?.ok?(bybitFutures?"فعال":"جفت فعال پیدا نشد"):(catalogs.bybit_futures?.error||"تأیید نشد"),OKX:catalogs.okx_futures?.ok?(okxFutures?"فعال":"جفت فعال پیدا نشد"):(catalogs.okx_futures?.error||"تأیید نشد")}
+ const base=String(symbol||"").toUpperCase().replace(/(USDT|USDC|FDUSD|BUSD|USD|BTC|ETH)$/,"");
+ const quotes=["USDT","USDC","FDUSD","BUSD","USD","BTC","ETH"];
+ const choose=items=>items.filter(Boolean).sort((a,b)=>quotes.indexOf(a.quote)-quotes.indexOf(b.quote))[0]||null;
+ const binanceSpotPair=(catalogs.binance_spot?.data?.symbols||[]).filter(x=>x.status==="TRADING"&&x.baseAsset===base&&quotes.includes(x.quoteAsset)).map(x=>({pair:x.symbol,quote:x.quoteAsset}))[0]||null;
+ const bybitSpotPair=(catalogs.bybit_spot?.data?.result?.list||[]).filter(x=>x.status==="Trading"&&x.baseCoin===base&&quotes.includes(x.quoteCoin)).map(x=>({pair:x.symbol,quote:x.quoteCoin}))[0]||null;
+ const okxSpotPair=(catalogs.okx_spot?.data?.data||[]).filter(x=>x.state==="live"&&x.baseCcy===base&&quotes.includes(x.quoteCcy)).map(x=>({pair:String(x.instId||"").replaceAll("-",""),quote:x.quoteCcy}))[0]||null;
+ const binanceFuturesPair=(catalogs.binance_futures?.data?.symbols||[]).filter(x=>x.status==="TRADING"&&(!x.contractType||x.contractType==="PERPETUAL")&&x.baseAsset===base&&quotes.includes(x.quoteAsset)).map(x=>({pair:x.symbol,quote:x.quoteAsset}))[0]||null;
+ const bybitFuturesPair=(catalogs.bybit_futures?.data?.result?.list||[]).filter(x=>x.status==="Trading"&&(!x.contractType||x.contractType==="LinearPerpetual")&&x.baseCoin===base&&quotes.includes(x.quoteCoin)).map(x=>({pair:x.symbol,quote:x.quoteCoin}))[0]||null;
+ const okxFuturesPair=(catalogs.okx_futures?.data?.data||[]).filter(x=>x.state==="live"&&(!x.ctType||x.ctType==="linear")&&String(x.instId||"").endsWith("-SWAP")).map(x=>{const p=String(x.instId||"").split("-");return p[0]===base&&quotes.includes(p[1])?{pair:p[0]+p[1],quote:p[1]}:null;}).filter(Boolean)[0]||null;
+ const spotEntries=[["Binance",binanceSpotPair,catalogs.binance_spot],["Bybit",bybitSpotPair,catalogs.bybit_spot],["OKX",okxSpotPair,catalogs.okx_spot]];
+ const futuresEntries=[["Binance",binanceFuturesPair,catalogs.binance_futures],["Bybit",bybitFuturesPair,catalogs.bybit_futures],["OKX",okxFuturesPair,catalogs.okx_futures]];
+ const spot=choose(spotEntries.map(x=>x[1])),futures=choose(futuresEntries.map(x=>x[1]));
+ const providerStates=entries=>Object.fromEntries(entries.map(([name,pair,source])=>[name,!source?.ok?(source?.error||"تأیید نشد"):pair?"فعال":"جفت فعال پیدا نشد"]));
+ return {
+  symbol:base,
+  spot:{confirmed:!!spot,pair:spot?.pair||null,providers:spotEntries.filter(x=>x[1]).map(x=>x[0])},
+  futures:{confirmed:!!futures,pair:futures?.pair||null,providers:futuresEntries.filter(x=>x[1]).map(x=>x[0])},
+  providers:{spot:providerStates(spotEntries),futures:providerStates(futuresEntries)}
  };
- return {symbol:pair,spot:{confirmed:!!(binanceSpot||bybitSpot||okxSpot),providers:Object.entries(providers.spot).filter(([,v])=>v==="فعال").map(([k])=>k)},futures:{confirmed:!!(binanceFutures||bybitFutures||okxFutures),providers:Object.entries(providers.futures).filter(([,v])=>v==="فعال").map(([k])=>k)},providers};
 }
 
 function persianize(value){
@@ -296,16 +301,22 @@ async function handle(request,env){
  const coinId=String(body.coin_id||"").toLowerCase();
  const symbol=String(ASSET_SYMBOL_OVERRIDES[coinId]||body.symbol||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
  if(!validSymbol(symbol))return json({error:"Invalid asset symbol"},400,request);
- const pair=symbol.endsWith("USDT")?symbol:symbol+"USDT";
+ let pair=symbol.endsWith("USDT")?symbol:symbol+"USDT";
  const mode=["spot","futures","both"].includes(body.market_mode)?body.market_mode:"both";
- let stage="دریافت کندل‌های بازار";
+ let stage="شناسایی جفت‌های فعال";
  try{
+  const catalogs=await getExchangeCatalogs();
+  const support=exchangeSupport(symbol,catalogs);
+  const spotPair=support.spot.pair||pair;
+  const futuresPair=support.futures.pair||pair;
+  pair=mode==="futures"?futuresPair:spotPair;
+  stage="دریافت کندل‌های بازار";
   const intervals=["15m","1h","4h","1d"];
   let spotMarket=null,futuresMarket=null,market={},candleMarket=mode==="futures"?"futures":"spot";
   if(mode==="both"){
    const settled=await Promise.allSettled([
-    Promise.all(intervals.map(async tf=>[tf,await candles(pair,tf,env,"spot")])),
-    Promise.all(intervals.map(async tf=>[tf,await candles(pair,tf,env,"futures")]))
+    Promise.all(intervals.map(async tf=>[tf,await candles(spotPair,tf,env,"spot")])),
+    Promise.all(intervals.map(async tf=>[tf,await candles(futuresPair,tf,env,"futures")]))
    ]);
    if(settled[0].status==="fulfilled")spotMarket=Object.fromEntries(settled[0].value);
    if(settled[1].status==="fulfilled")futuresMarket=Object.fromEntries(settled[1].value);
@@ -320,7 +331,8 @@ async function handle(request,env){
     throw new Error("برای "+symbol+" در بازار اسپات و فیوچرز داده کندلی کافی پیدا نشد. جفت معاملاتی "+pair+" ممکن است در صرافی‌های پشتیبانی‌شده فعال نباشد."+assetNote+" جزئیات: اسپات: "+spotError+"؛ فیوچرز: "+futuresError);
    }
   }else{
-   const results=await Promise.all(intervals.map(async tf=>[tf,await candles(pair,tf,env,candleMarket)]));
+   const selectedPair=candleMarket==="futures"?futuresPair:spotPair;pair=selectedPair;
+   const results=await Promise.all(intervals.map(async tf=>[tf,await candles(selectedPair,tf,env,candleMarket)]));
    market=Object.fromEntries(results);
    if(mode==="spot")spotMarket=market;else futuresMarket=market;
   }
