@@ -1,3 +1,4 @@
+// Trigger one-by-one 100-asset audit
 const MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 // Canonical exchange symbols for selected assets (CoinGecko ID -> ticker).
 const ASSET_SYMBOL_OVERRIDES = { layerzero: "ZRO" };
