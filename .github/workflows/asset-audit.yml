@@ -16,7 +16,7 @@ permissions:
 
 concurrency:
   group: mmp-asset-audit
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   audit:
@@ -48,7 +48,7 @@ jobs:
           const nonTradableIds = new Set(['tether','usd-coin','dai','usds','ethena-usde','first-digital-usd','paypal-usd','true-usd','frax','usdd','wrapped-bitcoin','coinbase-wrapped-btc','lido-staked-ether','wrapped-steth','rocket-pool-eth','staked-ether','staked-ether-2','tether-gold']);
           const nonTradableSymbols = new Set(['USDT','USDC','DAI','USDS','USDE','FDUSD','PYUSD','TUSD','FRAX','USDD','WBTC','CBBTC','STETH','WSTETH','RETH','XAUT']);
 
-          async function getJson(url, timeout=10000) {
+          async function getJson(url, timeout=7000) {
             const controller = new AbortController();
             const timer = setTimeout(() => controller.abort(), timeout);
             try {
@@ -134,8 +134,8 @@ jobs:
             const supportPayload=await getJson(WORKER+'/support-check?symbols='+encodeURIComponent(symbols.join(',')));
             const supportMap=Object.fromEntries((supportPayload.assets||[]).map(x=>[x.symbol,x]));
             const results=[];
-            for(let i=0;i<assets.length;i+=3) {
-              const batch=assets.slice(i,i+3);
+            for(let i=0;i<assets.length;i+=4) {
+              const batch=assets.slice(i,i+4);
               const rows=await Promise.all(batch.map(a=>checkAsset(a,supportMap[String(a.symbol).toUpperCase()])));
               results.push(...rows);
               console.log('Checked '+results.length+'/100 assets');
