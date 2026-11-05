@@ -11,6 +11,16 @@ on:
       - "assets/**"
       - "manifest.webmanifest"
       - ".github/workflows/android-apk.yml"
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "package.json"
+      - "index.html"
+      - "capacitor.config.json"
+      - "www/**"
+      - "assets/**"
+      - "manifest.webmanifest"
+      - ".github/workflows/android-apk.yml"
   workflow_dispatch:
 
 permissions:
@@ -110,6 +120,7 @@ jobs:
           NODE
 
       - name: Prepare persistent Android signing key
+        if: ${{ github.event_name != 'pull_request' }}
         id: prepare_signing
         env:
           ANDROID_SIGNING_CONFIG: ${{ secrets.ANDROID_SIGNING_CONFIG }}
@@ -196,7 +207,7 @@ jobs:
 
   publish-release:
     needs: build-android
-    if: ${{ needs.build-android.outputs.signing_ready == 'true' }}
+    if: ${{ github.event_name != 'pull_request' && needs.build-android.outputs.signing_ready == 'true' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
