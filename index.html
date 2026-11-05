@@ -798,6 +798,23 @@ body{background:
 #mmp-pulse-chart-area[hidden]{display:none}.mmp-pulse-chart-shell.is-collapsed #mmp-pulse-chart-area{display:none}.mmp-pulse-chart-shell.is-collapsed .mmp-pulse-status{border-top:0}
 @media(max-width:560px){.mmp-pulse-assets{grid-template-columns:1fr}.mmp-pulse-asset{padding:9px}.mmp-pulse-chart-head{padding:11px}.mmp-pulse-chart-name{font-size:12px}#mmp-pulse-chart{height:330px}.mmp-pulse-timeframes button{padding:7px 8px}.mmp-pulse-add button{padding:8px;font-size:9px}.mmp-pulse-chart-price b{font-size:12px}}
 </style>
+
+<style id="mmp-final-navigation-refresh-fix">
+/* One navigation only: top menu; no sidebar or bottom dock on any screen */
+.mmp-sidebar,.mmp-mobile-dock,.app-tabbar{display:none!important}
+.top{padding:0 24px!important}
+.wrap{margin:0 auto!important;max-width:1580px!important}
+.menu-btn{display:grid!important;place-items:center!important;width:42px;height:42px;padding:0!important;font-size:21px!important}
+#dropdownMenu{display:none!important;position:absolute!important;top:calc(100% + 8px)!important;left:14px!important;right:auto!important;z-index:9999!important}
+#dropdownMenu.show{display:flex!important}
+#refresh-all-btn{min-width:112px;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+#refresh-all-btn.is-refreshing{opacity:.7;pointer-events:none}
+#refresh-all-btn.is-refreshing::first-letter{display:inline-block;animation:mmpRefreshSpin .8s linear infinite}
+@keyframes mmpRefreshSpin{to{transform:rotate(360deg)}}
+@media(max-width:900px){.top{height:68px!important;padding:0 12px!important}.wrap{width:100%!important;padding:18px 16px 40px!important}}
+@media(max-width:560px){.top{height:62px!important;padding:0 9px!important}.top-actions{gap:5px}.top-actions #refresh-all-btn{font-size:10px;padding:8px 7px;min-width:92px}.wrap{padding:12px 10px 40px!important}}
+</style>
+
 </head>
 <body class="mmp-app-mode">
 
@@ -812,7 +829,7 @@ body{background:
     <button class="curr-btn" id="btn-usdt" onclick="setCurrency('USDT')">تتر</button>
   </div>
   <span class="pill" id="clock">--:--:--</span>
-  <button class="btn" onclick="refreshAll()">⟳ بروزرسانی</button>
+  <button class="btn" id="refresh-all-btn" type="button" onclick="refreshSiteData()" aria-label="بروزرسانی کامل سایت و داده‌ها" title="بروزرسانی کامل سایت و داده‌ها">⚙ بروزرسانی</button>
   <button class="menu-btn" type="button" onclick="toggleMenu()" aria-label="باز کردن منوی اصلی" aria-controls="dropdownMenu" aria-expanded="false"><span aria-hidden="true">☰</span></button>
 </div>
 <div class="dropdown-menu" id="dropdownMenu">
@@ -1072,6 +1089,26 @@ const toman=(v)=>Math.round(v).toLocaleString('en-US');
 
 function clock(){$('clock').textContent=new Date().toLocaleTimeString('fa-IR')}
 setInterval(clock,1000);clock();
+
+
+async function refreshSiteData(){
+ const button=$("refresh-all-btn");
+ if(button){button.classList.add("is-refreshing");button.disabled=true;}
+ $("updated").textContent="در حال بروزرسانی کامل داده‌های سایت…";
+ try{
+  const jobs=[];
+  if(typeof refreshAll==="function")jobs.push(refreshAll());
+  if(typeof checkConnections==="function")jobs.push(checkConnections());
+  await Promise.allSettled(jobs);
+  const activePulse=document.querySelector("#mmp-pulse-assets [data-pulse-asset]");
+  if(activePulse)activePulse.click();
+  $("updated").textContent="بروزرسانی داده‌ها انجام شد · "+new Date().toLocaleTimeString("fa-IR");
+ }catch(error){
+  $("updated").textContent="بروزرسانی کامل نشد؛ اتصال اینترنت را بررسی کنید.";
+ }finally{
+  if(button){button.classList.remove("is-refreshing");button.disabled=false;}
+ }
+}
 
 function toggleMenu(){
   $('dropdownMenu').classList.toggle('show');
