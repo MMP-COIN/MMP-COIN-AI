@@ -72,6 +72,7 @@ button{cursor:pointer}
 .lamp{width:10px;height:10px;border-radius:50%;background:#626775;display:inline-block;box-shadow:0 0 0 4px #62677522;flex:none}
 .lamp.ok{background:var(--green);box-shadow:0 0 12px #25d69599}
 .lamp.slow{background:var(--yellow);box-shadow:0 0 12px #f4c45e88}
+.lamp.restricted{background:#f0a34a;box-shadow:0 0 12px #f0a34a88}
 .lamp.down{background:var(--red);box-shadow:0 0 12px #ff5e6c88}
 .badge{border:1px solid var(--line);border-radius:20px;padding:4px 8px;font-size:10px;color:var(--muted)}
 
@@ -1290,32 +1291,41 @@ async function refreshAll(){
   }
   if(currentTetherPrice>0){$("usdt").textContent=money(currentTetherPrice,0)+" تومان";$("usdt-source").textContent="منبع: "+currentTetherSources.join(" + ")+(currentTetherWarning?" · "+currentTetherWarning:"");}
   else{$("usdt").textContent="داده در دسترس نیست";$("usdt-source").textContent=currentTetherWarning;}
+  const marketCacheKey="mmp_market_catalog_cache_v2";
+  let cachedMarket=null;
+  try{const raw=localStorage.getItem(marketCacheKey);if(raw){const parsed=JSON.parse(raw);if(parsed&&Date.now()-Number(parsed.savedAt)<24*60*60*1000&&Array.isArray(parsed.topData))cachedMarket=parsed;}}catch(cacheError){console.warn("Market catalog cache unavailable:",cacheError);}
   const marketController=new AbortController(),marketTimer=setTimeout(()=>marketController.abort(),16000);
-  let topRes,extraRes;
+  let topRes=null,extraRes=null;
   try{
-   [topRes,extraRes]=await Promise.all([
+   const settled=await Promise.allSettled([
     fetch(AI_ANALYSIS_ENDPOINT+'/market-proxy?source=coingecko-top',{cache:'no-store',signal:marketController.signal}),
     fetch(AI_ANALYSIS_ENDPOINT+'/market-proxy?source=coingecko-extra&ids='+encodeURIComponent(EXTRA_COIN_IDS.join(',')),{cache:'no-store',signal:marketController.signal})
    ]);
+   if(settled[0].status==="fulfilled")topRes=settled[0].value;
+   if(settled[1].status==="fulfilled")extraRes=settled[1].value;
   }finally{clearTimeout(marketTimer);}
-  let topData;
-  if(topRes.ok) topData=await topRes.json();
-  else {
+  let topData=null,extraData=[];
+  if(topRes?.ok){try{topData=await topRes.json();}catch(error){console.warn("Market proxy returned invalid top data:",error);}}
+  if(!Array.isArray(topData)){
+   try{
     const directTop=await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=false&price_change_percentage=1h%2C24h%2C7d',{cache:'no-store'});
-    if(!directTop.ok) throw new Error('CoinGecko top-100 HTTP '+directTop.status);
+    if(!directTop.ok)throw new Error('CoinGecko top-100 HTTP '+directTop.status);
     topData=await directTop.json();
+   }catch(directError){
+    if(cachedMarket){topData=cachedMarket.topData;console.warn("Using cached market catalog after live sources failed:",directError);}
+    else throw directError;
+   }
   }
-  let extraData = [];
-  if(extraRes.ok) {
-    const payload = await extraRes.json();
-    if(Array.isArray(payload)) extraData = payload;
-  } else {
-    try {
-      const directExtra=await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids='+encodeURIComponent(EXTRA_COIN_IDS.join(','))+'&order=market_cap_desc&sparkline=false&price_change_percentage=1h%2C24h%2C7d',{cache:'no-store'});
-      if(directExtra.ok) { const payload=await directExtra.json(); if(Array.isArray(payload)) extraData=payload; }
-    } catch(error) { console.warn('CoinGecko extra direct fallback unavailable:',error); }
+  if(extraRes?.ok){try{const payload=await extraRes.json();if(Array.isArray(payload))extraData=payload;}catch(error){console.warn("Market proxy returned invalid extra data:",error);}}
+  if(!extraData.length){
+   try{
+    const directExtra=await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids='+encodeURIComponent(EXTRA_COIN_IDS.join(','))+'&order=market_cap_desc&sparkline=false&price_change_percentage=1h%2C24h%2C7d',{cache:'no-store'});
+    if(directExtra.ok){const payload=await directExtra.json();if(Array.isArray(payload))extraData=payload;}
+   }catch(error){console.warn('CoinGecko extra direct fallback unavailable:',error);}
   }
-  if(!Array.isArray(topData)) throw new Error('CoinGecko returned invalid top-100 data');
+  if(!extraData.length&&cachedMarket?.extraData)extraData=cachedMarket.extraData;
+  if(!Array.isArray(topData))throw new Error('CoinGecko returned invalid top-100 data');
+  try{localStorage.setItem(marketCacheKey,JSON.stringify({savedAt:Date.now(),topData,extraData}));}catch(cacheError){console.warn("Market catalog cache could not be saved:",cacheError);}
 
   // نگه‌داشتن ۱۰۰ دارایی قابل معامله با نمادهای یکتا؛ ارزهای تکراری حذف می‌شوند؛ استیبل‌کوین‌ها و توکن‌های رَپ‌شده از منوی کندل/تحلیل کنار گذاشته می‌شوند.
   const merged = new Map();
@@ -1502,7 +1512,7 @@ async function checkConnections(){
   const expected=["binance spot","bybit spot","okx spot","nobitex","wallex","bitget spot"];
   const checks=new Map(payload.checks.map(c=>[String(c?.name||"").trim().toLowerCase(),c]));
   const bitgetCheck=checks.get("bitget spot");
-  if(bitgetCheck?.status==="down"){
+  if(bitgetCheck?.status==="down"||bitgetCheck?.status==="restricted"){
    const started=Date.now(),bitgetController=new AbortController(),bitgetTimer=setTimeout(()=>bitgetController.abort(),7000);
    try{
     const direct=await fetch("https://api.bitget.com/api/v3/market/tickers?category=SPOT&symbol=BTCUSDT",{cache:"no-store",signal:bitgetController.signal});
@@ -1520,17 +1530,17 @@ async function checkConnections(){
   if(ordered.length!==expected.length)throw new Error("پاسخ بررسی اتصال کامل نیست");
 
   const makeCard=c=>{
-   const label=c.status==="down"?"قطع":c.status==="slow"?"کند":"متصل";
+   const label=c.status==="down"?"قطع":c.status==="restricted"?"محدودیت دسترسی":c.status==="slow"?"کند":"متصل";
    const latency=c.ping===null||c.ping===undefined?"—":c.ping+" ms";
    const detail=c.error?'<small class="conn-purpose">'+aiEscape(c.error)+'</small>':'<small class="conn-purpose">'+aiEscape(c.purpose||"وضعیت اتصال صرافی")+'</small>';
-   const lamp=c.status==="ok"?"ok":c.status==="slow"?"slow":"down";
+   const lamp=c.status==="ok"?"ok":c.status==="slow"?"slow":c.status==="restricted"?"restricted":"down";
    return '<div class="conn"><div class="conn-top"><span class="conn-name">'+aiEscape(c.name)+'</span><span class="lamp '+lamp+'"></span></div><div class="conn-meta"><span>'+label+'</span><b dir="ltr">'+latency+'</b></div>'+detail+'</div>';
   };
   $("connections").innerHTML=ordered.slice(0,4).map(makeCard).join("");
   $("connections-extra").innerHTML=ordered.slice(4).map(makeCard).join("");
   renderCoinGeckoConnection();setupConnectionsToggle();
   const summary=$("conn-summary");
-  if(summary)summary.textContent=ordered.filter(x=>x.status!=="down").length+" از "+expected.length+" منبع پاسخ‌گو";
+  if(summary)summary.textContent=ordered.filter(x=>x.status==="ok"||x.status==="slow").length+" از "+expected.length+" منبع پاسخ‌گو";
   return ordered;
  }catch(error){
   const message=error.name==="AbortError"?"مهلت بررسی اتصال تمام شد":"سرویس بررسی اتصال پاسخ نداد";
