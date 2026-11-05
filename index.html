@@ -1732,7 +1732,7 @@ function radarScore(c){
  const range=hi>lo&&p>0?(p-lo)/(hi-lo)*100:null;
  const trend=directional==null?"unknown":directional>.15?"bull":directional<-.15?"bear":"neutral";
  const score=directional==null?0:Math.round(50+Math.min(45,Math.abs(directional)*2));
- return {score,trend,h:has24?h:null,d:has7?d:null,directional,liquidity:liquidity==null?null:v/m*100,range,dataQuality:parts===2?"دو بازه معتبر":parts===1?"یک بازه معتبر":"داده تغییرات ناقص"};
+ return {score,trend,h:has24?h:null,d:has7?d:null,directional,liquidity:liquidity,range,dataQuality:parts===2?"دو بازه معتبر":parts===1?"یک بازه معتبر":"داده تغییرات ناقص"};
 }
 let radarDeepScanBusy=false;
 let radarAutoScanAt=0;
@@ -1748,11 +1748,17 @@ async function runRadarDeepScan(){
  if(status)status.textContent="هوش مصنوعی در حال بررسی "+candidates.length+" نامزد برتر از میان "+cachedCoinsData.length+" ارز…";
  if(results)results.innerHTML="";
  try{
+  let radarCompleted=0,radarFailed=0;
   for(const item of candidates){
    const c=item.coin,trend=item.expectedTrend;
-   const response=await fetch(AI_ANALYSIS_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({coin_id:c.id,symbol:String(c.symbol).toUpperCase(),name:c.name,market_mode:trend==="bear"?"both":"spot",analysis_mode:"radar"})});
-   const data=await response.json();
-   if(!response.ok||!data?.analysis)throw new Error(data?.error||"پاسخ تحلیل معتبر نیست");
+   try{
+    const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),55000);
+    let response,data;
+    try{
+     response=await fetch(AI_ANALYSIS_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({coin_id:c.id,symbol:String(c.symbol).toUpperCase(),name:c.name,market_mode:trend==="bear"?"both":"spot",analysis_mode:"radar"}),signal:controller.signal});
+     data=await response.json();
+    }finally{clearTimeout(timeout);}
+    if(!response.ok||!data?.analysis)throw new Error(data?.error||"پاسخ تحلیل معتبر نیست");
    const a=data.analysis,levels=a.levels||{},action=String(a.action||"WAIT").toUpperCase();
    const expected=trend==="bull"?"BUY":"SELL";
    const active=action===expected&&a.plan_status==="active_signal"&&levels.entry_zone!=null&&levels.stop_loss!=null&&levels.tp1!=null;
@@ -1765,8 +1771,14 @@ async function runRadarDeepScan(){
    const why=reasons||a.risk_level||"بررسی بر پایه داده‌های بازار";
    const html='<article class="radar-ai-card"><div class="radar-ai-card-head"><b>'+label+'</b><span>'+aiEscape(c.name)+' ('+aiEscape(String(c.symbol).toUpperCase())+')</span></div><div class="radar-ai-direction '+(active?(trend==="bull"?"positive":"negative"):"")+'">'+direction+' · '+(active?"سناریوی ورود تأیید شد":"نیازمند تأیید بیشتر")+' · امتیاز '+item.metrics.score+'/100</div>'+plan+'<small>'+aiEscape(why)+'</small><small>اعتماد مدل: '+aiEscape(a.confidence??"نامشخص")+' · ریسک: '+aiEscape(a.risk_level||"نامشخص")+'</small></article>';
    if(results)results.insertAdjacentHTML("beforeend",html);
+    radarCompleted++;
+   }catch(candidateError){
+    radarFailed++;
+    console.warn("Radar AI candidate unavailable:",String(c.symbol||"").toUpperCase(),candidateError);
+    if(results)results.insertAdjacentHTML("beforeend",'<article class="radar-ai-card"><div class="radar-ai-card-head"><b>تحلیل تکمیلی در دسترس نیست</b><span>'+aiEscape(c.name)+' ('+aiEscape(String(c.symbol).toUpperCase())+')</span></div><p class="radar-ai-no-signal">پاسخ معتبر از سرویس هوش مصنوعی دریافت نشد؛ هیچ نقطه ورود یا خروجی ساخته نمی‌شود.</p></article>');
+   }
   }
-  if(status)status.textContent="تحلیل نامزدهای برتر از میان "+cachedCoinsData.length+" ارز انجام شد · "+new Date().toLocaleTimeString("fa-IR");
+  if(status)status.textContent="بررسی "+candidates.length+" نامزد از میان "+cachedCoinsData.length+" ارز انجام شد · موفق: "+radarCompleted+" · ناموفق: "+radarFailed+" · "+new Date().toLocaleTimeString("fa-IR");
  }catch(error){
   if(status)status.textContent="تحلیل عمیق کامل نشد؛ رتبه‌بندی اولیه حفظ شده است. علت احتمالی: محدودیت یا خطای سرویس تحلیل.";
   console.warn("Radar AI suggestions unavailable:",error);
