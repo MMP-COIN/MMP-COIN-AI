@@ -1405,41 +1405,6 @@ function renderAiReport(r,c,market={}){
  $("advanced-ai-analysis").dataset.hasReport="true";
 }
 async function runAiAnalysis(force=false){
- const detailPanel=$("ai-details");if(detailPanel)detailPanel.open=true;
- const id=$("ai-coin-select").value;
- const out=$("advanced-ai-analysis"),btn=$("ai-run-btn"),refreshBtn=$("ai-refresh-btn");
- if(!id){$("ai-action").textContent="منتظر انتخاب ارز";aiSetStatus("ابتدا یک ارز برای تحلیل انتخاب کنید.");return;}
- const c=cachedCoinsData.find(x=>x.id===id);
- if(!c){aiSetStatus("داده قیمت این ارز هنوز بارگذاری نشده است.");return;}
- const cacheKey=id+"|"+$("ai-market-mode").value;
- const cached=aiCache.get(cacheKey);
- if(!force&&cached&&Date.now()-cached.time<180000){
-  renderAiReport(cached.analysis,c,cached.market);
-  aiSetStatus("آخرین تحلیل ذخیره‌شده نمایش داده شد · برای داده تازه، «تحلیل مجدد» را بزنید.");
-  return;
- }
- if(aiBusy)return;
- aiBusy=true;
- const token=++aiRequestToken;
- btn.disabled=true;refreshBtn.disabled=true;btn.textContent="در حال تحلیل…";
- aiSetStatus("در حال دریافت داده‌های بازار و بررسی ۴ تایم‌فریم؛ گزارش قبلی تا پایان پردازش حفظ می‌شود…",true);
- if(out.dataset.hasReport!=="true")out.innerHTML='<div class="ai-empty"><div class="symbol">◌</div><b>در حال تحلیل بازار…</b><p>کندل‌ها، روند، حجم، سطوح حمایت و مقاومت و داده‌های مشتقات بررسی می‌شوند.</p></div>';
- try{
-  if(exchangeAuditPromise)await exchangeAuditPromise;
-  const support=exchangeSupportBySymbol[String(c.symbol).toUpperCase()];
-  const selectedMode=$("ai-market-mode").value;
-  // The support audit is advisory only: catalog endpoints can be blocked or incomplete
-  // even when the candle providers can serve this asset. Let the Worker make the
-  // authoritative multi-provider attempt and return the exact failure if none work.
-  if(!support)aiSetStatus("فهرست جفت‌های صرافی کامل دریافت نشد؛ سرویس تحلیل مستقیماً منابع بازار را بررسی می‌کند…",true);
-  else if(selectedMode==="spot"&&!support.spot?.confirmed)aiSetStatus("جفت نقدی در فهرست اولیه تأیید نشد؛ منابع جایگزین مستقیماً بررسی می‌شوند…",true);
-  else if(selectedMode==="futures"&&!support.futures?.confirmed)aiSetStatus("قرارداد آتی در فهرست اولیه تأیید نشد؛ منابع بازار مستقیماً بررسی می‌شوند…",true);
-  else if(selectedMode==="both"&&!support.spot?.confirmed&&!support.futures?.confirmed)aiSetStatus("جفت در فهرست اولیه تأیید نشد؛ سرویس تحلیل منابع جایگزین را بررسی می‌کند…",true);
-  const controller=new AbortController();
-  const timeout=setTimeout(()=>controller.abort(),55000);
-  let res;
-  try{
-   res=await fetch(AI_ANALYSIS_ENDPOINT,{method:"POST",headersasync function runAiAnalysis(force=false){
  const id=$("ai-coin-select").value;
  const out=$("advanced-ai-analysis"),btn=$("ai-run-btn");
  if(!id){$("ai-action").textContent="منتظر انتخاب ارز";aiSetStatus("ابتدا یک ارز برای تحلیل انتخاب کنید.");return;}
@@ -1492,9 +1457,7 @@ async function runAiAnalysis(force=false){
   if(token===aiRequestToken){aiBusy=false;btn.disabled=false;btn.textContent="دریافت تحلیل جدید";}
  }
 }
-
-
-
+ 
 /* MMP terminal modules: global sessions, watchlist, scanner, risk sizing and local journal */
 const MMP_WATCH_KEY="mmp_terminal_watchlist_v1";
 const MMP_JOURNAL_KEY="mmp_terminal_journal_v1";
