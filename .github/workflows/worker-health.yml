@@ -52,7 +52,9 @@ jobs:
             echo "Unexpected staged Binance proxy HTTP $market_status"; exit 1
           fi
           echo "Staged Worker market proxy check completed"
-          curl --fail --silent --show-error --max-time 70 -H "Content-Type: application/json" -d '{"coin_id":"bitcoin","symbol":"BTC","name":"Bitcoin","market_mode":"spot"}' "$WORKER_PREVIEW_URL/" -o /tmp/preview-analysis.json
+          analysis_status=$(curl --silent --show-error --max-time 70 -H "Content-Type: application/json" -d '{"coin_id":"bitcoin","symbol":"BTC","name":"Bitcoin","market_mode":"spot"}' -o /tmp/preview-analysis.json -w "%{http_code}" "$WORKER_PREVIEW_URL/" || true)
+          echo "Staged AI analysis HTTP $analysis_status"
+          if [ "$analysis_status" != "200" ]; then cat /tmp/preview-analysis.json; exit 1; fi
           jq -e '.analysis != null and (.analysis.action == "BUY" or .analysis.action == "SELL" or .analysis.action == "WAIT") and (.market.timeframes | has("15m") and has("1h") and has("4h") and has("1d"))' /tmp/preview-analysis.json >/dev/null
           echo "- Staged Worker version: health, exchange monitor, and four-timeframe AI analysis passed" >> "$GITHUB_STEP_SUMMARY"
 
