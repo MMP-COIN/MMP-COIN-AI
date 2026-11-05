@@ -8,6 +8,13 @@ on:
     branches: ["main"]
     paths:
       - "cloudflare-worker/**"
+      - "index.html"
+      - ".github/workflows/worker-health.yml"
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "cloudflare-worker/**"
+      - "index.html"
       - ".github/workflows/worker-health.yml"
 
 permissions:
