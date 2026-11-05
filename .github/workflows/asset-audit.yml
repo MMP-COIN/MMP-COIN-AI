@@ -39,7 +39,7 @@ jobs:
 
       - name: Test every asset on all analysis timeframes
         env:
-          WORKER_URL: https://c10ef4e2-mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
+          WORKER_URL: https://a01a67e4-mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
           node <<'NODE'
           const fs = require('fs');
