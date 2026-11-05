@@ -50,7 +50,7 @@ function analyzeKlines(rows){
  return {price:last.c,change_pct:(last.c/closes[closes.length-2]-1)*100,rsi:rsi(closes),ema20:e20,ema50:e50,ema200:e200,ema_trend:e20&&e50&&e200?(last.c>e20&&e20>e50&&e50>e200?"bullish":last.c<e20&&e20<e50&&e50<e200?"bearish":"mixed"):"insufficient",macd,macd_signal:macd==null||signal==null?"insufficient":macd>signal?"bullish crossover bias":macd<signal?"bearish crossover bias":"neutral",atr,atr_percent:atr?atr/last.c*100:null,support,resistance,volume_ratio:mean(vols.slice(-5))/(mean(vols.slice(-25))||1),taker_buy_volume_ratio:totalBase?takerBuyBase/totalBase:null,candle_time:new Date(last.t).toISOString()};
 }
 function splitQuotePair(symbol){
- const match=String(symbol||"").toUpperCase().match(/^([A-Z0-9]+?)(USDT|USDC|FDUSD|BUSD|USD|BTC|ETH)$/);
+ const match=String(symbol||"").toUpperCase().match(/^([A-Z0-9_]+?)(USDT|USDC|FDUSD|BUSD|USD|BTC|ETH)$/);
  return match?{base:match[1],quote:match[2]}:null;
 }
 async function candles(symbol,interval,env,marketType="spot"){
@@ -219,7 +219,7 @@ function buildTradePlans(longMarket,action,mode,shortMarket=longMarket){
  return {active:null,conditional:{long,short}};
 }
 
-function validSymbol(s){return /^[A-Z0-9]{2,20}$/.test(s||"")&&!s.includes("USDTUSDT")}
+function validSymbol(s){return /^[A-Z0-9_]{2,30}$/.test(s||"")&&!s.startsWith("_")&&!s.endsWith("_")&&!s.includes("USDTUSDT")}
 
 let exchangeCatalogCache=null,exchangeCatalogCacheAt=0;
 async function readPublicJson(url){
@@ -265,7 +265,9 @@ async function getExchangeCatalogs(){
    "https://api.bytick.com/v5/market/instruments-info?category=linear&limit=1000"
   ]],
   ["bitget_spot","https://api.bitget.com/api/v3/market/instruments?category=SPOT"],
-  ["whitebit_spot",["https://whitebit.com/api/v1/public/markets","https://whitebit.eu/api/v1/public/markets","https://whitebit.tr/api/v1/public/markets","https://whitebit.ge/api/v1/public/markets"]]
+  ["whitebit_spot",["https://whitebit.com/api/v1/public/markets","https://whitebit.eu/api/v1/public/markets","https://whitebit.tr/api/v1/public/markets","https://whitebit.ge/api/v1/public/markets"]],
+  ["gate_spot",["https://api.gateio.ws/api/v4/spot/currency_pairs","https://api.gate.us/api/v4/spot/currency_pairs"]],
+  ["kucoin_spot",["https://api.kucoin.com/api/v2/symbols","https://api.kucoin.tr/api/v2/symbols"]]
  ];
  const results=await Promise.all(urls.map(async ([key,endpoint])=>[key,Array.isArray(endpoint)?await readAnyPublicJson(endpoint):await readPublicJson(endpoint)]));
  const out=Object.fromEntries(results);
@@ -282,10 +284,12 @@ function exchangeSupport(symbol,catalogs){
  const okxSpotPair=(catalogs.okx_spot?.data?.data||[]).filter(x=>x.state==="live"&&x.baseCcy===base&&quotes.includes(x.quoteCcy)).map(x=>({pair:String(x.instId||"").replaceAll("-",""),quote:x.quoteCcy})).sort((a,b)=>quotes.indexOf(a.quote)-quotes.indexOf(b.quote))[0]||null;
  const bitgetSpotPair=(catalogs.bitget_spot?.data?.data||[]).filter(x=>x.status==="online"&&String(x.symbol||"").toUpperCase().startsWith(base)&&quotes.some(q=>String(x.symbol||"").toUpperCase()===base+q)).map(x=>{const q=quotes.find(q=>String(x.symbol||"").toUpperCase()===base+q);return q?{pair:String(x.symbol).toUpperCase(),quote:q}:null;}).filter(Boolean).sort((a,b)=>quotes.indexOf(a.quote)-quotes.indexOf(b.quote))[0]||null;
  const whitebitSpotPair=(catalogs.whitebit_spot?.data?.success===true?(catalogs.whitebit_spot.data.result||[]):[]).filter(x=>String(x.stock||"").toUpperCase()===base&&quotes.includes(String(x.money||"").toUpperCase())).map(x=>({pair:String(x.name||"").toUpperCase().replace("_",""),quote:String(x.money).toUpperCase()})).sort((a,b)=>quotes.indexOf(a.quote)-quotes.indexOf(b.quote))[0]||null;
+ const gateSpotPair=(Array.isArray(catalogs.gate_spot?.data)?catalogs.gate_spot.data:[]).filter(x=>String(x.base||"").toUpperCase()===base&&quotes.includes(String(x.quote||"").toUpperCase())&&["tradable","buyable","sellable"].includes(String(x.trade_status||"").toLowerCase())).map(x=>({pair:String(x.base).toUpperCase()+String(x.quote).toUpperCase(),quote:String(x.quote).toUpperCase()})).sort((a,b)=>quotes.indexOf(a.quote)-quotes.indexOf(b.quote))[0]||null;
+ const kucoinSpotPair=(catalogs.kucoin_spot?.data?.code==="200000"&&Array.isArray(catalogs.kucoin_spot.data.data)?catalogs.kucoin_spot.data.data:[]).filter(x=>x.enableTrading===true&&String(x.baseCurrency||"").toUpperCase()===base&&quotes.includes(String(x.quoteCurrency||"").toUpperCase())).map(x=>({pair:String(x.baseCurrency).toUpperCase()+String(x.quoteCurrency).toUpperCase(),quote:String(x.quoteCurrency).toUpperCase()})).sort((a,b)=>quotes.indexOf(a.quote)-quotes.indexOf(b.quote))[0]||null;
  const binanceFuturesPair=(catalogs.binance_futures?.data?.symbols||[]).filter(x=>x.status==="TRADING"&&(!x.contractType||x.contractType==="PERPETUAL")&&x.baseAsset===base&&quotes.includes(x.quoteAsset)).map(x=>({pair:x.symbol,quote:x.quoteAsset})).sort((a,b)=>quotes.indexOf(a.quote)-quotes.indexOf(b.quote))[0]||null;
  const bybitFuturesPair=(catalogs.bybit_futures?.data?.result?.list||[]).filter(x=>x.status==="Trading"&&(!x.contractType||x.contractType==="LinearPerpetual")&&x.baseCoin===base&&quotes.includes(x.quoteCoin)).map(x=>({pair:x.symbol,quote:x.quoteCoin})).sort((a,b)=>quotes.indexOf(a.quote)-quotes.indexOf(b.quote))[0]||null;
  const okxFuturesPair=(catalogs.okx_futures?.data?.data||[]).filter(x=>x.state==="live"&&(!x.ctType||x.ctType==="linear")&&String(x.instId||"").endsWith("-SWAP")).map(x=>{const p=String(x.instId||"").split("-");return p[0]===base&&quotes.includes(p[1])?{pair:p[0]+p[1],quote:p[1]}:null;}).filter(Boolean).sort((a,b)=>quotes.indexOf(a.quote)-quotes.indexOf(b.quote))[0]||null;
- const spotEntries=[["Binance",binanceSpotPair,catalogs.binance_spot],["Bybit",bybitSpotPair,catalogs.bybit_spot],["OKX",okxSpotPair,catalogs.okx_spot],["Bitget",bitgetSpotPair,catalogs.bitget_spot],["WhiteBIT",whitebitSpotPair,catalogs.whitebit_spot]];
+ const spotEntries=[["Binance",binanceSpotPair,catalogs.binance_spot],["Bybit",bybitSpotPair,catalogs.bybit_spot],["OKX",okxSpotPair,catalogs.okx_spot],["Bitget",bitgetSpotPair,catalogs.bitget_spot],["WhiteBIT",whitebitSpotPair,catalogs.whitebit_spot],["Gate.io",gateSpotPair,catalogs.gate_spot],["KuCoin",kucoinSpotPair,catalogs.kucoin_spot]];
  const futuresEntries=[["Binance",binanceFuturesPair,catalogs.binance_futures],["Bybit",bybitFuturesPair,catalogs.bybit_futures],["OKX",okxFuturesPair,catalogs.okx_futures]];
  const spot=choose(spotEntries.map(x=>x[1])),futures=choose(futuresEntries.map(x=>x[1]));
  const providerStates=entries=>Object.fromEntries(entries.map(([name,pair,source])=>[name,!source?.ok?(source?.error||"تأیید نشد"):pair?"فعال":"جفت فعال پیدا نشد"]));
@@ -366,7 +370,7 @@ async function handle(request,env){
   const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"support-check");
   const limited=rateLimitReply(limitResult,request);if(limited)return limited;
   const url=new URL(request.url);
-  const symbols=[...new Set((url.searchParams.get("symbols")||"").split(",").map(x=>x.toUpperCase().replace(/[^A-Z0-9]/g,"")).filter(validSymbol))].slice(0,150);
+  const symbols=[...new Set((url.searchParams.get("symbols")||"").split(",").map(x=>x.toUpperCase().replace(/[^A-Z0-9_]/g,"")).filter(validSymbol))].slice(0,150);
   if(!symbols.length)return json({error:"Provide comma-separated symbols"},400,request);
   const catalogs=await getExchangeCatalogs();
   const assets=symbols.map(symbol=>exchangeSupport(symbol,catalogs));
@@ -476,7 +480,7 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/health"){
  let body;try{const rawBody=await request.text();if(new TextEncoder().encode(rawBody).length>16384)return json({error:"Request body is too large"},413,request);body=JSON.parse(rawBody);}catch{return json({error:"Invalid JSON"},400,request);}
  if(!body||typeof body!=="object"||Array.isArray(body))return json({error:"Invalid request body"},400,request);
  const coinId=String(body.coin_id||"").toLowerCase();
- const symbol=String(ASSET_SYMBOL_OVERRIDES[coinId]||body.symbol||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
+ const symbol=String(ASSET_SYMBOL_OVERRIDES[coinId]||body.symbol||"").toUpperCase().replace(/[^A-Z0-9_]/g,"");
  if(!validSymbol(symbol))return json({error:"Invalid asset symbol"},400,request);
  let pair=symbol.endsWith("USDT")?symbol:symbol+"USDT";
  const mode=["spot","futures","both"].includes(body.market_mode)?body.market_mode:"both";
