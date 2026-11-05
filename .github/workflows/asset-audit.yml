@@ -42,7 +42,7 @@ jobs:
           const minRows = tf => tf === '1d' ? 20 : 30;
           const html = fs.readFileSync('index.html','utf8');
           const nonTradableIds = new Set(['tether','usd-coin','dai','usds','ethena-usde','first-digital-usd','paypal-usd','true-usd','frax','usdd','wrapped-bitcoin','coinbase-wrapped-btc','lido-staked-ether','wrapped-steth','rocket-pool-eth','staked-ether','staked-ether-2','tether-gold']);
-          const nonTradableSymbols = new Set(['USDT','USDC','DAI','USDS','USDE','FDUSD','PYUSD','TUSD','FRAX','USDD','WBTC','CBBTC','STETH','WSTETH','RETH','XAUT']);
+          const nonTradableSymbols = new Set(['USDT','USDC','DAI','USDS','USDE','FDUSD','PYUSD','TUSD','FRAX','USDD','WBTC','CBBTC','STETH','WSTETH','RETH','XAUT','USDY','GT','PEARL','DRV']);
 
           async function getJson(url, timeout=7000) {
             const controller = new AbortController();
