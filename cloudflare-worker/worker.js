@@ -430,33 +430,42 @@ async function handle(request,env){
    }catch(error){const message=String(error?.message||"network error").slice(0,100);return {status:/HTTP 403/.test(message)?"restricted":"down",ping:null,error:/HTTP 403/.test(message)?"محدودیت دسترسی از مسیر سرور (HTTP 403)":message};}
    finally{clearTimeout(timer);}
   };
-  const probeAny=async(urls,valid,timeout=9000,extraHeaders={})=>{
-   const results=await Promise.all(urls.map(url=>timeoutFetch(url,valid,timeout,extraHeaders)));
-   const good=results.filter(x=>x.status==="ok"||x.status==="slow").sort((a,b)=>(a.ping??Infinity)-(b.ping??Infinity));
-   if(good.length)return good[0];
-   return results.find(x=>x.status==="restricted")||results[results.length-1]||{status:"down",ping:null,error:"no exchange endpoint responded"};
+  // Keep no more than three upstream probes in flight; Workers Free allows six simultaneous outgoing connections per request.
+  const probeAny=async(urls,valid,timeout=2200,extraHeaders={})=>{
+   let restricted=null,last=null;
+   for(const endpoint of urls){
+    const result=await timeoutFetch(endpoint,valid,timeout,extraHeaders);
+    if(result.status==="ok"||result.status==="slow")return result;
+    if(result.status==="restricted"&&!restricted)restricted=result;
+    last=result;
+   }
+   return restricted||last||{status:"down",ping:null,error:"no exchange endpoint responded"};
   };
-  const [binance,bybit,okx,nobitex,wallex,bitget,bitpin,ramzinex,exir]=await Promise.all([
-   probeAny(["https://api.binance.com/api/v3/ticker/24hr","https://api.binance.us/api/v3/ticker/24hr","https://api1.binance.com/api/v3/ticker/24hr","https://api2.binance.com/api/v3/ticker/24hr","https://api3.binance.com/api/v3/ticker/24hr","https://data-api.binance.vision/api/v3/ticker/24hr"],d=>Array.isArray(d)&&d.some(x=>x?.symbol==="BTCUSDT"&&Number(x?.lastPrice)>0)),
+  const [binance,bybit,okx]=await Promise.all([
+   probeAny(["https://api.binance.com/api/v3/ticker/24hr","https://api.binance.us/api/v3/ticker/24hr","https://api1.binance.com/api/v3/ticker/24hr","https://api2.binance.com/api/v3/ticker/24hr","https://api3.binance.com/api/v3/ticker/24hr","https://data-api.binance.vision/api/v3/ticker/24hr"],d=>Array.isArray(d)&&d.some(x=>x?.symbol==="BTCUSDT"&&Number(x?.lastPrice)>0),2600),
    probeAny([
     "https://api.bybit.eu/v5/market/tickers?category=spot&symbol=BTCUSDT",
     "https://api.bytick.eu/v5/market/tickers?category=spot&symbol=BTCUSDT",
     "https://api.bybit.com/v5/market/tickers?category=spot&symbol=BTCUSDT",
     "https://api.bytick.com/v5/market/tickers?category=spot&symbol=BTCUSDT"
-   ],d=>d?.retCode===0&&Number(d?.result?.list?.[0]?.lastPrice)>0),
-   probeAny(["https://www.okx.com/api/v5/market/ticker?instId=BTC-USDT","https://us.okx.com/api/v5/market/ticker?instId=BTC-USDT","https://openapi.okx.com/api/v5/market/ticker?instId=BTC-USDT"],d=>d?.code==="0"&&Number(d?.data?.[0]?.last)>0),
-   timeoutFetch("https://apiv2.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls",d=>d?.status==="ok"&&Number(d?.stats?.["usdt-rls"]?.latest)>0,5500),
+   ],d=>d?.retCode===0&&Number(d?.result?.list?.[0]?.lastPrice)>0,1800),
+   probeAny(["https://www.okx.com/api/v5/market/ticker?instId=BTC-USDT","https://us.okx.com/api/v5/market/ticker?instId=BTC-USDT","https://openapi.okx.com/api/v5/market/ticker?instId=BTC-USDT"],d=>d?.code==="0"&&Number(d?.data?.[0]?.last)>0,2200),
+  ]);
+  const [nobitex,wallex,bitget]=await Promise.all([
+   timeoutFetch("https://apiv2.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls",d=>d?.status==="ok"&&Number(d?.stats?.["usdt-rls"]?.latest)>0,2200),
    probeAny(["https://api.wallex.ir/v1/markets","https://api.wallex.ir/hector/web/v1/markets","https://api.wallex.ir/v1/otc/markets"],d=>{
     if(d?.success!==true)return false;
     const raw=d?.result?.symbols??d?.result?.markets;
     if(Array.isArray(raw))return raw.length>0;
     if(raw&&typeof raw==="object")return Object.keys(raw).length>0;
     return false;
-   },12000,{"Origin":"https://wallex.ir","Referer":"https://wallex.ir/"}),
-   timeoutFetch("https://api.bitget.com/api/v3/market/tickers?category=SPOT&symbol=BTCUSDT",d=>d?.code==="00000"&&Number(d?.data?.[0]?.lastPrice)>0,7000,{"Origin":"https://www.bitget.com","Referer":"https://www.bitget.com/"}),
-   timeoutFetch("https://api.bitpin.ir/api/v1/mkt/tickers/",d=>{const rows=Array.isArray(d)?d:Array.isArray(d?.results)?d.results:[];return rows.some(x=>String(x?.symbol||"").toUpperCase()==="USDT_IRT"&&Number(x?.price)>0);},9000,{"Origin":"https://bitpin.ir","Referer":"https://bitpin.ir/"}),
-   timeoutFetch("https://publicapi.ramzinex.com/exchange/api/v1.0/exchange/pairs",d=>{const rows=d?.result?.data??d?.data??d?.result?.pairs??[];return (Array.isArray(rows)&&rows.length>0)||(rows&&typeof rows==="object"&&Object.keys(rows).length>0);},9000),
-   timeoutFetch("https://api.exir.io/v2/tickers",d=>d&&typeof d==="object"&&Object.keys(d).length>0,9000),
+   },1800,{"Origin":"https://wallex.ir","Referer":"https://wallex.ir/"}),
+   timeoutFetch("https://api.bitget.com/api/v3/market/tickers?category=SPOT&symbol=BTCUSDT",d=>d?.code==="00000"&&Number(d?.data?.[0]?.lastPrice)>0,2200,{"Origin":"https://www.bitget.com","Referer":"https://www.bitget.com/"}),
+  ]);
+  const [bitpin,ramzinex,exir]=await Promise.all([
+   timeoutFetch("https://api.bitpin.ir/api/v1/mkt/tickers/",d=>{const rows=Array.isArray(d)?d:Array.isArray(d?.results)?d.results:[];return rows.some(x=>String(x?.symbol||"").toUpperCase()==="USDT_IRT"&&Number(x?.price)>0);},2200,{"Origin":"https://bitpin.ir","Referer":"https://bitpin.ir/"}),
+   timeoutFetch("https://publicapi.ramzinex.com/exchange/api/v1.0/exchange/pairs",d=>{const rows=d?.result?.data??d?.data??d?.result?.pairs??[];return (Array.isArray(rows)&&rows.length>0)||(rows&&typeof rows==="object"&&Object.keys(rows).length>0);},2200),
+   timeoutFetch("https://api.exir.io/v2/tickers",d=>d&&typeof d==="object"&&Object.keys(d).length>0,3500),
   ]);
   const checks=[
    {name:"Binance Spot",purpose:"قیمت و معاملات اسپات",...binance},
