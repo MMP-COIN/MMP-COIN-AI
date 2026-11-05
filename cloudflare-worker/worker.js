@@ -149,19 +149,25 @@ async function candles(symbol,interval,env,marketType="spot"){
    const result=analyzeKlines(normalized);result.data_provider="Gate.io Spot (fallback)";return result;
   }catch(e){lastError=new Error((lastError?.message||"Binance unavailable")+"; "+e.message);}
  }
- try{
-  const pair=splitQuotePair(symbol);
-  if(!pair)throw new Error("Unsupported WhiteBIT quote currency");
+ const pair=splitQuotePair(symbol);
+ if(pair){
+  let whitebitError=null;
   const market=pair.base+"_"+pair.quote;
   const whitebitInterval={"15m":"15m","1h":"1h","4h":"4h","1d":"1d"}[interval];
-  const url="https://whitebit.com/api/v1/public/kline?market="+encodeURIComponent(market)+"&interval="+whitebitInterval+"&limit=250";
-  const r=await fetch(url,{headers});
-  if(!r.ok)throw new Error("WhiteBIT HTTP "+r.status);
-  const payload=await r.json(),rows=payload?.success===true?payload.result:null;
-  if(!validRows(rows))throw new Error(payload?.message||"insufficient WhiteBIT candle history");
-  const normalized=rows.map(x=>[Number(x[0])*1000,x[1],x[3],x[4],x[2],x[5]||"0","0","0","0","0"]).sort((a,b)=>a[0]-b[0]);
-  const result=analyzeKlines(normalized);result.data_provider="WhiteBIT Spot";return result;
- }catch(e){lastError=new Error((lastError?.message||"Earlier spot sources unavailable")+"; "+e.message);}
+  for(const host of ["https://whitebit.com","https://whitebit.eu","https://whitebit.tr","https://whitebit.ge"]){
+   try{
+    const url=host+"/api/v1/public/kline?market="+encodeURIComponent(market)+"&interval="+whitebitInterval+"&limit=250";
+    const r=await fetch(url,{headers});
+    if(!r.ok)throw new Error("WhiteBIT HTTP "+r.status);
+    const payload=await r.json(),rows=payload?.success===true?payload.result:null;
+    if(!validRows(rows))throw new Error(payload?.message||"insufficient WhiteBIT candle history");
+    const normalized=rows.map(x=>[Number(x[0])*1000,x[1],x[3],x[4],x[2],x[5]||"0","0","0","0","0"]).sort((a,b)=>a[0]-b[0]);
+    const result=analyzeKlines(normalized);result.data_provider="WhiteBIT Spot";return result;
+   }catch(e){whitebitError=e;}
+  }
+  lastError=new Error((lastError?.message||"Earlier spot sources unavailable")+"; "+(whitebitError?.message||"WhiteBIT unavailable"));
+ }
+
  for(const host of ["https://api.bybit.eu","https://api.bytick.eu","https://api.bybit.com","https://api.bytick.com"]){
   try{
    const url=host+"/v5/market/kline?category=spot&symbol="+encodeURIComponent(symbol)+"&interval="+bybitInterval+"&limit=250";
@@ -258,7 +264,7 @@ async function getExchangeCatalogs(){
    "https://api.bytick.com/v5/market/instruments-info?category=linear&limit=1000"
   ]],
   ["bitget_spot","https://api.bitget.com/api/v3/market/instruments?category=SPOT"],
-  ["whitebit_spot","https://whitebit.com/api/v1/public/markets"]
+  ["whitebit_spot",["https://whitebit.com/api/v1/public/markets","https://whitebit.eu/api/v1/public/markets","https://whitebit.tr/api/v1/public/markets","https://whitebit.ge/api/v1/public/markets"]]
  ];
  const results=await Promise.all(urls.map(async ([key,endpoint])=>[key,Array.isArray(endpoint)?await readAnyPublicJson(endpoint):await readPublicJson(endpoint)]));
  const out=Object.fromEntries(results);
