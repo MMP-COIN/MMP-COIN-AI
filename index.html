@@ -1913,6 +1913,39 @@ html.mmp-native-app .native-section-label:after{content:"";height:1px;flex:1;bac
 html.mmp-native-app .footer{padding-bottom:12px}
 @media(min-width:901px){html.mmp-native-app .wrap{max-width:760px;margin:auto}}
 </style>
+<style id="mmp-native-screen-navigation">
+html.mmp-native-app body{padding-bottom:calc(92px + env(safe-area-inset-bottom))!important}
+html.mmp-native-app .native-page-hidden{display:none!important}
+html.mmp-native-app .native-app-nav{position:fixed;z-index:1100;left:10px;right:10px;bottom:max(8px,env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;padding:7px 6px;border:1px solid #536a7d;border-radius:19px;background:linear-gradient(110deg,#101e2df5,#0a111bf5);box-shadow:0 12px 36px #000c,inset 0 1px #ffffff12;backdrop-filter:blur(22px)}
+html.mmp-native-app .native-app-nav button{display:flex;min-width:0;min-height:53px;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:1px solid transparent;border-radius:13px;background:transparent;color:#9aafbf;font:700 9px Tahoma,Arial,sans-serif}
+html.mmp-native-app .native-app-nav button i{font-style:normal;font-size:20px;line-height:1.1}
+html.mmp-native-app .native-app-nav button.native-active{color:#f5d991;border-color:#987a47;background:linear-gradient(145deg,#3b301d,#1c2430);box-shadow:0 0 17px #d7b46a25}
+html.mmp-native-app .native-app-nav button:active{transform:scale(.96)}
+html.mmp-native-app .native-back-button{display:none;border:1px solid #516579;border-radius:9px;background:#152536;color:#f2d995;padding:7px 9px;font:700 10px Tahoma,Arial,sans-serif;white-space:nowrap}
+html.mmp-native-app .native-back-button.is-visible{display:inline-flex}
+html.mmp-native-app .native-more-hub{padding:10px 0 22px}
+html.mmp-native-app .native-module-heading{padding:17px 16px;margin-bottom:14px;border:1px solid #455b6d;border-radius:19px;background:radial-gradient(ellipse at 85% 0,#35536a66,transparent 55%),linear-gradient(135deg,#1a2a3a,#0d1723);box-shadow:inset 0 1px #ffffff12,0 12px 25px #0004}
+html.mmp-native-app .native-module-heading small{color:#c9a965;font-size:9px;letter-spacing:1.4px}
+html.mmp-native-app .native-module-heading h2{margin:7px 0;color:#f3d995;font-size:19px}
+html.mmp-native-app .native-module-heading p{margin:0;color:#9fb1c0;font-size:11px;line-height:1.9}
+html.mmp-native-app .native-module-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+html.mmp-native-app .native-module-grid button{display:flex;min-height:126px;flex-direction:column;align-items:flex-start;justify-content:center;gap:7px;padding:14px;border:1px solid #40596d;border-radius:16px;background:linear-gradient(145deg,#192b3c,#0e1925);color:#e5edf2;text-align:right;box-shadow:inset 0 1px #ffffff0b,0 8px 18px #0003}
+html.mmp-native-app .native-module-grid button i{width:34px;height:34px;display:grid;place-items:center;border:1px solid #927849;border-radius:11px;background:linear-gradient(145deg,#f1d48f,#a77a38);color:#17130b;font-style:normal;font-size:19px}
+html.mmp-native-app .native-module-grid button b{font-size:12px;color:#f2d995}
+html.mmp-native-app .native-module-grid button small{font-size:9px;color:#9db1c0;line-height:1.7}
+html.mmp-native-app .native-module-grid button:active{transform:scale(.98);border-color:#d5b56d}
+html.mmp-native-app .wrap>.hero{margin-top:3px}
+html.mmp-native-app #opportunities .radar-card{margin-bottom:0}
+html.mmp-native-app #watchlist{margin-top:0}
+html.mmp-native-app #chart-section{margin:0}
+html.mmp-native-app #ai-section{margin:0}
+html.mmp-native-app #coins-section{margin:0}
+html.mmp-native-app #trading-tools{margin:0}
+html.mmp-native-app .native-appbar{position:sticky}
+html.mmp-native-app .mmp-share-toast{bottom:calc(88px + env(safe-area-inset-bottom))}
+@media(max-width:380px){html.mmp-native-app .native-module-grid{gap:8px}html.mmp-native-app .native-module-grid button{min-height:116px;padding:11px}}
+@media(prefers-reduced-motion:reduce){html.mmp-native-app .native-app-nav button{transition:none}}
+</style>
 <script>
 (function(){
  try{
@@ -1926,25 +1959,72 @@ html.mmp-native-app .footer{padding-bottom:12px}
    document.body.insertBefore(header,document.body.firstChild);
    var refreshButton=header.querySelector("#native-refresh-btn");
    if(refreshButton){refreshButton.addEventListener("click",function(){if(refreshButton.disabled)return;refreshButton.disabled=true;refreshButton.classList.add("is-refreshing");try{if(typeof refreshAll==="function")refreshAll();if(typeof checkConnections==="function")checkConnections();}finally{setTimeout(function(){refreshButton.disabled=false;refreshButton.classList.remove("is-refreshing");},1800);}});}
-   var nav=document.querySelector(".mmp-mobile-dock");
-   if(nav)nav.remove();
-   nav=null;
-   if(nav){
-    nav.innerHTML='<a href="#hero" data-native-tab="hero"><i>⌂</i><span>خانه</span></a><a href="#chart-section" data-native-tab="chart-section"><i>▥</i><span>نمودار</span></a><a href="#opportunities" data-native-tab="opportunities"><i>◈</i><span>رادار</span></a><a href="#watchlist" data-native-tab="watchlist"><i>☆</i><span>دیده‌بان</span></a><a href="#ai-section" data-native-tab="ai-section" class="dock-ai"><i>✧</i><span>تحلیل AI</span></a><a href="#trading-tools" data-native-tab="trading-tools"><i>⌗</i><span>ابزارها</span></a><button type="button" class="dock-share" id="mmp-share-app" aria-label="ارسال لینک اپ"><i>↗</i><span>ارسال اپ</span></button>'
-    var links=nav.querySelectorAll("a");
-    var shareButton=nav.querySelector("#mmp-share-app");
-    function showShareToast(message){var old=document.querySelector(".mmp-share-toast");if(old)old.remove();var toast=document.createElement("div");toast.className="mmp-share-toast";toast.textContent=message;document.body.appendChild(toast);setTimeout(function(){toast.remove()},2600)}
-    if(shareButton){shareButton.addEventListener("click",async function(){var shareUrl="https://github.com/MMP-COIN/MMP-COIN-AI/releases/latest/download/app-release.apk";var shareData={title:"MMP COIN AI",text:"ترمینال هوشمند تحلیل بازار رمزارزها",url:shareUrl};try{if(navigator.share){await navigator.share(shareData)}else if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(shareUrl);showShareToast("لینک دانلود اپ کپی شد؛ برای دوستانتان ارسال کنید")}else{var field=document.createElement("textarea");field.value=shareUrl;field.style.position="fixed";field.style.opacity="0";document.body.appendChild(field);field.select();document.execCommand("copy");field.remove();showShareToast("لینک دانلود اپ کپی شد؛ برای دوستانتان ارسال کنید")}}catch(error){if(error&&error.name!=="AbortError")showShareToast("برای اشتراک‌گذاری دوباره تلاش کنید")}})}
-    function setActive(id){links.forEach(function(a){a.classList.toggle("native-active",a.getAttribute("data-native-tab")===id)})}
-    links.forEach(function(a){a.addEventListener("click",function(){setActive(a.getAttribute("data-native-tab"))})});
-    setActive("hero");
-    if("IntersectionObserver" in window){
-     var sections=["hero","chart-section","opportunities","watchlist","ai-section","trading-tools"].map(function(id){return document.getElementById(id)}).filter(Boolean);
-     var observer=new IntersectionObserver(function(entries){var visible=entries.filter(function(e){return e.isIntersecting}).sort(function(a,b){return b.intersectionRatio-a.intersectionRatio})[0];if(visible)setActive(visible.target.id)},{rootMargin:"-18% 0px -58% 0px",threshold:[0,.15,.35,.6]});
-     sections.forEach(function(el){observer.observe(el)});
+   var wrap=document.querySelector("main.wrap");
+   var nav=document.createElement("nav");
+   nav.className="native-app-nav";
+   nav.setAttribute("aria-label","منوی اصلی اپلیکیشن");
+   nav.innerHTML='<button type="button" data-native-tab="home"><i>⌂</i><span>خانه</span></button><button type="button" data-native-tab="radar"><i>◈</i><span>رادار</span></button><button type="button" data-native-tab="chart"><i>▥</i><span>نمودار</span></button><button type="button" data-native-tab="ai"><i>✧</i><span>تحلیل AI</span></button><button type="button" data-native-tab="more"><i>☷</i><span>بیشتر</span></button>';
+   document.body.appendChild(nav);
+   var headerBack=document.createElement("button");
+   headerBack.type="button";headerBack.className="native-back-button";headerBack.textContent="‹ بازگشت";
+   headerBack.addEventListener("click",function(){showNativePage("more");});
+   var headerActions=header.querySelector(".native-appbar-actions");
+   if(headerActions)headerActions.insertBefore(headerBack,headerActions.firstChild);
+   var hub=document.createElement("section");
+   hub.className="native-more-hub native-page-hidden";
+   hub.innerHTML='<div class="native-module-heading"><small>MMP COIN AI · WORKSPACE</small><h2>مرکز ابزارهای بازار</h2><p>هر بخش را جداگانه باز کن؛ بدون پیمایش طولانی بین تمام قسمت‌های برنامه.</p></div><div class="native-module-grid"><button type="button" data-native-module="watchlist"><i>☆</i><b>دیده‌بان شخصی</b><small>ارزهای منتخب و تغییرات قیمت</small></button><button type="button" data-native-module="coins"><i>₿</i><b>بازار رمزارزها</b><small>فهرست قیمت، تغییرات و ارزش بازار</small></button><button type="button" data-native-module="tools"><i>⌗</i><b>ابزارهای معامله</b><small>محاسبه ریسک و دفتر تحلیل</small></button><button type="button" data-native-module="hours"><i>◷</i><b>ساعت بازارها</b><small>زمان فعالیت بازارهای جهانی</small></button><button type="button" data-native-module="sources"><i>⌁</i><b>سلامت منابع داده</b><small>وضعیت اتصال صرافی‌ها و مراجع</small></button><button type="button" id="native-share-app"><i>↗</i><b>ارسال اپلیکیشن</b><small>اشتراک لینک دانلود با دوستان</small></button></div>';
+   if(wrap)wrap.insertBefore(hub,wrap.firstChild);
+   var shareUrl="https://github.com/MMP-COIN/MMP-COIN-AI/releases/latest/download/app-release.apk";
+   function showShareToast(message){var old=document.querySelector(".mmp-share-toast");if(old)old.remove();var toast=document.createElement("div");toast.className="mmp-share-toast";toast.textContent=message;document.body.appendChild(toast);setTimeout(function(){if(toast.parentNode)toast.remove();},2800);}
+   function shareNativeApp(){var data={title:"MMP COIN AI",text:"ترمینال هوشمند تحلیل بازار رمزارزها",url:shareUrl};if(navigator.share){navigator.share(data).catch(function(error){if(error&&error.name!=="AbortError")showShareToast("اشتراک‌گذاری انجام نشد؛ دوباره تلاش کن.");});return;}if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(shareUrl).then(function(){showShareToast("لینک دانلود اپ کپی شد؛ برای دوستانت ارسال کن.");}).catch(function(){showShareToast(shareUrl);});return;}var field=document.createElement("textarea");field.value=shareUrl;field.style.position="fixed";field.style.opacity="0";document.body.appendChild(field);field.select();try{document.execCommand("copy");showShareToast("لینک دانلود اپ کپی شد؛ برای دوستانت ارسال کن.");}catch(e){showShareToast(shareUrl);}field.remove();}
+   var shareButton=hub.querySelector("#native-share-app");
+   if(shareButton)shareButton.addEventListener("click",shareNativeApp);
+   var wrapChildren=wrap?Array.prototype.slice.call(wrap.children):[];
+   function rootChild(element){var node=element;while(node&&node.parentElement!==wrap)node=node.parentElement;return node&&node.parentElement===wrap?node:null;}
+   function reveal(element){var root=rootChild(element);if(root)root.classList.remove("native-page-hidden");}
+   function hide(element){if(element)element.classList.add("native-page-hidden");}
+   function showNativePage(page){
+    if(!wrap)return;
+    wrapChildren.forEach(function(node){node.classList.add("native-page-hidden");});
+    hub.classList.add("native-page-hidden");
+    if(headerBack)headerBack.classList.toggle("is-visible",["watchlist","coins","tools","hours","sources"].indexOf(page)>=0);
+    var activeTab=({home:"home",radar:"radar",chart:"chart",ai:"ai",more:"more",watchlist:"more",coins:"more",tools:"more",hours:"more",sources:"more"})[page]||"home";
+    nav.querySelectorAll("[data-native-tab]").forEach(function(button){button.classList.toggle("native-active",button.getAttribute("data-native-tab")===activeTab);});
+    if(page==="home"){
+     [wrap.querySelector(".hero"),document.getElementById("market-ticker"),document.getElementById("market-snapshot"),document.getElementById("mmp-live-intelligence")].forEach(reveal);
+    }else if(page==="radar"){
+     reveal(document.getElementById("opportunities"));
+     hide(document.querySelector("#opportunities .watch-card"));
+     var radar=document.querySelector("#opportunities .radar-card");if(radar)radar.classList.remove("native-page-hidden");
+    }else if(page==="watchlist"){
+     reveal(document.getElementById("opportunities"));
+     hide(document.querySelector("#opportunities .radar-card"));
+     var watch=document.getElementById("watchlist");if(watch)watch.classList.remove("native-page-hidden");
+    }else if(page==="chart"){
+     reveal(document.getElementById("chart-section"));
+    }else if(page==="ai"){
+     reveal(document.getElementById("ai-section"));
+    }else if(page==="coins"){
+     reveal(document.getElementById("coins-section"));
+    }else if(page==="tools"){
+     reveal(document.getElementById("trading-tools"));
+    }else if(page==="hours"||page==="sources"){
+     var sourcePanel=document.getElementById("connections")?.closest("section.card");
+     var hoursPanel=document.getElementById("market-hours");
+     reveal(sourcePanel);
+     if(sourcePanel&&hoursPanel){
+      Array.prototype.forEach.call(sourcePanel.children,function(child){child.classList.toggle("native-page-hidden",page==="hours"&&child!==hoursPanel);});
+      hoursPanel.classList.toggle("native-page-hidden",page==="sources");
+     }
+    }else if(page==="more"){
+     hub.classList.remove("native-page-hidden");
     }
-    links.forEach(function(a){a.addEventListener("click",function(e){var target=document.querySelector(a.getAttribute("href"));if(target){e.preventDefault();target.scrollIntoView({behavior:"smooth",block:"start"});history.replaceState(null,"",a.getAttribute("href"))}})});
+    document.body.setAttribute("data-native-page",page);
+    window.scrollTo({top:0,behavior:"instant"});
    }
+   nav.querySelectorAll("[data-native-tab]").forEach(function(button){button.addEventListener("click",function(){showNativePage(button.getAttribute("data-native-tab"));});});
+   hub.querySelectorAll("[data-native-module]").forEach(function(button){button.addEventListener("click",function(){showNativePage(button.getAttribute("data-native-module"));});});
+   showNativePage("home");
    var nativeUpdateChecking=false;
    function showNativeUpdateMessage(message){
     var old=document.querySelector(".mmp-update-toast");if(old)old.remove();
