@@ -38,7 +38,11 @@ jobs:
           jq -e '.worker == "online" and .ai_binding == true' /tmp/preview-health.json >/dev/null
           curl --fail --silent --show-error --max-time 25 "$WORKER_PREVIEW_URL/connections-health" -o /tmp/preview-connections.json
           jq -e '.checks | length == 6 and ([.[] | select(.status == "down" and (.error // "" | test("HTTP 403")))] | length) == 0' /tmp/preview-connections.json >/dev/null
-          echo "- Staged Worker version: health and exchange-status classification passed" >> "$GITHUB_STEP_SUMMARY"
+          curl --fail --silent --show-error --max-time 25 "$WORKER_PREVIEW_URL/market-proxy?source=binance-tickers" -o /tmp/preview-market.json
+          jq -e 'type == "array" and length > 0' /tmp/preview-market.json >/dev/null
+          curl --fail --silent --show-error --max-time 70 -H "Content-Type: application/json" -d '{"coin_id":"bitcoin","symbol":"BTC","name":"Bitcoin","market_mode":"spot"}' "$WORKER_PREVIEW_URL/" -o /tmp/preview-analysis.json
+          jq -e '.analysis != null and (.analysis.action == "BUY" or .analysis.action == "SELL" or .analysis.action == "WAIT") and (.market.timeframes | has("15m") and has("1h") and has("4h") and has("1d"))' /tmp/preview-analysis.json >/dev/null
+          echo "- Staged Worker version: health, market proxy, and four-timeframe AI analysis passed" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Check Worker health endpoint
         env:
