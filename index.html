@@ -1329,13 +1329,14 @@ async function refreshAll(){
    if(settled[0].status==="fulfilled")topRes=settled[0].value;
    if(settled[1].status==="fulfilled")extraRes=settled[1].value;
   }finally{clearTimeout(marketTimer);}
-  let topData=null,extraData=[],usingCachedMarket=false;
-  if(topRes?.ok){try{topData=await topRes.json();}catch(error){console.warn("Market proxy returned invalid top data:",error);}}
+  let topData=null,extraData=[],usingCachedMarket=false,coinGeckoSourceOk=false;
+  if(topRes?.ok){try{topData=await topRes.json();coinGeckoSourceOk=Array.isArray(topData)&&topData.length>0;}catch(error){console.warn("Market proxy returned invalid top data:",error);}}
   if(!Array.isArray(topData)){
    try{
     const directTop=await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=false&price_change_percentage=1h%2C24h%2C7d',{cache:'no-store'});
     if(!directTop.ok)throw new Error('CoinGecko top-100 HTTP '+directTop.status);
     topData=await directTop.json();
+    coinGeckoSourceOk=Array.isArray(topData)&&topData.length>0;
    }catch(directError){
     try{
      const paprikaResponse=await fetch("https://api.coinpaprika.com/v1/tickers?quotes=USD&limit=250",{cache:"no-store"});
@@ -1363,6 +1364,8 @@ async function refreshAll(){
   }
   if(!extraData.length&&cachedMarket?.extraData)extraData=cachedMarket.extraData;
   if(!Array.isArray(topData))throw new Error('CoinGecko returned invalid top-100 data');
+  coinGeckoConnectionStatus=coinGeckoSourceOk?"ok":usingCachedMarket?"cached":"fallback";
+  renderCoinGeckoConnection();
   if(!usingCachedMarket){try{localStorage.setItem(marketCacheKey,JSON.stringify({savedAt:Date.now(),topData,extraData}));}catch(cacheError){console.warn("Market catalog cache could not be saved:",cacheError);}}
 
   // نگه‌داشتن ۱۰۰ دارایی قابل معامله با نمادهای یکتا؛ ارزهای تکراری حذف می‌شوند؛ استیبل‌کوین‌ها و توکن‌های رَپ‌شده از منوی کندل/تحلیل کنار گذاشته می‌شوند.
@@ -1416,7 +1419,6 @@ async function refreshAll(){
   exchangeSupportBySymbol=supportBySymbol;
   data.forEach(coin=>{coin.exchange_support=supportBySymbol[String(coin.symbol||"").toUpperCase()]||null;});
   exchangeAuditAt=Date.now();
-   coinGeckoConnectionStatus="ok";renderCoinGeckoConnection();
   data = await enrichWithBinance(data);
   cachedCoinsData = data;
   
@@ -1524,9 +1526,10 @@ function renderCoinGeckoConnection(){
  const exchangeCards=Array.from(box.querySelectorAll('.conn:not([data-provider="coingecko"])'));
  const exchangeHtml=exchangeCards.map(card=>card.outerHTML).join("");
  const status=coinGeckoConnectionStatus;
- const label=status==="ok"?"متصل":status==="down"?"قطع":"در حال بررسی";
- const detail=status==="ok"?"منبع قیمت و فهرست ارزها فعال است":status==="down"?"دریافت اطلاعات بازار ناموفق بود":"در انتظار دریافت اطلاعات بازار";
- box.innerHTML=exchangeHtml+'<div class="conn" data-provider="coingecko"><div class="conn-top"><span class="conn-name">CoinGecko · مرجع بازار</span><span class="lamp '+(status==="ok"?"ok":status==="down"?"down":"")+'"></span></div><div class="conn-meta"><span>'+label+'</span><b dir="ltr">—</b></div><small class="conn-purpose">'+detail+'</small></div>';
+ const label=status==="ok"?"متصل":status==="down"?"قطع":status==="fallback"?"جایگزین فعال":status==="cached"?"داده ذخیره‌شده":"در حال بررسی";
+ const detail=status==="ok"?"داده مستقیم CoinGecko دریافت می‌شود":status==="down"?"دریافت اطلاعات بازار ناموفق بود":status==="fallback"?"CoinGecko محدود است؛ داده بازار از CoinPaprika تأمین می‌شود":status==="cached"?"منبع زنده پاسخ نداد؛ آخرین داده معتبر ذخیره‌شده نمایش داده می‌شود":"در انتظار دریافت اطلاعات بازار";
+ const lamp=status==="ok"?"ok":status==="down"?"down":status==="fallback"||status==="cached"?"slow":"";
+ box.innerHTML=exchangeHtml+'<div class="conn" data-provider="coingecko"><div class="conn-top"><span class="conn-name">CoinGecko · مرجع بازار</span><span class="lamp '+lamp+'"></span></div><div class="conn-meta"><span>'+label+'</span><b dir="ltr">—</b></div><small class="conn-purpose">'+detail+'</small></div>';
 }
 function setupConnectionsToggle(){
  const button=$("connections-toggle"),extra=$("connections-extra");
