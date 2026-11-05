@@ -132,19 +132,6 @@ jobs:
             echo "- Bitget direct API: checked separately with browser CORS"
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Probe Ramzinex public market-price feed
-        run: |
-          set -euo pipefail
-          status=$(curl --silent --show-error --max-time 25 -o /tmp/ramzinex-prices.json -w "%{http_code}" "https://publicapi.ramzinex.com/exchange/api/exchange/prices" || true)
-          echo "Ramzinex public prices HTTP $status"
-          if [ "$status" = "200" ]; then
-            echo "- Ramzinex public price feed: reachable" >> "$GITHUB_STEP_SUMMARY"
-            jq -c 'if type == "object" then (keys | .[0:12]) else (.[0:2]) end' /tmp/ramzinex-prices.json || head -c 500 /tmp/ramzinex-prices.json
-          else
-            echo "::warning::Ramzinex public price feed not reachable from this runner (HTTP $status)."
-            echo "- Ramzinex public price feed: unavailable from runner (HTTP $status)" >> "$GITHUB_STEP_SUMMARY"
-          fi
-
       - name: Verify CoinPaprika backup market feed
         run: |
           set -euo pipefail
