@@ -29,6 +29,17 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - name: Verify staged Worker version before production
+        env:
+          WORKER_PREVIEW_URL: https://a4f0b907-mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --max-time 20 "$WORKER_PREVIEW_URL/health" -o /tmp/preview-health.json
+          jq -e '.worker == "online" and .ai_binding == true' /tmp/preview-health.json >/dev/null
+          curl --fail --silent --show-error --max-time 25 "$WORKER_PREVIEW_URL/connections-health" -o /tmp/preview-connections.json
+          jq -e '.checks | length == 6 and ([.[] | select(.status == "down" and (.error // "" | test("HTTP 403"))] | length) == 0' /tmp/preview-connections.json >/dev/null
+          echo "- Staged Worker version: health and exchange-status classification passed" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Check Worker health endpoint
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
