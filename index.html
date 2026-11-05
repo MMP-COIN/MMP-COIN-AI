@@ -768,6 +768,14 @@ body{background:
 @media(prefers-reduced-motion:reduce){.mmp-viz-live i,.mmp-ai-core-orbit,.mmp-ai-wave i{animation:none!important}.mmp-ai-core-orbit{transform:none!important}}
 </style>
 
+<style id="mmp-nov-2026-navigation-title">
+.menu-btn{width:42px;height:42px;display:grid;place-items:center;font-size:21px;border:1px solid #b99a5c88;background:linear-gradient(145deg,#242017,#111722);box-shadow:0 0 18px #d9b66d20}
+.hero .hero-title{display:flex;flex-direction:column;gap:0;max-width:650px;line-height:1.55}
+.hero .hero-title span{display:block;white-space:nowrap}
+.hero .hero-title span+span{color:var(--gold2)}
+.mmp-mobile-dock,.app-tabbar{display:none!important}
+@media(max-width:560px){.hero .hero-title{font-size:clamp(20px,5.2vw,26px);max-width:100%;white-space:normal}.hero .hero-title span{white-space:normal}.hero>div:first-child{max-width:calc(100% - 12px);padding-left:0}.hero-visual{left:-54px;opacity:.25;pointer-events:none}.wrap{padding-bottom:40px!important}}
+</style>
 </head>
 <body class="mmp-app-mode">
 
@@ -783,7 +791,7 @@ body{background:
   </div>
   <span class="pill" id="clock">--:--:--</span>
   <button class="btn" onclick="refreshAll()">⟳ بروزرسانی</button>
-  <button class="menu-btn" onclick="toggleMenu()">☰</button>
+  <button class="menu-btn" type="button" onclick="toggleMenu()" aria-label="باز کردن منوی اصلی" aria-controls="dropdownMenu" aria-expanded="false"><span aria-hidden="true">☰</span></button>
 </div>
 <div class="dropdown-menu" id="dropdownMenu">
   <a href="#hero" onclick="toggleMenu()">🏠 صفحه اصلی</a>
@@ -809,14 +817,12 @@ body{background:
   <a class="side-link" href="#connections"><i>◉</i><span>سلامت منابع داده</span><em>09</em></a>
   <div class="side-footer"><span class="live-dot"></span><span>اتصال زنده بازار</span><small>DATA STREAM ACTIVE</small></div>
 </aside>
-<nav class="mmp-mobile-dock app-tabbar" aria-label="منوی اختصاصی اپلیکیشن">
-  <a href="#hero"><i>◈</i><span>خانه</span></a><a href="#opportunities"><i>⌖</i><span>رادار</span></a><a href="#ai-section" class="dock-ai"><i>✧</i><span>تحلیل AI</span></a><a href="#chart-section"><i>⌁</i><span>نمودار</span></a><a href="#trading-tools"><i>⌗</i><span>ابزارها</span></a>
-</nav>
+<!-- منوی پایین حذف شد؛ منوی اصلی در سربرگ قرار دارد. -->
 <main class="wrap" id="hero">
 <section class="hero">
 <div>
   <div class="eyebrow">ULTRA-PRO CRYPTO INTELLIGENCE HUB</div>
-  <h1>ترمینال جامع و هوشمند بازارهای مالی</h1>
+  <h1 class="hero-title"><span>ترمینال جامع و هوشمند</span><span>بازارهای مالی</span></h1>
   <p>داده‌های زنده بازار، رادار فرصت‌ها و تحلیل چندلایه هوش مصنوعی؛ برای تصمیم‌گیری آگاهانه، نه دنبال‌کردن سیگنال‌های کور.</p>
 </div>
 <div class="hero-visual"><div class="hero-orbit orbit-a"></div><div class="hero-orbit orbit-b"></div><div class="hero-coin"><b>M</b><small>AI</small></div><div class="hero-spark spark-a"></div><div class="hero-spark spark-b"></div><div class="hero-visual-label">MARKET INTELLIGENCE <span>● LIVE</span></div></div><span class="badge" id="updated">در حال دریافت داده…</span>
@@ -857,7 +863,7 @@ body{background:
   </div>
 </section>
 
-<nav class="terminal-nav" id="terminal-navigation" aria-label="دسترسی سریع ترمینال"><a href="#opportunities">رادار بازار</a><a href="#ai-section">تحلیل هوشمند AI</a><a href="#chart-section">نمودار حرفه‌ای</a><a href="#coins-section">لیست ارزها</a><a href="#watchlist">دیده‌بان شخصی</a><a href="#trading-tools">ابزار معامله‌گر</a><a href="#market-hours">ساعت بازارها</a><a href="#connections">سلامت منابع</a></nav>
+<!-- دسترسی به بخش‌ها فقط از منوی بالای سایت انجام می‌شود. -->
 
 
 <!-- بخش نمودار تریدینگ‌ویو با منوی ۵۰ ارز اصلی و ارزهای منتخب -->
