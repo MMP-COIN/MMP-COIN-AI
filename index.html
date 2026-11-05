@@ -590,6 +590,93 @@ body:after{content:"";position:fixed;width:42vw;height:42vw;max-width:620px;max-
 @media(max-width:600px){.chart-exit-fullscreen-btn{top:max(10px,env(safe-area-inset-top));right:max(10px,env(safe-area-inset-right));padding:12px 14px;font-size:12px}}
 .radar-backtest{padding:13px;border-color:#4b4638}.radar-backtest>b{display:block;color:var(--gold2);margin-bottom:9px}.radar-backtest-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.radar-backtest-stats span{font-size:11px;color:var(--muted);background:#141722;padding:8px;border-radius:7px}.radar-backtest-stats b{display:block;color:var(--text);font-size:14px;margin-top:3px}.radar-backtest small{display:block;color:var(--muted);margin-top:9px;line-height:1.7}@media(max-width:520px){.radar-backtest-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}.radar-deep-tools{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:14px 0}.radar-deep-tools .btn{min-height:42px}.radar-deep-results{display:grid;gap:10px;margin:10px 0}.radar-deep-card{background:linear-gradient(135deg,#171923,#101219);border:1px solid #3b3540;border-radius:14px;padding:14px}.radar-deep-head{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.radar-deep-head small{width:100%;color:var(--muted)}.radar-deep-tfs{display:flex;gap:7px;flex-wrap:wrap;margin:12px 0}.radar-deep-tf{background:#090b11;border:1px solid var(--line);padding:7px 9px;border-radius:8px;font-size:12px}.radar-deep-levels{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.radar-deep-levels span{background:#0c0e14;padding:9px;border-radius:8px;font-size:12px}.radar-deep-card p{color:var(--muted);font-size:12px;line-height:1.8}.radar-deep-card>small{color:var(--muted)}@media(max-width:520px){.radar-deep-levels{grid-template-columns:1fr}}.radar-ai-title{font-weight:800;color:var(--gold2);margin:15px 0 6px}.radar-ai-status{margin-bottom:8px}.radar-count-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}.radar-count-card{display:flex;align-items:center;gap:9px;padding:13px;border:1px solid #39333b;border-radius:12px;background:#12151d}.radar-count-card span{font-size:13px;color:var(--text)}.radar-count-card b{font-size:24px;line-height:1;color:var(--gold2);margin-right:auto}.radar-count-card small{color:var(--muted)}.radar-count-card.bull{border-right:3px solid #25a879}.radar-count-card.bear{border-right:3px solid #d65b61}.radar-ai-card{padding:13px;border:1px solid #39333b;border-radius:12px;background:#12151d}.radar-ai-card+.radar-ai-card{margin-top:9px}.radar-ai-card-head{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}.radar-ai-card-head b{color:var(--gold2)}.radar-ai-direction{font-size:13px;font-weight:700;margin:8px 0}.radar-ai-levels{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.radar-ai-levels span{padding:8px;background:#1a1e28;border-radius:8px;font-size:11px;color:var(--muted)}.radar-ai-levels b{display:block;color:var(--text);font-size:12px;margin-top:4px;overflow-wrap:anywhere}.radar-ai-no-signal{font-size:12px;color:var(--muted);margin:8px 0}.radar-ai-card>small{display:block;color:var(--muted);font-size:11px;margin-top:9px;line-height:1.6}@media(max-width:520px){.radar-ai-levels{grid-template-columns:1fr}.radar-count-card{gap:6px;padding:10px}.radar-count-card b{font-size:21px}}</style>
 <link href="https://fonts.googleapis.com/css2?family=Estedad:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+
+<style id="mmp-experience-redesign">
+/* MMP COIN AI — information hierarchy and visual system */
+:root{--mmp-ice:#b8d7e7;--mmp-teal:#38d8c0;--mmp-panel-glass:rgba(16,25,37,.82)}
+html{scroll-behavior:smooth;scroll-padding-top:92px}
+body{background:
+ radial-gradient(ellipse at 88% 5%,rgba(48,93,116,.22),transparent 32%),
+ radial-gradient(ellipse at 8% 26%,rgba(26,92,83,.16),transparent 27%),
+ radial-gradient(ellipse at 50% -18%,rgba(191,151,75,.15),transparent 42%),#070b12}
+.top{background:rgba(7,12,19,.9);border-bottom:1px solid rgba(173,194,213,.15)}
+.brand .logo{background:linear-gradient(145deg,#f4d995,#9a7133 65%,#263b4b);box-shadow:0 0 28px rgba(215,180,106,.28)}
+.wrap{padding-top:20px}
+.hero{position:relative;isolation:isolate;overflow:hidden;min-height:210px;margin:10px 0 14px;padding:28px 30px;border:1px solid rgba(215,180,106,.3);background:
+ radial-gradient(ellipse at 75% 50%,rgba(48,105,116,.25),transparent 42%),
+ linear-gradient(115deg,rgba(25,34,48,.98),rgba(9,16,25,.97) 62%,rgba(30,27,21,.96));
+ box-shadow:0 22px 65px rgba(0,0,0,.42),inset 0 1px rgba(255,255,255,.07)}
+.hero:after{content:"";position:absolute;inset:0;z-index:-1;opacity:.17;background-image:linear-gradient(rgba(180,204,220,.1) 1px,transparent 1px),linear-gradient(90deg,rgba(180,204,220,.1) 1px,transparent 1px);background-size:32px 32px;mask-image:linear-gradient(90deg,#000,transparent 85%)}
+.hero h1{max-width:760px;font-size:clamp(26px,3.6vw,43px);line-height:1.5}
+.hero p{max-width:670px}
+.hero-visual{filter:drop-shadow(0 16px 30px rgba(0,0,0,.42))}
+.market-ticker{margin:0 0 13px;padding:9px;border:1px solid rgba(139,176,198,.18);background:linear-gradient(100deg,rgba(15,26,38,.92),rgba(9,17,27,.92));box-shadow:0 12px 30px #0004}
+.ticker-item{border-color:rgba(143,177,198,.18);background:linear-gradient(145deg,#1b2a39,#101923)}
+.grid{margin-bottom:18px}
+.grid .card{position:relative;overflow:hidden;min-height:118px;border-color:rgba(143,177,198,.17);background:linear-gradient(145deg,rgba(25,37,52,.95),rgba(12,19,29,.97));box-shadow:0 13px 32px #0004}
+.grid .card:after{content:"";position:absolute;inset:auto -20px -38px auto;width:110px;height:90px;border-radius:50%;background:radial-gradient(circle,rgba(215,180,106,.13),transparent 70%);pointer-events:none}
+.grid .stat-label{color:#a8b8c7}
+.grid .stat-value{font-size:clamp(19px,2.3vw,27px);color:#f5e6c4}
+.terminal-nav{display:flex!important;position:sticky;top:76px;z-index:80;gap:7px;flex-wrap:nowrap;overflow:auto;padding:8px 2px 10px;margin:0 0 12px;scrollbar-width:none;background:linear-gradient(180deg,rgba(7,11,18,.95),rgba(7,11,18,.7));backdrop-filter:blur(12px)}
+.terminal-nav::-webkit-scrollbar{display:none}
+.terminal-nav a{flex:0 0 auto;border-color:rgba(150,181,199,.2);background:rgba(19,31,44,.92);padding:8px 13px;color:#c8d7e2;transition:.2s}
+.terminal-nav a:hover{border-color:var(--gold);background:#253547;transform:translateY(-1px)}
+#opportunities{margin:4px 0 18px;scroll-margin-top:100px}
+#opportunities>.radar-card{border-color:rgba(215,180,106,.38);background:linear-gradient(145deg,rgba(24,35,49,.98),rgba(10,17,27,.98));box-shadow:0 20px 50px rgba(0,0,0,.38),inset 0 1px rgba(255,255,255,.045)}
+#opportunities .watch-card{border-color:rgba(91,189,178,.24)}
+#ai-section{position:relative;overflow:hidden;border-color:rgba(215,180,106,.42);background:radial-gradient(ellipse at 90% 0,rgba(48,104,115,.18),transparent 34%),linear-gradient(145deg,#182333,#0c131e);box-shadow:0 20px 55px rgba(0,0,0,.42),inset 0 1px rgba(255,255,255,.06);scroll-margin-top:100px}
+#ai-section:before{content:"";position:absolute;top:0;right:0;left:0;height:2px;background:linear-gradient(90deg,transparent,#d7b46a,#4dd9c0,transparent)}
+#ai-section .section-kicker{color:#f0d38e}
+#chart-section{border-color:rgba(129,174,200,.27);background:linear-gradient(145deg,#141f2c,#0b121b);scroll-margin-top:100px}
+#coins-section{border-color:rgba(129,174,200,.2);background:linear-gradient(145deg,#141d29,#0c131d);scroll-margin-top:100px}
+#trading-tools{scroll-margin-top:100px}
+#market-hours{background:linear-gradient(145deg,#131d29,#0c131d);scroll-margin-top:100px}
+#connections{scroll-margin-top:100px}
+.card,.chart-box-wrapper,.collapsible-coins-container{box-shadow:0 14px 38px rgba(0,0,0,.32),inset 0 1px rgba(255,255,255,.025)}
+.card:hover{transform:translateY(-2px);border-color:rgba(215,180,106,.36)}
+.section-kicker{letter-spacing:1.7px;color:#d8bd83}
+.section-head h2{letter-spacing:-.25px}
+.btn,.pill,.dropdown-select-box{transition:border-color .18s,background .18s,transform .18s}
+.btn:focus-visible,.pill:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--mmp-teal);outline-offset:3px}
+.market-table tbody tr{transition:background .18s}
+.market-table tbody tr:hover td{background:rgba(59,120,137,.1)}
+#app-download,#contact-us{max-width:920px!important;border-color:rgba(215,180,106,.34)!important;background:radial-gradient(ellipse at 50% 0,rgba(50,96,108,.2),transparent 60%),linear-gradient(120deg,#172331,#0d141e 65%,#211d16)!important;box-shadow:0 18px 42px #0006,inset 0 1px #ffffff0a!important}
+.mmp-sidebar{background:linear-gradient(180deg,rgba(15,25,38,.98),rgba(7,13,22,.98));border-left-color:rgba(144,181,202,.2)}
+.side-caption{color:#8ba2b6}
+.side-link{min-height:45px}
+.side-link.active{background:linear-gradient(100deg,rgba(215,180,106,.15),rgba(35,63,78,.48));border-color:rgba(215,180,106,.36)}
+.mmp-mobile-dock{border-color:rgba(153,187,206,.27);background:linear-gradient(110deg,rgba(17,30,44,.97),rgba(8,17,28,.97));box-shadow:0 15px 45px #000b,inset 0 1px #ffffff18}
+.mmp-mobile-dock a{font-size:9px;min-width:52px}
+.mmp-mobile-dock a:active{transform:scale(.95)}
+@media(max-width:900px){
+ .terminal-nav{top:66px;margin:0 -3px 10px}
+ .hero{min-height:205px}
+ #opportunities{margin-top:8px}
+}
+@media(max-width:560px){
+ .wrap{padding:10px 10px 112px}
+ .hero{min-height:190px;padding:22px 17px}
+ .hero>div:first-child{max-width:100%;padding-left:38px}
+ .hero h1{font-size:23px;line-height:1.6}
+ .hero p{font-size:10px;line-height:1.9}
+ .hero-visual{opacity:.28;left:-62px;transform:translateY(-50%) scale(.53)}
+ .hero>#updated{font-size:8px}
+ .terminal-nav{top:60px;gap:6px}
+ .terminal-nav a{font-size:10px;padding:7px 10px}
+ .grid{gap:8px}
+ .grid .card{min-height:104px;padding:13px 11px}
+ .grid .stat-value{font-size:18px}
+ .section-head h2{font-size:15px}
+ .card{padding:14px;border-radius:15px}
+ #chart-container{height:400px;min-height:400px}
+ #tradingview_widget{min-height:400px}
+ #app-download,#contact-us{padding:19px 14px!important;margin-top:18px!important}
+}
+@media(prefers-reduced-motion:reduce){
+ html{scroll-behavior:auto}
+ *,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
+</style>
 </head>
 <body class="mmp-app-mode">
 
@@ -617,21 +704,22 @@ body:after{content:"";position:fixed;width:42vw;height:42vw;max-width:620px;max-
 
 <aside class="mmp-sidebar" id="mmp-sidebar">
   <div class="side-brand"><div class="side-emblem">M</div><div><b>MMP <span>COIN AI</span></b><small>PRO TRADING TERMINAL</small></div></div>
-  <div class="side-caption">WORKSPACE</div>
+  <div class="side-caption">INTELLIGENCE FIRST</div>
   <a class="side-link active" href="#hero"><i>◈</i><span>نمای کلی بازار</span><em>01</em></a>
-  <a class="side-link" href="#chart-section"><i>⌁</i><span>نمودار حرفه‌ای</span><em>02</em></a>
-  <a class="side-link" href="#ai-section"><i>✧</i><span>تحلیل هوشمند AI</span><em>03</em></a>
-  <div class="side-caption">MARKET INTELLIGENCE</div>
-  <a class="side-link" href="#opportunities"><i>⌖</i><span>رادار فرصت‌ها</span><em>04</em></a>
-  <a class="side-link" href="#watchlist"><i>☆</i><span>دیده‌بان شخصی</span><em>05</em></a>
-  <a class="side-link" href="#market-hours"><i>◷</i><span>ساعت بازارهای جهان</span><em>05</em></a>
-  <a class="side-link" href="#coins-section"><i>▤</i><span>بازار رمزارزها</span><em>06</em></a>
+  <a class="side-link" href="#opportunities"><i>⌖</i><span>رادار صعودی و نزولی</span><em>02</em></a>
+  <a class="side-link" href="#ai-section"><i>✧</i><span>تحلیلگر هوشمند AI</span><em>03</em></a>
+  <a class="side-link" href="#chart-section"><i>⌁</i><span>نمودار حرفه‌ای</span><em>04</em></a>
+  <div class="side-caption">MARKET & PERSONAL</div>
+  <a class="side-link" href="#coins-section"><i>▤</i><span>بازار رمزارزها</span><em>05</em></a>
+  <a class="side-link" href="#watchlist"><i>☆</i><span>دیده‌بان شخصی</span><em>06</em></a>
   <div class="side-caption">TRADING DESK</div>
   <a class="side-link" href="#trading-tools"><i>⌗</i><span>ابزارهای معامله‌گری</span><em>07</em></a>
+  <a class="side-link" href="#market-hours"><i>◷</i><span>ساعت بازارهای جهان</span><em>08</em></a>
+  <a class="side-link" href="#connections"><i>◉</i><span>سلامت منابع داده</span><em>09</em></a>
   <div class="side-footer"><span class="live-dot"></span><span>اتصال زنده بازار</span><small>DATA STREAM ACTIVE</small></div>
 </aside>
 <nav class="mmp-mobile-dock app-tabbar" aria-label="منوی اختصاصی اپلیکیشن">
-  <a href="#hero"><i>◈</i><span>خانه</span></a><a href="#opportunities"><i>⌖</i><span>رادار</span></a><a href="#watchlist"><i>☆</i><span>دیده‌بان</span></a><a href="#ai-section" class="dock-ai"><i>✧</i><span>تحلیل AI</span></a><a href="#trading-tools"><i>⌗</i><span>ابزارها</span></a>
+  <a href="#hero"><i>◈</i><span>خانه</span></a><a href="#opportunities"><i>⌖</i><span>رادار</span></a><a href="#ai-section" class="dock-ai"><i>✧</i><span>تحلیل AI</span></a><a href="#chart-section"><i>⌁</i><span>نمودار</span></a><a href="#trading-tools"><i>⌗</i><span>ابزارها</span></a>
 </nav>
 <main class="wrap" id="hero">
 <section class="hero">
@@ -653,23 +741,6 @@ body:after{content:"";position:fixed;width:42vw;height:42vw;max-width:620px;max-
 </section>
 
 <!-- بخش نمودار تریدینگ‌ویو با منوی ۵۰ ارز اصلی و ارزهای منتخب -->
-<section class="chart-box-wrapper" id="chart-section">
-<div class="chart-top-bar">
-  <h2 style="font-size:16px; margin:0;">نمودار تخصصی تریدینگ‌ویو</h2>
-  <div class="chart-actions">
-  <select id="tv-symbol" onchange="changeTradingViewSymbol()">
-    <option value="BINANCE:BTCUSDT">Bitcoin (BTC)</option>
-  </select>
-  <button class="btn secondary" id="chart-fullscreen-btn" type="button" onclick="toggleChartFullscreen()">⛶ تمام‌صفحه</button>
-  </div>
-</div>
-<div id="chart-container">
-  <button class="chart-exit-fullscreen-btn" id="chart-exit-fullscreen-btn" type="button" aria-label="بازگشت از حالت تمام‌صفحه نمودار" onclick="toggleChartFullscreen()">↙ بازگشت به صفحه</button>
-  <div id="tradingview_widget" style="width:100%; height:100%;"></div>
-</div>
-</section>
-
-<!-- تحلیلگر هوشمند؛ رابط فشرده با گزارش کاربردی و جزئیات اختیاری -->
 <section class="card ai-terminal" id="ai-section">
  <div class="section-head"><div><div class="section-kicker">MMP AI · MARKET INTELLIGENCE</div><h2>تحلیلگر هوشمند چندلایه بازار</h2></div><span class="badge">تحلیل داده‌محور</span></div>
  <p class="sub ai-intro">یک ارز را انتخاب کن تا روند، سطوح کلیدی و سناریوهای احتمالی بازار بررسی شود؛ تصمیم نهایی با خودت است.</p>
@@ -693,12 +764,23 @@ body:after{content:"";position:fixed;width:42vw;height:42vw;max-width:620px;max-
   </div>
  </details>
 </section>
-<section class="card" id="market-hours">
-<div class="section-head"><div><div class="section-kicker">GLOBAL MARKET CLOCK</div><h2>ساعت کاری بازارهای مالی جهان</h2></div><span class="badge" id="market-clock-zone">زمان محلی دستگاه</span></div>
-<div class="market-hours-grid" id="market-hours-grid"></div>
-<details class="market-hours-more" id="market-hours-more"><summary><span>نمایش سایر بازارها</span><small>ساعت لندن، توکیو و دیگر بازارها</small></summary><div class="market-hours-grid" id="market-hours-extra"></div></details>
-<p class="sub" style="margin-top:12px">ساعت‌ها بر اساس منطقه زمانی هر بازار و تغییر ساعت تابستانی محاسبه می‌شوند. تعطیلات رسمی و تغییرات اضطراری ممکن است وضعیت را تغییر دهند؛ این نمایش راهنمای زمان‌بندی است، نه تأییدیه رسمی بورس.</p>
+<section class="chart-box-wrapper" id="chart-section">
+<div class="chart-top-bar">
+  <h2 style="font-size:16px; margin:0;">نمودار تخصصی تریدینگ‌ویو</h2>
+  <div class="chart-actions">
+  <select id="tv-symbol" onchange="changeTradingViewSymbol()">
+    <option value="BINANCE:BTCUSDT">Bitcoin (BTC)</option>
+  </select>
+  <button class="btn secondary" id="chart-fullscreen-btn" type="button" onclick="toggleChartFullscreen()">⛶ تمام‌صفحه</button>
+  </div>
+</div>
+<div id="chart-container">
+  <button class="chart-exit-fullscreen-btn" id="chart-exit-fullscreen-btn" type="button" aria-label="بازگشت از حالت تمام‌صفحه نمودار" onclick="toggleChartFullscreen()">↙ بازگشت به صفحه</button>
+  <div id="tradingview_widget" style="width:100%; height:100%;"></div>
+</div>
 </section>
+
+<!-- تحلیلگر هوشمند؛ رابط فشرده با گزارش کاربردی و جزئیات اختیاری -->
 <section class="terminal-grid" id="opportunities">
 <section class="card radar-card"><div class="section-head"><div><div class="section-kicker">MMP MARKET SCANNER</div><h2>رادار هوشمند بازار</h2><p class="sub">خلاصه وضعیت بازار و پیشنهاد ورود و خروج بر پایه داده‌های زنده</p></div></div>
 <div class="radar-live-note"><span class="radar-live-dot"></span><span>به‌روزرسانی خودکار با داده‌های بازار</span><span id="radar-updated" class="sub">در انتظار داده بازار…</span></div>
@@ -711,28 +793,9 @@ body:after{content:"";position:fixed;width:42vw;height:42vw;max-width:620px;max-
 <div id="watch-feedback" class="watch-feedback" aria-live="polite"></div>
 <div id="watch-list" class="watch-list"><p class="sub">هنوز ارزی اضافه نکرده‌ای. از فهرست بالا انتخاب کن.</p></div></section>
 </section>
-<section class="card" id="trading-tools">
-<div class="section-head"><div><div class="section-kicker">TRADER TOOLKIT</div><h2>ابزارهای حرفه‌ای معامله‌گر</h2></div><span class="badge">محاسبه در همین دستگاه</span></div>
-<div class="tool-grid">
-<div class="tool-card"><h3>محاسبه‌گر ریسک و حجم معامله</h3><p>سرمایه، درصد ریسک، قیمت ورود و حد ضرر را وارد کن تا اندازه موقعیت پیشنهادی محاسبه شود.</p>
-<div class="tool-row risk-row">
-<label class="risk-field"><div class="risk-input-wrap"><input id="risk-capital" type="number" min="0" aria-label="سرمایه حساب به USDT" placeholder="سرمایه حساب" value="1000"><small>USDT</small></div></label>
-<label class="risk-field"><div class="risk-input-wrap"><input id="risk-percent" type="number" min="0.1" max="100" step="0.1" aria-label="درصد ریسک" placeholder="درصد ریسک" value="2"><small>%</small></div></label>
-</div>
-<div class="tool-row risk-row" style="margin-top:7px">
-<label class="risk-field"><div class="risk-input-wrap"><input id="risk-entry" type="number" min="0" step="any" aria-label="قیمت ورود به USDT" placeholder="قیمت ورود"><small>USDT</small></div></label>
-<label class="risk-field risk-field-stop"><div class="risk-input-wrap"><input id="risk-stop" type="number" min="0" step="any" aria-label="قیمت حد ضرر به USDT" placeholder="قیمت حد ضرر"><small>USDT</small></div></label>
-</div>
-<button class="btn primary" id="risk-calc" style="margin-top:9px">محاسبه حجم معامله</button><div id="risk-result" class="ai-status" style="margin-top:10px">قیمت ورود و حد ضرر را وارد کنید تا مبلغ ورود و ضرر احتمالی نمایش داده شود.</div></div>
-<div class="tool-card"><h3>هشدار قیمت و محدوده</h3><p>قیمت هدف را تعیین کن؛ با رسیدن قیمت، هشدار داخل برنامه نمایش داده می‌شود. اعلان دستگاه به پشتیبانی مرورگر و مجوز آن وابسته است.</p><div class="tool-row"><select id="alert-coin" aria-label="ارز هشدار"></select><select id="alert-direction"><option value="above">بالاتر از</option><option value="below">پایین‌تر از</option></select></div><div class="tool-row" style="margin-top:7px"><input id="alert-price" type="number" min="0" step="any" placeholder="قیمت هدف به دلار"><button class="btn primary" id="alert-add">ثبت هشدار</button></div><div id="price-alert-list" class="tool-list" style="margin-top:9px"></div><button class="btn secondary" id="alert-notify" style="margin-top:8px">فعال‌سازی اعلان دستگاه</button></div><div class="tool-card"><h3>دفتر ثبت تحلیل‌ها</h3><p>تحلیل‌های اجراشده روی همین دستگاه ثبت می‌شوند تا سوابق تصمیم‌ها قابل مرور باشد. ثبت تحلیل به معنی نتیجه سود یا زیان نیست.</p><div id="analysis-journal" class="tool-list"><p class="sub">هنوز تحلیلی ثبت نشده است.</p></div><button class="btn secondary" id="journal-clear" style="margin-top:9px">پاک‌کردن سوابق محلی</button></div>
-</div></section>
-<section class="card">
-<div class="section-head"><h2>وضعیت اتصال صرافی‌ها و مراجع</h2><span class="badge" id="conn-summary">پایش لایو</span></div>
-<div class="connection-grid" id="connections"></div>
- <div class="connection-more"><button class="connection-more-btn" id="connections-toggle" type="button" aria-expanded="false" aria-controls="connections-extra">نمایش ۲ منبع دیگر <span class="chevron" aria-hidden="true">⌄</span></button><div class="connection-grid connection-extra" id="connections-extra"></div></div>
-</section>
 
-<!-- فقط لیست ارزهای دیجیتال -->
+
+
 <section class="collapsible-coins-container" id="coins-section">
 <div class="section-head">
   <h2>لیست ارزهای دیجیتال</h2>
@@ -762,6 +825,35 @@ body:after{content:"";position:fixed;width:42vw;height:42vw;max-width:620px;max-
   <div class="full-coins-close-dock"><button class="full-coins-close-btn" type="button" onclick="toggleFullCoinsList()" aria-label="بستن فهرست ارزهای بیشتر">⌃ بستن فهرست ارزها و بازگشت به ابتدای لیست</button></div>
 </div>
 </section>
+<section class="card" id="trading-tools">
+<div class="section-head"><div><div class="section-kicker">TRADER TOOLKIT</div><h2>ابزارهای حرفه‌ای معامله‌گر</h2></div><span class="badge">محاسبه در همین دستگاه</span></div>
+<div class="tool-grid">
+<div class="tool-card"><h3>محاسبه‌گر ریسک و حجم معامله</h3><p>سرمایه، درصد ریسک، قیمت ورود و حد ضرر را وارد کن تا اندازه موقعیت پیشنهادی محاسبه شود.</p>
+<div class="tool-row risk-row">
+<label class="risk-field"><div class="risk-input-wrap"><input id="risk-capital" type="number" min="0" aria-label="سرمایه حساب به USDT" placeholder="سرمایه حساب" value="1000"><small>USDT</small></div></label>
+<label class="risk-field"><div class="risk-input-wrap"><input id="risk-percent" type="number" min="0.1" max="100" step="0.1" aria-label="درصد ریسک" placeholder="درصد ریسک" value="2"><small>%</small></div></label>
+</div>
+<div class="tool-row risk-row" style="margin-top:7px">
+<label class="risk-field"><div class="risk-input-wrap"><input id="risk-entry" type="number" min="0" step="any" aria-label="قیمت ورود به USDT" placeholder="قیمت ورود"><small>USDT</small></div></label>
+<label class="risk-field risk-field-stop"><div class="risk-input-wrap"><input id="risk-stop" type="number" min="0" step="any" aria-label="قیمت حد ضرر به USDT" placeholder="قیمت حد ضرر"><small>USDT</small></div></label>
+</div>
+<button class="btn primary" id="risk-calc" style="margin-top:9px">محاسبه حجم معامله</button><div id="risk-result" class="ai-status" style="margin-top:10px">قیمت ورود و حد ضرر را وارد کنید تا مبلغ ورود و ضرر احتمالی نمایش داده شود.</div></div>
+<div class="tool-card"><h3>هشدار قیمت و محدوده</h3><p>قیمت هدف را تعیین کن؛ با رسیدن قیمت، هشدار داخل برنامه نمایش داده می‌شود. اعلان دستگاه به پشتیبانی مرورگر و مجوز آن وابسته است.</p><div class="tool-row"><select id="alert-coin" aria-label="ارز هشدار"></select><select id="alert-direction"><option value="above">بالاتر از</option><option value="below">پایین‌تر از</option></select></div><div class="tool-row" style="margin-top:7px"><input id="alert-price" type="number" min="0" step="any" placeholder="قیمت هدف به دلار"><button class="btn primary" id="alert-add">ثبت هشدار</button></div><div id="price-alert-list" class="tool-list" style="margin-top:9px"></div><button class="btn secondary" id="alert-notify" style="margin-top:8px">فعال‌سازی اعلان دستگاه</button></div><div class="tool-card"><h3>دفتر ثبت تحلیل‌ها</h3><p>تحلیل‌های اجراشده روی همین دستگاه ثبت می‌شوند تا سوابق تصمیم‌ها قابل مرور باشد. ثبت تحلیل به معنی نتیجه سود یا زیان نیست.</p><div id="analysis-journal" class="tool-list"><p class="sub">هنوز تحلیلی ثبت نشده است.</p></div><button class="btn secondary" id="journal-clear" style="margin-top:9px">پاک‌کردن سوابق محلی</button></div>
+</div></section>
+<section class="card">
+<div class="section-head"><h2>وضعیت اتصال صرافی‌ها و مراجع</h2><span class="badge" id="conn-summary">پایش لایو</span></div>
+<section class="card" id="market-hours">
+<div class="section-head"><div><div class="section-kicker">GLOBAL MARKET CLOCK</div><h2>ساعت کاری بازارهای مالی جهان</h2></div><span class="badge" id="market-clock-zone">زمان محلی دستگاه</span></div>
+<div class="market-hours-grid" id="market-hours-grid"></div>
+<details class="market-hours-more" id="market-hours-more"><summary><span>نمایش سایر بازارها</span><small>ساعت لندن، توکیو و دیگر بازارها</small></summary><div class="market-hours-grid" id="market-hours-extra"></div></details>
+<p class="sub" style="margin-top:12px">ساعت‌ها بر اساس منطقه زمانی هر بازار و تغییر ساعت تابستانی محاسبه می‌شوند. تعطیلات رسمی و تغییرات اضطراری ممکن است وضعیت را تغییر دهند؛ این نمایش راهنمای زمان‌بندی است، نه تأییدیه رسمی بورس.</p>
+</section>
+<div class="connection-grid" id="connections"></div>
+ <div class="connection-more"><button class="connection-more-btn" id="connections-toggle" type="button" aria-expanded="false" aria-controls="connections-extra">نمایش ۲ منبع دیگر <span class="chevron" aria-hidden="true">⌄</span></button><div class="connection-grid connection-extra" id="connections-extra"></div></div>
+</section>
+
+<!-- فقط لیست ارزهای دیجیتال -->
+
 
 <section id="app-download" aria-label="دانلود اپلیکیشن اندروید" style="margin:24px auto 8px;max-width:760px;padding:22px 18px;border:1px solid #80683f;border-radius:20px;background:linear-gradient(135deg,#171b24,#10131a 62%,#211b12);box-shadow:0 14px 34px #0006;text-align:center">
   <div style="font-size:28px;line-height:1;margin-bottom:10px" aria-hidden="true">📱</div>
