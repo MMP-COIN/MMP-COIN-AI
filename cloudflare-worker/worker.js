@@ -423,7 +423,7 @@ async function handle(request,env){
     const data=await response.json();
     if(!valid(data))throw new Error("پاسخ معتبر دریافت نشد");
     return {status:Date.now()-started>2500?"slow":"ok",ping:Date.now()-started};
-   }catch(error){return {status:"down",ping:null,error:String(error?.message||"network error").slice(0,100)};}
+   }catch(error){const message=String(error?.message||"network error").slice(0,100);return {status:/HTTP 403/.test(message)?"restricted":"down",ping:null,error:/HTTP 403/.test(message)?"محدودیت دسترسی از مسیر سرور (HTTP 403)":message};}
    finally{clearTimeout(timer);}
   };
   const probeAny=async(urls,valid,timeout=9000,extraHeaders={})=>{
@@ -448,7 +448,7 @@ async function handle(request,env){
     if(raw&&typeof raw==="object")return Object.keys(raw).length>0;
     return false;
    },12000,{"Origin":"https://wallex.ir","Referer":"https://wallex.ir/"}),
-   timeoutFetch("https://api.bitget.com/api/v3/market/tickers?category=SPOT&symbol=BTCUSDT",d=>d?.code==="00000"&&Number(d?.data?.[0]?.lastPrice)>0,7000),
+   timeoutFetch("https://api.bitget.com/api/v3/market/tickers?category=SPOT&symbol=BTCUSDT",d=>d?.code==="00000"&&Number(d?.data?.[0]?.lastPrice)>0,7000,{"Origin":"https://www.bitget.com","Referer":"https://www.bitget.com/"}),
   ]);
   const checks=[
    {name:"Binance Spot",purpose:"قیمت و معاملات اسپات",...binance},
