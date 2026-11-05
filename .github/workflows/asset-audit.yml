@@ -79,8 +79,8 @@ jobs:
             const c=[];
             for(const host of ['https://api.binance.com','https://api1.binance.com','https://api2.binance.com','https://api3.binance.com','https://data-api.binance.vision']) c.push({name:'Binance Spot',url:host+'/api/v3/klines?symbol='+pair+'&interval='+tf+'&limit=250',rows:rowsArray});
             c.push({name:'Bitget Spot',url:'https://api.bitget.com/api/v3/market/candles?category=SPOT&symbol='+pair+'&interval='+bitgetTf+'&limit=250',rows:d=>(d?.code==='00000'||d?.code==='0')?d.data:null});
-            c.push({name:'KuCoin Spot',url:'https://api.kucoin.com/api/v1/market/candles?symbol='+base+'-'+quote+'&type='+kucoinTf,rows:d=>d?.code==='200000'?d.data:null});
-            c.push({name:'Gate.io Spot',url:'https://api.gateio.ws/api/v4/spot/candlesticks?currency_pair='+base+'_'+quote+'&interval='+tf+'&limit=250',rows:rowsArray});
+            for(const host of ['https://api.kucoin.com','https://api.kucoin.tr']) c.push({name:'KuCoin Spot',url:host+'/api/v1/market/candles?symbol='+base+'-'+quote+'&type='+kucoinTf,rows:d=>d?.code==='200000'?d.data:null});
+            for(const host of ['https://api.gateio.ws','https://api.gate.us']) c.push({name:'Gate.io Spot',url:host+'/api/v4/spot/candlesticks?currency_pair='+base+'_'+quote+'&interval='+tf+'&limit=250',rows:rowsArray});
             for(const host of ['https://whitebit.com','https://whitebit.eu','https://whitebit.tr','https://whitebit.ge']) c.push({name:'WhiteBIT Spot',url:host+'/api/v1/public/kline?market='+base+'_'+quote+'&interval='+tf+'&limit=250',rows:d=>d?.success===true?d.result:null});
             for(const host of ['https://api.bybit.eu','https://api.bytick.eu','https://api.bybit.com','https://api.bytick.com']) c.push({name:'Bybit Spot',url:host+'/v5/market/kline?category=spot&symbol='+pair+'&interval='+bybitTf+'&limit=250',rows:d=>d?.retCode===0?d.result?.list:null});
             for(const host of ['https://www.okx.com','https://us.okx.com','https://openapi.okx.com']) c.push({name:'OKX Spot',url:host+'/api/v5/market/candles?instId='+base+'-'+quote+'&bar='+okxTf+'&limit=250',rows:d=>d?.code==='0'?d.data:null});
@@ -147,11 +147,20 @@ jobs:
               if(nonTradableIds.has(c.id)||nonTradableSymbols.has(symbol)||map.has(c.id)||[...map.values()].some(x=>String(x.symbol).toUpperCase()===symbol)) return;
               map.set(c.id,c);
             });
-            const assets=[...map.values()].sort((a,b)=>(a.market_cap_rank||999999)-(b.market_cap_rank||999999)).slice(0,100);
-            if(assets.length!==100) throw new Error('Expected 100 unique assets, received '+assets.length);
-            const symbols=[...new Set(assets.map(x=>String(x.symbol).toUpperCase()))];
-            const supportPayload=await getJson(WORKER+'/support-check?symbols='+encodeURIComponent(symbols.join(',')));
-            const supportMap=Object.fromEntries((supportPayload.assets||[]).map(x=>[x.symbol,x]));
+            const candidates=[...map.values()].sort((a,b)=>(a.market_cap_rank||999999)-(b.market_cap_rank||999999)).filter(x=>/^[A-Z0-9_]{2,30}$/.test(String(x.symbol||"").toUpperCase()));
+            const supportMap={},supportSources={};
+            for(let i=0;i<candidates.length;i+=120){
+              const symbols=[...new Set(candidates.slice(i,i+120).map(x=>String(x.symbol).toUpperCase()))];
+              const supportPayload=await getJson(WORKER+'/support-check?symbols='+encodeURIComponent(symbols.join(',')));
+              (supportPayload.assets||[]).forEach(x=>{supportMap[String(x.symbol||"").toUpperCase()]=x;});
+              Object.assign(supportSources,supportPayload.sources||{});
+            }
+            if(!Object.values(supportSources).some(x=>x?.ok))throw new Error('Exchange catalogs unavailable; cannot verify tradable assets');
+            const assets=candidates.filter(x=>{
+              const support=supportMap[String(x.symbol||"").toUpperCase()];
+              return !!(support?.spot?.confirmed||support?.futures?.confirmed);
+            }).slice(0,100);
+            if(assets.length!==100)throw new Error('Only '+assets.length+' assets have confirmed active exchange pairs; 100 required');
             const results=[];
             for(let i=0;i<assets.length;i+=4) {
               const batch=assets.slice(i,i+4);
