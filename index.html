@@ -1683,9 +1683,9 @@ html.mmp-native-app .footer{padding-bottom:12px}
       var previous="";try{previous=localStorage.getItem(baseKey)||"";}catch(e){}
       if(!previous){try{localStorage.setItem(baseKey,hash);}catch(e){}if(manual)showNativeUpdateMessage("محتوای اپ به‌روز است.");return;}
       if(previous!==hash){
-       try{localStorage.setItem(baseKey,hash);if(!liveUpdateInitialCheck)localStorage.setItem(pendingKey,hash);}catch(e){}
-       if(liveUpdateInitialCheck)showNativeUpdateMessage("اپلیکیشن با آخرین تغییرات به‌صورت خودکار اجرا شد.");
-       else showNativeUpdateMessage("نسخه جدید آماده است؛ با بازکردن دوباره اپ، تغییرات به‌صورت خودکار اعمال می‌شوند.");
+       try{localStorage.setItem(pendingKey,hash);}catch(e){}
+       showNativeUpdateMessage("نسخه جدید دریافت شد؛ تغییرات در حال اعمال خودکار هستند…");
+       setTimeout(function(){location.reload();},800);
        return;
       }
       if(manual)showNativeUpdateMessage("تغییر جدیدی وجود ندارد؛ اپ به‌روز است.");
