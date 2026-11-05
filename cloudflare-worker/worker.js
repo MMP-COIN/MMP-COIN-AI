@@ -75,17 +75,18 @@ async function candles(symbol,interval,env,marketType="spot"){
    const result=analyzeKlines(rows);result.data_provider="Binance Futures";return result;
   }catch(e){binanceError=e;}
   let bybitError=null;
- const bybitInterval={"15m":"15","1h":"60","4h":"240","1d":"D"}[interval];
- for(const host of ["https://api.bybit.eu","https://api.bytick.eu","https://api.bybit.com","https://api.bytick.com"]){
-  try{
-   const url=host+"/v5/market/kline?category=spot&symbol="+encodeURIComponent(symbol)+"&interval="+bybitInterval+"&limit=250";
-   const r=await fetch(url,{headers});
-   if(!r.ok)throw new Error("Bybit Spot HTTP "+r.status);
-   const payload=await r.json(),list=payload?.retCode===0?payload.result?.list:null;
-   if(!Array.isArray(list)||list.length<minimumCandles)throw new Error(payload?.retMsg||"insufficient Bybit spot candle history");
-   const rows=list.slice().reverse().map(x=>[Number(x[0]),x[1],x[2],x[3],x[4],x[5],x[6]||"0","0","0","0"]);
-   const result=analyzeKlines(rows);result.data_provider="Bybit Spot (fallback)";return result;
-  }catch(e){bybitError=e;}
+   const bybitInterval={"15m":"15","1h":"60","4h":"240","1d":"D"}[interval];
+   for(const host of ["https://api.bybit.eu","https://api.bytick.eu","https://api.bybit.com","https://api.bytick.com"]){
+    try{
+     const url=host+"/v5/market/kline?category=linear&symbol="+encodeURIComponent(symbol)+"&interval="+bybitInterval+"&limit=250";
+     const r=await fetch(url,{headers});
+     if(!r.ok)throw new Error("Bybit Linear HTTP "+r.status);
+     const payload=await r.json(),list=payload?.retCode===0?payload.result?.list:null;
+     if(!Array.isArray(list)||list.length<minimumCandles)throw new Error(payload?.retMsg||"insufficient Bybit linear candle history");
+     const rows=list.slice().reverse().map(x=>[Number(x[0]),x[1],x[2],x[3],x[4],x[5],x[6]||"0","0","0","0"]);
+     const result=analyzeKlines(rows);result.data_provider="Bybit Linear (fallback)";return result;
+    }catch(e){bybitError=e;}
+   }
  }
   }
   try{
@@ -129,16 +130,18 @@ async function candles(symbol,interval,env,marketType="spot"){
   result.data_provider="Bitget Spot";return result;
  }catch(e){bitgetError=e;}
  let bybitError=null;
- try{
   const bybitInterval={"15m":"15","1h":"60","4h":"240","1d":"D"}[interval];
-  const url="https://api.bybit.com/v5/market/kline?category=spot&symbol="+encodeURIComponent(symbol)+"&interval="+bybitInterval+"&limit=250";
-  const r=await fetch(url,{headers});
-  if(!r.ok)throw new Error("Bybit Spot HTTP "+r.status);
-  const payload=await r.json(),list=payload?.retCode===0?payload.result?.list:null;
-  if(!Array.isArray(list)||list.length<minimumCandles)throw new Error(payload?.retMsg||"insufficient Bybit spot candle history");
-  const rows=list.slice().reverse().map(x=>[Number(x[0]),x[1],x[2],x[3],x[4],x[5],x[6]||"0","0","0","0"]);
-  const result=analyzeKlines(rows);result.data_provider="Bybit Spot (fallback)";return result;
- }catch(e){bybitError=e;}
+  for(const host of ["https://api.bybit.eu","https://api.bytick.eu","https://api.bybit.com","https://api.bytick.com"]){
+   try{
+    const url=host+"/v5/market/kline?category=spot&symbol="+encodeURIComponent(symbol)+"&interval="+bybitInterval+"&limit=250";
+    const r=await fetch(url,{headers});
+    if(!r.ok)throw new Error("Bybit Spot HTTP "+r.status);
+    const payload=await r.json(),list=payload?.retCode===0?payload.result?.list:null;
+    if(!Array.isArray(list)||list.length<minimumCandles)throw new Error(payload?.retMsg||"insufficient Bybit spot candle history");
+    const rows=list.slice().reverse().map(x=>[Number(x[0]),x[1],x[2],x[3],x[4],x[5],x[6]||"0","0","0","0"]);
+    const result=analyzeKlines(rows);result.data_provider="Bybit Spot (fallback)";return result;
+   }catch(e){bybitError=e;}
+  }
  try{
   const pair=splitQuotePair(symbol);if(!pair)throw new Error("Unsupported quote currency for OKX spot");
   const instId=pair.base+"-"+pair.quote;
