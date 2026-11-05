@@ -1,0 +1,177 @@
+name: MMP COIN AI UI smoke tests
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "index.html"
+      - ".github/workflows/ui-smoke.yml"
+  push:
+    branches: ["main"]
+    paths:
+      - "index.html"
+      - ".github/workflows/ui-smoke.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mmp-ui-smoke
+  cancel-in-progress: true
+
+jobs:
+  ui-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 20
+
+      - name: Install browser test runner
+        run: |
+          npm install --no-save --no-audit --no-fund playwright
+          npx playwright install chromium
+
+      - name: Serve the candidate site locally
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/mmp-site.log 2>&1 &
+          for i in $(seq 1 20); do
+            if curl --silent --fail http://127.0.0.1:4173/index.html >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/mmp-site.log
+          exit 1
+
+      - name: Test website and native app navigation
+        run: |
+          node <<'NODE'
+          const assert = require('node:assert/strict');
+          const { chromium } = require('playwright');
+
+          (async () => {
+            const browser = await chromium.launch({ headless: true });
+            try {
+              const web = await browser.newPage();
+              await web.route('**/*', route => {
+                const url = new URL(route.request().url());
+                return ['127.0.0.1', 'localhost'].includes(url.hostname) ? route.continue() : route.abort();
+              });
+              await web.goto('http://127.0.0.1:4173/index.html', { waitUntil: 'domcontentloaded' });
+              assert.equal(await web.locator('.native-app-nav').count(), 0, 'website must not show the native app dock');
+              assert.equal(await web.locator('#terminal-navigation').count(), 1, 'website terminal navigation must remain');
+              assert.equal(await web.locator('#app-download').count(), 1, 'APK download is available on the website');
+              assert.match(await web.locator('#app-download a').getAttribute('href'), /releases\/latest\/download\/app-release\.apk/, 'website download points to the latest APK');
+              assert.equal(await web.locator('link[rel="manifest"]').count(), 1, 'PWA manifest is linked');
+              assert.equal(await web.locator('link[rel="icon"]').count(), 1, 'browser icon is linked');
+              await web.locator('#btn-usdt').click();
+              assert.equal(await web.locator('#btn-usdt').getAttribute('class').then(x=>x.includes('active')), true, 'website can switch to USDT');
+              await web.locator('#btn-irt').click();
+              assert.equal(await web.locator('#btn-irt').getAttribute('class').then(x=>x.includes('active')), true, 'website can switch back to Toman');
+              await web.locator('#expand-btn').click();
+              assert.equal(await web.locator('#full-coins-box').getAttribute('aria-hidden'), 'false', 'coin list expands');
+              await web.locator('#expand-btn').click();
+              await web.close();
+
+              const app = await browser.newPage();
+              await app.addInitScript(() => {
+                window.Capacitor = {
+                  isNativePlatform: () => true,
+                  getPlatform: () => 'android',
+                  Plugins: { Browser: { open: async () => ({}) } }
+                };
+                Object.defineProperty(navigator, 'clipboard', {
+                  configurable: true,
+                  value: { writeText: async () => {} }
+                });
+              });
+              await app.route('**/*', route => {
+                const url = new URL(route.request().url());
+                return ['127.0.0.1', 'localhost'].includes(url.hostname) ? route.continue() : route.abort();
+              });
+              await app.goto('http://127.0.0.1:4173/index.html', { waitUntil: 'domcontentloaded' });
+              await app.waitForSelector('html.mmp-native-app .native-app-nav');
+              assert.equal(await app.locator('[data-native-tab]').count(), 5, 'five primary app tabs');
+              await app.locator('#native-currency-usdt').click();
+              assert.equal(await app.locator('#native-currency-usdt').getAttribute('class').then(x=>x.includes('active')), true, 'app can switch to USDT');
+              await app.locator('#native-currency-irt').click();
+              assert.equal(await app.locator('#native-currency-irt').getAttribute('class').then(x=>x.includes('active')), true, 'app can switch back to Toman');
+              assert.equal(await app.locator('#app-download').isVisible(), false, 'APK download section is not shown inside the app');
+              assert.equal(await app.locator('#native-share-app').count(), 1, 'app has a share-app action instead of a download section');
+              await app.evaluate(() => window.eval(`const extra=document.getElementById('connections-extra'); extra.innerHTML='<div class="conn">Wallex</div><div class="conn">Bitget Spot</div><div class="conn">Bitpin</div>'; coinGeckoConnectionStatus='ok'; renderCoinGeckoConnection();`));
+              assert.equal(await app.locator('#connections-extra .conn').count(), 4, 'expanded source panel keeps all exchange cards plus CoinGecko');
+              assert.equal(await app.locator('#connections-extra').innerText().then(t=>t.includes('Bitget Spot') && t.includes('Bitpin') && t.includes('Wallex') && t.includes('CoinGecko')), true, 'no source card is dropped when CoinGecko status is appended');
+
+              const pageName = () => app.locator('body').getAttribute('data-native-page');
+              await app.locator('[data-native-tab="radar"]').click();
+              await app.evaluate(() => window.eval(`cachedCoinsData = [
+                {id:'bitcoin',name:'Bitcoin',symbol:'BTC',current_price:90000,price_change_percentage_24h:3,price_change_percentage_7d_in_currency:6,market_cap:1000000,total_volume:100000,high_24h:92000,low_24h:88000},
+                {id:'ethereum',name:'Ethereum',symbol:'ETH',current_price:3000,price_change_percentage_24h:-4,price_change_percentage_7d_in_currency:-7,market_cap:500000,total_volume:50000,high_24h:3200,low_24h:2900},
+                {id:'stellar',name:'Stellar',symbol:'XLM',current_price:0.2,price_change_percentage_24h:0.1,price_change_percentage_7d_in_currency:-0.1,market_cap:100000,total_volume:10000,high_24h:0.21,low_24h:0.19}
+              ]; radarAutoScanAt = Date.now(); renderOpportunities();`));
+              assert.equal(await app.locator('.radar-count-grid .radar-count-card').count(), 2, 'radar shows only bullish and bearish counts');
+              assert.equal(await app.locator('.radar-count-card.neutral').count(), 0, 'radar hides neutral count for a simpler view');
+              assert.equal(await app.locator('#radar-deep-bull-results').count(), 1, 'bullish AI suggestions have a dedicated group');
+              assert.equal(await app.locator('#radar-deep-bear-results').count(), 1, 'bearish AI suggestions have a dedicated group');
+              await app.locator('details.radar-assets-more > summary').click();
+              await app.locator('#radar-custom-select').selectOption('bitcoin');
+              await app.locator('#radar-custom-add').click();
+              assert.equal(await app.locator('.radar-custom-row').count(), 1, 'user can add a personal radar asset');
+              await app.locator('[data-radar-remove="bitcoin"]').click();
+              assert.equal(await app.locator('.radar-custom-row').count(), 0, 'user can remove a personal radar asset');
+              assert.equal(await app.locator('.radar-backtest').count(), 0, 'no backtest section is displayed');
+              for (const [tab, expected] of [['radar','radar'],['chart','chart'],['ai','ai'],['more','more'],['home','home']]) {
+                await app.locator('[data-native-tab="' + tab + '"]').click();
+                assert.equal(await pageName(), expected, 'tab ' + tab + ' opens its own screen');
+              }
+
+              await app.locator('[data-native-tab="more"]').click();
+              for (const [module, expected, selector] of [
+                ['watchlist','watchlist','#watchlist'],
+                ['coins','coins','#coins-section'],
+                ['tools','tools','#trading-tools'],
+                ['hours','hours','#market-hours'],
+                ['sources','sources','#connections']
+              ]) {
+                await app.locator('[data-native-module="' + module + '"]').click();
+                assert.equal(await pageName(), expected, 'module ' + module + ' opens');
+                assert.equal(await app.locator(selector).isVisible(), true, module + ' content is visible');
+                assert.equal(await app.locator('.native-back-button').isVisible(), true, module + ' has back button');
+                if (module === 'tools') {
+                  await app.locator('#risk-capital').fill('1000');
+                  await app.locator('#risk-percent').fill('2');
+                  await app.locator('#risk-entry').fill('100000');
+                  await app.locator('#risk-stop').fill('98000');
+                  await app.locator('#risk-calc').click();
+                  assert.match(await app.locator('#risk-result').innerText(), /ضرر احتمالی در صورت برخورد به حد ضرر:\s*20 USDT/, 'risk calculator returns expected 20 USDT loss');
+                }
+                if (module === 'hours') {
+                  assert.equal(await app.locator('#market-hours-grid .market-session').count(), 4, 'four market hours cards are visible by default');
+                  assert.equal(await app.locator('#market-hours-extra .market-session').count(), 3, 'remaining market hours are in the collapsed section');
+                }
+                await app.locator('.native-back-button').click();
+                assert.equal(await pageName(), 'more', module + ' back button returns to More');
+              }
+
+              await app.locator('[data-native-module="coins"]').click();
+              await app.locator('#expand-btn').click();
+              assert.equal(await app.locator('#full-coins-box').getAttribute('aria-hidden'), 'false', 'app coin list expands');
+              await app.locator('[data-native-tab="chart"]').click();
+              await app.locator('#chart-fullscreen-btn').click();
+              await app.waitForFunction(() => {
+                const chart = document.getElementById('chart-container');
+                return !!document.fullscreenElement || chart?.classList.contains('chart-fullscreen-fallback');
+              }, { timeout: 5000 });
+              await app.locator('#chart-exit-fullscreen-btn').click().catch(() => {});
+              await app.locator('[data-native-tab="more"]').click();
+              await app.locator('#native-share-app').click();
+              await app.waitForSelector('.mmp-share-toast');
+              console.log('PASS: website navigation, 5 app tabs, 5 More modules, back navigation, coin dropdown, chart fullscreen and app sharing');
+            } finally {
+              await browser.close();
+            }
+          })().catch(error => { console.error(error); process.exit(1); });
+          NODE

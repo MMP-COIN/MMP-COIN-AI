@@ -1,5 +1,5 @@
 // Trigger one-by-one 100-asset audit
-const MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+const MODEL = "@cf/qwen/qwen3-30b-a3b-fp8";
 // Canonical exchange symbols for selected assets (CoinGecko ID -> ticker).
 const ASSET_SYMBOL_OVERRIDES = { layerzero: "ZRO" };
 const ALLOWED_ORIGINS = new Set([
@@ -387,7 +387,10 @@ async function handle(request,env){
    "binance-tickers":["https://api.binance.com/api/v3/ticker/24hr","https://api.binance.us/api/v3/ticker/24hr","https://api1.binance.com/api/v3/ticker/24hr","https://api2.binance.com/api/v3/ticker/24hr","https://api3.binance.com/api/v3/ticker/24hr","https://data-api.binance.vision/api/v3/ticker/24hr"],
    "coingecko-top":["https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page="+requestedTopPage+"&sparkline=false&price_change_percentage=1h%2C24h%2C7d"],
    "nobitex-tether":["https://apiv2.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls","https://api.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls"],
-   "wallex-markets":["https://api.wallex.ir/v1/markets","https://api.wallex.ir/hector/web/v1/markets","https://api.wallex.ir/v1/otc/markets"]
+   "wallex-markets":["https://api.wallex.ir/v1/markets","https://api.wallex.ir/hector/web/v1/markets","https://api.wallex.ir/v1/otc/markets"],
+   "bitpin-tickers":["https://api.bitpin.ir/api/v1/mkt/tickers/"],
+   "ramzinex-pairs":["https://publicapi.ramzinex.com/exchange/api/v1.0/exchange/pairs"],
+   "exir-tickers":["https://api.exir.io/v2/tickers"]
   };
   let candidates=urls[source]||null;
   if(source==="coingecko-extra"){
@@ -402,7 +405,8 @@ async function handle(request,env){
    try{
     const upstreamHeaders={"Accept":"application/json, text/plain, */*","User-Agent":"MMP-COIN-AI/1.0","Accept-Language":"en-US,en;q=0.9"};
    if(source==="wallex-markets"){upstreamHeaders.Origin="https://wallex.ir";upstreamHeaders.Referer="https://wallex.ir/";}
-   const upstream=await fetch(endpoint,{headers:upstreamHeaders,signal:controller.signal,cf:{cacheTtl:source.startsWith("coingecko")?60:source.includes("tether")||source.includes("wallex")?10:5,cacheEverything:true}});
+   if(source==="bitpin-tickers"){upstreamHeaders.Origin="https://bitpin.ir";upstreamHeaders.Referer="https://bitpin.ir/";}
+   const upstream=await fetch(endpoint,{headers:upstreamHeaders,signal:controller.signal,cf:{cacheTtl:source.startsWith("coingecko")?60:source.includes("tether")||source.includes("wallex")||source.includes("bitpin")||source.includes("ramzinex")||source.includes("exir")?10:5,cacheEverything:true}});
     if(!upstream.ok){lastError="Upstream HTTP "+upstream.status;continue;}
     const data=await upstream.json();
     if(data===null||typeof data!=="object")throw new Error("Invalid upstream JSON");
@@ -423,32 +427,45 @@ async function handle(request,env){
     const data=await response.json();
     if(!valid(data))throw new Error("پاسخ معتبر دریافت نشد");
     return {status:Date.now()-started>2500?"slow":"ok",ping:Date.now()-started};
-   }catch(error){return {status:"down",ping:null,error:String(error?.message||"network error").slice(0,100)};}
+   }catch(error){const message=String(error?.message||"network error").slice(0,100);return {status:/HTTP 403/.test(message)?"restricted":"down",ping:null,error:/HTTP 403/.test(message)?"محدودیت دسترسی از مسیر سرور (HTTP 403)":message};}
    finally{clearTimeout(timer);}
   };
-  const probeAny=async(urls,valid,timeout=9000,extraHeaders={})=>{
-   const results=await Promise.all(urls.map(url=>timeoutFetch(url,valid,timeout,extraHeaders)));
-   const good=results.filter(x=>x.status!=="down").sort((a,b)=>a.ping-b.ping);
-   return good[0]||results[results.length-1]||{status:"down",ping:null,error:"no Wallex endpoint responded"};
+  // Keep no more than three upstream probes in flight; Workers Free allows six simultaneous outgoing connections per request.
+  const probeAny=async(urls,valid,timeout=2200,extraHeaders={})=>{
+   let restricted=null,last=null;
+   for(const endpoint of urls){
+    const result=await timeoutFetch(endpoint,valid,timeout,extraHeaders);
+    if(result.status==="ok"||result.status==="slow")return result;
+    if(result.status==="restricted"&&!restricted)restricted=result;
+    last=result;
+   }
+   return restricted||last||{status:"down",ping:null,error:"no exchange endpoint responded"};
   };
-  const [binance,bybit,okx,nobitex,wallex,bitget]=await Promise.all([
-   probeAny(["https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://api.binance.us/api/v3/ticker/price?symbol=BTCUSDT","https://api1.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://api2.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://api3.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://data-api.binance.vision/api/v3/ticker/price?symbol=BTCUSDT"],d=>Number(d?.price)>0),
+  const [binance,bybit,okx]=await Promise.all([
+   probeAny(["https://api.binance.com/api/v3/ticker/24hr","https://api.binance.us/api/v3/ticker/24hr","https://api1.binance.com/api/v3/ticker/24hr","https://api2.binance.com/api/v3/ticker/24hr","https://api3.binance.com/api/v3/ticker/24hr","https://data-api.binance.vision/api/v3/ticker/24hr"],d=>Array.isArray(d)&&d.some(x=>x?.symbol==="BTCUSDT"&&Number(x?.lastPrice)>0),2600),
    probeAny([
     "https://api.bybit.eu/v5/market/tickers?category=spot&symbol=BTCUSDT",
     "https://api.bytick.eu/v5/market/tickers?category=spot&symbol=BTCUSDT",
     "https://api.bybit.com/v5/market/tickers?category=spot&symbol=BTCUSDT",
     "https://api.bytick.com/v5/market/tickers?category=spot&symbol=BTCUSDT"
-   ],d=>d?.retCode===0&&Number(d?.result?.list?.[0]?.lastPrice)>0),
-   probeAny(["https://www.okx.com/api/v5/market/ticker?instId=BTC-USDT","https://us.okx.com/api/v5/market/ticker?instId=BTC-USDT","https://openapi.okx.com/api/v5/market/ticker?instId=BTC-USDT"],d=>d?.code==="0"&&Number(d?.data?.[0]?.last)>0),
-   timeoutFetch("https://apiv2.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls",d=>d?.status==="ok"&&Number(d?.stats?.["usdt-rls"]?.latest)>0,5500),
+   ],d=>d?.retCode===0&&Number(d?.result?.list?.[0]?.lastPrice)>0,1800),
+   probeAny(["https://www.okx.com/api/v5/market/ticker?instId=BTC-USDT","https://us.okx.com/api/v5/market/ticker?instId=BTC-USDT","https://openapi.okx.com/api/v5/market/ticker?instId=BTC-USDT"],d=>d?.code==="0"&&Number(d?.data?.[0]?.last)>0,2200),
+  ]);
+  const [nobitex,wallex,bitget]=await Promise.all([
+   timeoutFetch("https://apiv2.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls",d=>d?.status==="ok"&&Number(d?.stats?.["usdt-rls"]?.latest)>0,2200),
    probeAny(["https://api.wallex.ir/v1/markets","https://api.wallex.ir/hector/web/v1/markets","https://api.wallex.ir/v1/otc/markets"],d=>{
     if(d?.success!==true)return false;
     const raw=d?.result?.symbols??d?.result?.markets;
     if(Array.isArray(raw))return raw.length>0;
     if(raw&&typeof raw==="object")return Object.keys(raw).length>0;
     return false;
-   },12000,{"Origin":"https://wallex.ir","Referer":"https://wallex.ir/"}),
-   timeoutFetch("https://api.bitget.com/api/v3/market/tickers?category=SPOT&symbol=BTCUSDT",d=>d?.code==="00000"&&Number(d?.data?.[0]?.lastPrice)>0,7000),
+   },1800,{"Origin":"https://wallex.ir","Referer":"https://wallex.ir/"}),
+   timeoutFetch("https://api.bitget.com/api/v3/market/tickers?category=SPOT&symbol=BTCUSDT",d=>d?.code==="00000"&&Number(d?.data?.[0]?.lastPrice)>0,2200,{"Origin":"https://www.bitget.com","Referer":"https://www.bitget.com/"}),
+  ]);
+  const [bitpin,ramzinex,exir]=await Promise.all([
+   timeoutFetch("https://api.bitpin.ir/api/v1/mkt/tickers/",d=>{const rows=Array.isArray(d)?d:Array.isArray(d?.results)?d.results:[];return rows.some(x=>String(x?.symbol||"").toUpperCase()==="USDT_IRT"&&Number(x?.price)>0);},2200,{"Origin":"https://bitpin.ir","Referer":"https://bitpin.ir/"}),
+   timeoutFetch("https://publicapi.ramzinex.com/exchange/api/v1.0/exchange/pairs",d=>{const rows=d?.result?.data??d?.data??d?.result?.pairs??[];return (Array.isArray(rows)&&rows.length>0)||(rows&&typeof rows==="object"&&Object.keys(rows).length>0);},2200),
+   timeoutFetch("https://api.exir.io/v2/tickers",d=>d&&typeof d==="object"&&Object.keys(d).length>0,3500),
   ]);
   const checks=[
    {name:"Binance Spot",purpose:"قیمت و معاملات اسپات",...binance},
@@ -457,6 +474,9 @@ async function handle(request,env){
    {name:"Nobitex",purpose:"نرخ تتر به تومان",...nobitex},
    {name:"Wallex",purpose:"نرخ تتر به تومان",...wallex},
    {name:"Bitget Spot",purpose:"قیمت و معاملات اسپات",...bitget},
+   {name:"Bitpin",purpose:"نرخ تتر به تومان",...bitpin},
+   {name:"Ramzinex Spot",purpose:"قیمت و معاملات اسپات",...ramzinex},
+   {name:"Exir Spot",purpose:"قیمت و معاملات اسپات",...exir},
   ];
   return json({checked_at:new Date().toISOString(),checks},200,request);
  }
@@ -547,9 +567,9 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/health"){
   }
   const providers=[...(spotMarket?Object.values(spotMarket).map(x=>x.data_provider):[]),...(futuresMarket?Object.values(futuresMarket).map(x=>x.data_provider):[])];
   const snapshot={asset:String(body.name||symbol).slice(0,60),symbol:pair,market_mode:mode,source:[...new Set(providers)].join(" + ")+"; derivatives metrics when available; Alternative.me Fear & Greed; CoinGecko global market",market_timestamp:latest.candle_time,timeframes:market,futures_timeframes:mode==="both"&&futuresMarket?futuresMarket:null,spot_timeframes:mode==="both"?spotMarket:null,futures_data_available:mode==="both"?!!futuresMarket:mode==="futures",derivatives:funding?{funding_rate:funding.lastFundingRate,mark_price:funding.markPrice??null,next_funding_time:funding.nextFundingTime??null,open_interest:openInterest?.openInterest||null}:null,sentiment:fng?.data?.[0]?{fear_greed_value:Number(fng.data[0].value),classification:fng.data[0].value_classification}:null,global_market:global?.data?{btc_dominance:global.data.market_cap_percentage?.btc,total_market_cap_usd:global.data.total_market_cap?.usd,total_volume_usd:global.data.total_volume?.usd}:null};
-  const prompt="You are MMP COIN AI, a professional quantitative crypto analyst. Use ONLY the supplied market snapshot and its numeric values. Write every human-readable sentence in fluent, natural Persian. Do not mix Persian with Russian, Chinese, or English words. All explanatory text must be fluent Persian. Never write English words such as signal, leverage, market, entry, exit, volume, wait, monitor, breakout, breakdown, support, resistance, risk, or trade; translate them into Persian. Avoid mixed-language sentences entirely. Preserve only tickers and standard indicators: BTCUSDT, RSI, MACD, EMA, ATR, LONG, SHORT, BUY, SELL, WAIT, TP1, TP2, TP3. Never invent news, events, order-book data, on-chain metrics, funding, open interest, volume, prices, or indicators.\n\nAnalyze all four timeframes (15m, 1h, 4h, 1d), distinguish short-term noise from the main trend, compare EMA alignment, RSI, MACD, volume ratio, ATR, support and resistance. In both mode, compare spot timeframes against futures_timeframes and explicitly identify agreement or divergence; never claim futures data was checked when futures_data_available is false. Evaluate derivatives funding and open interest only when present; explain Fear & Greed only when present.\n\nReturn ONLY one valid JSON object with keys: action (BUY, SELL, WAIT), primary_timeframe, confidence (integer 0-100 representing strength/alignment of evidence, NOT probability of profit), risk_level, market {price_usd}, levels {entry_zone:{low,high},stop_loss,tp1,tp2,tp3}, risk_reward, holding_horizon, position_risk, summary, technical_analysis, indicators {rsi,macd_signal,ema_trend,atr_percent}, scenarios [{name,description}], recommendations [3-6 concise actionable Persian suggestions], reasons [3-6 evidence-based Persian strings], risk_management, invalidation, market_context, data_source, market_timestamp.\n\nScenarios must cover bullish, bearish, and sideways cases, each with the condition that would confirm it and the relevant supplied support/resistance or indicator evidence. Recommendations should include what to monitor next, what would confirm entry, what invalidates the setup, and whether to wait for candle close. Never promise a return or call confidence a win probability.\n\nChoose WAIT when timeframes conflict, evidence is weak, risk/reward is below 1.5, volume confirmation is missing, or data is insufficient. When action is WAIT, set all entry/stop/target values to null. For BUY, entry and targets must be logically consistent around current price; for SELL, reverse the direction. Derive levels only from supplied support, resistance, ATR and current price. In spot-only mode never recommend SHORT or SELL. For futures, warn that leverage creates liquidation risk and advise low or no leverage. Use concise but substantive analysis, not generic filler.\n\nSnapshot: "+JSON.stringify(snapshot);
+  const prompt="You are MMP COIN AI, a professional quantitative crypto analyst. Use ONLY the supplied market snapshot and its numeric values. Write every human-readable sentence in fluent, natural Persian. Do not mix Persian with Russian, Chinese, or English words. All explanatory text must be fluent Persian. Never write English words such as signal, leverage, market, entry, exit, volume, wait, monitor, breakout, breakdown, support, resistance, risk, or trade; translate them into Persian. Avoid mixed-language sentences entirely. Preserve only tickers and standard indicators: BTCUSDT, RSI, MACD, EMA, ATR, LONG, SHORT, BUY, SELL, WAIT, TP1, TP2, TP3. Never invent news, events, order-book data, on-chain metrics, funding, open interest, volume, prices, or indicators.\n\nAnalyze all four timeframes (15m, 1h, 4h, 1d), distinguish short-term noise from the main trend, compare EMA alignment, RSI, MACD, volume ratio, ATR, support and resistance. In both mode, compare spot timeframes against futures_timeframes and explicitly identify agreement or divergence; never claim futures data was checked when futures_data_available is false. Evaluate derivatives funding and open interest only when present; explain Fear & Greed only when present.\n\nReturn ONLY one valid JSON object with keys: action (BUY, SELL, WAIT), primary_timeframe, confidence (integer 0-100 representing strength/alignment of evidence, NOT probability of profit), risk_level, market {price_usd}, levels {entry_zone:{low,high},stop_loss,tp1,tp2,tp3}, risk_reward, holding_horizon, position_risk, summary, technical_analysis, indicators {rsi,macd_signal,ema_trend,atr_percent}, scenarios [{name,description}], recommendations [3-6 concise actionable Persian suggestions], reasons [3-6 evidence-based Persian strings], risk_management, invalidation, market_context, data_source, market_timestamp.\n\nScenarios must cover bullish, bearish, and sideways cases, each with the condition that would confirm it and the relevant supplied support/resistance or indicator evidence. Recommendations should include what to monitor next, what would confirm entry, what invalidates the setup, and whether to wait for candle close. Never promise a return or call confidence a win probability.\n\nChoose WAIT when timeframes conflict, evidence is weak, risk/reward is below 1.5, volume confirmation is missing, or data is insufficient. When action is WAIT, set all entry/stop/target values to null. For BUY, entry and targets must be logically consistent around current price; for SELL, reverse the direction. Derive levels only from supplied support, resistance, ATR and current price. In spot-only mode never recommend SHORT or SELL. For futures, warn that leverage creates liquidation risk and advise low or no leverage. Use concise but substantive analysis, not generic filler.\n\nSnapshot: "+JSON.stringify(snapshot)+"\n/no_think";
   stage="اجرای هوش مصنوعی";
-  const ai=await env.AI.run(MODEL,{messages:[{role:"system",content:"Return one valid JSON object only. Never give guaranteed financial advice."},{role:"user",content:prompt}],max_tokens:2400,temperature:0.12});
+  const ai=await env.AI.run(MODEL,{messages:[{role:"system",content:"Return one valid JSON object only. Never give guaranteed financial advice."},{role:"user",content:prompt}],max_tokens:1800,temperature:0.12});
   stage="پردازش پاسخ هوش مصنوعی";
   let raw=ai.response||ai.result||ai.output_text||"";
   if(typeof raw!=="string")raw=JSON.stringify(raw);

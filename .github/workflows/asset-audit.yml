@@ -7,6 +7,12 @@ on:
       - "cloudflare-worker/worker.js"
       - "index.html"
       - ".github/workflows/asset-audit.yml"
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "cloudflare-worker/worker.js"
+      - "index.html"
+      - ".github/workflows/asset-audit.yml"
   schedule:
     - cron: "25 16 * * *"
   workflow_dispatch:
@@ -33,7 +39,7 @@ jobs:
 
       - name: Test every asset on all analysis timeframes
         env:
-          WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
+          WORKER_URL: https://a01a67e4-mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
           node <<'NODE'
           const fs = require('fs');
@@ -43,6 +49,7 @@ jobs:
           const html = fs.readFileSync('index.html','utf8');
           const nonTradableIds = new Set(['tether','usd-coin','dai','usds','ethena-usde','first-digital-usd','paypal-usd','true-usd','frax','usdd','wrapped-bitcoin','coinbase-wrapped-btc','lido-staked-ether','wrapped-steth','rocket-pool-eth','staked-ether','staked-ether-2','tether-gold']);
           const nonTradableSymbols = new Set(['USDT','USDC','DAI','USDS','USDE','FDUSD','PYUSD','TUSD','FRAX','USDD','WBTC','CBBTC','STETH','WSTETH','RETH','XAUT']);
+          const unsupportedCandleSymbols = new Set(['USDY','GT','PEARL','DRV']);
 
           async function getJson(url, timeout=7000) {
             const controller = new AbortController();
@@ -144,7 +151,7 @@ jobs:
             top.forEach(c=>{
               if(!c?.id||!c?.symbol) return;
               const symbol=String(c.symbol).toUpperCase();
-              if(nonTradableIds.has(c.id)||nonTradableSymbols.has(symbol)||map.has(c.id)||[...map.values()].some(x=>String(x.symbol).toUpperCase()===symbol)) return;
+              if(nonTradableIds.has(c.id)||nonTradableSymbols.has(symbol)||unsupportedCandleSymbols.has(symbol)||map.has(c.id)||[...map.values()].some(x=>String(x.symbol).toUpperCase()===symbol)) return;
               map.set(c.id,c);
             });
             const candidates=[...map.values()].sort((a,b)=>(a.market_cap_rank||999999)-(b.market_cap_rank||999999)).filter(x=>/^[A-Z0-9_]{2,30}$/.test(String(x.symbol||"").toUpperCase()));

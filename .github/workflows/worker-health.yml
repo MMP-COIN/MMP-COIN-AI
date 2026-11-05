@@ -8,6 +8,13 @@ on:
     branches: ["main"]
     paths:
       - "cloudflare-worker/**"
+      - "index.html"
+      - ".github/workflows/worker-health.yml"
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "cloudflare-worker/**"
+      - "index.html"
       - ".github/workflows/worker-health.yml"
 
 permissions:
@@ -22,9 +29,33 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - name: Verify staged Worker version before production
+        env:
+          WORKER_PREVIEW_URL: https://mmp-coin-ai-analyzer-preview.mehrdadmohammadi1988.workers.dev
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --max-time 20 "$WORKER_PREVIEW_URL/health" -o /tmp/preview-health.json
+          jq -e '.worker == "online" and .ai_binding == true' /tmp/preview-health.json >/dev/null
+          echo "Staged Worker health endpoint passed"
+          curl --fail --silent --show-error --max-time 25 "$WORKER_PREVIEW_URL/connections-health" -o /tmp/preview-connections.json
+          jq -e '.checks | length == 9 and ([.[] | select(.status == "down" and (.error // "" | test("HTTP 403")))] | length) == 0' /tmp/preview-connections.json >/dev/null
+          jq -r '.checks[] | "- Preview " + .name + ": " + .status + (if .ping == null then "" else " (" + (.ping|tostring) + " ms)" end)' /tmp/preview-connections.json | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "Staged Worker exchange monitor passed"
+          market_status=$(curl --silent --show-error --max-time 25 -o /tmp/preview-market.json -w "%{http_code}" "$WORKER_PREVIEW_URL/market-proxy?source=binance-tickers" || true)
+          if [ "$market_status" = "200" ]; then
+            jq -e 'type == "array" and length > 0' /tmp/preview-market.json >/dev/null
+            echo "- Staged Binance market proxy: responding" >> "$GITHUB_STEP_SUMMARY"
+          elif [ "$market_status" = "502" ]; then
+            echo "::warning::Staged Binance market proxy temporarily unavailable; CoinPaprika/CoinGecko fallback is tested separately."
+            echo "- Staged Binance market proxy: temporary upstream failure (HTTP 502); fallback verified separately" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Unexpected staged Binance proxy HTTP $market_status"; exit 1
+          fi
+          echo "Staged Worker market proxy check completed"
+
       - name: Check Worker health endpoint
         env:
-          WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
+          WORKER_URL: https://mmp-coin-ai-analyzer-preview.mehrdadmohammadi1988.workers.dev
         run: |
           set -euo pipefail
           curl --fail --silent --show-error --retry 2 --retry-delay 3 --max-time 25 "$WORKER_URL/health" -o /tmp/health.json
@@ -60,14 +91,23 @@ jobs:
           }
           probe_cors "Wallex" "https://api.wallex.ir/v1/markets"
           probe_cors "Bitget" "https://api.bitget.com/api/v3/market/tickers?category=SPOT&symbol=BTCUSDT"
+          bitget_cors_status=$(curl --silent --show-error --max-time 15 -D /tmp/bitget-headers -o /tmp/bitget-direct.json -w "%{http_code}" -H "Origin: https://mmp-coin.github.io" "https://api.bitget.com/api/v3/market/tickers?category=SPOT&symbol=BTCUSDT" || true)
+          bitget_allow=$(grep -i "^access-control-allow-origin:" /tmp/bitget-headers | tail -1 | tr -d "\r" | cut -d ":" -f2- | xargs || true)
+          if [ "$bitget_cors_status" = "200" ] && [ "$bitget_allow" = "*" ]; then
+            jq -e '.code == "00000" and (.data[0].lastPrice | tonumber > 0)' /tmp/bitget-direct.json >/dev/null
+            echo "- Bitget direct browser fallback: HTTP 200 with permissive CORS and valid BTC price" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning::Bitget direct browser fallback unavailable: HTTP $bitget_cors_status; allow-origin=$bitget_allow"
+            echo "- Bitget direct browser fallback: unavailable" >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Check exchange connection monitor
         env:
-          WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
+          WORKER_URL: https://mmp-coin-ai-analyzer-preview.mehrdadmohammadi1988.workers.dev
         run: |
           set -euo pipefail
           curl --fail --silent --show-error --retry 2 --retry-delay 3 --max-time 25 "$WORKER_URL/connections-health" -o /tmp/connections.json
-          jq -e '.checks | length == 6' /tmp/connections.json >/dev/null
+          jq -e '.checks | length == 9' /tmp/connections.json >/dev/null
           echo "Current exchange connection status:"
           jq -r '.checks[] | "- " + .name + ": " + .status + (if .ping == null then "" else " (" + (.ping|tostring) + " ms)" end) + (if .error == null then "" else " — " + (.error|tostring) end)' /tmp/connections.json
           jq -r '.checks[] | "- " + .name + ": " + .status + (if .ping == null then "" else " (" + (.ping|tostring) + " ms)" end) + (if .error == null then "" else " — " + (.error|tostring) end)' /tmp/connections.json >> "$GITHUB_STEP_SUMMARY"
@@ -78,7 +118,7 @@ jobs:
 
       - name: Check market data proxy
         env:
-          WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
+          WORKER_URL: https://mmp-coin-ai-analyzer-preview.mehrdadmohammadi1988.workers.dev
         run: |
           set -euo pipefail
           binance_status=$(curl --silent --show-error --retry 1 --max-time 25 -o /tmp/binance.json -w "%{http_code}" "$WORKER_URL/market-proxy?source=binance-tickers")
@@ -96,7 +136,67 @@ jobs:
             echo "::warning::CoinGecko rate limited the shared Worker IP (HTTP 429); cached/alternate prices remain available."
             echo "- CoinGecko market proxy: rate-limited (HTTP 429)" >> "$GITHUB_STEP_SUMMARY"
           fi
+          nobitex_status=$(curl --silent --show-error --retry 1 --max-time 25 -o /tmp/nobitex-tether.json -w "%{http_code}" "$WORKER_URL/market-proxy?source=nobitex-tether")
+          echo "Nobitex Tether proxy HTTP $nobitex_status"
+          if [ "$nobitex_status" = "200" ]; then
+            jq -e '.stats["usdt-rls"].latest | tonumber > 0' /tmp/nobitex-tether.json >/dev/null
+            echo "- Nobitex Tether/IRR feed: positive rate verified (converted to Toman in the app)" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning::Nobitex Tether proxy unavailable: $(jq -r '.detail // .error // .' /tmp/nobitex-tether.json)"
+            echo "- Nobitex Tether feed: unavailable" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          bitpin_status=$(curl --silent --show-error --retry 1 --max-time 25 -o /tmp/bitpin.json -w "%{http_code}" "$WORKER_URL/market-proxy?source=bitpin-tickers")
+          echo "Bitpin ticker proxy HTTP $bitpin_status"
+          if [ "$bitpin_status" = "200" ]; then
+            jq -e '([.[]?, .results[]?] | any((.symbol|ascii_upcase) == "USDT_IRT" and (.price | tonumber > 0)))' /tmp/bitpin.json >/dev/null
+            echo "- Bitpin Tether/Toman proxy: responding with a positive quote" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning::Bitpin proxy is restricted from Cloudflare egress: $(jq -r '.detail // .error // .' /tmp/bitpin.json)"
+            echo "- Bitpin proxy: restricted from Cloudflare egress" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          for source in ramzinex-pairs exir-tickers; do
+            status=$(curl --silent --show-error --retry 1 --max-time 25 -o "/tmp/$source.json" -w "%{http_code}" "$WORKER_URL/market-proxy?source=$source")
+            echo "$source proxy HTTP $status"
+            if [ "$status" = "200" ]; then
+              echo "- $source proxy: responding; top-level keys: $(jq -r 'if type=="object" then (keys|join(",")) else "array" end' "/tmp/$source.json")" >> "$GITHUB_STEP_SUMMARY"
+              if [ "$source" = "exir-tickers" ]; then
+                jq -e '."usdt-irt".last | tonumber > 0' /tmp/exir-tickers.json >/dev/null
+                echo "- Exir USDT/IRT feed: positive Toman quote verified" >> "$GITHUB_STEP_SUMMARY"
+                echo "Exir USDT/IRT last: $(jq -r '."usdt-irt".last' /tmp/exir-tickers.json)"
+              fi
+            else
+              echo "::warning::$source proxy unavailable: $(jq -r '.detail // .error // .' "/tmp/$source.json")"
+              echo "- $source proxy: unavailable" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
           {
             echo "- Binance ticker proxy: responding"
             echo "- Bitget direct API: checked separately with browser CORS"
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Verify CoinPaprika backup market feed
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 1 --max-time 25 "https://api.coinpaprika.com/v1/tickers?quotes=USD&limit=250" -o /tmp/paprika.json
+          jq -e 'type == "array" and length >= 100 and (.[0].quotes.USD.price | tonumber > 0)' /tmp/paprika.json >/dev/null
+          echo "- CoinPaprika backup market feed: responding with ranked prices" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Test end-to-end AI market analysis
+        env:
+          WORKER_URL: https://e9069f3a-mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
+        run: |
+          set -euo pipefail
+          analysis_status=$(curl --silent --show-error --max-time 70 -H "Content-Type: application/json" -d '{"coin_id":"bitcoin","symbol":"BTC","name":"Bitcoin","market_mode":"spot"}' -o /tmp/analysis.json -w "%{http_code}" "$WORKER_URL/" || true)
+          echo "End-to-end AI analysis HTTP $analysis_status"
+          if [ "$analysis_status" != "200" ]; then
+            if grep -q "4006: you have used up your daily free allocation" /tmp/analysis.json; then
+              echo "::warning::Cloudflare AI daily free allocation is exhausted; market/exchange health checks are independent."
+              echo "- End-to-end AI analysis: blocked by Cloudflare AI daily free allocation (4006); rerun after quota reset or plan upgrade." >> "$GITHUB_STEP_SUMMARY"
+            else
+              cat /tmp/analysis.json
+              exit 1
+            fi
+          else
+            jq -e '.analysis != null and (.analysis.action == "BUY" or .analysis.action == "SELL" or .analysis.action == "WAIT") and (.market.timeframes | has("15m") and has("1h") and has("4h") and has("1d"))' /tmp/analysis.json >/dev/null
+            echo "- End-to-end AI analysis: responding with four timeframes" >> "$GITHUB_STEP_SUMMARY"
+          fi
