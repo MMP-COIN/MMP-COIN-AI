@@ -55,7 +55,7 @@ jobs:
 
       - name: Check Worker health endpoint
         env:
-          WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
+          WORKER_URL: https://mmp-coin-ai-analyzer-preview.mehrdadmohammadi1988.workers.dev
         run: |
           set -euo pipefail
           curl --fail --silent --show-error --retry 2 --retry-delay 3 --max-time 25 "$WORKER_URL/health" -o /tmp/health.json
@@ -94,11 +94,11 @@ jobs:
 
       - name: Check exchange connection monitor
         env:
-          WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
+          WORKER_URL: https://mmp-coin-ai-analyzer-preview.mehrdadmohammadi1988.workers.dev
         run: |
           set -euo pipefail
           curl --fail --silent --show-error --retry 2 --retry-delay 3 --max-time 25 "$WORKER_URL/connections-health" -o /tmp/connections.json
-          jq -e '.checks | length == 6' /tmp/connections.json >/dev/null
+          jq -e '.checks | length == 7' /tmp/connections.json >/dev/null
           echo "Current exchange connection status:"
           jq -r '.checks[] | "- " + .name + ": " + .status + (if .ping == null then "" else " (" + (.ping|tostring) + " ms)" end) + (if .error == null then "" else " — " + (.error|tostring) end)' /tmp/connections.json
           jq -r '.checks[] | "- " + .name + ": " + .status + (if .ping == null then "" else " (" + (.ping|tostring) + " ms)" end) + (if .error == null then "" else " — " + (.error|tostring) end)' /tmp/connections.json >> "$GITHUB_STEP_SUMMARY"
@@ -109,7 +109,7 @@ jobs:
 
       - name: Check market data proxy
         env:
-          WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
+          WORKER_URL: https://mmp-coin-ai-analyzer-preview.mehrdadmohammadi1988.workers.dev
         run: |
           set -euo pipefail
           binance_status=$(curl --silent --show-error --retry 1 --max-time 25 -o /tmp/binance.json -w "%{http_code}" "$WORKER_URL/market-proxy?source=binance-tickers")
@@ -127,6 +127,11 @@ jobs:
             echo "::warning::CoinGecko rate limited the shared Worker IP (HTTP 429); cached/alternate prices remain available."
             echo "- CoinGecko market proxy: rate-limited (HTTP 429)" >> "$GITHUB_STEP_SUMMARY"
           fi
+          bitpin_status=$(curl --silent --show-error --retry 1 --max-time 25 -o /tmp/bitpin.json -w "%{http_code}" "$WORKER_URL/market-proxy?source=bitpin-tickers")
+          echo "Bitpin ticker proxy HTTP $bitpin_status"
+          if [ "$bitpin_status" != "200" ]; then jq -r '.detail // .error // .' /tmp/bitpin.json; exit 1; fi
+          jq -e '([.[]?, .results[]?] | any(.symbol == "USDT_IRT" and (.price | tonumber > 0)))' /tmp/bitpin.json >/dev/null
+          echo "- Bitpin Tether/Toman proxy: responding with a positive quote" >> "$GITHUB_STEP_SUMMARY"
           {
             echo "- Binance ticker proxy: responding"
             echo "- Bitget direct API: checked separately with browser CORS"
@@ -146,6 +151,15 @@ jobs:
           set -euo pipefail
           analysis_status=$(curl --silent --show-error --max-time 70 -H "Content-Type: application/json" -d '{"coin_id":"bitcoin","symbol":"BTC","name":"Bitcoin","market_mode":"spot"}' -o /tmp/analysis.json -w "%{http_code}" "$WORKER_URL/" || true)
           echo "End-to-end AI analysis HTTP $analysis_status"
-          if [ "$analysis_status" != "200" ]; then cat /tmp/analysis.json; exit 1; fi
-          jq -e '.analysis != null and (.analysis.action == "BUY" or .analysis.action == "SELL" or .analysis.action == "WAIT") and (.market.timeframes | has("15m") and has("1h") and has("4h") and has("1d"))' /tmp/analysis.json >/dev/null
-          echo "- End-to-end AI analysis: responding with four timeframes" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$analysis_status" != "200" ]; then
+            if grep -q "4006: you have used up your daily free allocation" /tmp/analysis.json; then
+              echo "::warning::Cloudflare AI daily free allocation is exhausted; market/exchange health checks are independent."
+              echo "- End-to-end AI analysis: blocked by Cloudflare AI daily free allocation (4006); rerun after quota reset or plan upgrade." >> "$GITHUB_STEP_SUMMARY"
+            else
+              cat /tmp/analysis.json
+              exit 1
+            fi
+          else
+            jq -e '.analysis != null and (.analysis.action == "BUY" or .analysis.action == "SELL" or .analysis.action == "WAIT") and (.market.timeframes | has("15m") and has("1h") and has("4h") and has("1d"))' /tmp/analysis.json >/dev/null
+            echo "- End-to-end AI analysis: responding with four timeframes" >> "$GITHUB_STEP_SUMMARY"
+          fi
