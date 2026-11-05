@@ -1852,6 +1852,7 @@ async function runRadarDeepScan(){
 function renderOpportunities(){
  const el=$("opportunity-list");
  if(!el)return;
+ const keepRadarDetailsOpen=!!el.querySelector("details.radar-assets-more")?.open;
  if(!cachedCoinsData.length){el.innerHTML='<div class="ai-empty">داده بازار هنوز دریافت نشده است.</div>';return;}
  const scored=cachedCoinsData.map(c=>({coin:c,metrics:radarScore(c)}));
  const bullish=scored.filter(x=>x.metrics.trend==="bull").sort((a,b)=>(b.metrics.directional??0)-(a.metrics.directional??0));
@@ -1877,6 +1878,7 @@ function renderOpportunities(){
  const customRows=customCoins.map(c=>'<div class="radar-custom-row"><span><b>'+aiEscape(c.name)+'</b><small>'+aiEscape(String(c.symbol).toUpperCase())+'</small></span><button type="button" class="radar-custom-remove" data-radar-remove="'+aiEscape(c.id)+'" aria-label="حذف '+aiEscape(c.name)+' از رادار">حذف</button></div>').join("");
  const customPanel='<section class="radar-custom-panel"><div class="radar-custom-head"><b>ارزهای منتخب من در رادار</b><small>فهرست شخصی روی همین دستگاه ذخیره می‌شود.</small></div><div class="radar-custom-add-row"><select id="radar-custom-select" aria-label="انتخاب ارز برای افزودن به رادار"><option value="">انتخاب ارز…</option>'+customOptions+'</select><button type="button" id="radar-custom-add">افزودن به رادار</button></div><div id="radar-custom-list">'+(customRows||'<p class="radar-ai-no-signal">هنوز ارزی به فهرست شخصی اضافه نشده است.</p>')+'</div></section>';
  el.innerHTML='<div class="radar-count-grid">'+group("ارزهای صعودی",bullish.length,"bull")+group("ارزهای نزولی",bearish.length,"bear")+'</div><details class="radar-assets-more"><summary><span>مشاهده فهرست ارزهای بررسی‌شده</span><small>'+cachedCoinsData.length.toLocaleString("fa-IR")+' دارایی · مدیریت فهرست شخصی و دیده‌بان</small></summary>'+customPanel+'<div class="radar-assets-list">'+list("فهرست صعودی",bullish,"bull")+list("فهرست نزولی",bearish,"bear")+(neutral.length?'<p class="sub">خنثی یا بدون جهت روشن: '+neutral.length.toLocaleString("fa-IR")+' ارز</p>':"")+(unknown.length?'<p class="sub">داده جهت‌نما ناکافی: '+unknown.length.toLocaleString("fa-IR")+' ارز</p>':"")+'</div></details>';
+ if(keepRadarDetailsOpen){const details=el.querySelector("details.radar-assets-more");if(details)details.open=true;}
  if(!el.dataset.radarManagerBound){
   el.dataset.radarManagerBound="1";
   el.addEventListener("click",event=>{
