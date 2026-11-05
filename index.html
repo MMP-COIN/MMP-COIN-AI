@@ -1662,7 +1662,7 @@ html.mmp-native-app .footer{padding-bottom:12px}
    }
    var nativeVersionFromUrl="";try{nativeVersionFromUrl=new URLSearchParams(location.search).get("mmp_native_version")||"";}catch(e){}
    var currentNativeVersion=nativeVersionFromUrl||document.querySelector('meta[name="mmp-app-version"]')?.content||"1.0.0";
-   var liveUpdateChecking=false,lastLiveCheck=0;
+   var liveUpdateChecking=false,lastLiveCheck=0,liveUpdateInitialCheck=true;
    function hashLiveHtml(value){
     if(window.crypto&&crypto.subtle&&window.TextEncoder){return crypto.subtle.digest("SHA-256",new TextEncoder().encode(value)).then(function(buffer){return Array.from(new Uint8Array(buffer)).map(function(x){return x.toString(16).padStart(2,"0")}).join("");});}
     var hash=2166136261;for(var i=0;i<value.length;i++){hash^=value.charCodeAt(i);hash=Math.imul(hash,16777619);}return Promise.resolve(String(hash>>>0));
@@ -1682,11 +1682,16 @@ html.mmp-native-app .footer{padding-bottom:12px}
       if(pending&&pending===hash){try{localStorage.removeItem(pendingKey);localStorage.setItem(baseKey,hash);}catch(e){}showNativeUpdateMessage("اپلیکیشن به‌صورت خودکار به‌روزرسانی شد؛ تغییرات جدید فعال هستند.");return;}
       var previous="";try{previous=localStorage.getItem(baseKey)||"";}catch(e){}
       if(!previous){try{localStorage.setItem(baseKey,hash);}catch(e){}if(manual)showNativeUpdateMessage("محتوای اپ به‌روز است.");return;}
-      if(previous!==hash){try{localStorage.setItem(pendingKey,hash);localStorage.setItem(baseKey,hash);}catch(e){}showNativeUpdateMessage("نسخه جدید دریافت شد؛ در حال اعمال خودکار تغییرات…");setTimeout(function(){location.reload();},900);return;}
+      if(previous!==hash){
+       try{localStorage.setItem(baseKey,hash);if(!liveUpdateInitialCheck)localStorage.setItem(pendingKey,hash);}catch(e){}
+       if(liveUpdateInitialCheck)showNativeUpdateMessage("اپلیکیشن با آخرین تغییرات به‌صورت خودکار اجرا شد.");
+       else showNativeUpdateMessage("نسخه جدید آماده است؛ با بازکردن دوباره اپ، تغییرات به‌صورت خودکار اعمال می‌شوند.");
+       return;
+      }
       if(manual)showNativeUpdateMessage("تغییر جدیدی وجود ندارد؛ اپ به‌روز است.");
      })
      .catch(function(){if(manual)showNativeUpdateMessage("بررسی به‌روزرسانی زنده انجام نشد؛ اتصال اینترنت را بررسی کنید.");})
-     .finally(function(){clearTimeout(timer);liveUpdateChecking=false;});
+     .finally(function(){clearTimeout(timer);liveUpdateChecking=false;liveUpdateInitialCheck=false;});
    }
    function checkNativeApkUpdate(manual){
     if(nativeUpdateChecking)return;
@@ -1712,7 +1717,7 @@ html.mmp-native-app .footer{padding-bottom:12px}
       if(checkButton){checkButton.disabled=false;checkButton.classList.remove("is-checking");}
      });
    }
-   function checkNativeUpdate(manual){checkLivePageUpdate(!!manual);checkNativeApkUpdate(!!manual);}
+   function checkNativeUpdate(manual){checkLivePageUpdate(!!manual);checkNativeApkUpdate(false);}
    var updateCheckButton=document.getElementById("native-update-check-btn");
    if(updateCheckButton)updateCheckButton.addEventListener("click",function(){checkNativeUpdate(true);});
    document.addEventListener("visibilitychange",function(){if(document.visibilityState==="visible")checkNativeUpdate(false);});
