@@ -1509,7 +1509,7 @@ async function runRadarDeepScan(){
  try{
   for(const item of candidates){
    const c=item.coin,trend=item.expectedTrend;
-   const response=await fetch(AI_ANALYSIS_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({coin_id:c.id,symbol:String(c.symbol).toUpperCase(),name:c.name,market_mode:trend==="bear"?"both":"spot"})});
+   const response=await fetch(AI_ANALYSIS_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({coin_id:c.id,symbol:String(c.symbol).toUpperCase(),name:c.name,market_mode:trend==="bear"?"both":"spot",analysis_mode:"radar"})});
    const data=await response.json();
    if(!response.ok||!data?.analysis)throw new Error(data?.error||"پاسخ تحلیل معتبر نیست");
    const a=data.analysis,levels=a.levels||{},action=String(a.action||"WAIT").toUpperCase();
