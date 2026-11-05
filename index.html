@@ -1024,7 +1024,7 @@ body{background:
 <p class="sub" style="margin-top:12px">ساعت‌ها بر اساس منطقه زمانی هر بازار و تغییر ساعت تابستانی محاسبه می‌شوند. تعطیلات رسمی و تغییرات اضطراری ممکن است وضعیت را تغییر دهند؛ این نمایش راهنمای زمان‌بندی است، نه تأییدیه رسمی بورس.</p>
 </section>
 <div class="connection-grid" id="connections"></div>
- <div class="connection-more"><button class="connection-more-btn" id="connections-toggle" type="button" aria-expanded="false" aria-controls="connections-extra">نمایش ۴ منبع دیگر <span class="chevron" aria-hidden="true">⌄</span></button><div class="connection-grid connection-extra" id="connections-extra"></div></div>
+ <div class="connection-more"><button class="connection-more-btn" id="connections-toggle" type="button" aria-expanded="false" aria-controls="connections-extra">نمایش ۳ منبع دیگر <span class="chevron" aria-hidden="true">⌄</span></button><div class="connection-grid connection-extra" id="connections-extra"></div></div>
 </section>
 
 <!-- فقط لیست ارزهای دیجیتال -->
@@ -1277,11 +1277,6 @@ async function fetchTetherRate(){
     const toman=Number(tomanMarket?.stats?.lastPrice??tomanMarket?.lastPrice);
     const rial=Number(rialMarket?.stats?.lastPrice??rialMarket?.lastPrice);
     return toman>0?toman:rial/10;
-   }},
-   {source:"Bitpin",url:AI_ANALYSIS_ENDPOINT+"/market-proxy?source=bitpin-tickers",read:d=>{
-    const rows=Array.isArray(d)?d:Array.isArray(d?.results)?d.results:[];
-    const market=rows.find(m=>String(m?.symbol||"").toUpperCase()==="USDT_IRT");
-    return Number(market?.price);
    }},
   ];
   const results=await Promise.all(requests.map(async item=>{
@@ -1556,7 +1551,7 @@ async function checkConnections(){
   if(!response.ok)throw new Error("HTTP "+response.status);
   const payload=await response.json();
   if(!Array.isArray(payload?.checks))throw new Error("پاسخ بررسی اتصال کامل نیست");
-  const expected=["binance spot","bybit spot","okx spot","nobitex","wallex","bitget spot","bitpin"];
+  const expected=["binance spot","bybit spot","okx spot","nobitex","wallex","bitget spot"];
   const checks=new Map(payload.checks.map(c=>[String(c?.name||"").trim().toLowerCase(),c]));
   const bitgetCheck=checks.get("bitget spot");
   if(bitgetCheck?.status==="down"||bitgetCheck?.status==="restricted"){
