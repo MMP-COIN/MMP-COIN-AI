@@ -669,36 +669,30 @@ body:after{content:"";position:fixed;width:42vw;height:42vw;max-width:620px;max-
 </div>
 </section>
 
-<!-- تحلیلگر واقعی: داده‌های بازار + اندیکاتورها + تفسیر مدل هوش مصنوعی -->
-<section class="card" id="ai-section">
-<div class="section-head"><h2>تحلیلگر هوشمند چندلایه بازار</h2><span class="badge">MMP AI · LIVE ANALYSIS</span></div>
-<p class="sub ai-intro">تحلیل چندلایه شامل جهت روند، قدرت مومنتوم، اندیکاتورها، تایم‌فریم‌های مختلف، سطوح حمایت و مقاومت، ریسک و سناریوهای احتمالی اسپات و فیوچرز است.</p>
-<div class="ai-toolbar">
-<select id="ai-coin-select" class="dropdown-select-box"><option value="">انتخاب ارز برای تحلیل جامع...</option></select>
-<select id="ai-market-mode" class="dropdown-select-box" aria-label="نوع بازار">
-<option value="both">اسپات + فیوچرز</option><option value="spot">فقط اسپات</option><option value="futures">فقط فیوچرز</option>
-</select><button class="btn primary" id="ai-run-btn" onclick="runAiAnalysis(false)">شروع تحلیل هوشمند</button>
-<button class="btn secondary" id="ai-refresh-btn" onclick="runAiAnalysis(true)">تحلیل مجدد</button>
-</div>
-<div class="ai-grid">
-<div class="ai-metric"><small>وضعیت سیگنال</small><b id="ai-action">منتظر انتخاب ارز</b></div>
-<div class="ai-metric"><small>قیمت مرجع بازار</small><b id="ai-live-price">—</b></div>
-<div class="ai-metric"><small>قدرت سیگنال مدل</small><b id="ai-confidence">—</b></div>
-<div class="ai-metric"><small>سطح ریسک</small><b id="ai-risk">—</b></div>
-</div>
-<details class="ai-details" id="ai-details">
-<summary><span>مشاهده جزئیات تحلیل و گزارش کامل</span><small>تایم‌فریم‌ها · شواهد · سطوح کلیدی · سناریوها</small></summary>
-<div class="ai-details-content">
-<div class="ai-overview">
- <div class="ai-confidence-box"><div class="ai-confidence-head"><span>قدرت شواهد تحلیلی (نه احتمال قطعی موفقیت)</span><b id="ai-confidence-label">—</b></div><div class="ai-confidence-track"><div class="ai-confidence-fill" id="ai-confidence-fill"></div></div></div>
- <div class="tf-grid" id="ai-timeframes"><div class="ai-empty" style="grid-column:1/-1">پس از اجرای تحلیل، وضعیت ۴ تایم‌فریم اینجا نمایش داده می‌شود.</div></div>
-</div>
-<div class="ai-status" id="ai-status">برای تحلیل، ارز را انتخاب و دکمه شروع را بزنید. بروزرسانی قیمت‌ها گزارش را پاک یا دوباره اجرا نمی‌کند.</div>
-<div class="signal ai-report" id="advanced-ai-analysis"><div class="ai-empty"><div class="symbol">◈</div><b>میز تحلیل هوشمند MMP</b><p>برای دریافت تحلیل چندتایم‌فریمی، بررسی روند، سطوح کلیدی و سناریوهای معاملاتی، یک دارایی انتخاب کنید.</p></div></div>
-</div></details>
-
+<!-- تحلیلگر هوشمند؛ رابط فشرده با گزارش کاربردی و جزئیات اختیاری -->
+<section class="card ai-terminal" id="ai-section">
+ <div class="section-head"><div><div class="section-kicker">MMP AI · MARKET INTELLIGENCE</div><h2>تحلیلگر هوشمند چندلایه بازار</h2></div><span class="badge">تحلیل داده‌محور</span></div>
+ <p class="sub ai-intro">یک ارز را انتخاب کن تا روند، سطوح کلیدی و سناریوهای احتمالی بازار بررسی شود؛ تصمیم نهایی با خودت است.</p>
+ <div class="ai-toolbar">
+  <select id="ai-coin-select" class="dropdown-select-box"><option value="">انتخاب ارز…</option></select>
+  <select id="ai-market-mode" class="dropdown-select-box" aria-label="نوع بازار"><option value="both">اسپات + فیوچرز</option><option value="spot">فقط اسپات</option><option value="futures">فقط فیوچرز</option></select>
+  <button class="btn primary" id="ai-run-btn" type="button" onclick="runAiAnalysis(true)">دریافت تحلیل جدید</button>
+ </div>
+ <div class="ai-grid ai-grid-compact">
+  <div class="ai-metric"><small>جمع‌بندی جهت بازار</small><b id="ai-action">منتظر انتخاب ارز</b></div>
+  <div class="ai-metric"><small>قیمت مرجع</small><b id="ai-live-price">—</b></div>
+  <div class="ai-metric"><small>سطح ریسک</small><b id="ai-risk">—</b></div>
+  <span id="ai-confidence" class="sr-only">—</span>
+ </div>
+ <div class="ai-status" id="ai-status">ارز را انتخاب کن و تحلیل را اجرا کن.</div>
+ <div class="signal ai-report ai-report-clean" id="advanced-ai-analysis"><div class="ai-empty"><div class="symbol">◈</div><b>آماده تحلیل بازار</b><p>گزارش شامل جهت احتمالی، دلیل‌های اصلی، محدوده‌های مهم و شرایط بی‌اعتبارشدن سناریو خواهد بود.</p></div></div>
+ <details class="ai-details" id="ai-details"><summary><span>جزئیات فنی و تایم‌فریم‌ها</span><small>قدرت شواهد · ۱۵ دقیقه · ۱ ساعت · ۴ ساعت · روزانه</small></summary>
+  <div class="ai-details-content">
+   <div class="ai-confidence-box"><div class="ai-confidence-head"><span>قدرت هم‌جهتی شواهد؛ نه احتمال قطعی سود</span><b id="ai-confidence-label">—</b></div><div class="ai-confidence-track"><div class="ai-confidence-fill" id="ai-confidence-fill"></div></div></div>
+   <div class="tf-grid" id="ai-timeframes"><div class="ai-empty" style="grid-column:1/-1">پس از اجرای تحلیل، وضعیت چهار بازه زمانی اینجا نمایش داده می‌شود.</div></div>
+  </div>
+ </details>
 </section>
-
 <section class="card" id="market-hours">
 <div class="section-head"><div><div class="section-kicker">GLOBAL MARKET CLOCK</div><h2>ساعت کاری بازارهای مالی جهان</h2></div><span class="badge" id="market-clock-zone">زمان محلی دستگاه</span></div>
 <div class="market-hours-grid" id="market-hours-grid"></div>
@@ -1373,63 +1367,40 @@ function aiPrice(v){if(v==null||!Number.isFinite(Number(v)))return "—";const u
 function aiSetStatus(t,busy=false){$("ai-status").textContent=t;$("ai-status").classList.toggle("busy",busy);}
 function renderAiReport(r,c,market={}){
  const action=String(r.action||"WAIT").toUpperCase();
- const label=action==="BUY"?"خرید / LONG":action==="SELL"?"فروش / SHORT":"عدم ورود / WAIT";
+ const label=action==="BUY"?"تمایل به خرید":action==="SELL"?"تمایل به فروش":"فعلاً بدون ورود";
  const cls=action==="BUY"?"buy":action==="SELL"?"sell":"wait";
  $("ai-action").textContent=label;
  $("ai-action").style.color=action==="BUY"?"var(--green)":action==="SELL"?"var(--red)":"var(--yellow)";
- $("ai-confidence").textContent=(r.confidence??"—")+(r.confidence!=null?" از ۱۰۰":"");
- $("ai-confidence-label").textContent=(r.confidence??"—")+(r.confidence!=null?" از ۱۰۰":"");
+ $("ai-confidence").textContent=(r.confidence??"—")+" از ۱۰۰";
+ $("ai-confidence-label").textContent=(r.confidence??"—")+" از ۱۰۰";
  $("ai-confidence-fill").style.width=Math.max(0,Math.min(100,Number(r.confidence)||0))+"%";
  $("ai-risk").textContent=r.risk_level||"نامشخص";
  const referencePrice=aiNum(r.market?.price_usd??c?.current_price);
- if(referencePrice==null){$("ai-live-price").textContent="—";}else{$("ai-live-price").innerHTML='<span class="ai-reference-usdt">$ '+money(referencePrice,referencePrice<1?6:2)+' USDT</span>'+(currentTetherPrice>0?'<span class="ai-reference-irt">'+toman(referencePrice*currentTetherPrice)+' تومان</span>':"");}
+ $("ai-live-price").innerHTML=referencePrice==null?"—":'<span class="ai-reference-usdt">$ '+money(referencePrice,referencePrice<1?6:2)+' USDT</span>'+(currentTetherPrice>0?'<span class="ai-reference-irt">'+toman(referencePrice*currentTetherPrice)+' تومان</span>':"");
  const tfNames={"15m":"۱۵ دقیقه","1h":"۱ ساعت","4h":"۴ ساعت","1d":"روزانه"};
- const tfHtml=Object.entries(market.timeframes||{}).map(([tf,v])=>{
+ $("ai-timeframes").innerHTML=Object.entries(market.timeframes||{}).map(([tf,v])=>{
   const trend=v.ema_trend==="bullish"?"صعودی":v.ema_trend==="bearish"?"نزولی":"خنثی / متناقض";
   const color=v.ema_trend==="bullish"?"var(--green)":v.ema_trend==="bearish"?"var(--red)":"var(--yellow)";
   return '<div class="tf-card"><strong>'+tfNames[tf]+'</strong><div class="tf-trend" style="color:'+color+'">'+trend+'</div><small>RSI: '+aiEscape(v.rsi==null?"—":Number(v.rsi).toFixed(1))+'<br>حمایت: '+aiEscape(aiPrice(v.support))+'<br>مقاومت: '+aiEscape(aiPrice(v.resistance))+'</small></div>';
- }).join("");
- $("ai-timeframes").innerHTML=tfHtml||'<div class="ai-empty" style="grid-column:1/-1">اطلاعات تایم‌فریم‌ها در پاسخ موجود نیست.</div>';
+ }).join("")||'<div class="ai-empty" style="grid-column:1/-1">اطلاعات تایم‌فریم‌ها در پاسخ موجود نیست.</div>';
  const lv=r.levels||{};
- const level=(title,val)=>{
-  let shown="—";
-  if(val&&typeof val==="object"&&("low" in val||"high" in val))shown=(val.low!=null?aiPrice(val.low):"—")+" تا "+(val.high!=null?aiPrice(val.high):"—");
-  else if(val!=null&&val!==""&&Number.isFinite(Number(val)))shown=aiPrice(val);
-  else if(val!=null)shown=String(val);
-  if(shown==="—"){
-   const action=String(r.action||"WAIT").toUpperCase();
-   const fallback={
-    "محدوده ورود":action==="WAIT"?"پس از تأیید جهت بازار":"در انتظار داده معتبر",
-    "حد ضرر":"پس از تعیین نقطه ورود",
-    "هدف اول · TP1":"پس از تأیید ورود",
-    "هدف دوم · TP2":"پس از تأیید ورود",
-    "هدف سوم · TP3":"پس از تأیید ورود",
-    "نسبت سود به زیان":"فعلاً قابل محاسبه نیست",
-    "افق زمانی":"تا تأیید کندل ۴ ساعته",
-    "حداکثر ریسک پیشنهادی":"فعلاً بدون ورود"
-   };
-   shown=fallback[title]||"پس از تأیید شرایط بازار";
-  }
-  return '<div class="ai-level"><small>'+title+'</small><b>'+aiEscape(shown)+'</b></div>';
- };
- const reasons=Array.isArray(r.reasons)?r.reasons:[];
- const scenarios=Array.isArray(r.scenarios)?r.scenarios:[];
- const recommendations=Array.isArray(r.recommendations)?r.recommendations:[];
- const indicators=r.indicators||{};
- const activePlan=r.plan_status==="active_signal";
- const planHtml=activePlan
-  ? '<h3>🎯 برنامه معاملاتی پیشنهادی</h3><div class="ai-levels"><div class="ai-level" style="grid-column:1/-1"><small>وضعیت برنامه</small><b>شرط ورود فعال است؛ ورود فقط پس از تأیید کندل</b></div>'+level("محدوده ورود",lv.entry_zone)+level("حد ضرر",lv.stop_loss)+level("هدف اول · TP1",lv.tp1)+level("هدف دوم · TP2",lv.tp2)+level("هدف سوم · TP3",lv.tp3)+level("نسبت سود به زیان",r.risk_reward)+level("افق زمانی",r.holding_horizon)+level("حداکثر ریسک پیشنهادی",r.position_risk)+'</div>'
-  : '<h3>🎯 برنامه معاملاتی پیشنهادی</h3><div class="ai-note">فعلاً ورود فوری نداریم. قیمت‌های ورود، حد ضرر و اهدافِ سناریوهای شرطی در بخش بعدی آمده‌اند؛ فقط پس از تأیید بسته‌شدن کندل ۴ ساعته بررسی شوند.</div>';
- const html='<div><span class="ai-pill '+cls+'">'+label+'</span><span class="ai-pill">تایم‌فریم اصلی: '+aiEscape(r.primary_timeframe||"۴ ساعته")+'</span><span class="ai-pill">بازار: '+aiEscape($("ai-market-mode").selectedOptions[0].textContent)+'</span></div>'+
- planHtml+(r.entry_trigger?'<p><b>شرط فعال‌شدن ورود:</b> '+aiEscape(r.entry_trigger)+'</p>':'')+(r.conditional_setups?'<h4>ورودهای شرطی در صورت شکست محدوده</h4>'+["long","short"].map(k=>{const p=r.conditional_setups[k];if(!p)return "";const nm=k==="long"?"سناریوی LONG":"سناریوی SHORT";return '<div class="ai-levels"><div class="ai-level" style="grid-column:1/-1"><small>'+nm+'</small><b>'+aiEscape(p.trigger)+'</b></div>'+level("محدوده ورود",p.entry_zone)+level("حد ضرر",p.stop_loss)+level("هدف اول · TP1",p.tp1)+level("هدف دوم · TP2",p.tp2)+level("هدف سوم · TP3",p.tp3)+level("نسبت سود به زیان",p.risk_reward)+level("افق زمانی",p.holding_horizon)+level("حداکثر ریسک پیشنهادی",p.position_risk)+'</div><p><b>ابطال:</b> '+aiEscape(p.invalidation)+'</p>';}).join(""):'')+'<p><small>سطوح عددی محاسبه‌شده از ATR و حمایت/مقاومت؛ منتظر تأیید بسته‌شدن کندل بمان. این‌ها تضمین سود نیستند.</small></p>'+
- '<h3>🧠 جمع‌بندی تحلیل هوش مصنوعی</h3><p>'+aiEscape(r.summary||"تحلیل متنی در دسترس نیست.")+'</p>'+
- '<h3>📊 تحلیل تکنیکال و چندتایم‌فریمی</h3><p>'+aiEscape(r.technical_analysis||"")+'</p><p><b>RSI:</b> '+aiEscape(indicators.rsi??"—")+' · <b>MACD:</b> '+aiEscape(indicators.macd_signal??"—")+' · <b>EMA:</b> '+aiEscape(indicators.ema_trend??"—")+' · <b>ATR:</b> '+aiEscape(indicators.atr_percent??"—")+'</p>'+
- '<h3>🧭 سناریوهای پیش‌رو</h3><ul class="ai-list">'+scenarios.map(x=>'<li><b>'+aiEscape(x.name||"سناریو")+'</b>: '+aiEscape(x.description||"")+'</li>').join("")+'</ul>'+
- '<h3>💡 پیشنهادهای عملی و نقاط قابل‌پیگیری</h3><ul class="ai-suggestion-list">'+recommendations.map(x=>'<li>'+aiEscape(x)+'</li>').join("")+'</ul>'+
- '<h3>🌐 وضعیت کلی بازار، احساسات و مشتقات</h3><p>'+aiEscape(r.market_context||"اطلاعات تکمیلی احساسات و مشتقات در دسترس نیست.")+'</p>'+
- '<h3>🔍 دلایل سیگنال</h3><ul class="ai-list">'+reasons.map(x=>'<li>'+aiEscape(x)+'</li>').join("")+'</ul>'+
- '<h3>🛡️ مدیریت ریسک و شرایط ابطال</h3><p>'+aiEscape(r.risk_management||"")+'</p><p><b>شرط ابطال تحلیل:</b> '+aiEscape(r.invalidation||"")+'</p>'+
- '<div class="ai-note">منبع داده: '+aiEscape(r.data_source||"داده عمومی بازار")+' · زمان آخرین کندل: '+aiEscape(r.market_timestamp||"نامشخص")+' · زمان تولید: '+new Date().toLocaleString("fa-IR")+'</div>';
+ const fmt=(v)=>{if(v==null)return "—";if(typeof v==="object")return (v.low!=null?aiPrice(v.low):"—")+" تا "+(v.high!=null?aiPrice(v.high):"—");return aiPrice(v);};
+ const active=r.plan_status==="active_signal";
+ const levels=active?[
+  ["محدوده ورود",fmt(lv.entry_zone)],["حد ضرر",fmt(lv.stop_loss)],["هدف اول",fmt(lv.tp1)],["نسبت سود به زیان",r.risk_reward||"—"]
+ ]:[["وضعیت","ورود فوری تأیید نشده"],["شرط ورود","منتظر تأیید شکست و بسته‌شدن کندل"],["حد ضرر","پس از تأیید سناریو"],["ریسک فعلی","بدون ورود"]];
+ const levelHtml=levels.map(x=>'<div class="ai-level"><small>'+x[0]+'</small><b>'+aiEscape(x[1])+'</b></div>').join("");
+ const reasons=Array.isArray(r.reasons)?r.reasons.slice(0,3):[];
+ const recommendations=Array.isArray(r.recommendations)?r.recommendations.slice(0,3):[];
+ const condition=r.entry_trigger||r.conditional_setups?.long?.trigger||r.conditional_setups?.short?.trigger||"برای ورود، منتظر تأیید بسته‌شدن کندل و هم‌جهتی روندها بمان.";
+ const html='<div class="ai-report-head"><span class="ai-pill '+cls+'">'+label+'</span><span class="ai-pill">بازه اصلی: '+aiEscape(r.primary_timeframe||"۴ ساعته")+'</span><span class="ai-pill">ریسک: '+aiEscape(r.risk_level||"نامشخص")+'</span></div>'+
+ '<div class="ai-report-levels">'+levelHtml+'</div>'+
+ '<h3>خلاصه تحلیل</h3><p>'+aiEscape(r.summary||"جمع‌بندی در دسترس نیست.")+'</p>'+
+ '<h3>چرا این نتیجه؟</h3><ul class="ai-list">'+(reasons.length?reasons.map(x=>'<li>'+aiEscape(x)+'</li>').join(""):'<li>شواهد کافی برای توضیح نتیجه دریافت نشد.</li>')+'</ul>'+
+ '<div class="ai-note"><b>شرط بررسی ورود:</b> '+aiEscape(condition)+'</div>'+
+ (recommendations.length?'<h3>اقدام‌های قابل‌پیگیری</h3><ul class="ai-list">'+recommendations.map(x=>'<li>'+aiEscape(x)+'</li>').join("")+'</ul>':"")+
+ '<p><b>شرط بی‌اعتبارشدن تحلیل:</b> '+aiEscape(r.invalidation||"با تغییر ساختار روند و نقض سطح کلیدی، تحلیل باید دوباره انجام شود.")+'</p>'+
+ '<div class="ai-note">منبع داده: '+aiEscape(r.data_source||"داده بازار")+' · آخرین کندل: '+aiEscape(r.market_timestamp||"نامشخص")+' · قدرت شواهد، احتمال موفقیت معامله نیست.</div>';
  $("advanced-ai-analysis").innerHTML=html;
  $("advanced-ai-analysis").dataset.hasReport="true";
 }
@@ -1468,7 +1439,38 @@ async function runAiAnalysis(force=false){
   const timeout=setTimeout(()=>controller.abort(),55000);
   let res;
   try{
-   res=await fetch(AI_ANALYSIS_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({coin_id:c.id,symbol:c.symbol.toUpperCase(),name:c.name,market_mode:$("ai-market-mode").value}),signal:controller.signal});
+   res=await fetch(AI_ANALYSIS_ENDPOINT,{method:"POST",headersasync function runAiAnalysis(force=false){
+ const id=$("ai-coin-select").value;
+ const out=$("advanced-ai-analysis"),btn=$("ai-run-btn");
+ if(!id){$("ai-action").textContent="منتظر انتخاب ارز";aiSetStatus("ابتدا یک ارز برای تحلیل انتخاب کنید.");return;}
+ const c=cachedCoinsData.find(x=>x.id===id);
+ if(!c){aiSetStatus("داده قیمت این ارز هنوز بارگذاری نشده است.");return;}
+ const cacheKey=id+"|"+$("ai-market-mode").value;
+ const cached=aiCache.get(cacheKey);
+ if(!force&&cached&&Date.now()-cached.time<180000){
+  renderAiReport(cached.analysis,c,cached.market);
+  aiSetStatus("آخرین تحلیل ذخیره‌شده نمایش داده شد · برای دریافت داده تازه، تحلیل جدید را اجرا کن.");
+  return;
+ }
+ if(aiBusy)return;
+ aiBusy=true;
+ const token=++aiRequestToken;
+ btn.disabled=true;btn.textContent="در حال تحلیل…";
+ aiSetStatus("در حال بررسی داده‌های واقعی بازار و چهار بازه زمانی…",true);
+ if(out.dataset.hasReport!=="true")out.innerHTML='<div class="ai-empty"><div class="symbol">◌</div><b>در حال تحلیل بازار…</b><p>کندل‌ها، روند، حجم و سطوح کلیدی بررسی می‌شوند.</p></div>';
+ try{
+  if(exchangeAuditPromise)await exchangeAuditPromise;
+  const support=exchangeSupportBySymbol[String(c.symbol).toUpperCase()];
+  const selectedMode=$("ai-market-mode").value;
+  if(!support)aiSetStatus("فهرست جفت‌های صرافی کامل نیست؛ سرویس تحلیل منابع جایگزین را بررسی می‌کند…",true);
+  else if(selectedMode==="spot"&&!support.spot?.confirmed)aiSetStatus("جفت نقدی در فهرست اولیه تأیید نشد؛ منابع جایگزین بررسی می‌شوند…",true);
+  else if(selectedMode==="futures"&&!support.futures?.confirmed)aiSetStatus("قرارداد آتی در فهرست اولیه تأیید نشد؛ منابع جایگزین بررسی می‌شوند…",true);
+  else if(selectedMode==="both"&&!support.spot?.confirmed&&!support.futures?.confirmed)aiSetStatus("جفت در فهرست اولیه تأیید نشد؛ منابع جایگزین بررسی می‌شوند…",true);
+  const controller=new AbortController();
+  const timeout=setTimeout(()=>controller.abort(),55000);
+  let res;
+  try{
+   res=await fetch(AI_ANALYSIS_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({coin_id:c.id,symbol:c.symbol.toUpperCase(),name:c.name,market_mode:selectedMode}),signal:controller.signal});
   }finally{clearTimeout(timeout);}
   const data=await res.json();
   if(!res.ok)throw new Error((data.error||"خطا در سرویس تحلیل")+(data.stage?" | مرحله: "+data.stage:"")+(data.symbol?" | ارز: "+data.symbol:""));
@@ -1476,20 +1478,21 @@ async function runAiAnalysis(force=false){
   if(token!==aiRequestToken)return;
   const reportTime=Date.now();
   aiCache.set(cacheKey,{analysis:data.analysis,market:data.market||{},time:reportTime});
-  saveAiReport({analysis:data.analysis,market:data.market||{},coin:{id:c.id,name:c.name,symbol:c.symbol,current_price:c.current_price},marketMode:$("ai-market-mode").value,time:reportTime});
+  saveAiReport({analysis:data.analysis,market:data.market||{},coin:{id:c.id,name:c.name,symbol:c.symbol,current_price:c.current_price},marketMode:selectedMode,time:reportTime});
   renderAiReport(data.analysis,c,data.market||{});
   saveJournal({name:c.name,symbol:c.symbol.toUpperCase(),action:data.analysis.action||"WAIT",confidence:data.analysis.confidence??"—",time:reportTime});
-  aiSetStatus("تحلیل تکمیل شد · گزارش و سابقه محلی ذخیره شد.");
+  aiSetStatus("تحلیل کامل شد · گزارش و داده‌های مرجع ذخیره شد.");
  }catch(e){
   if(token===aiRequestToken){
    $("ai-action").textContent="تحلیل ناموفق";
    aiSetStatus("خطا در دریافت تحلیل: "+(e.name==="AbortError"?"زمان پاسخ سرویس بیش از حد طول کشید":e.message));
-   if(out.dataset.hasReport!=="true")out.innerHTML='<div class="ai-empty"><b>تحلیل فعلاً در دسترس نیست</b><p>علت خطا: '+aiEscape(e.name==="AbortError"?"زمان پاسخ سرویس بیش از حد طول کشید":e.message||"خطای نامشخص")+'</p><p>پس از رفع خطا، دوباره تحلیل را اجرا کنید.</p></div>';
+   if(out.dataset.hasReport!=="true")out.innerHTML='<div class="ai-empty"><b>تحلیل فعلاً در دسترس نیست</b><p>علت خطا: '+aiEscape(e.name==="AbortError"?"زمان پاسخ سرویس بیش از حد طول کشید":e.message||"خطای نامشخص")+'</p><p>پس از رفع خطا، دوباره تحلیل را اجرا کن.</p></div>';
   }
  }finally{
-  if(token===aiRequestToken){aiBusy=false;btn.disabled=false;refreshBtn.disabled=false;btn.textContent="شروع تحلیل هوشمند";}
+  if(token===aiRequestToken){aiBusy=false;btn.disabled=false;btn.textContent="دریافت تحلیل جدید";}
  }
 }
+
 
 
 /* MMP terminal modules: global sessions, watchlist, scanner, risk sizing and local journal */
@@ -1841,3 +1844,36 @@ html.mmp-native-app .footer{padding-bottom:12px}
 
 </body>
 </html>
+
+<style>
+/* Compact MMP AI analyst */
+.sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+.ai-terminal .section-head{margin-bottom:8px}
+.ai-terminal .ai-intro{margin:0 0 12px}
+.ai-terminal .ai-toolbar{grid-template-columns:minmax(0,2fr) minmax(145px,1fr) auto;gap:9px}
+.ai-terminal .ai-grid-compact{grid-template-columns:repeat(3,minmax(0,1fr));margin:10px 0}
+.ai-terminal .ai-metric{min-height:66px;padding:10px 12px}
+.ai-terminal .ai-metric b{font-size:13px}
+.ai-terminal .ai-status{margin:8px 0}
+.ai-terminal .ai-report-clean{padding:15px;margin-top:10px}
+.ai-terminal .ai-report-clean h3{font-size:13px;margin:13px 0 5px}
+.ai-report-head{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.ai-report-levels{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:10px 0}
+.ai-report-levels .ai-level{min-width:0}
+.ai-report-levels .ai-level b{font-size:12px;line-height:1.7}
+.ai-terminal .ai-details{margin-top:10px}
+.ai-terminal .ai-details-content{padding-top:12px}
+.ai-terminal .ai-confidence-box{margin-bottom:10px}
+.ai-terminal .tf-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media(max-width:760px){
+ .ai-terminal .ai-toolbar{grid-template-columns:1fr 1fr}
+ .ai-terminal .ai-toolbar button{grid-column:1/-1}
+ .ai-terminal .ai-grid-compact{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+ .ai-terminal .ai-metric{padding:9px 7px}
+ .ai-terminal .ai-metric small{font-size:9px}
+ .ai-terminal .ai-metric b{font-size:11px}
+ .ai-report-levels{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .ai-terminal .tf-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:420px){.ai-terminal .ai-toolbar{grid-template-columns:1fr}.ai-terminal .ai-toolbar button{grid-column:auto}}
+</style>
