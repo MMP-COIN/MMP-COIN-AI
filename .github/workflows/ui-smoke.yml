@@ -108,6 +108,12 @@ jobs:
               assert.equal(await app.locator('.radar-count-card.neutral').count(), 0, 'radar hides neutral count for a simpler view');
               assert.equal(await app.locator('#radar-deep-bull-results').count(), 1, 'bullish AI suggestions have a dedicated group');
               assert.equal(await app.locator('#radar-deep-bear-results').count(), 1, 'bearish AI suggestions have a dedicated group');
+              await app.locator('details.radar-assets-more > summary').click();
+              await app.locator('#radar-custom-select').selectOption('bitcoin');
+              await app.locator('#radar-custom-add').click();
+              assert.equal(await app.locator('.radar-custom-row').count(), 1, 'user can add a personal radar asset');
+              await app.locator('[data-radar-remove="bitcoin"]').click();
+              assert.equal(await app.locator('.radar-custom-row').count(), 0, 'user can remove a personal radar asset');
               assert.equal(await app.locator('.radar-backtest').count(), 0, 'no backtest section is displayed');
               for (const [tab, expected] of [['radar','radar'],['chart','chart'],['ai','ai'],['more','more'],['home','home']]) {
                 await app.locator('[data-native-tab="' + tab + '"]').click();
