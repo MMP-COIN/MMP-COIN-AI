@@ -98,7 +98,7 @@ jobs:
         run: |
           set -euo pipefail
           curl --fail --silent --show-error --retry 2 --retry-delay 3 --max-time 25 "$WORKER_URL/connections-health" -o /tmp/connections.json
-          jq -e '.checks | length == 7' /tmp/connections.json >/dev/null
+          jq -e '.checks | length == 9' /tmp/connections.json >/dev/null
           echo "Current exchange connection status:"
           jq -r '.checks[] | "- " + .name + ": " + .status + (if .ping == null then "" else " (" + (.ping|tostring) + " ms)" end) + (if .error == null then "" else " — " + (.error|tostring) end)' /tmp/connections.json
           jq -r '.checks[] | "- " + .name + ": " + .status + (if .ping == null then "" else " (" + (.ping|tostring) + " ms)" end) + (if .error == null then "" else " — " + (.error|tostring) end)' /tmp/connections.json >> "$GITHUB_STEP_SUMMARY"
@@ -129,9 +129,23 @@ jobs:
           fi
           bitpin_status=$(curl --silent --show-error --retry 1 --max-time 25 -o /tmp/bitpin.json -w "%{http_code}" "$WORKER_URL/market-proxy?source=bitpin-tickers")
           echo "Bitpin ticker proxy HTTP $bitpin_status"
-          if [ "$bitpin_status" != "200" ]; then jq -r '.detail // .error // .' /tmp/bitpin.json; exit 1; fi
-          jq -e '([.[]?, .results[]?] | any(.symbol == "USDT_IRT" and (.price | tonumber > 0)))' /tmp/bitpin.json >/dev/null
-          echo "- Bitpin Tether/Toman proxy: responding with a positive quote" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$bitpin_status" = "200" ]; then
+            jq -e '([.[]?, .results[]?] | any((.symbol|ascii_upcase) == "USDT_IRT" and (.price | tonumber > 0)))' /tmp/bitpin.json >/dev/null
+            echo "- Bitpin Tether/Toman proxy: responding with a positive quote" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning::Bitpin proxy is restricted from Cloudflare egress: $(jq -r '.detail // .error // .' /tmp/bitpin.json)"
+            echo "- Bitpin proxy: restricted from Cloudflare egress" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          for source in ramzinex-pairs exir-tickers; do
+            status=$(curl --silent --show-error --retry 1 --max-time 25 -o "/tmp/$source.json" -w "%{http_code}" "$WORKER_URL/market-proxy?source=$source")
+            echo "$source proxy HTTP $status"
+            if [ "$status" = "200" ]; then
+              echo "- $source proxy: responding; top-level keys: $(jq -r 'if type=="object" then (keys|join(",")) else "array" end' "/tmp/$source.json")" >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "::warning::$source proxy unavailable: $(jq -r '.detail // .error // .' "/tmp/$source.json")"
+              echo "- $source proxy: unavailable" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
           {
             echo "- Binance ticker proxy: responding"
             echo "- Bitget direct API: checked separately with browser CORS"
