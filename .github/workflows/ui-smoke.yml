@@ -89,6 +89,12 @@ jobs:
               assert.equal(await app.locator('[data-native-tab]').count(), 5, 'five primary app tabs');
 
               const pageName = () => app.locator('body').getAttribute('data-native-page');
+              await app.locator('[data-native-tab="radar"]').click();
+              assert.equal(await app.locator('.radar-count-grid .radar-count-card').count(), 2, 'radar shows only bullish and bearish counts');
+              assert.equal(await app.locator('.radar-count-card.neutral').count(), 0, 'radar hides neutral count for a simpler view');
+              assert.equal(await app.locator('#radar-deep-bull-results').count(), 1, 'bullish AI suggestions have a dedicated group');
+              assert.equal(await app.locator('#radar-deep-bear-results').count(), 1, 'bearish AI suggestions have a dedicated group');
+              assert.equal(await app.locator('.radar-backtest').count(), 0, 'no backtest section is displayed');
               for (const [tab, expected] of [['radar','radar'],['chart','chart'],['ai','ai'],['more','more'],['home','home']]) {
                 await app.locator('[data-native-tab="' + tab + '"]').click();
                 assert.equal(await pageName(), expected, 'tab ' + tab + ' opens its own screen');
