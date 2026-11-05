@@ -428,8 +428,9 @@ async function handle(request,env){
   };
   const probeAny=async(urls,valid,timeout=9000,extraHeaders={})=>{
    const results=await Promise.all(urls.map(url=>timeoutFetch(url,valid,timeout,extraHeaders)));
-   const good=results.filter(x=>x.status!=="down").sort((a,b)=>a.ping-b.ping);
-   return good[0]||results[results.length-1]||{status:"down",ping:null,error:"no Wallex endpoint responded"};
+   const good=results.filter(x=>x.status==="ok"||x.status==="slow").sort((a,b)=>(a.ping??Infinity)-(b.ping??Infinity));
+   if(good.length)return good[0];
+   return results.find(x=>x.status==="restricted")||results[results.length-1]||{status:"down",ping:null,error:"no exchange endpoint responded"};
   };
   const [binance,bybit,okx,nobitex,wallex,bitget]=await Promise.all([
    probeAny(["https://api.binance.com/api/v3/ticker/24hr","https://api.binance.us/api/v3/ticker/24hr","https://api1.binance.com/api/v3/ticker/24hr","https://api2.binance.com/api/v3/ticker/24hr","https://api3.binance.com/api/v3/ticker/24hr","https://data-api.binance.vision/api/v3/ticker/24hr"],d=>Array.isArray(d)&&d.some(x=>x?.symbol==="BTCUSDT"&&Number(x?.lastPrice)>0)),
