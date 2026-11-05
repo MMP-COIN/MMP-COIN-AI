@@ -107,3 +107,15 @@ jobs:
             echo "- Binance ticker proxy: responding"
             echo "- Bitget direct API: checked separately with browser CORS"
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Test end-to-end AI market analysis
+        env:
+          WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --max-time 70 \
+            -H "Content-Type: application/json" \
+            -d '{"coin_id":"bitcoin","symbol":"BTC","name":"Bitcoin","market_mode":"spot"}' \
+            "$WORKER_URL/" -o /tmp/analysis.json
+          jq -e '.analysis != null and (.analysis.action == "BUY" or .analysis.action == "SELL" or .analysis.action == "WAIT") and (.market.timeframes | has("15m") and has("1h") and has("4h") and has("1d"))' /tmp/analysis.json >/dev/null
+          echo "- End-to-end AI analysis: responding with four timeframes" >> "$GITHUB_STEP_SUMMARY"
