@@ -432,7 +432,7 @@ async function handle(request,env){
    return good[0]||results[results.length-1]||{status:"down",ping:null,error:"no Wallex endpoint responded"};
   };
   const [binance,bybit,okx,nobitex,wallex,bitget]=await Promise.all([
-   probeAny(["https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://api.binance.us/api/v3/ticker/price?symbol=BTCUSDT","https://api1.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://api2.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://api3.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://data-api.binance.vision/api/v3/ticker/price?symbol=BTCUSDT"],d=>Number(d?.price)>0),
+   probeAny(["https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT","https://api.binance.us/api/v3/ticker/24hr?symbol=BTCUSDT","https://api1.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT","https://api2.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT","https://api3.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT","https://data-api.binance.vision/api/v3/ticker/24hr?symbol=BTCUSDT"],d=>d?.symbol==="BTCUSDT"&&Number(d?.lastPrice)>0),
    probeAny([
     "https://api.bybit.eu/v5/market/tickers?category=spot&symbol=BTCUSDT",
     "https://api.bytick.eu/v5/market/tickers?category=spot&symbol=BTCUSDT",
