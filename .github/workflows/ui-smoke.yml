@@ -112,7 +112,7 @@ jobs:
                   await app.locator('#risk-entry').fill('100000');
                   await app.locator('#risk-stop').fill('98000');
                   await app.locator('#risk-calc').click();
-                  assert.match(await app.locator('#risk-result').innerText(), /20\.00/, 'risk calculator returns expected 20 USDT loss');
+                  assert.match(await app.locator('#risk-result').innerText(), /ضرر احتمالی در صورت برخورد به حد ضرر:\\s*20 USDT/, 'risk calculator returns expected 20 USDT loss');
                 }
                 if (module === 'hours') {
                   assert.ok(await app.locator('#market-hours-grid').locator('*').count() > 0, 'market hours cards render');
