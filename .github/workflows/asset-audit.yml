@@ -81,7 +81,7 @@ jobs:
             c.push({name:'Bitget Spot',url:'https://api.bitget.com/api/v3/market/candles?category=SPOT&symbol='+pair+'&interval='+bitgetTf+'&limit=250',rows:d=>(d?.code==='00000'||d?.code==='0')?d.data:null});
             c.push({name:'KuCoin Spot',url:'https://api.kucoin.com/api/v1/market/candles?symbol='+base+'-'+quote+'&type='+kucoinTf,rows:d=>d?.code==='200000'?d.data:null});
             c.push({name:'Gate.io Spot',url:'https://api.gateio.ws/api/v4/spot/candlesticks?currency_pair='+base+'_'+quote+'&interval='+tf+'&limit=250',rows:rowsArray});
-            c.push({name:'WhiteBIT Spot',url:'https://whitebit.com/api/v1/public/kline?market='+base+'_'+quote+'&interval='+tf+'&limit=250',rows:d=>d?.success===true?d.result:null});
+            for(const host of ['https://whitebit.com','https://whitebit.eu','https://whitebit.tr','https://whitebit.ge']) c.push({name:'WhiteBIT Spot',url:host+'/api/v1/public/kline?market='+base+'_'+quote+'&interval='+tf+'&limit=250',rows:d=>d?.success===true?d.result:null});
             for(const host of ['https://api.bybit.eu','https://api.bytick.eu','https://api.bybit.com','https://api.bytick.com']) c.push({name:'Bybit Spot',url:host+'/v5/market/kline?category=spot&symbol='+pair+'&interval='+bybitTf+'&limit=250',rows:d=>d?.retCode===0?d.result?.list:null});
             for(const host of ['https://www.okx.com','https://us.okx.com','https://openapi.okx.com']) c.push({name:'OKX Spot',url:host+'/api/v5/market/candles?instId='+base+'-'+quote+'&bar='+okxTf+'&limit=250',rows:d=>d?.code==='0'?d.data:null});
             return c;
