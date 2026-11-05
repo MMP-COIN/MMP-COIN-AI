@@ -1,0 +1,164 @@
+name: MMP COIN AI - audit all 100 assets
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "cloudflare-worker/worker.js"
+      - "index.html"
+      - ".github/workflows/asset-audit.yml"
+  schedule:
+    - cron: "25 16 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mmp-asset-audit
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout canonical project
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 20
+
+      - name: Test every asset on all analysis timeframes
+        env:
+          WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const WORKER = process.env.WORKER_URL;
+          const intervals = ['15m','1h','4h','1d'];
+          const minRows = tf => tf === '1d' ? 20 : 30;
+          const html = fs.readFileSync('index.html','utf8');
+          const extraMatch = html.match(/const EXTRA_COIN_IDS = \[([\s\S]*?)\];/);
+          if (!extraMatch) throw new Error('Cannot read the canonical extra asset list');
+          const extraIds = [...extraMatch[1].matchAll(/'([^']+)'|LAYERZERO_COIN_ID/g)]
+            .map(m => m[1] || 'layerzero');
+          const nonTradableIds = new Set(['tether','usd-coin','dai','usds','ethena-usde','first-digital-usd','paypal-usd','true-usd','frax','usdd','wrapped-bitcoin','coinbase-wrapped-btc','lido-staked-ether','wrapped-steth','rocket-pool-eth','staked-ether','staked-ether-2','tether-gold']);
+          const nonTradableSymbols = new Set(['USDT','USDC','DAI','USDS','USDE','FDUSD','PYUSD','TUSD','FRAX','USDD','WBTC','CBBTC','STETH','WSTETH','RETH','XAUT']);
+
+          async function getJson(url, timeout=10000) {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), timeout);
+            try {
+              const r = await fetch(url, {headers:{'Accept':'application/json','User-Agent':'MMP-COIN-AI-Asset-Audit/1.0'}, signal:controller.signal, cache:'no-store'});
+              const body = await r.text();
+              if (!r.ok) throw new Error('HTTP '+r.status+' '+body.slice(0,100));
+              let data; try { data = JSON.parse(body); } catch { throw new Error('Invalid JSON '+body.slice(0,80)); }
+              return data;
+            } finally { clearTimeout(timer); }
+          }
+          async function firstValid(candidates, tf) {
+            const errors=[];
+            for (const c of candidates) {
+              try {
+                const data=await getJson(c.url);
+                const rows=c.rows(data);
+                if (!Array.isArray(rows) || rows.length < minRows(tf)) throw new Error('کندل ناکافی: '+(Array.isArray(rows)?rows.length:0));
+                return {ok:true,provider:c.name,candles:rows.length};
+              } catch(e) { errors.push(c.name+': '+String(e.message||e).slice(0,140)); }
+            }
+            return {ok:false,error:errors.join(' | ')};
+          }
+          const pairParts = pair => {
+            const p=String(pair||'').toUpperCase();
+            for (const q of ['USDT','USDC','FDUSD','BUSD','USD','BTC','ETH']) if (p.endsWith(q) && p.length>q.length) return {base:p.slice(0,-q.length),quote:q};
+            return null;
+          };
+          const rowsArray = x => Array.isArray(x);
+          const spotCandidates = (pair,tf) => {
+            const p=pairParts(pair); if(!p) return [];
+            const {base,quote}=p, bybitTf={'15m':'15','1h':'60','4h':'240','1d':'D'}[tf], okxTf={'15m':'15m','1h':'1H','4h':'4H','1d':'1Dutc'}[tf], bitgetTf={'15m':'15m','1h':'1H','4h':'4H','1d':'1D'}[tf], kucoinTf={'15m':'15min','1h':'1hour','4h':'4hour','1d':'1day'}[tf];
+            const c=[];
+            for(const host of ['https://api.binance.com','https://api1.binance.com','https://api2.binance.com','https://api3.binance.com','https://data-api.binance.vision']) c.push({name:'Binance Spot',url:host+'/api/v3/klines?symbol='+pair+'&interval='+tf+'&limit=250',rows:rowsArray});
+            c.push({name:'Bitget Spot',url:'https://api.bitget.com/api/v3/market/candles?category=SPOT&symbol='+pair+'&interval='+bitgetTf+'&limit=250',rows:d=>(d?.code==='00000'||d?.code==='0')?d.data:null});
+            c.push({name:'KuCoin Spot',url:'https://api.kucoin.com/api/v1/market/candles?symbol='+base+'-'+quote+'&type='+kucoinTf,rows:d=>d?.code==='200000'?d.data:null});
+            c.push({name:'Gate.io Spot',url:'https://api.gateio.ws/api/v4/spot/candlesticks?currency_pair='+base+'_'+quote+'&interval='+tf+'&limit=250',rows:rowsArray});
+            c.push({name:'WhiteBIT Spot',url:'https://whitebit.com/api/v1/public/kline?market='+base+'_'+quote+'&interval='+tf+'&limit=250',rows:d=>d?.success===true?d.result:null});
+            for(const host of ['https://api.bybit.eu','https://api.bytick.eu','https://api.bybit.com','https://api.bytick.com']) c.push({name:'Bybit Spot',url:host+'/v5/market/kline?category=spot&symbol='+pair+'&interval='+bybitTf+'&limit=250',rows:d=>d?.retCode===0?d.result?.list:null});
+            for(const host of ['https://www.okx.com','https://us.okx.com','https://openapi.okx.com']) c.push({name:'OKX Spot',url:host+'/api/v5/market/candles?instId='+base+'-'+quote+'&bar='+okxTf+'&limit=250',rows:d=>d?.code==='0'?d.data:null});
+            return c;
+          };
+          const futuresCandidates = (pair,tf) => {
+            const p=pairParts(pair); if(!p) return [];
+            const {base,quote}=p, bybitTf={'15m':'15','1h':'60','4h':'240','1d':'D'}[tf], okxTf={'15m':'15m','1h':'1H','4h':'4H','1d':'1Dutc'}[tf];
+            const c=[{name:'Binance Futures',url:'https://fapi.binance.com/fapi/v1/klines?symbol='+pair+'&interval='+tf+'&limit=250',rows:rowsArray}];
+            for(const host of ['https://api.bybit.eu','https://api.bytick.eu','https://api.bybit.com','https://api.bytick.com']) c.push({name:'Bybit Linear',url:host+'/v5/market/kline?category=linear&symbol='+pair+'&interval='+bybitTf+'&limit=250',rows:d=>d?.retCode===0?d.result?.list:null});
+            for(const host of ['https://www.okx.com','https://us.okx.com','https://openapi.okx.com']) c.push({name:'OKX Swap',url:host+'/api/v5/market/candles?instId='+base+'-'+quote+'-SWAP&bar='+okxTf+'&limit=250',rows:d=>d?.code==='0'?d.data:null});
+            return c;
+          };
+          async function checkAsset(asset, support) {
+            const symbol=String(asset.symbol).toUpperCase();
+            const spotPair=support?.spot?.pair || symbol+'USDT';
+            const futuresPair=support?.futures?.pair || symbol+'USDT';
+            const tests=[];
+            for(const tf of intervals) {
+              let result=await firstValid(spotCandidates(spotPair,tf),tf);
+              let market='spot';
+              if(!result.ok && support?.futures?.confirmed) {
+                const fut=await firstValid(futuresCandidates(futuresPair,tf),tf);
+                if(fut.ok){result=fut;market='futures';}
+                else result.error='Spot: '+result.error+' || Futures: '+fut.error;
+              }
+              tests.push({timeframe:tf,market,...result});
+            }
+            return {id:asset.id,name:asset.name,symbol,rank:asset.market_cap_rank||null,tests,ready:tests.every(x=>x.ok)};
+          }
+          (async()=>{
+            const [top,extra] = await Promise.all([
+              getJson(WORKER+'/market-proxy?source=coingecko-top'),
+              getJson(WORKER+'/market-proxy?source=coingecko-extra&ids='+encodeURIComponent(extraIds.join(',')))
+            ]);
+            if(!Array.isArray(top)||!Array.isArray(extra)) throw new Error('CoinGecko returned an invalid asset list');
+            const map=new Map();
+            [...top,...extra].forEach(c=>{
+              if(!c?.id||!c?.symbol) return;
+              const symbol=String(c.symbol).toUpperCase();
+              if(nonTradableIds.has(c.id)||nonTradableSymbols.has(symbol)||map.has(c.id)||[...map.values()].some(x=>String(x.symbol).toUpperCase()===symbol)) return;
+              map.set(c.id,c);
+            });
+            const assets=[...map.values()].sort((a,b)=>(a.market_cap_rank||999999)-(b.market_cap_rank||999999)).slice(0,100);
+            if(assets.length!==100) throw new Error('Expected 100 unique assets, received '+assets.length);
+            const symbols=[...new Set(assets.map(x=>String(x.symbol).toUpperCase()))];
+            const supportPayload=await getJson(WORKER+'/support-check?symbols='+encodeURIComponent(symbols.join(',')));
+            const supportMap=Object.fromEntries((supportPayload.assets||[]).map(x=>[x.symbol,x]));
+            const results=[];
+            for(let i=0;i<assets.length;i+=3) {
+              const batch=assets.slice(i,i+3);
+              const rows=await Promise.all(batch.map(a=>checkAsset(a,supportMap[String(a.symbol).toUpperCase()])));
+              results.push(...rows);
+              console.log('Checked '+results.length+'/100 assets');
+            }
+            const failed=results.filter(x=>!x.ready);
+            const report={checked_at:new Date().toISOString(),asset_count:results.length,ready_count:results.length-failed.length,failed_count:failed.length,intervals,results};
+            fs.writeFileSync('asset-audit.json',JSON.stringify(report,null,2));
+            const md=['# MMP COIN AI — بررسی تک‌به‌تک ۱۰۰ ارز','', 'زمان بررسی: '+report.checked_at,'', 'نتیجه: '+report.ready_count+'/100 آماده تحلیل؛ '+report.failed_count+' مورد نیازمند بررسی','', '| ارز | نماد | 15m | 1h | 4h | 1d | نتیجه |','|---|---|---|---|---|---|---|'];
+            for(const x of results) md.push('| '+x.name+' | '+x.symbol+' | '+(x.tests[0].provider||'خطا')+' | '+(x.tests[1].provider||'خطا')+' | '+(x.tests[2].provider||'خطا')+' | '+(x.tests[3].provider||'خطا')+' | '+(x.ready?'آماده':'نیازمند اصلاح')+' |');
+            fs.writeFileSync('asset-audit.md',md.join('\n'));
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,md.join('\n')+'\n');
+            console.log(JSON.stringify({checked:results.length,ready:report.ready_count,failed:report.failed_count,failed_assets:failed.map(x=>({symbol:x.symbol,tests:x.tests.filter(t=>!t.ok)}))},null,2));
+            if(failed.length) process.exitCode=1;
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+
+      - name: Upload full per-asset audit report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: MMP-COIN-AI-100-asset-audit
+          path: |
+            asset-audit.json
+            asset-audit.md
+          if-no-files-found: warn
+          retention-days: 30
