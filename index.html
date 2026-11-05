@@ -453,7 +453,20 @@ body:after{content:"";position:fixed;width:42vw;height:42vw;max-width:620px;max-
 .full-coins-close-btn{pointer-events:auto;width:min(100%,460px);border:1px solid #b8954c;background:linear-gradient(135deg,#3b301b,#171b22);color:#f5d58c;border-radius:12px;padding:12px 16px;font-size:12px;font-weight:800;box-shadow:0 8px 24px #0009;cursor:pointer;backdrop-filter:blur(12px)}
 .full-coins-close-btn:active{transform:translateY(1px)}
 
-/* Radar clarity refresh */
+/* Dynamic radar trade-plan details */
+.radar-plan{grid-column:1/-1;margin-top:2px;border-top:1px solid #ffffff16;padding-top:8px}
+.radar-plan>summary{cursor:pointer;color:var(--gold2);font-size:11px;font-weight:800;list-style:none;display:flex;align-items:center;gap:8px}
+.radar-plan>summary::-webkit-details-marker{display:none}
+.radar-plan>summary:after{content:"⌄";margin-right:auto;font-size:17px;transition:transform .2s}
+.radar-plan[open]>summary:after{transform:rotate(180deg)}
+.radar-plan-body{padding-top:9px}
+.radar-plan-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+.radar-plan-grid>div{background:#0d131d;border:1px solid #303b4b;border-radius:9px;padding:9px;min-width:0}
+.radar-plan-grid small{display:block;color:var(--muted);font-size:9px;margin-bottom:5px}
+.radar-plan-grid b{display:block;direction:ltr;text-align:right;font-size:11px;overflow-wrap:anywhere}
+.radar-plan-note{font-size:10px;line-height:1.8;color:var(--muted);margin:8px 0 0}
+@media(max-width:560px){.radar-plan-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+\n/* Radar clarity refresh */
 .section-head h2,.radar-group-title b{font-family:'Estedad',var(--font-fa,Tahoma),sans-serif;letter-spacing:-.25px}
 .radar-live-note{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:10px 12px;margin:12px 0 15px;border:1px solid #344052;border-radius:12px;background:linear-gradient(100deg,#141c28,#10151c);font-size:11px;color:#c4cbd6}
 .radar-live-note .sub{margin-right:auto;font-size:10px}
@@ -1511,10 +1524,22 @@ function renderOpportunities(){
  const updated=$("radar-updated");
  if(updated)updated.textContent="بررسی "+cachedCoinsData.length+" دارایی · صعودی: "+bullish.length+" · نزولی: "+bearish.length;
  const renderCard=({coin:c,metrics:r})=>{
-  const trendLabel=r.trend==="bull"?"تمایل صعودی":"تمایل نزولی";
-  const trendClass=r.trend==="bull"?"positive":"negative";
+  const trendLabel=r.trend==="bull"?"تمایل صعودی":r.trend==="bear"?"تمایل نزولی":"بدون برتری مشخص";
+  const trendClass=r.trend==="bull"?"positive":r.trend==="bear"?"negative":"";
   const inWatch=loadWatch().includes(c.id);
-  return '<article class="radar-item"><div class="radar-asset"><img src="'+aiEscape(c.image||"")+'" alt="" loading="lazy"><span><b>'+aiEscape(c.name)+'</b><small>'+c.symbol.toUpperCase()+' · رتبه بازار '+(c.market_cap_rank||"—")+'</small></span></div><div class="radar-score"><b>'+r.score+'</b><small>از ۱۰۰</small></div><div class="radar-stats"><span>۲۴ساعت <b class="'+(r.h===null?"":r.h>=0?"positive":"negative")+'">'+(r.h===null?"—":(r.h>=0?"+":"")+r.h.toFixed(2)+"%")+'</b></span><span>۷روز <b class="'+(r.d===null?"":r.d>=0?"positive":"negative")+'">'+(r.d===null?"—":(r.d>=0?"+":"")+r.d.toFixed(2)+"%")+'</b></span><span>حجم/ارزش بازار <b>'+(r.liquidity===null?"—":r.liquidity.toFixed(1)+"%")+'</b></span></div><div class="radar-action"><span class="radar-trend '+trendClass+'">'+trendLabel+'</span><button type="button" class="watch-btn '+(inWatch?"is-added":"")+'" data-watch-add="'+aiEscape(c.id)+'">'+(inWatch?"✓ در دیده‌بان":"+ افزودن")+'</button></div></article>';
+  const p=Number(c.current_price),hi=Number(c.high_24h),lo=Number(c.low_24h);
+  const valid=p>0&&hi>lo&&lo>0&&Number.isFinite(p)&&Number.isFinite(hi)&&Number.isFinite(lo);
+  let entry=null,stop=null,tp1=null,tp2=null,rr=2.5,planLabel="فعلاً بدون پیشنهاد ورود";
+  const confirmed=valid&&r.h!==null&&r.d!==null&&((r.trend==="bull"&&r.score>=62)||(r.trend==="bear"&&r.score<=38));
+  if(confirmed){
+   entry=p;
+   if(r.trend==="bull"){stop=Math.min(lo,p*.985);if(stop>=entry)stop=entry*.985;const risk=entry-stop;tp1=entry+risk*1.5;tp2=entry+risk*2.5;planLabel="سناریوی خرید";}
+   else{stop=Math.max(hi,p*1.015);if(stop<=entry)stop=entry*1.015;const risk=stop-entry;tp1=entry-risk*1.5;tp2=entry-risk*2.5;planLabel="سناریوی فروش";}
+  }
+  const fmt=n=>n===null?"—":Number(n).toLocaleString("en-US",{maximumFractionDigits:8});
+  const plan=confirmed?'<div class="radar-plan-grid"><div><small>ورود پیشنهادی</small><b>'+fmt(entry)+'</b></div><div><small>حد ضرر</small><b class="negative">'+fmt(stop)+'</b></div><div><small>هدف اول خروج</small><b class="positive">'+fmt(tp1)+'</b></div><div><small>هدف دوم خروج</small><b class="positive">'+fmt(tp2)+'</b></div></div><p class="radar-plan-note">نسبت ریسک به بازده تا هدف دوم: ۱ به '+rr+' · قیمت‌ها بر حسب USDT · با هر به‌روزرسانی بازار دوباره محاسبه می‌شوند.</p>':'<p class="radar-plan-note">برای این دارایی فعلاً پیشنهاد ورود معتبر صادر نمی‌شود؛ داده‌ها یا قدرت روند برای تعیین سناریو کافی نیست.</p>';
+  const safeId=aiEscape(String(c.id));
+  return '<article class="radar-item"><div class="radar-asset"><img src="'+aiEscape(c.image||"")+'" alt="" loading="lazy"><span><b>'+aiEscape(c.name)+'</b><small>'+c.symbol.toUpperCase()+' · رتبه بازار '+(c.market_cap_rank||"—")+'</small></span></div><div class="radar-score"><b>'+r.score+'</b><small>از ۱۰۰</small></div><div class="radar-stats"><span>۲۴ساعت <b class="'+(r.h===null?"":r.h>=0?"positive":"negative")+'">'+(r.h===null?"—":(r.h>=0?"+":"")+r.h.toFixed(2)+"%")+'</b></span><span>۷روز <b class="'+(r.d===null?"":r.d>=0?"positive":"negative")+'">'+(r.d===null?"—":(r.d>=0?"+":"")+r.d.toFixed(2)+"%")+'</b></span><span>حجم/ارزش بازار <b>'+(r.liquidity===null?"—":r.liquidity.toFixed(1)+"%")+'</b></span></div><div class="radar-action"><span class="radar-trend '+trendClass+'">'+trendLabel+'</span><button type="button" class="watch-btn '+(inWatch?"is-added":"")+'" data-watch-add="'+safeId+'">'+(inWatch?"✓ در دیده‌بان":"+ افزودن")+'</button></div><details class="radar-plan"><summary>مشاهده پیشنهاد ورود و خروج · '+planLabel+'</summary><div class="radar-plan-body">'+plan+'</div></details></article>';
  };
  const renderGroup=(items,type)=>{
   const isBull=type==="bull";
