@@ -1078,8 +1078,46 @@ async function refreshAll(){
     merged.set(c.id,c);
     seenSymbols.add(symbol);
   });
-  let data = [...merged.values()].sort((a,b)=>(a.market_cap_rank||999999)-(b.market_cap_rank||999999)).slice(0,100);
-  if(data.length < 100) throw new Error('Only '+data.length+' unique tradable assets received from CoinGecko; retry on next refresh');
+  const candidateCoins=[...merged.values()].sort((a,b)=>(a.market_cap_rank||999999)-(b.market_cap_rank||999999));
+  const supportBySymbol={};
+  const supportSources={};
+  const verifyCoinBatch=async(items)=>{
+   const validItems=items.filter(c=>/^[A-Z0-9_]{2,30}$/.test(String(c.symbol||"").toUpperCase()));
+   for(let i=0;i<validItems.length;i+=120){
+    const batch=validItems.slice(i,i+120);
+    const symbols=[...new Set(batch.map(c=>String(c.symbol).toUpperCase()))];
+    const response=await fetch(AI_ANALYSIS_ENDPOINT+"/support-check?symbols="+encodeURIComponent(symbols.join(",")),{cache:"no-store"});
+    if(!response.ok)throw new Error("بررسی جفت‌های معاملاتی ناموفق بود · HTTP "+response.status);
+    const payload=await response.json();
+    if(!Array.isArray(payload.assets))throw new Error("پاسخ بررسی جفت‌های معاملاتی معتبر نیست");
+    payload.assets.forEach(item=>{supportBySymbol[String(item.symbol||"").toUpperCase()]=item;});
+    Object.assign(supportSources,payload.sources||{});
+   }
+   return validItems.filter(coin=>{
+    const support=supportBySymbol[String(coin.symbol||"").toUpperCase()];
+    return !!(support?.spot?.confirmed||support?.futures?.confirmed);
+   });
+  };
+  let verifiedCoins=await verifyCoinBatch(candidateCoins);
+  if(verifiedCoins.length<100){
+   const pageTwoResponse=await fetch(AI_ANALYSIS_ENDPOINT+"/market-proxy?source=coingecko-top&page=2",{cache:"no-store"});
+   if(pageTwoResponse.ok){
+    const pageTwo=await pageTwoResponse.json();
+    if(Array.isArray(pageTwo)){
+     const knownIds=new Set(candidateCoins.map(c=>c.id));
+     const knownSymbols=new Set(candidateCoins.map(c=>String(c.symbol||"").toUpperCase()));
+     const extraCandidates=pageTwo.filter(c=>c&&c.id&&c.symbol&&!knownIds.has(c.id)&&!NON_TRADABLE_COIN_IDS.has(c.id)&&!NON_TRADABLE_SYMBOLS.has(String(c.symbol).toUpperCase())&&!knownSymbols.has(String(c.symbol).toUpperCase()));
+     const extraVerified=await verifyCoinBatch(extraCandidates);
+     verifiedCoins=verifiedCoins.concat(extraVerified);
+    }
+   }
+  }
+  if(!Object.values(supportSources).some(source=>source?.ok))throw new Error("فهرست صرافی‌ها در دسترس نیست؛ از نمایش دارایی تأییدنشده خودداری شد");
+  if(verifiedCoins.length<100)throw new Error("در حال حاضر فقط "+verifiedCoins.length+" ارز دارای جفت معاملاتی تأییدشده پیدا شد؛ داده قبلی حفظ می‌شود");
+  let data=verifiedCoins.slice(0,100);
+  exchangeSupportBySymbol=supportBySymbol;
+  data.forEach(coin=>{coin.exchange_support=supportBySymbol[String(coin.symbol||"").toUpperCase()]||null;});
+  exchangeAuditAt=Date.now();
    coinGeckoConnectionStatus="ok";renderCoinGeckoConnection();
   data = await enrichWithBinance(data);
   cachedCoinsData = data;
