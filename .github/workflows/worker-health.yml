@@ -37,7 +37,7 @@ jobs:
           curl --fail --silent --show-error --max-time 20 "$WORKER_PREVIEW_URL/health" -o /tmp/preview-health.json
           jq -e '.worker == "online" and .ai_binding == true' /tmp/preview-health.json >/dev/null
           curl --fail --silent --show-error --max-time 25 "$WORKER_PREVIEW_URL/connections-health" -o /tmp/preview-connections.json
-          jq -e '.checks | length == 6 and ([.[] | select(.status == "down" and (.error // "" | test("HTTP 403")))] | length) == 0' /tmp/preview-connections.json >/dev/null
+          jq -e '.checks | length == 7 and ([.[] | select(.status == "down" and (.error // "" | test("HTTP 403")))] | length) == 0' /tmp/preview-connections.json >/dev/null
           jq -r '.checks[] | "- Preview " + .name + ": " + .status + (if .ping == null then "" else " (" + (.ping|tostring) + " ms)" end)' /tmp/preview-connections.json >> "$GITHUB_STEP_SUMMARY"
           curl --fail --silent --show-error --max-time 25 "$WORKER_PREVIEW_URL/market-proxy?source=binance-tickers" -o /tmp/preview-market.json
           jq -e 'type == "array" and length > 0' /tmp/preview-market.json >/dev/null
@@ -123,6 +123,13 @@ jobs:
             echo "- Binance ticker proxy: responding"
             echo "- Bitget direct API: checked separately with browser CORS"
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Verify Bitpin public USDT to Toman ticker
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 1 --max-time 25 -H "Origin: https://bitpin.ir" -H "Referer: https://bitpin.ir/" "https://api.bitpin.ir/api/v1/mkt/tickers/" -o /tmp/bitpin-tickers.json
+          jq -e '([.[]?, .results[]?] | any(.symbol == "USDT_IRT" and (.price | tonumber > 0)))' /tmp/bitpin-tickers.json >/dev/null
+          echo "- Bitpin USDT/IRT public ticker: responding with a positive Toman quote" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Verify CoinPaprika backup market feed
         run: |
