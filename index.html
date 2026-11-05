@@ -741,6 +741,19 @@ body{background:
 </section>
 
 <!-- بخش نمودار تریدینگ‌ویو با منوی ۵۰ ارز اصلی و ارزهای منتخب -->
+<section class="terminal-grid" id="opportunities">
+<section class="card radar-card"><div class="section-head"><div><div class="section-kicker">MMP MARKET SCANNER</div><h2>رادار هوشمند بازار</h2><p class="sub">خلاصه وضعیت بازار و پیشنهاد ورود و خروج بر پایه داده‌های زنده</p></div></div>
+<div class="radar-live-note"><span class="radar-live-dot"></span><span>به‌روزرسانی خودکار با داده‌های بازار</span><span id="radar-updated" class="sub">در انتظار داده بازار…</span></div>
+<div id="opportunity-list" class="radar-groups"><div class="ai-empty">پس از دریافت قیمت‌ها، رادار بازار را بررسی می‌کند.</div></div>
+<div class="radar-ai-title">پیشنهاد هوش مصنوعی</div><div id="radar-deep-status" class="sub radar-ai-status" aria-live="polite">در انتظار تحلیل داده‌های بازار…</div><div id="radar-deep-results" class="radar-deep-results" aria-live="polite"></div>
+<p class="sub radar-footnote">پیشنهادها بر اساس داده‌های واقعی بازار تهیه می‌شوند و تضمین سود نیستند. در نبود داده معتبر، پیشنهادی صادر نمی‌شود.</p></section>
+<section class="card watch-card" id="watchlist"><div class="section-head"><div><div class="section-kicker">PERSONAL WATCHLIST</div><h2>دیده‌بان شخصی من</h2></div><span class="badge" id="watch-count">۰ دارایی</span></div>
+<p class="sub">ارزهای دلخواهت را اضافه کن؛ قیمت و تغییراتشان با هر به‌روزرسانی بازار تازه می‌شود.</p>
+<div class="watch-add-row"><select id="watch-add-select" class="dropdown-select-box" style="margin:0"><option value="">جست‌وجو و انتخاب ارز…</option></select><button class="btn primary" id="watch-add-btn" type="button">+ افزودن به دیده‌بان</button></div>
+<div id="watch-feedback" class="watch-feedback" aria-live="polite"></div>
+<div id="watch-list" class="watch-list"><p class="sub">هنوز ارزی اضافه نکرده‌ای. از فهرست بالا انتخاب کن.</p></div></section>
+</section>
+
 <section class="card ai-terminal" id="ai-section">
  <div class="section-head"><div><div class="section-kicker">MMP AI · MARKET INTELLIGENCE</div><h2>تحلیلگر هوشمند چندلایه بازار</h2></div><span class="badge">تحلیل داده‌محور</span></div>
  <p class="sub ai-intro">یک ارز را انتخاب کن تا روند، سطوح کلیدی و سناریوهای احتمالی بازار بررسی شود؛ تصمیم نهایی با خودت است.</p>
@@ -781,18 +794,8 @@ body{background:
 </section>
 
 <!-- تحلیلگر هوشمند؛ رابط فشرده با گزارش کاربردی و جزئیات اختیاری -->
-<section class="terminal-grid" id="opportunities">
-<section class="card radar-card"><div class="section-head"><div><div class="section-kicker">MMP MARKET SCANNER</div><h2>رادار هوشمند بازار</h2><p class="sub">خلاصه وضعیت بازار و پیشنهاد ورود و خروج بر پایه داده‌های زنده</p></div></div>
-<div class="radar-live-note"><span class="radar-live-dot"></span><span>به‌روزرسانی خودکار با داده‌های بازار</span><span id="radar-updated" class="sub">در انتظار داده بازار…</span></div>
-<div id="opportunity-list" class="radar-groups"><div class="ai-empty">پس از دریافت قیمت‌ها، رادار بازار را بررسی می‌کند.</div></div>
-<div class="radar-ai-title">پیشنهاد هوش مصنوعی</div><div id="radar-deep-status" class="sub radar-ai-status" aria-live="polite">در انتظار تحلیل داده‌های بازار…</div><div id="radar-deep-results" class="radar-deep-results" aria-live="polite"></div>
-<p class="sub radar-footnote">پیشنهادها بر اساس داده‌های واقعی بازار تهیه می‌شوند و تضمین سود نیستند. در نبود داده معتبر، پیشنهادی صادر نمی‌شود.</p></section>
-<section class="card watch-card" id="watchlist"><div class="section-head"><div><div class="section-kicker">PERSONAL WATCHLIST</div><h2>دیده‌بان شخصی من</h2></div><span class="badge" id="watch-count">۰ دارایی</span></div>
-<p class="sub">ارزهای دلخواهت را اضافه کن؛ قیمت و تغییراتشان با هر به‌روزرسانی بازار تازه می‌شود.</p>
-<div class="watch-add-row"><select id="watch-add-select" class="dropdown-select-box" style="margin:0"><option value="">جست‌وجو و انتخاب ارز…</option></select><button class="btn primary" id="watch-add-btn" type="button">+ افزودن به دیده‌بان</button></div>
-<div id="watch-feedback" class="watch-feedback" aria-live="polite"></div>
-<div id="watch-list" class="watch-list"><p class="sub">هنوز ارزی اضافه نکرده‌ای. از فهرست بالا انتخاب کن.</p></div></section>
-</section>
+
+
 
 
 
@@ -842,6 +845,7 @@ body{background:
 </div></section>
 <section class="card">
 <div class="section-head"><h2>وضعیت اتصال صرافی‌ها و مراجع</h2><span class="badge" id="conn-summary">پایش لایو</span></div>
+
 <section class="card" id="market-hours">
 <div class="section-head"><div><div class="section-kicker">GLOBAL MARKET CLOCK</div><h2>ساعت کاری بازارهای مالی جهان</h2></div><span class="badge" id="market-clock-zone">زمان محلی دستگاه</span></div>
 <div class="market-hours-grid" id="market-hours-grid"></div>
