@@ -857,14 +857,20 @@ body{background:
     <button class="curr-btn" id="btn-usdt" onclick="setCurrency('USDT')">تتر</button>
   </div>
   <span class="pill" id="clock">--:--:--</span>
-  <button class="btn" id="refresh-all-btn" type="button" onclick="refreshSiteData()" aria-label="بروزرسانی کامل سایت و داده‌ها" title="بروزرسانی کامل سایت و داده‌ها">⚙ بروزرسانی</button>
+  <button class="btn" id="refresh-all-btn" type="button" onclick="refreshSiteData()" aria-label="بروزرسانی داده‌های اپلیکیشن" title="بروزرسانی کامل سایت و داده‌ها">⚙ بروزرسانی</button>
   <button class="menu-btn" type="button" onclick="toggleMenu()" aria-label="باز کردن منوی اصلی" aria-controls="dropdownMenu" aria-expanded="false"><span aria-hidden="true">☰</span></button>
 </div>
 <div class="dropdown-menu" id="dropdownMenu">
-  <a href="#hero" onclick="toggleMenu()">🏠 صفحه اصلی</a>
+  <a href="#hero" onclick="toggleMenu()">🏠 نمای کلی اپلیکیشن</a>
+  <a href="#opportunities" onclick="toggleMenu()">📡 رادار صعودی و نزولی</a>
+  <a href="#ai-section" onclick="toggleMenu()">🤖 تحلیلگر هوشمند AI</a>
   <a href="#chart-section" onclick="toggleMenu()">📊 نمودار تریدینگ‌ویو</a>
-  <a href="#ai-section" onclick="toggleMenu()">🤖 هوش مصنوعی تحلیلگر</a>
-  <a href="#coins-section" onclick="toggleMenu()">🪙 لیست ارزهای دیجیتال</a>
+  <a href="#coins-section" onclick="toggleMenu()">🪙 بازار رمزارزها</a>
+  <a href="#watchlist" onclick="toggleMenu()">☆ دیده‌بان شخصی</a>
+  <a href="#trading-tools" onclick="toggleMenu()">⌗ ابزارهای معامله‌گری</a>
+  <a href="#market-hours" onclick="toggleMenu()">◷ ساعت بازارهای جهان</a>
+  <a href="#connections" onclick="toggleMenu()">◉ سلامت منابع داده</a>
+  <a href="#contact-us" onclick="toggleMenu()">✉ ارتباط با مدیریت</a>
 </div>
 </header>
 
@@ -986,37 +992,6 @@ body{background:
 <!-- فقط لیست ارزهای دیجیتال -->
 
 
-<section id="app-download" aria-label="دانلود اپلیکیشن اندروید" style="margin:24px auto 8px;max-width:760px;padding:22px 18px;border:1px solid #80683f;border-radius:20px;background:linear-gradient(135deg,#171b24,#10131a 62%,#211b12);box-shadow:0 14px 34px #0006;text-align:center">
-  <div style="font-size:28px;line-height:1;margin-bottom:10px" aria-hidden="true">📱</div>
-  <div style="color:var(--gold2);font-size:16px;font-weight:900;margin-bottom:8px">اپلیکیشن اندروید MMP COIN AI</div>
-  <p style="color:var(--muted);font-size:12px;line-height:2;margin:0 auto 16px;max-width:520px">نسخه اندروید ترمینال هوشمند بازار را روی گوشی خود نصب کنید و سریع‌تر به ابزارهای تحلیل دسترسی داشته باشید.</p>
-  <a href="https://github.com/MMP-COIN/MMP-COIN-AI/releases/latest/download/app-release.apk" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;justify-content:center;gap:9px;padding:12px 22px;border-radius:12px;background:linear-gradient(120deg,#a77c35,#e8cd8c);color:#17130a;font-size:13px;font-weight:900;text-decoration:none;box-shadow:0 7px 20px #d9b66d30">⬇ دانلود اپلیکیشن اندروید</a>
-  <div style="color:#9a9eaa;font-size:10px;line-height:1.9;margin-top:11px">دانلود مستقیم فایل APK · بدون نیاز به استخراج ZIP · نسخه پایدار و به‌روز</div>
-</section>
-<script>
-function shareMmpSiteApp(){
-  var url="https://github.com/MMP-COIN/MMP-COIN-AI/releases/latest/download/app-release.apk";
-  var data={title:"MMP COIN AI",text:"دانلود اپلیکیشن اندروید MMP COIN AI؛ ترمینال هوشمند تحلیل بازار رمزارزها",url:url};
-  var status=document.getElementById("mmp-app-share-status");
-  if(navigator.share){
-    navigator.share(data).then(function(){if(status)status.textContent="لینک اپلیکیشن با موفقیت برای اشتراک‌گذاری آماده شد."}).catch(function(error){if(error&&error.name!=="AbortError"&&status)status.textContent="اشتراک‌گذاری انجام نشد؛ لینک دانلود را کپی کنید."});
-    return;
-  }
-  var copy=navigator.clipboard&&navigator.clipboard.writeText?navigator.clipboard.writeText(url):Promise.reject();
-  copy.then(function(){if(status)status.textContent="لینک دانلود کپی شد؛ حالا آن را برای دوستانتان ارسال کنید."}).catch(function(){
-    var field=document.createElement("textarea");field.value=url;field.style.position="fixed";field.style.opacity="0";document.body.appendChild(field);field.select();
-    var ok=false;try{ok=document.execCommand("copy")}catch(e){}field.remove();
-    if(status)status.textContent=ok?"لینک دانلود کپی شد؛ برای دوستانتان ارسال کنید.":"لینک دانلود: "+url;
-  });
-}
-</script>
-<section class="footer" aria-label="اشتراک‌گذاری اپلیکیشن" style="text-align:center;margin:18px 10px 28px;padding:18px 14px;border:1px solid #80683f;border-radius:16px;background:linear-gradient(135deg,#171b24,#10131a)">
-  <b style="display:block;color:var(--gold2);font-size:14px;margin-bottom:7px">اشتراک‌گذاری اپلیکیشن</b>
-  <p style="color:var(--muted);font-size:12px;line-height:1.9;margin:0 0 10px">برای معرفی MMP COIN AI به دوستانتان، لینک رسمی دانلود را ارسال کنید.</p>
-  <button type="button" onclick="shareMmpApp()" style="display:flex;align-items:center;justify-content:center;gap:9px;margin:12px auto 0;padding:11px 20px;border:1px solid #9b7b43;border-radius:12px;background:linear-gradient(120deg,#a77c35,#e8cd8c);color:#17130a;font-size:12px;font-weight:900;cursor:pointer">↗ ارسال اپلیکیشن برای دوستان</button>
-  <div style="color:var(--muted);font-size:10px;margin-top:14px">MMP COIN AI · ترمینال جامع، پایش و تحلیل هوش مصنوعی بازارهای مالی</div>
-</section>
-
 <section id="contact-us" aria-label="ارتباط با ما" style="margin:24px auto 22px;max-width:760px;padding:22px 18px;border:1px solid #80683f;border-radius:20px;background:linear-gradient(135deg,#171b24,#10131a 62%,#211b12);box-shadow:0 14px 34px #0006;text-align:center;scroll-margin-top:24px">
  <div style="color:var(--gold2);font-size:16px;font-weight:900;margin-bottom:12px">ارتباط با ما</div>
  <a href="mailto:mmp.coin.ai@gmail.com" dir="ltr" style="display:inline-block;color:var(--gold2);font-size:14px;font-weight:900;text-decoration:none;border:1px solid #80683f;border-radius:11px;padding:10px 14px">mmp.coin.ai@gmail.com</a>
@@ -1025,16 +1000,6 @@ function shareMmpSiteApp(){
 </main>
 
 <script>
-function shareMmpApp(){
- var url="https://github.com/MMP-COIN/MMP-COIN-AI/releases/latest/download/app-release.apk";
- var data={title:"MMP COIN AI",text:"دانلود اپلیکیشن MMP COIN AI برای اندروید",url:url};
- if(navigator.share){navigator.share(data).catch(function(error){if(error&&error.name!=="AbortError")copyMmpAppLink(url);});return;}
- copyMmpAppLink(url);
-}
-function copyMmpAppLink(url){
- if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(url).then(function(){alert("لینک دانلود اپ کپی شد؛ حالا آن را برای دوستانتان ارسال کنید.");}).catch(function(){window.prompt("لینک دانلود اپ را کپی کنید:",url);});}
- else{window.prompt("لینک دانلود اپ را کپی کنید:",url);}
-}
 const $=id=>document.getElementById(id);
 let lastMarket={};
 let currentTetherPrice = 0;
@@ -1055,15 +1020,13 @@ setInterval(clock,1000);clock();
 async function refreshSiteData(){
  const button=$("refresh-all-btn");
  if(button){button.classList.add("is-refreshing");button.disabled=true;}
- $("updated").textContent="در حال بروزرسانی کامل داده‌های سایت…";
+ $("updated").textContent="در حال در حال بروزرسانی داده‌های اپلیکیشن…";
  try{
   const jobs=[];
   if(typeof refreshAll==="function")jobs.push(refreshAll());
   if(typeof checkConnections==="function")jobs.push(checkConnections());
   await Promise.allSettled(jobs);
-  const activePulse=document.querySelector("#mmp-pulse-assets [data-pulse-asset]");
-  if(activePulse)activePulse.click();
-  $("updated").textContent="بروزرسانی داده‌ها انجام شد · "+new Date().toLocaleTimeString("fa-IR");
+    $("updated").textContent="بروزرسانی اپ انجام شد · "+new Date().toLocaleTimeString("fa-IR");
  }catch(error){
   $("updated").textContent="بروزرسانی کامل نشد؛ اتصال اینترنت را بررسی کنید.";
  }finally{
