@@ -815,7 +815,7 @@ body{background:
 @media(max-width:560px){.top{height:62px!important;padding:0 9px!important}.top-actions{gap:5px}.top-actions #refresh-all-btn{font-size:10px;padding:8px 7px;min-width:92px}.wrap{padding:12px 10px 40px!important}}
 </style>
 
-</head>
+<style id="mmp-brand-coin-and-compact-footer-20261106">.hero-coin{background:transparent!important;border:0!important;box-shadow:none!important;overflow:visible!important}.hero-coin img{display:block;width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 12px 17px #000b) drop-shadow(0 0 12px #d7b46a33)}.wrap{padding-bottom:24px!important}@media(max-width:560px){.wrap{padding-bottom:20px!important}}</style></head>
 <body class="mmp-app-mode">
 
 <header class="top">
@@ -864,10 +864,10 @@ body{background:
   <h1 class="hero-title"><span>ترمینال جامع و هوشمند</span><span>بازارهای مالی</span></h1>
   <p>داده‌های زنده بازار، رادار فرصت‌ها و تحلیل چندلایه هوش مصنوعی؛ برای تصمیم‌گیری آگاهانه، نه دنبال‌کردن سیگنال‌های کور.</p>
 </div>
-<div class="hero-visual"><div class="hero-orbit orbit-a"></div><div class="hero-orbit orbit-b"></div><div class="hero-coin"><b>M</b><small>AI</small></div><div class="hero-spark spark-a"></div><div class="hero-spark spark-b"></div><div class="hero-visual-label">MARKET INTELLIGENCE <span>● LIVE</span></div></div><span class="badge" id="updated">در حال دریافت داده…</span>
+<div class="hero-visual"><div class="hero-orbit orbit-a"></div><div class="hero-orbit orbit-b"></div><div class="hero-coin"><img src="assets/mmp-coin-mark.svg?v=20261106" alt="سکه طلایی M برجسته MMP COIN AI"></div><div class="hero-spark spark-a"></div><div class="hero-spark spark-b"></div><div class="hero-visual-label">MARKET INTELLIGENCE <span>● LIVE</span></div></div><span class="badge" id="updated">در حال دریافت داده…</span>
 </section>
 
-<section class="market-ticker" id="market-ticker" aria-label="نوار قیمت‌های بازار"><div class="ticker-item"><b>BTC / Bitcoin</b><strong>در حال دریافت…</strong><small>بازار رمزارز</small></div></section>
+
 
 <section class="grid" id="market-snapshot">
 <div class="card"><div class="stat-label">بیت‌کوین · BTC</div><div class="stat-value" id="btc">$—</div><div class="sub" id="btc-sub">—</div></div>
@@ -876,73 +876,6 @@ body{background:
 <div class="card"><div class="stat-label">اونس جهانی طلا · XAU</div><div class="stat-value" id="gold">$—</div><div class="sub">مرجع جهانی فلزات گرانبها</div></div>
 </section>
 
-<section class="mmp-live-intelligence mmp-pulse-terminal" id="mmp-live-intelligence" aria-label="ترمینال کندل زنده بازار">
- <div class="mmp-viz-heading">
-  <div><span class="mmp-viz-kicker">MMP · LIVE CANDLE TERMINAL</span><h2>نبض زنده بازار</h2><p>کندل‌های واقعی بازار اسپات با حجم معاملات و قیمت دوگانه</p></div>
-  <span class="mmp-viz-live"><i></i> داده بازار</span>
- </div>
- <div class="mmp-pulse-assets-head"><b>دارایی‌های منتخب</b><span id="mmp-pulse-count">۲ ارز</span></div>
- <div class="mmp-pulse-assets" id="mmp-pulse-assets"></div>
- <div class="mmp-pulse-add">
-  <select id="mmp-pulse-add-select" aria-label="انتخاب ارز برای افزودن"><option value="">افزودن ارز از فهرست ۱۰۰ تایی…</option></select>
-  <button type="button" id="mmp-pulse-add-btn">＋ افزودن ارز</button>
- </div>
- <div class="mmp-pulse-chart-shell" id="mmp-pulse-chart-shell">
-  <div class="mmp-pulse-chart-head">
-   <div><span class="mmp-pulse-chart-name" id="mmp-pulse-chart-name">BTC · بیت‌کوین</span><small id="mmp-pulse-chart-source">در حال آماده‌سازی نمودار…</small></div>
-   <div class="mmp-pulse-chart-price"><b id="mmp-pulse-chart-usdt">— USDT</b><small id="mmp-pulse-chart-irt">— تومان</small></div>
-  </div>
-  <div class="mmp-pulse-chart-tools">
-   <div class="mmp-pulse-timeframes" id="mmp-pulse-timeframes">
-    <button type="button" data-tf="15m" class="active">۱۵د</button><button type="button" data-tf="1h">۱س</button><button type="button" data-tf="4h">۴س</button><button type="button" data-tf="1d">۱روز</button>
-   </div>
-   <button type="button" class="mmp-pulse-expand" id="mmp-pulse-expand" aria-expanded="true">جمع‌کردن نمودار ⌃</button>
-  </div>
-  <div id="mmp-pulse-chart-area"><div id="mmp-pulse-chart" role="img" aria-label="نمودار کندل واقعی و حجم معاملات"></div><div class="mmp-pulse-legend"><span><i class="up"></i> صعودی</span><span><i class="down"></i> نزولی</span><span><i class="ema20"></i> میانگین ۲۰</span><span><i class="ema50"></i> میانگین ۵۰</span></div></div>
-  <div class="mmp-pulse-status" id="mmp-pulse-status">برای دریافت کندل‌های واقعی در حال اتصال…</div>
- </div>
-</section>
-
-<!-- دسترسی به بخش‌ها فقط از منوی بالای سایت انجام می‌شود. -->
-
-
-<!-- بخش نمودار تریدینگ‌ویو با منوی ۵۰ ارز اصلی و ارزهای منتخب -->
-<section class="terminal-grid" id="opportunities">
-<section class="card radar-card"><div class="section-head"><div><div class="section-kicker">MMP MARKET SCANNER</div><h2>رادار هوشمند بازار</h2><p class="sub">خلاصه وضعیت بازار و پیشنهاد ورود و خروج بر پایه داده‌های زنده</p></div></div>
-<div class="radar-live-note"><span class="radar-live-dot"></span><span>به‌روزرسانی خودکار با داده‌های بازار</span><span id="radar-updated" class="sub">در انتظار داده بازار…</span></div>
-<div id="opportunity-list" class="radar-groups"><div class="ai-empty">پس از دریافت قیمت‌ها، رادار بازار را بررسی می‌کند.</div></div>
-<div class="radar-ai-title">پیشنهاد هوش مصنوعی</div><div id="radar-deep-status" class="sub radar-ai-status" aria-live="polite">در انتظار تحلیل داده‌های بازار…</div><div id="radar-deep-results" class="radar-deep-results" aria-live="polite"></div>
-<p class="sub radar-footnote">پیشنهادها بر اساس داده‌های واقعی بازار تهیه می‌شوند و تضمین سود نیستند. در نبود داده معتبر، پیشنهادی صادر نمی‌شود.</p></section>
-<section class="card watch-card" id="watchlist"><div class="section-head"><div><div class="section-kicker">PERSONAL WATCHLIST</div><h2>دیده‌بان شخصی من</h2></div><span class="badge" id="watch-count">۰ دارایی</span></div>
-<p class="sub">ارزهای دلخواهت را اضافه کن؛ قیمت و تغییراتشان با هر به‌روزرسانی بازار تازه می‌شود.</p>
-<div class="watch-add-row"><select id="watch-add-select" class="dropdown-select-box" style="margin:0"><option value="">جست‌وجو و انتخاب ارز…</option></select><button class="btn primary" id="watch-add-btn" type="button">+ افزودن به دیده‌بان</button></div>
-<div id="watch-feedback" class="watch-feedback" aria-live="polite"></div>
-<div id="watch-list" class="watch-list"><p class="sub">هنوز ارزی اضافه نکرده‌ای. از فهرست بالا انتخاب کن.</p></div></section>
-</section>
-
-<section class="card ai-terminal" id="ai-section">
- <div class="section-head"><div><div class="section-kicker">MMP AI · MARKET INTELLIGENCE</div><h2>تحلیلگر هوشمند چندلایه بازار</h2></div><span class="badge">تحلیل داده‌محور</span></div>
- <p class="sub ai-intro">یک ارز را انتخاب کن تا روند، سطوح کلیدی و سناریوهای احتمالی بازار بررسی شود؛ تصمیم نهایی با خودت است.</p>
- <div class="ai-toolbar">
-  <select id="ai-coin-select" class="dropdown-select-box"><option value="">انتخاب ارز…</option></select>
-  <select id="ai-market-mode" class="dropdown-select-box" aria-label="نوع بازار"><option value="both">اسپات + فیوچرز</option><option value="spot">فقط اسپات</option><option value="futures">فقط فیوچرز</option></select>
-  <button class="btn primary" id="ai-run-btn" type="button" onclick="runAiAnalysis(true)">دریافت تحلیل جدید</button>
- </div>
- <div class="ai-grid ai-grid-compact">
-  <div class="ai-metric"><small>جمع‌بندی جهت بازار</small><b id="ai-action">منتظر انتخاب ارز</b></div>
-  <div class="ai-metric"><small>قیمت مرجع</small><b id="ai-live-price">—</b></div>
-  <div class="ai-metric"><small>سطح ریسک</small><b id="ai-risk">—</b></div>
-  <span id="ai-confidence" class="sr-only">—</span>
- </div>
- <div class="ai-status" id="ai-status">ارز را انتخاب کن و تحلیل را اجرا کن.</div>
- <div class="signal ai-report ai-report-clean" id="advanced-ai-analysis"><div class="ai-empty"><div class="symbol">◈</div><b>آماده تحلیل بازار</b><p>گزارش شامل جهت احتمالی، دلیل‌های اصلی، محدوده‌های مهم و شرایط بی‌اعتبارشدن سناریو خواهد بود.</p></div></div>
- <details class="ai-details" id="ai-details"><summary><span>جزئیات فنی و تایم‌فریم‌ها</span><small>قدرت شواهد · ۱۵ دقیقه · ۱ ساعت · ۴ ساعت · روزانه</small></summary>
-  <div class="ai-details-content">
-   <div class="ai-confidence-box"><div class="ai-confidence-head"><span>قدرت هم‌جهتی شواهد؛ نه احتمال قطعی سود</span><b id="ai-confidence-label">—</b></div><div class="ai-confidence-track"><div class="ai-confidence-fill" id="ai-confidence-fill"></div></div></div>
-   <div class="tf-grid" id="ai-timeframes"><div class="ai-empty" style="grid-column:1/-1">پس از اجرای تحلیل، وضعیت چهار بازه زمانی اینجا نمایش داده می‌شود.</div></div>
-  </div>
- </details>
-</section>
 <section class="chart-box-wrapper" id="chart-section">
 <div class="chart-top-bar">
   <h2 style="font-size:16px; margin:0;">نمودار تخصصی تریدینگ‌ویو</h2>
@@ -2114,161 +2047,9 @@ html.mmp-native-app .footer{padding-bottom:12px}
 </script>
 
 
-<script id="mmp-live-visual-engine">
-(function(){
-  const configs=[
-    {key:"btc",source:"btc",canvas:"mmp-viz-btc",value:"mmp-viz-btc-value",points:"mmp-viz-btc-points",color:"#e5c57f"},
-    {key:"eth",source:"eth",canvas:"mmp-viz-eth",value:"mmp-viz-eth-value",points:"mmp-viz-eth-points",color:"#72d9d0"}
-  ];
-  const history={btc:[],eth:[]};
-  const parsePrice=(id)=>{
-    const node=document.getElementById(id);if(!node)return null;
-    const raw=(node.textContent||"").replace(/,/g,"").replace(/[^0-9.\-]/g,"");
-    const value=Number(raw);return Number.isFinite(value)&&value>0?value:null;
-  };
-  function draw(config){
-    const canvas=document.getElementById(config.canvas);if(!canvas)return;
-    const data=history[config.key];const rect=canvas.getBoundingClientRect();
-    if(!rect.width)return;
-    const dpr=Math.min(window.devicePixelRatio||1,2),width=Math.round(rect.width*dpr),height=Math.round(rect.height*dpr);
-    if(canvas.width!==width||canvas.height!==height){canvas.width=width;canvas.height=height;}
-    const ctx=canvas.getContext("2d");if(!ctx)return;
-    ctx.clearRect(0,0,width,height);
-    if(data.length<2){
-      ctx.strokeStyle="rgba(148,177,194,.23)";ctx.setLineDash([4*dpr,5*dpr]);ctx.lineWidth=dpr;
-      ctx.beginPath();ctx.moveTo(0,height*.65);ctx.lineTo(width,height*.65);ctx.stroke();ctx.setLineDash([]);
-      ctx.fillStyle="#8199aa";ctx.font=(10*dpr)+"px sans-serif";ctx.fillText("در حال جمع‌آوری داده واقعی",8*dpr,height*.48);
-      return;
-    }
-    const min=Math.min(...data),max=Math.max(...data),range=max-min||Math.max(Math.abs(max)*.0005,1);
-    const pad=7*dpr,top=8*dpr,bottom=height-8*dpr;
-    const x=i=>pad+(width-2*pad)*i/(data.length-1);
-    const y=v=>bottom-(v-min)/range*(bottom-top);
-    const grad=ctx.createLinearGradient(0,top,0,height);
-    grad.addColorStop(0,config.color+"44");grad.addColorStop(1,config.color+"00");
-    ctx.beginPath();data.forEach((v,i)=>i?ctx.lineTo(x(i),y(v)):ctx.moveTo(x(i),y(v)));
-    ctx.lineTo(x(data.length-1),bottom);ctx.lineTo(x(0),bottom);ctx.closePath();ctx.fillStyle=grad;ctx.fill();
-    ctx.beginPath();data.forEach((v,i)=>i?ctx.lineTo(x(i),y(v)):ctx.moveTo(x(i),y(v)));
-    ctx.strokeStyle=config.color;ctx.lineWidth=2*dpr;ctx.lineJoin="round";ctx.lineCap="round";ctx.stroke();
-    const last=data.length-1;ctx.beginPath();ctx.arc(x(last),y(data[last]),3*dpr,0,Math.PI*2);ctx.fillStyle=config.color;ctx.fill();
-    ctx.beginPath();ctx.arc(x(last),y(data[last]),6*dpr,0,Math.PI*2);ctx.strokeStyle=config.color+"66";ctx.lineWidth=dpr;ctx.stroke();
-  }
-  function collect(config){
-    const price=parsePrice(config.source);if(price===null)return;
-    const list=history[config.key];if(list.length&&list[list.length-1]===price)return;
-    list.push(price);if(list.length>42)list.shift();
-    const value=document.getElementById(config.value);if(value)value.textContent=price.toLocaleString("en-US",{maximumFractionDigits:price<1?6:2});
-    const points=document.getElementById(config.points);if(points)points.textContent=list.length.toLocaleString("fa-IR")+" نقطه";
-    draw(config);
-  }
-  configs.forEach(config=>{
-    collect(config);
-    const source=document.getElementById(config.source);
-    if(source)new MutationObserver(()=>collect(config)).observe(source,{childList:true,subtree:true,characterData:true});
-    const canvas=document.getElementById(config.canvas);
-    if(canvas&&"ResizeObserver"in window)new ResizeObserver(()=>draw(config)).observe(canvas);
-  });
-  const root=document.getElementById("mmp-live-intelligence"),status=document.getElementById("ai-status"),button=document.getElementById("ai-run-btn"),state=document.getElementById("mmp-ai-core-state"),copy=document.getElementById("mmp-ai-core-copy");
-  function syncAI(){
-    if(!root||!state||!copy)return;
-    const busy=!!(button&&button.disabled);
-    const message=(status?.textContent||"").trim();
-    const hasReport=!!document.querySelector("#advanced-ai-analysis .ai-report-card,#advanced-ai-analysis .analysis-result,#advanced-ai-analysis .ai-result");
-    root.classList.toggle("is-analyzing",busy);
-    root.classList.toggle("has-analysis",!busy&&hasReport);
-    if(busy){state.textContent="در حال تحلیل";copy.textContent="در حال بررسی چندبازه‌ای داده‌ها و سناریوهای بازار";}
-    else if(hasReport){state.textContent="گزارش آماده";copy.textContent="گزارش تحلیلی آماده بررسی است؛ برای تحلیل تازه، ارز را انتخاب کن.";}
-    else if(message&&/خطا|ناموفق|در دسترس نیست/i.test(message)){state.textContent="نیازمند بررسی";copy.textContent="اتصال تحلیل را بررسی کن؛ داده‌های زنده بازار جداگانه نمایش داده می‌شوند.";}
-    else{state.textContent="آماده تحلیل";copy.textContent="آماده بررسی روند، مومنتوم و سناریوهای بازار";}
-  }
-  if(status)new MutationObserver(syncAI).observe(status,{childList:true,subtree:true,characterData:true});
-  if(button)new MutationObserver(syncAI).observe(button,{attributes:true,attributeFilter:["disabled"]});
-  syncAI();
-  window.addEventListener("resize",()=>configs.forEach(draw),{passive:true});
-})();
-</script>
 
-<script id="mmp-live-candle-terminal">
-(function(){
- const root=document.getElementById("mmp-live-intelligence");if(!root)return;
- const $=id=>document.getElementById(id),api=typeof AI_ANALYSIS_ENDPOINT==="string"?AI_ANALYSIS_ENDPOINT:"";
- const key="mmp_pulse_assets_v1";let selected=[],activeId="bitcoin",tf="15m",chart=null,candleSeries=null,volumeSeries=null,ema20Series=null,ema50Series=null,resizeObserver=null,loading=false,lastLoaded="";
- const defaults=["bitcoin","ethereum"];
- const fmt=(n,d)=>Number(n).toLocaleString("en-US",{maximumFractionDigits:d??(n<1?6:2)});
- function coin(id){return (Array.isArray(cachedCoinsData)?cachedCoinsData:[]).find(c=>c.id===id)}
- function readSaved(){try{const v=JSON.parse(localStorage.getItem(key)||"null");return Array.isArray(v)?v.filter(x=>typeof x==="string").slice(0,8):defaults.slice()}catch(e){return defaults.slice()}}
- function save(){try{localStorage.setItem(key,JSON.stringify(selected))}catch(e){}}
- function priceHtml(c){const p=Number(c.current_price);return Number.isFinite(p)&&p>0?fmt(p)+" USDT":"— USDT"}
- function renderAssets(){
-  const host=$("mmp-pulse-assets"),select=$("mmp-pulse-add-select");if(!host||!select)return;
-  const available=Array.isArray(cachedCoinsData)?cachedCoinsData:[];
-  const options=available.filter(c=>!selected.includes(c.id)).sort((a,b)=>String(a.name).localeCompare(String(b.name)));
-  select.innerHTML='<option value="">افزودن ارز از فهرست ۱۰۰ تایی…</option>'+options.map(c=>'<option value="'+aiEscape(c.id)+'">'+aiEscape(c.name)+' · '+aiEscape(String(c.symbol||"").toUpperCase())+'</option>').join("");
-  const valid=selected.map(coin).filter(Boolean);$("mmp-pulse-count").textContent=valid.length.toLocaleString("fa-IR")+" ارز";
-  host.innerHTML=valid.map(c=>'<button type="button" class="mmp-pulse-asset '+(c.id===activeId?"active":"")+'" data-pulse-asset="'+aiEscape(c.id)+'"><img src="'+aiEscape(c.image||"")+'" alt="" loading="lazy"><span class="mmp-pulse-asset-info"><b>'+aiEscape(c.name)+'</b><small>'+aiEscape(String(c.symbol||"").toUpperCase())+' · '+(Number(c.price_change_percentage_24h)>=0?"+":"")+fmt(Number(c.price_change_percentage_24h)||0,2)+'%</small></span><span class="mmp-pulse-asset-price"><b>'+priceHtml(c)+'</b><small>'+(Number(currentTetherPrice)>0&&Number(c.current_price)>0?fmt(Number(c.current_price)*Number(currentTetherPrice),0)+" تومان":"— تومان")+'</small></span><span class="mmp-pulse-asset-remove" data-pulse-remove="'+aiEscape(c.id)+'" aria-label="حذف">×</span></button>').join("");
-  if(!valid.some(c=>c.id===activeId)&&valid.length)activeId=valid[0].id;
-  if(!valid.length){activeId="";$("mmp-pulse-chart-name").textContent="ارزی انتخاب نشده";$("mmp-pulse-chart-source").textContent="از فهرست بالا یک ارز اضافه کنید";}
-  else updateHeaderPrice();
- }
- function updateHeaderPrice(){
-  const c=coin(activeId);if(!c)return;
-  const p=Number(c.current_price),t=Number(currentTetherPrice||0);
-  $("mmp-pulse-chart-name").textContent=String(c.symbol||"").toUpperCase()+" · "+c.name;
-  $("mmp-pulse-chart-usdt").textContent=priceHtml(c);
-  $("mmp-pulse-chart-irt").textContent=t>0&&p>0?fmt(p*t,0)+" تومان":"نرخ تبدیل تومان در دسترس نیست";
- }
- function ema(candles,period){let out=[],k=2/(period+1),v=null;const closes=candles.map(x=>Number(x.close));closes.forEach((x,i)=>{if(i===period-1)v=closes.slice(0,period).reduce((a,b)=>a+b,0)/period;else if(i>=period)v=x*k+v*(1-k);if(i>=period-1)out.push({time:candles[i].time,value:v})});return out}
- function setStatus(text,error){const el=$("mmp-pulse-status");el.textContent=text;el.classList.toggle("error",!!error)}
- function ensureChart(){
-  if(chart||!window.LightweightCharts)return;
-  const el=$("mmp-pulse-chart");
-  chart=LightweightCharts.createChart(el,{width:el.clientWidth,height:el.clientHeight,layout:{background:{type:"solid",color:"#0b131d"},textColor:"#9aafbd",fontFamily:"Tahoma,Arial",fontSize:10},grid:{vertLines:{color:"rgba(130,160,180,.08)"},horzLines:{color:"rgba(130,160,180,.10)"}},rightPriceScale:{borderColor:"#263747",scaleMargins:{top:.08,bottom:.25}},timeScale:{borderColor:"#263747",timeVisible:true,secondsVisible:false},crosshair:{mode:LightweightCharts.CrosshairMode.Normal},handleScroll:{mouseWheel:true,pressedMouseMove:true,horzTouchDrag:true,vertTouchDrag:false},handleScale:{mouseWheel:true,pinch:true,axisPressedMouseMove:true}});
-  candleSeries=chart.addCandlestickSeries({upColor:"#20c997",downColor:"#f05d69",borderUpColor:"#20c997",borderDownColor:"#f05d69",wickUpColor:"#20c997",wickDownColor:"#f05d69",priceLineVisible:true});
-  volumeSeries=chart.addHistogramSeries({priceFormat:{type:"volume"},priceScaleId:"volume",scaleMargins:{top:.82,bottom:0},lastValueVisible:false,priceLineVisible:false});
-  chart.priceScale("volume").applyOptions({scaleMargins:{top:.82,bottom:0},visible:false});
-  ema20Series=chart.addLineSeries({color:"#e5c57f",lineWidth:1,priceLineVisible:false,lastValueVisible:false});
-  ema50Series=chart.addLineSeries({color:"#71c9e6",lineWidth:1,priceLineVisible:false,lastValueVisible:false});
-  if("ResizeObserver"in window){resizeObserver=new ResizeObserver(()=>{if(chart)chart.applyOptions({width:el.clientWidth,height:el.clientHeight})});resizeObserver.observe(el)}
- }
- async function loadCandles(force){
-  if(!activeId||loading)return;
-  const c=coin(activeId);if(!c)return;
-  const symbol=String(c.symbol||"").toUpperCase().replace(/[^A-Z0-9]/g,"");if(!symbol){setStatus("نماد معاملاتی معتبر برای این ارز پیدا نشد.",true);return}
-  const signature=activeId+"|"+tf;if(!force&&signature===lastLoaded)return;
-  loading=true;setStatus("در حال دریافت کندل‌های واقعی "+symbol+" از منابع بازار…");
-  try{
-   if(!api)throw new Error("نشانی سرویس داده تنظیم نشده است.");
-   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),18000);
-   let response;
-   try{response=await fetch(api+"/market-candles?symbol="+encodeURIComponent(symbol)+"&interval="+encodeURIComponent(tf),{cache:"no-store",signal:controller.signal})}finally{clearTimeout(timer)}
-   const payload=await response.json();if(!response.ok)throw new Error(payload.error||"دریافت داده کندلی ناموفق بود.");
-   if(!Array.isArray(payload.candles)||payload.candles.length<20)throw new Error("تاریخچه کافی برای رسم کندل دریافت نشد.");
-   ensureChart();if(!chart)throw new Error("ابزار رسم نمودار بارگذاری نشد.");
-   const rows=payload.candles.map(x=>({time:Number(x.time),open:Number(x.open),high:Number(x.high),low:Number(x.low),close:Number(x.close)})).filter(x=>x.time>0&&[x.open,x.high,x.low,x.close].every(Number.isFinite));
-   candleSeries.setData(rows);
-   volumeSeries.setData(payload.candles.map(x=>({time:Number(x.time),value:Number(x.volume)||0,color:Number(x.close)>=Number(x.open)?"rgba(32,201,151,.35)":"rgba(240,93,105,.35)"})).filter(x=>x.time>0));
-   ema20Series.setData(ema(rows,20));ema50Series.setData(ema(rows,50));chart.timeScale().fitContent();
-   lastLoaded=signature;
-   const change=Number(payload.change_pct),price=Number(payload.price);
-   $("mmp-pulse-chart-usdt").textContent=fmt(price)+" USDT";
-   $("mmp-pulse-chart-irt").textContent=Number(currentTetherPrice)>0?fmt(price*Number(currentTetherPrice),0)+" تومان":"نرخ تبدیل تومان در دسترس نیست";
-   setStatus("منبع کندل: "+payload.provider+" · "+rows.length.toLocaleString("fa-IR")+" کندل · تغییر بازه: "+(change>=0?"+":"")+fmt(change,2)+"٪ · به‌روزرسانی خودکار هر ۶۰ ثانیه");
-  }catch(e){setStatus(e.name==="AbortError"?"اتصال به منبع کندل بیش از حد طول کشید؛ دوباره تلاش کنید.":(e.message||"خطا در دریافت کندل"),true)}
-  finally{loading=false}
- }
- $("mmp-pulse-assets").addEventListener("click",e=>{
-  const remove=e.target.closest("[data-pulse-remove]");if(remove){e.preventDefault();e.stopPropagation();const id=remove.getAttribute("data-pulse-remove");selected=selected.filter(x=>x!==id);if(activeId===id){activeId=selected[0]||"";lastLoaded=""}save();renderAssets();if(activeId)loadCandles(true);else setStatus("برای نمایش نمودار، یک ارز اضافه کنید.");return}
-  const item=e.target.closest("[data-pulse-asset]");if(item){activeId=item.getAttribute("data-pulse-asset");lastLoaded="";renderAssets();loadCandles(true)}
- });
- $("mmp-pulse-add-btn").addEventListener("click",()=>{const id=$("mmp-pulse-add-select").value;if(!id)return;if(selected.length>=8){setStatus("حداکثر ۸ ارز را می‌توانید هم‌زمان در فهرست نبض نگه دارید.");return}selected.push(id);activeId=id;save();renderAssets();loadCandles(true)});
- $("mmp-pulse-timeframes").addEventListener("click",e=>{const b=e.target.closest("[data-tf]");if(!b)return;tf=b.dataset.tf;document.querySelectorAll("#mmp-pulse-timeframes button").forEach(x=>x.classList.toggle("active",x===b));lastLoaded="";loadCandles(true)});
- $("mmp-pulse-expand").addEventListener("click",()=>{const shell=$("mmp-pulse-chart-shell"),collapsed=shell.classList.toggle("is-collapsed");$("mmp-pulse-expand").textContent=collapsed?"بازکردن نمودار ⌄":"جمع‌کردن نمودار ⌃";$("mmp-pulse-expand").setAttribute("aria-expanded",String(!collapsed));if(!collapsed){ensureChart();if(chart){const el=$("mmp-pulse-chart");chart.applyOptions({width:el.clientWidth,height:el.clientHeight});chart.timeScale().fitContent()}if(!lastLoaded)loadCandles(true)}});
- selected=readSaved();if(!selected.length)selected=defaults.slice();activeId=selected[0];renderAssets();
- const boot=()=>{renderAssets();if(activeId)loadCandles(true)};
- if(Array.isArray(cachedCoinsData)&&cachedCoinsData.length)boot();else{let tries=0;const wait=setInterval(()=>{tries++;if(Array.isArray(cachedCoinsData)&&cachedCoinsData.length){clearInterval(wait);boot()}else if(tries>=20)clearInterval(wait)},1000)}
- setInterval(()=>{renderAssets();if(activeId&&!$("mmp-pulse-chart-shell").classList.contains("is-collapsed"))loadCandles(true)},60000);
-})();
-</script>
+
+
 </body>
 </html>
 
