@@ -63,6 +63,10 @@ jobs:
               await web.goto('http://127.0.0.1:4173/index.html', { waitUntil: 'domcontentloaded' });
               assert.equal(await web.locator('.native-app-nav').count(), 0, 'website must not show the native app dock');
               assert.equal(await web.locator('#terminal-navigation').count(), 1, 'website terminal navigation must remain');
+              assert.equal(await web.locator('#app-download').count(), 1, 'APK download is available on the website');
+              assert.match(await web.locator('#app-download a').getAttribute('href'), /releases\/latest\/download\/app-release\.apk/, 'website download points to the latest APK');
+              assert.equal(await web.locator('link[rel="manifest"]').count(), 1, 'PWA manifest is linked');
+              assert.equal(await web.locator('link[rel="icon"]').count(), 1, 'browser icon is linked');
               await web.locator('#expand-btn').click();
               assert.equal(await web.locator('#full-coins-box').getAttribute('aria-hidden'), 'false', 'coin list expands');
               await web.locator('#expand-btn').click();
@@ -87,6 +91,11 @@ jobs:
               await app.goto('http://127.0.0.1:4173/index.html', { waitUntil: 'domcontentloaded' });
               await app.waitForSelector('html.mmp-native-app .native-app-nav');
               assert.equal(await app.locator('[data-native-tab]').count(), 5, 'five primary app tabs');
+              assert.equal(await app.locator('#app-download').isVisible(), false, 'APK download section is not shown inside the app');
+              assert.equal(await app.locator('#native-share-app').count(), 1, 'app has a share-app action instead of a download section');
+              await app.evaluate(() => window.eval(`const extra=document.getElementById('connections-extra'); extra.innerHTML='<div class="conn">Wallex</div><div class="conn">Bitget Spot</div><div class="conn">Bitpin</div>'; coinGeckoConnectionStatus='ok'; renderCoinGeckoConnection();`));
+              assert.equal(await app.locator('#connections-extra .conn').count(), 4, 'expanded source panel keeps all exchange cards plus CoinGecko');
+              assert.equal(await app.locator('#connections-extra').innerText().then(t=>t.includes('Bitget Spot') && t.includes('Bitpin') && t.includes('Wallex') && t.includes('CoinGecko')), true, 'no source card is dropped when CoinGecko status is appended');
 
               const pageName = () => app.locator('body').getAttribute('data-native-page');
               await app.locator('[data-native-tab="radar"]').click();
