@@ -67,6 +67,10 @@ jobs:
               assert.match(await web.locator('#app-download a').getAttribute('href'), /releases\/latest\/download\/app-release\.apk/, 'website download points to the latest APK');
               assert.equal(await web.locator('link[rel="manifest"]').count(), 1, 'PWA manifest is linked');
               assert.equal(await web.locator('link[rel="icon"]').count(), 1, 'browser icon is linked');
+              await web.locator('#btn-usdt').click();
+              assert.equal(await web.locator('#btn-usdt').getAttribute('class').then(x=>x.includes('active')), true, 'website can switch to USDT');
+              await web.locator('#btn-irt').click();
+              assert.equal(await web.locator('#btn-irt').getAttribute('class').then(x=>x.includes('active')), true, 'website can switch back to Toman');
               await web.locator('#expand-btn').click();
               assert.equal(await web.locator('#full-coins-box').getAttribute('aria-hidden'), 'false', 'coin list expands');
               await web.locator('#expand-btn').click();
@@ -91,6 +95,10 @@ jobs:
               await app.goto('http://127.0.0.1:4173/index.html', { waitUntil: 'domcontentloaded' });
               await app.waitForSelector('html.mmp-native-app .native-app-nav');
               assert.equal(await app.locator('[data-native-tab]').count(), 5, 'five primary app tabs');
+              await app.locator('#native-currency-usdt').click();
+              assert.equal(await app.locator('#native-currency-usdt').getAttribute('class').then(x=>x.includes('active')), true, 'app can switch to USDT');
+              await app.locator('#native-currency-irt').click();
+              assert.equal(await app.locator('#native-currency-irt').getAttribute('class').then(x=>x.includes('active')), true, 'app can switch back to Toman');
               assert.equal(await app.locator('#app-download').isVisible(), false, 'APK download section is not shown inside the app');
               assert.equal(await app.locator('#native-share-app').count(), 1, 'app has a share-app action instead of a download section');
               await app.evaluate(() => window.eval(`const extra=document.getElementById('connections-extra'); extra.innerHTML='<div class="conn">Wallex</div><div class="conn">Bitget Spot</div><div class="conn">Bitpin</div>'; coinGeckoConnectionStatus='ok'; renderCoinGeckoConnection();`));
