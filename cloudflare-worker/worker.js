@@ -445,21 +445,30 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/health"){
   const intervals=["15m","1h","4h","1d"];
   let spotMarket=null,futuresMarket=null,market={},candleMarket=mode==="futures"?"futures":"spot";
   if(mode==="both"){
-   const settled=await Promise.allSettled([
-    Promise.all(intervals.map(async tf=>[tf,await candles(spotPair,tf,env,"spot")])),
-    Promise.all(intervals.map(async tf=>[tf,await candles(futuresPair,tf,env,"futures")]))
-   ]);
-   if(settled[0].status==="fulfilled")spotMarket=Object.fromEntries(settled[0].value);
-   if(settled[1].status==="fulfilled")futuresMarket=Object.fromEntries(settled[1].value);
-   // In "both" mode, either valid market is enough to continue. Prefer spot,
-   // but fall back to futures when spot candles are unavailable.
-   if(spotMarket){market=spotMarket;candleMarket="spot";}
-   else if(futuresMarket){market=futuresMarket;candleMarket="futures";pair=futuresPair;}
-   else{
-    const spotError=String(settled[0].reason?.message||"داده اسپات در دسترس نیست");
-    const futuresError=String(settled[1].reason?.message||"داده فیوچرز در دسترس نیست");
-    const assetNote=symbol==="JAAA"?" این نماد به صندوق/دارایی توکنیزه‌شده Janus Henderson AAA CLO مرتبط است؛ بدون جفت معتبر یا شناسه دقیق توکن، نباید آن را به قرارداد دیگری نگاشت کرد.":"";
-    throw new Error("برای "+symbol+" در بازار اسپات و فیوچرز داده کندلی کافی پیدا نشد. جفت معاملاتی "+pair+" ممکن است در صرافی‌های پشتیبانی‌شده فعال نباشد."+assetNote+" جزئیات: اسپات: "+spotError+"؛ فیوچرز: "+futuresError);
+   // Spot-only tokens (for example LEO) have no perpetual contract.
+   // If the exchange catalog confirms spot but no futures, skip the four
+   // futile futures candle requests and analyze the valid spot market directly.
+   if(support.spot.confirmed&&!support.futures.confirmed){
+    const values=await Promise.all(intervals.map(async tf=>[tf,await candles(spotPair,tf,env,"spot")]));
+    spotMarket=Object.fromEntries(values);market=spotMarket;candleMarket="spot";
+   }else if(support.futures.confirmed&&!support.spot.confirmed){
+    const values=await Promise.all(intervals.map(async tf=>[tf,await candles(futuresPair,tf,env,"futures")]));
+    futuresMarket=Object.fromEntries(values);market=futuresMarket;candleMarket="futures";pair=futuresPair;
+   }else{
+    const settled=await Promise.allSettled([
+     Promise.all(intervals.map(async tf=>[tf,await candles(spotPair,tf,env,"spot")])),
+     Promise.all(intervals.map(async tf=>[tf,await candles(futuresPair,tf,env,"futures")]))
+    ]);
+    if(settled[0].status==="fulfilled")spotMarket=Object.fromEntries(settled[0].value);
+    if(settled[1].status==="fulfilled")futuresMarket=Object.fromEntries(settled[1].value);
+    if(spotMarket){market=spotMarket;candleMarket="spot";}
+    else if(futuresMarket){market=futuresMarket;candleMarket="futures";pair=futuresPair;}
+    else{
+     const spotError=String(settled[0].reason?.message||"داده اسپات در دسترس نیست");
+     const futuresError=String(settled[1].reason?.message||"داده فیوچرز در دسترس نیست");
+     const assetNote=symbol==="JAAA"?" این نماد به صندوق/دارایی توکنیزه‌شده Janus Henderson AAA CLO مرتبط است؛ بدون جفت معتبر یا شناسه دقیق توکن، نباید آن را به قرارداد دیگری نگاشت کرد.":"";
+     throw new Error("برای "+symbol+" در بازار اسپات و فیوچرز داده کندلی کافی پیدا نشد. جفت معاملاتی "+pair+" ممکن است در صرافی‌های پشتیبانی‌شده فعال نباشد."+assetNote+" جزئیات: اسپات: "+spotError+"؛ فیوچرز: "+futuresError);
+    }
    }
   }else{
    const selectedPair=candleMarket==="futures"?futuresPair:spotPair;pair=selectedPair;
