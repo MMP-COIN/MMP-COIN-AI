@@ -1354,7 +1354,7 @@ async function refreshAll(){
      topData=paprikaRows.filter(x=>Number(x.rank)>0&&x.id&&x.symbol).map(x=>{
       const usd=x.quotes?.USD||{};
       const metric=value=>value===null||value===undefined||value===""?null:(Number.isFinite(Number(value))?Number(value):null);
-      return {id:x.id,name:x.name,symbol:x.symbol,image:"https://static.coinpaprika.com/coin/"+encodeURIComponent(x.id)+"/logo.png",market_cap_rank:Number(x.rank),current_price:metric(usd.price),market_cap:metric(usd.market_cap),total_volume:metric(usd.volume_24h),price_change_percentage_1h:metric(usd.percent_change_1h),price_change_percentage_24h:metric(usd.percent_change_24h),price_change_percentage_7d:metric(usd.percent_change_7d),last_updated:x.last_updated||null,price_source:"CoinPaprika"};
+      return {id:x.id,name:x.name,symbol:x.symbol,image:"https://static.coinpaprika.com/coin/"+encodeURIComponent(x.id)+"/logo.png",market_cap_rank:Number(x.rank),current_price:metric(usd.price),market_cap:metric(usd.market_cap),total_volume:metric(usd.volume_24h),price_change_percentage_1h:metric(usd.percent_change_1h),price_change_percentage_1h_in_currency:metric(usd.percent_change_1h),price_change_percentage_24h:metric(usd.percent_change_24h),price_change_percentage_7d:metric(usd.percent_change_7d),price_change_percentage_7d_in_currency:metric(usd.percent_change_7d),last_updated:x.last_updated||null,price_source:"CoinPaprika"};
      });
      console.warn("Using CoinPaprika market catalog after CoinGecko sources failed:",directError);
     }catch(paprikaError){
