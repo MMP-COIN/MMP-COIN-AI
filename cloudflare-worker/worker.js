@@ -54,12 +54,16 @@ function splitQuotePair(symbol){
 }
 async function candles(symbol,interval,env,marketType="spot"){
  const headers={"Accept":"application/json, text/plain, */*","User-Agent":"MMP-COIN-AI/1.0","Accept-Language":"en-US,en;q=0.9"};
+ // Multi-host Binance fallback, followed by Bitget, Bybit and OKX.
  const spotUrls=[
   "https://api.binance.com/api/v3/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250",
   "https://api.binance.us/api/v3/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250",
-  "https://api.binance.us/api/v3/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250",
+  "https://api1.binance.com/api/v3/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250",
+  "https://api2.binance.com/api/v3/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250",
+  "https://api3.binance.com/api/v3/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250",
   "https://data-api.binance.vision/api/v3/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250"
  ];
+ const minimumCandles=30;
  const okxBar={"15m":"15m","1h":"1H","4h":"4H","1d":"1Dutc"}[interval];
  if(marketType==="futures"){
   let binanceError=null;
@@ -67,20 +71,23 @@ async function candles(symbol,interval,env,marketType="spot"){
    const r=await fetch("https://fapi.binance.com/fapi/v1/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250",{headers});
    if(!r.ok)throw new Error("Binance Futures HTTP "+r.status);
    const rows=await r.json();
-   if(!Array.isArray(rows)||rows.length<80)throw new Error("Binance Futures candle history is insufficient");
+   if(!Array.isArray(rows)||rows.length<minimumCandles)throw new Error("Binance Futures candle history is insufficient");
    const result=analyzeKlines(rows);result.data_provider="Binance Futures";return result;
   }catch(e){binanceError=e;}
   let bybitError=null;
+ const bybitInterval={"15m":"15","1h":"60","4h":"240","1d":"D"}[interval];
+ for(const host of ["https://api.bybit.eu","https://api.bytick.eu","https://api.bybit.com","https://api.bytick.com"]){
   try{
-   const bybitInterval={"15m":"15","1h":"60","4h":"240","1d":"D"}[interval];
-   const url="https://api.bybit.com/v5/market/kline?category=linear&symbol="+encodeURIComponent(symbol)+"&interval="+bybitInterval+"&limit=250";
+   const url=host+"/v5/market/kline?category=spot&symbol="+encodeURIComponent(symbol)+"&interval="+bybitInterval+"&limit=250";
    const r=await fetch(url,{headers});
-   if(!r.ok)throw new Error("Bybit Linear HTTP "+r.status);
+   if(!r.ok)throw new Error("Bybit Spot HTTP "+r.status);
    const payload=await r.json(),list=payload?.retCode===0?payload.result?.list:null;
-   if(!Array.isArray(list)||list.length<80)throw new Error(payload?.retMsg||"insufficient Bybit linear candle history");
+   if(!Array.isArray(list)||list.length<minimumCandles)throw new Error(payload?.retMsg||"insufficient Bybit spot candle history");
    const rows=list.slice().reverse().map(x=>[Number(x[0]),x[1],x[2],x[3],x[4],x[5],x[6]||"0","0","0","0"]);
-   const result=analyzeKlines(rows);result.data_provider="Bybit Linear Perpetual (fallback)";return result;
+   const result=analyzeKlines(rows);result.data_provider="Bybit Spot (fallback)";return result;
   }catch(e){bybitError=e;}
+ }
+  }
   try{
    const pair=splitQuotePair(symbol);if(!pair)throw new Error("Unsupported quote currency for OKX swap");
    const instId=pair.base+"-"+pair.quote+"-SWAP";
@@ -90,7 +97,7 @@ async function candles(symbol,interval,env,marketType="spot"){
      const r=await fetch(host+"/api/v5/market/candles?instId="+encodeURIComponent(instId)+"&bar="+okxBar+"&limit=250",{headers});
      if(!r.ok){lastError=new Error("OKX Swap HTTP "+r.status);continue;}
      const payload=await r.json(),list=payload?.code==="0"?payload.data:null;
-     if(!Array.isArray(list)||list.length<80){lastError=new Error(payload?.msg||"insufficient OKX swap candle history");continue;}
+     if(!Array.isArray(list)||list.length<minimumCandles){lastError=new Error(payload?.msg||"insufficient OKX swap candle history");continue;}
      const rows=list.slice().reverse().map(x=>[Number(x[0]),x[1],x[2],x[3],x[4],x[5],x[6]||"0","0","0","0"]);
      const result=analyzeKlines(rows);result.data_provider="OKX Linear Swap (fallback)";return result;
     }catch(e){lastError=e;}
@@ -106,7 +113,7 @@ async function candles(symbol,interval,env,marketType="spot"){
    const r=await fetch(url,{headers});
    if(!r.ok){lastError=new Error("HTTP "+r.status);continue;}
    const rows=await r.json();
-   if(!Array.isArray(rows)||rows.length<80){lastError=new Error("insufficient candle history");continue;}
+   if(!Array.isArray(rows)||rows.length<minimumCandles){lastError=new Error("insufficient candle history");continue;}
    const result=analyzeKlines(rows);result.data_provider=url.includes("binance.us")?"Binance.US":url.includes("data-api")?"Binance Data API":"Binance Spot";return result;
   }catch(e){lastError=e;}
  }
@@ -117,7 +124,7 @@ async function candles(symbol,interval,env,marketType="spot"){
   const r=await fetch(url,{headers});
   if(!r.ok)throw new Error("Bitget Spot HTTP "+r.status);
   const payload=await r.json(),rows=payload?.code==="00000"?payload.data:null;
-  if(!Array.isArray(rows)||rows.length<80)throw new Error(payload?.msg||"insufficient Bitget spot candle history");
+  if(!Array.isArray(rows)||rows.length<minimumCandles)throw new Error(payload?.msg||"insufficient Bitget spot candle history");
   const result=analyzeKlines(rows.map(x=>[Number(x[0]),x[1],x[2],x[3],x[4],x[5],x[6]||"0","0","0","0"]));
   result.data_provider="Bitget Spot";return result;
  }catch(e){bitgetError=e;}
@@ -128,7 +135,7 @@ async function candles(symbol,interval,env,marketType="spot"){
   const r=await fetch(url,{headers});
   if(!r.ok)throw new Error("Bybit Spot HTTP "+r.status);
   const payload=await r.json(),list=payload?.retCode===0?payload.result?.list:null;
-  if(!Array.isArray(list)||list.length<80)throw new Error(payload?.retMsg||"insufficient Bybit spot candle history");
+  if(!Array.isArray(list)||list.length<minimumCandles)throw new Error(payload?.retMsg||"insufficient Bybit spot candle history");
   const rows=list.slice().reverse().map(x=>[Number(x[0]),x[1],x[2],x[3],x[4],x[5],x[6]||"0","0","0","0"]);
   const result=analyzeKlines(rows);result.data_provider="Bybit Spot (fallback)";return result;
  }catch(e){bybitError=e;}
@@ -141,7 +148,7 @@ async function candles(symbol,interval,env,marketType="spot"){
     const r=await fetch(host+"/api/v5/market/candles?instId="+encodeURIComponent(instId)+"&bar="+okxBar+"&limit=250",{headers});
     if(!r.ok){lastError=new Error("OKX Spot HTTP "+r.status);continue;}
     const payload=await r.json(),list=payload?.code==="0"?payload.data:null;
-    if(!Array.isArray(list)||list.length<80){lastError=new Error(payload?.msg||"insufficient OKX spot candle history");continue;}
+    if(!Array.isArray(list)||list.length<minimumCandles){lastError=new Error(payload?.msg||"insufficient OKX spot candle history");continue;}
     const rows=list.slice().reverse().map(x=>[Number(x[0]),x[1],x[2],x[3],x[4],x[5],x[6]||"0","0","0","0"]);
     const result=analyzeKlines(rows);result.data_provider="OKX Spot (fallback)";return result;
    }catch(e){lastError=e;}
