@@ -59,7 +59,7 @@ jobs:
             cleartext: false,
             allowNavigation: ['mmp-coin.github.io']
           };
-          fs.writeFileSync(file, JSON.stringify(config, null, 2) + '\\n');
+          fs.writeFileSync(file, JSON.stringify(config, null, 2) + '\n');
           NODE
 
       - name: Generate Android project
