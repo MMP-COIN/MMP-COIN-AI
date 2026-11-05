@@ -720,6 +720,54 @@ body{background:
  .radar-side .section-head>b{font-size:12px}
 }
 </style>
+
+<style id="mmp-visual-intelligence">
+:root{--mmp-cyan:#51dbc9;--mmp-blue:#8ab8d8;--mmp-gold:#d9b66d}
+.mmp-live-intelligence{position:relative;margin:0 0 18px;padding:17px;border:1px solid rgba(132,178,199,.2);border-radius:19px;background:radial-gradient(ellipse at 82% 0,rgba(45,112,128,.16),transparent 42%),linear-gradient(145deg,rgba(18,29,43,.97),rgba(8,15,24,.98));box-shadow:0 18px 44px rgba(0,0,0,.32),inset 0 1px rgba(255,255,255,.045);overflow:hidden}
+.mmp-live-intelligence:before{content:"";position:absolute;inset:0 0 auto;height:1px;background:linear-gradient(90deg,transparent,rgba(81,219,201,.6),rgba(217,182,109,.65),transparent)}
+.mmp-viz-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.mmp-viz-heading h2{margin:3px 0 2px;font-size:19px;color:#f1dfb8}
+.mmp-viz-heading p{margin:0;color:#91a5b7;font-size:11px;line-height:1.8}
+.mmp-viz-kicker{font-size:9px;letter-spacing:1.8px;font-weight:900;color:#8fb8c8}
+.mmp-viz-live{display:inline-flex;align-items:center;gap:7px;white-space:nowrap;padding:7px 10px;border:1px solid rgba(81,219,201,.2);border-radius:30px;background:rgba(30,94,91,.12);font-size:10px;color:#a8eee1}
+.mmp-viz-live i{width:7px;height:7px;border-radius:50%;background:#4ce0bd;box-shadow:0 0 12px #4ce0bd;animation:mmp-live-pulse 1.8s ease-in-out infinite}
+.mmp-viz-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}
+.mmp-viz-card,.mmp-ai-core-card{position:relative;min-width:0;min-height:172px;padding:13px;border:1px solid rgba(142,179,198,.17);border-radius:14px;background:linear-gradient(145deg,rgba(27,43,58,.9),rgba(12,21,32,.96));overflow:hidden}
+.mmp-viz-card:after{content:"";position:absolute;inset:auto -30px -55px auto;width:120px;height:100px;background:radial-gradient(circle,rgba(79,199,188,.1),transparent 70%);pointer-events:none}
+.mmp-viz-card-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.mmp-viz-card-head small{display:block;color:#91a9bb;font-size:9px;letter-spacing:1.3px;font-weight:800}
+.mmp-viz-card-head b{display:block;margin-top:5px;color:#f3e4c5;font-size:17px;font-variant-numeric:tabular-nums}
+.mmp-viz-icon{display:grid;place-items:center;width:34px;height:34px;border:1px solid rgba(217,182,109,.24);border-radius:11px;background:rgba(217,182,109,.08);color:#e4c780;font-size:20px}
+.mmp-price-viz canvas{display:block;width:100%;height:72px;margin:5px 0 0}
+.mmp-viz-foot{display:flex;justify-content:space-between;gap:8px;color:#8197a9;font-size:9px}
+.mmp-viz-foot span:last-child{color:#a7c8d5;font-variant-numeric:tabular-nums}
+.mmp-ai-core-card{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;border-color:rgba(217,182,109,.25);background:radial-gradient(ellipse at 50% 40%,rgba(42,107,119,.2),transparent 58%),linear-gradient(145deg,#1c2a37,#0b1420)}
+.mmp-ai-core-top{position:absolute;top:12px;right:12px;left:12px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.mmp-ai-core-state{font-size:9px;color:#e5d2a5;padding:4px 7px;border-radius:20px;background:rgba(217,182,109,.1);border:1px solid rgba(217,182,109,.2)}
+.mmp-ai-core-visual{position:relative;width:96px;height:82px;margin:18px auto 5px;display:grid;place-items:center}
+.mmp-ai-core-orbit{position:absolute;border:1px solid rgba(81,219,201,.35);border-radius:50%;inset:5px 9px;transform:rotate(-25deg);animation:mmp-orbit-spin 12s linear infinite}
+.mmp-ai-core-orbit.orbit-two{inset:12px 1px;border-color:rgba(217,182,109,.35);transform:rotate(55deg);animation-direction:reverse;animation-duration:17s}
+.mmp-ai-core-center{position:relative;z-index:2;width:42px;height:42px;display:grid;place-items:center;border:1px solid rgba(217,182,109,.55);border-radius:13px;background:linear-gradient(145deg,#f0d99e,#9c7438 75%,#274355);box-shadow:0 0 28px rgba(217,182,109,.24);color:#121923;font-size:19px;font-weight:1000}
+.mmp-ai-core-center span{font-size:7px;letter-spacing:1px;margin-top:-10px}
+.mmp-ai-wave{position:absolute;bottom:-3px;left:0;right:0;display:flex;align-items:center;justify-content:center;gap:3px;height:15px}
+.mmp-ai-wave i{width:2px;height:5px;border-radius:4px;background:#63d8c8;opacity:.75;animation:mmp-wave 1.1s ease-in-out infinite alternate}
+.mmp-ai-wave i:nth-child(3n){animation-delay:.25s}.mmp-ai-wave i:nth-child(3n + 1){animation-delay:.5s}.mmp-ai-wave i:nth-child(4n){animation-delay:.7s}
+.mmp-ai-core-title{color:#f0dfb9;font-size:12px}
+.mmp-ai-core-card p{margin:4px 0 7px;color:#8ea5b8;font-size:10px;line-height:1.7}
+.mmp-ai-core-link{font-size:10px;font-weight:800;color:#7fe1d2;text-decoration:none}
+.mmp-ai-core-link span{display:inline-block;transition:transform .2s}.mmp-ai-core-link:hover span{transform:translateX(-4px)}
+.mmp-live-intelligence.is-analyzing .mmp-ai-core-state{color:#8cf2df;border-color:rgba(81,219,201,.42);background:rgba(38,131,116,.18)}
+.mmp-live-intelligence.is-analyzing .mmp-ai-core-center{box-shadow:0 0 36px rgba(81,219,201,.45),0 0 14px rgba(217,182,109,.3)}
+.mmp-live-intelligence.is-analyzing .mmp-ai-core-orbit{border-color:rgba(81,219,201,.8)}
+.mmp-live-intelligence.has-analysis .mmp-ai-core-state{color:#bcebdc;border-color:rgba(81,219,201,.3)}
+@keyframes mmp-live-pulse{50%{opacity:.35;box-shadow:0 0 3px #4ce0bd}}
+@keyframes mmp-orbit-spin{to{transform:rotate(335deg)}}
+@keyframes mmp-wave{to{height:14px;opacity:1}}
+@media(max-width:900px){.mmp-viz-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.mmp-ai-core-card{grid-column:1/-1;min-height:148px}.mmp-ai-core-visual{margin-top:22px}}
+@media(max-width:560px){.mmp-live-intelligence{padding:12px;margin-bottom:13px;border-radius:15px}.mmp-viz-heading{align-items:flex-start}.mmp-viz-heading h2{font-size:16px}.mmp-viz-heading p{max-width:230px;font-size:10px}.mmp-viz-live{font-size:9px;padding:6px 8px}.mmp-viz-grid{grid-template-columns:1fr 1fr;gap:8px}.mmp-viz-card{padding:10px;min-height:154px}.mmp-viz-card-head b{font-size:14px}.mmp-viz-card-head small{font-size:8px}.mmp-viz-icon{width:29px;height:29px;font-size:17px}.mmp-price-viz canvas{height:66px}.mmp-viz-foot{font-size:8px}.mmp-ai-core-card{grid-column:1/-1;min-height:140px}}
+@media(prefers-reduced-motion:reduce){.mmp-viz-live i,.mmp-ai-core-orbit,.mmp-ai-wave i{animation:none!important}.mmp-ai-core-orbit{transform:none!important}}
+</style>
+
 </head>
 <body class="mmp-app-mode">
 
@@ -782,6 +830,33 @@ body{background:
 <div class="card"><div class="stat-label">تتر به تومان · USDT/IRT</div><div class="stat-value" id="usdt">—</div><div class="sub" id="usdt-source">منبع: Nobitex & Wallex</div></div>
 <div class="card"><div class="stat-label">اونس جهانی طلا · XAU</div><div class="stat-value" id="gold">$—</div><div class="sub">مرجع جهانی فلزات گرانبها</div></div>
 </section>
+
+<section class="mmp-live-intelligence" id="mmp-live-intelligence" aria-label="نمای زنده هوشمندی بازار">
+  <div class="mmp-viz-heading">
+    <div><span class="mmp-viz-kicker">LIVE MARKET INTELLIGENCE</span><h2>نبض زنده بازار</h2><p>نمودارها از تغییرات واقعی قیمت در همین نشست ساخته می‌شوند.</p></div>
+    <span class="mmp-viz-live"><i></i> پایش زنده</span>
+  </div>
+  <div class="mmp-viz-grid">
+    <article class="mmp-viz-card mmp-price-viz" data-symbol="BTC">
+      <div class="mmp-viz-card-head"><div><small>BITCOIN · BTC</small><b id="mmp-viz-btc-value">در انتظار قیمت</b></div><span class="mmp-viz-icon">₿</span></div>
+      <canvas id="mmp-viz-btc" aria-label="روند قیمت بیت‌کوین ثبت‌شده در این نشست"></canvas>
+      <div class="mmp-viz-foot"><span>تغییرات ثبت‌شده در این نشست</span><span id="mmp-viz-btc-points">۰ نقطه</span></div>
+    </article>
+    <article class="mmp-viz-card mmp-price-viz" data-symbol="ETH">
+      <div class="mmp-viz-card-head"><div><small>ETHEREUM · ETH</small><b id="mmp-viz-eth-value">در انتظار قیمت</b></div><span class="mmp-viz-icon">Ξ</span></div>
+      <canvas id="mmp-viz-eth" aria-label="روند قیمت اتریوم ثبت‌شده در این نشست"></canvas>
+      <div class="mmp-viz-foot"><span>تغییرات ثبت‌شده در این نشست</span><span id="mmp-viz-eth-points">۰ نقطه</span></div>
+    </article>
+    <article class="mmp-ai-core-card">
+      <div class="mmp-ai-core-top"><span class="mmp-viz-kicker">MMP AI CORE</span><span class="mmp-ai-core-state" id="mmp-ai-core-state">آماده تحلیل</span></div>
+      <div class="mmp-ai-core-visual" aria-hidden="true"><div class="mmp-ai-core-orbit orbit-one"></div><div class="mmp-ai-core-orbit orbit-two"></div><div class="mmp-ai-core-center">M<span>AI</span></div><div class="mmp-ai-wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+      <b class="mmp-ai-core-title">موتور تحلیل چندلایه</b>
+      <p id="mmp-ai-core-copy">آماده بررسی روند، مومنتوم و سناریوهای بازار</p>
+      <a href="#ai-section" class="mmp-ai-core-link">رفتن به تحلیلگر <span>←</span></a>
+    </article>
+  </div>
+</section>
+
 <nav class="terminal-nav" id="terminal-navigation" aria-label="دسترسی سریع ترمینال"><a href="#opportunities">رادار بازار</a><a href="#ai-section">تحلیل هوشمند AI</a><a href="#chart-section">نمودار حرفه‌ای</a><a href="#coins-section">لیست ارزها</a><a href="#watchlist">دیده‌بان شخصی</a><a href="#trading-tools">ابزار معامله‌گر</a><a href="#market-hours">ساعت بازارها</a><a href="#connections">سلامت منابع</a></nav>
 
 
@@ -1943,6 +2018,81 @@ html.mmp-native-app .footer{padding-bottom:12px}
    });
   });
  }catch(e){console.warn("MMP native UI init:",e)}
+})();
+</script>
+
+
+<script id="mmp-live-visual-engine">
+(function(){
+  const configs=[
+    {key:"btc",source:"btc",canvas:"mmp-viz-btc",value:"mmp-viz-btc-value",points:"mmp-viz-btc-points",color:"#e5c57f"},
+    {key:"eth",source:"eth",canvas:"mmp-viz-eth",value:"mmp-viz-eth-value",points:"mmp-viz-eth-points",color:"#72d9d0"}
+  ];
+  const history={btc:[],eth:[]};
+  const parsePrice=(id)=>{
+    const node=document.getElementById(id);if(!node)return null;
+    const raw=(node.textContent||"").replace(/,/g,"").replace(/[^0-9.\-]/g,"");
+    const value=Number(raw);return Number.isFinite(value)&&value>0?value:null;
+  };
+  function draw(config){
+    const canvas=document.getElementById(config.canvas);if(!canvas)return;
+    const data=history[config.key];const rect=canvas.getBoundingClientRect();
+    if(!rect.width)return;
+    const dpr=Math.min(window.devicePixelRatio||1,2),width=Math.round(rect.width*dpr),height=Math.round(rect.height*dpr);
+    if(canvas.width!==width||canvas.height!==height){canvas.width=width;canvas.height=height;}
+    const ctx=canvas.getContext("2d");if(!ctx)return;
+    ctx.clearRect(0,0,width,height);
+    if(data.length<2){
+      ctx.strokeStyle="rgba(148,177,194,.23)";ctx.setLineDash([4*dpr,5*dpr]);ctx.lineWidth=dpr;
+      ctx.beginPath();ctx.moveTo(0,height*.65);ctx.lineTo(width,height*.65);ctx.stroke();ctx.setLineDash([]);
+      ctx.fillStyle="#8199aa";ctx.font=(10*dpr)+"px sans-serif";ctx.fillText("در حال جمع‌آوری داده واقعی",8*dpr,height*.48);
+      return;
+    }
+    const min=Math.min(...data),max=Math.max(...data),range=max-min||Math.max(Math.abs(max)*.0005,1);
+    const pad=7*dpr,top=8*dpr,bottom=height-8*dpr;
+    const x=i=>pad+(width-2*pad)*i/(data.length-1);
+    const y=v=>bottom-(v-min)/range*(bottom-top);
+    const grad=ctx.createLinearGradient(0,top,0,height);
+    grad.addColorStop(0,config.color+"44");grad.addColorStop(1,config.color+"00");
+    ctx.beginPath();data.forEach((v,i)=>i?ctx.lineTo(x(i),y(v)):ctx.moveTo(x(i),y(v)));
+    ctx.lineTo(x(data.length-1),bottom);ctx.lineTo(x(0),bottom);ctx.closePath();ctx.fillStyle=grad;ctx.fill();
+    ctx.beginPath();data.forEach((v,i)=>i?ctx.lineTo(x(i),y(v)):ctx.moveTo(x(i),y(v)));
+    ctx.strokeStyle=config.color;ctx.lineWidth=2*dpr;ctx.lineJoin="round";ctx.lineCap="round";ctx.stroke();
+    const last=data.length-1;ctx.beginPath();ctx.arc(x(last),y(data[last]),3*dpr,0,Math.PI*2);ctx.fillStyle=config.color;ctx.fill();
+    ctx.beginPath();ctx.arc(x(last),y(data[last]),6*dpr,0,Math.PI*2);ctx.strokeStyle=config.color+"66";ctx.lineWidth=dpr;ctx.stroke();
+  }
+  function collect(config){
+    const price=parsePrice(config.source);if(price===null)return;
+    const list=history[config.key];if(list.length&&list[list.length-1]===price)return;
+    list.push(price);if(list.length>42)list.shift();
+    const value=document.getElementById(config.value);if(value)value.textContent=price.toLocaleString("en-US",{maximumFractionDigits:price<1?6:2});
+    const points=document.getElementById(config.points);if(points)points.textContent=list.length.toLocaleString("fa-IR")+" نقطه";
+    draw(config);
+  }
+  configs.forEach(config=>{
+    collect(config);
+    const source=document.getElementById(config.source);
+    if(source)new MutationObserver(()=>collect(config)).observe(source,{childList:true,subtree:true,characterData:true});
+    const canvas=document.getElementById(config.canvas);
+    if(canvas&&"ResizeObserver"in window)new ResizeObserver(()=>draw(config)).observe(canvas);
+  });
+  const root=document.getElementById("mmp-live-intelligence"),status=document.getElementById("ai-status"),button=document.getElementById("ai-run-btn"),state=document.getElementById("mmp-ai-core-state"),copy=document.getElementById("mmp-ai-core-copy");
+  function syncAI(){
+    if(!root||!state||!copy)return;
+    const busy=!!(button&&button.disabled);
+    const message=(status?.textContent||"").trim();
+    const hasReport=!!document.querySelector("#advanced-ai-analysis .ai-report-card,#advanced-ai-analysis .analysis-result,#advanced-ai-analysis .ai-result");
+    root.classList.toggle("is-analyzing",busy);
+    root.classList.toggle("has-analysis",!busy&&hasReport);
+    if(busy){state.textContent="در حال تحلیل";copy.textContent="در حال بررسی چندبازه‌ای داده‌ها و سناریوهای بازار";}
+    else if(hasReport){state.textContent="گزارش آماده";copy.textContent="گزارش تحلیلی آماده بررسی است؛ برای تحلیل تازه، ارز را انتخاب کن.";}
+    else if(message&&/خطا|ناموفق|در دسترس نیست/i.test(message)){state.textContent="نیازمند بررسی";copy.textContent="اتصال تحلیل را بررسی کن؛ داده‌های زنده بازار جداگانه نمایش داده می‌شوند.";}
+    else{state.textContent="آماده تحلیل";copy.textContent="آماده بررسی روند، مومنتوم و سناریوهای بازار";}
+  }
+  if(status)new MutationObserver(syncAI).observe(status,{childList:true,subtree:true,characterData:true});
+  if(button)new MutationObserver(syncAI).observe(button,{attributes:true,attributeFilter:["disabled"]});
+  syncAI();
+  window.addEventListener("resize",()=>configs.forEach(draw),{passive:true});
 })();
 </script>
 
