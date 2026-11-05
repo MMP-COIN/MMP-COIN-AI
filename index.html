@@ -1153,6 +1153,22 @@ function toggleFullCoinsList() {
 }
 
 const LAYERZERO_COIN_ID = 'layerzero';
+// ۴۰ دارایی پیش‌فرض برای تحلیل کامل؛ سایر دارایی‌های فهرست ۱۰۰تایی نیز قابل انتخاب‌اند.
+const PRIMARY_ANALYSIS_SYMBOLS = [
+ 'BTC','ETH','BNB','XRP','SOL','TRX','ZEC','HYPE','DOGE','XMR',
+ 'LINK','ADA','XLM','BCH','NEAR','UNI','LTC','AVAX','SUI','HBAR',
+ 'SHIB','TAO','CRO','ENA','OKB','ONDO','DOT','APT','ARB','INJ',
+ 'ZRO','ETC','ATOM','FIL','ICP','AAVE','OP','RENDER','PEPE','POL'
+];
+const PRIMARY_ANALYSIS_ORDER = new Map(PRIMARY_ANALYSIS_SYMBOLS.map((symbol,index)=>[symbol,index]));
+function orderPrimaryCoins(coins){
+ return [...coins].sort((a,b)=>{
+  const sa=String(a.symbol||'').toUpperCase(),sb=String(b.symbol||'').toUpperCase();
+  const ia=PRIMARY_ANALYSIS_ORDER.has(sa)?PRIMARY_ANALYSIS_ORDER.get(sa):999;
+  const ib=PRIMARY_ANALYSIS_ORDER.has(sb)?PRIMARY_ANALYSIS_ORDER.get(sb):999;
+  return ia-ib || (Number(a.market_cap_rank)||999999)-(Number(b.market_cap_rank)||999999);
+ });
+}
 const EXTRA_COIN_IDS = [
  LAYERZERO_COIN_ID,'near','sui','aptos','arbitrum','optimism','injective-protocol','celestia','sei-network','filecoin','render-token','bittensor','artificial-superintelligence-alliance','ondo-finance','jupiter-exchange-solana','dogwifcoin','pepe','bonk','polygon-ecosystem-token','cosmos','internet-computer','uniswap','aave','chainlink','avalanche-2','polkadot','stellar','hedera-hashgraph','litecoin','bitcoin-cash','ethereum-classic','the-graph','decentraland','the-sandbox','thorchain','immutable-x','algorand','quant-network','curve-dao-token','pancakeswap-token','flare-networks','worldcoin-wld','gala','chiliz','eos','dash','zcash','compound-governance-token','yearn-finance','dydx'
 ];
@@ -1344,7 +1360,7 @@ async function refreshAll(){
   }
   if(!Object.values(supportSources).some(source=>source?.ok))throw new Error("فهرست صرافی‌ها در دسترس نیست؛ از نمایش دارایی تأییدنشده خودداری شد");
   if(verifiedCoins.length<100)throw new Error("در حال حاضر فقط "+verifiedCoins.length+" ارز دارای جفت معاملاتی تأییدشده پیدا شد؛ داده قبلی حفظ می‌شود");
-  let data=verifiedCoins.slice(0,100);
+  let data=orderPrimaryCoins(verifiedCoins.slice(0,100));
   exchangeSupportBySymbol=supportBySymbol;
   data.forEach(coin=>{coin.exchange_support=supportBySymbol[String(coin.symbol||"").toUpperCase()]||null;});
   exchangeAuditAt=Date.now();
@@ -1429,9 +1445,14 @@ function updateDropdowns(data) {
   // بروزرسانی منوی کشویی هوش مصنوعی
   let selectAi = $('ai-coin-select');
   let currentAiVal = selectAi.value;
-  let aiHtml = '<option value="">انتخاب ارز دیجیتال...</option>';  data.forEach(c => {
-    aiHtml += `<option value="${c.id}">${c.name} (${c.symbol.toUpperCase()})</option>`;
-  });
+  const primaryCoins=data.filter(c=>PRIMARY_ANALYSIS_ORDER.has(String(c.symbol||"").toUpperCase()));
+  const otherCoins=data.filter(c=>!PRIMARY_ANALYSIS_ORDER.has(String(c.symbol||"").toUpperCase()));
+  const optionHtml=c=>`<option value="${c.id}">${c.name} (${c.symbol.toUpperCase()})</option>`;
+  let aiHtml = '<option value="">انتخاب ارز دیجیتال...</option><optgroup label="۴۰ ارز اصلی · تحلیل در اولویت">';
+  aiHtml += primaryCoins.map(optionHtml).join("");
+  aiHtml += '</optgroup><optgroup label="سایر ارزهای فهرست ۱۰۰تایی">';
+  aiHtml += otherCoins.map(optionHtml).join("");
+  aiHtml += '</optgroup>';
   selectAi.innerHTML = aiHtml;
   if(currentAiVal) selectAi.value = currentAiVal;
 
@@ -1699,7 +1720,8 @@ function loadWatch(){try{const a=JSON.parse(localStorage.getItem(MMP_WATCH_KEY)|
 function saveWatch(a){try{localStorage.setItem(MMP_WATCH_KEY,JSON.stringify([...new Set(a)]));return true}catch(e){const f=$("watch-feedback");if(f)f.textContent="ذخیره‌سازی در این مرورگر در دسترس نیست.";return false}}
 function watchFeedback(message){const f=$("watch-feedback");if(f)f.textContent=message; if(f) setTimeout(()=>{if(f.textContent===message)f.textContent=""},2600)}
 function removeWatch(id){const next=loadWatch().filter(x=>x!==id);saveWatch(next);renderWatch();renderOpportunities();const c=cachedCoinsData.find(x=>x.id===id);watchFeedback((c?c.name:"ارز")+" از دیده‌بان حذف شد.");}
-function renderWatch(){const list=$("watch-list");if(!list)return;const ids=loadWatch();const count=$("watch-count");if(count)count.textContent=ids.length+" دارایی";const items=ids.map(id=>cachedCoinsData.find(x=>x.id===id)).filter(Boolean);list.innerHTML=items.length?items.map(c=>{const change=Number(c.price_change_percentage_24h),positive=change>=0;return '<article class="watch-item"><div class="watch-coin"><img src="'+aiEscape(c.image||"")+'" alt="" loading="lazy"><span><b>'+aiEscape(c.name)+'</b><small>'+c.symbol.toUpperCase()+'</small></span></div><div class="watch-price"><b>'+formatVal(c.current_price)+'</b><small class="'+(positive?"positive":"negative")+'">'+(positive?"+":"")+change.toFixed(2)+'% <span>۲۴ ساعت</span></small></div><button class="watch-remove" type="button" data-watch-remove="'+aiEscape(c.id)+'" aria-label="حذف '+aiEscape(c.name)+'">حذف</button></article>'}).join(""):('<div class="watch-empty"><b>دیده‌بان هنوز خالی است</b><span>یک ارز انتخاب کن و دکمه افزودن را بزن.</span></div>');}
+function renderWatch(){const list=$("watch-list");if(!list)return;const ids=loadWatch();const count=$("watch-count");if(count)count.textContent=ids.length+" دارایی";const items=ids.map(id=>cachedCoinsData.find(x=>x.id===id)).filter(Boolean);list.innerHTML=items.length?items.map(c=>{const change=Number(c.price_change_percentage_24h),positive=change>=0;return '<article class="watch-item"><div class="watch-coin"><img src="'+aiEscape(c.image||"")+'" alt="" loading="lazy"><span><b>'+aiEscape(c.name)+'</b><small>'+c.symbol.toUpperCase()+'</small></span></div><div class="watch-price"><b>'+formatVal(c.current_price)+'</b><small class="'+(positive?"positive":"negative")+'">'+(positive?"+":"")+change.toFixed(2)+'% <span>۲۴ ساعت</span></small></div><div class="watch-actions"><button class="watch-analyze" type="button" data-watch-analyze="'+aiEscape(c.id)+'">تحلیل این ارز</button><button class="watch-remove" type="button" data-watch-remove="'+aiEscape(c.id)+'" aria-label="حذف '+aiEscape(c.name)+'">حذف</button></div></article>'}).join(""):('<div class="watch-empty"><b>دیده‌بان هنوز خالی است</b><span>از فهرست ۱۰۰ ارز، ارز دلخواهت را اضافه کن.</span></div>');}
+function analyzeWatchCoin(id){const coin=cachedCoinsData.find(x=>x.id===id);if(!coin){watchFeedback("داده این ارز در دسترس نیست.");return;}const select=$("ai-coin-select");if(select&&[...select.options].some(o=>o.value===id))select.value=id;$("ai-section")?.scrollIntoView({behavior:"smooth",block:"start"});runAiAnalysis(true);}
 function renderMarketTicker(){const el=$("market-ticker");if(!el||!cachedCoinsData.length)return;const wanted=["bitcoin","ethereum","binancecoin","solana","ripple","layerzero"];const picks=wanted.map(id=>cachedCoinsData.find(c=>c.id===id)).filter(Boolean);el.innerHTML=picks.map(c=>'<div class="ticker-item"><b>'+aiEscape(c.name)+' · '+c.symbol.toUpperCase()+'</b><strong>'+formatVal(c.current_price)+'</strong><small class="'+(c.price_change_percentage_24h>=0?"positive":"negative")+'">'+(c.price_change_percentage_24h>=0?"+":"")+(Number(c.price_change_percentage_24h)||0).toFixed(2)+'% در ۲۴ ساعت</small></div>').join("");}
 let radarFilter="all";
 function radarScore(c){
@@ -1785,7 +1807,7 @@ function renderJournal(){const el=$("analysis-journal");if(!el)return;let a=[];t
 function calcRisk(){const capital=Number($("risk-capital").value),pct=Number($("risk-percent").value),entry=Number($("risk-entry").value),stop=Number($("risk-stop").value);const out=$("risk-result");if(!(capital>0&&pct>0&&pct<=100&&entry>0&&stop>0)){out.textContent="سرمایه، درصد ریسک، قیمت ورود و قیمت حد ضرر را کامل و معتبر وارد کنید.";return;}if(entry===stop){out.textContent="قیمت ورود و قیمت حد ضرر نباید برابر باشند.";return;}const risk=capital*pct/100,dist=Math.abs(entry-stop)/entry,notional=risk/dist,qty=notional/entry;out.innerHTML="<div><b>مبلغ ورود به معامله:</b> "+money(notional,2)+" USDT</div><div><b>ضرر احتمالی در صورت برخورد به حد ضرر:</b> "+money(risk,2)+" USDT</div><div><b>فاصله تا حد ضرر:</b> "+(dist*100).toFixed(2)+"%</div><div><b>مقدار دارایی:</b> "+money(qty,6)+"</div><small>مبلغ ورود، ارزش کل معامله است و با اهرم می‌تواند از مارجین پرداختی بیشتر باشد. کارمزد و لغزش قیمت محاسبه نشده‌اند.</small>";}
 $("risk-calc")?.addEventListener("click",calcRisk);
 $("watch-add-btn")?.addEventListener("click",()=>addWatch($("watch-add-select")?.value));
-$("watch-list")?.addEventListener("click",e=>{const button=e.target.closest("[data-watch-remove]");if(button)removeWatch(button.dataset.watchRemove)});
+$("watch-list")?.addEventListener("click",e=>{const analyze=e.target.closest("[data-watch-analyze]");if(analyze){analyzeWatchCoin(analyze.dataset.watchAnalyze);return;}const button=e.target.closest("[data-watch-remove]");if(button)removeWatch(button.dataset.watchRemove)});
 $("opportunity-list")?.addEventListener("click",e=>{const button=e.target.closest("[data-watch-add]");if(button)addWatch(button.dataset.watchAdd)});
 $("radar-deep-scan")?.addEventListener("click",runRadarDeepScan);
 $("opportunities")?.addEventListener("click",e=>{const button=e.target.closest("[data-radar-filter]");if(!button)return;radarFilter=button.dataset.radarFilter;document.querySelectorAll("[data-radar-filter]").forEach(x=>x.classList.toggle("active",x===button));renderOpportunities()});
