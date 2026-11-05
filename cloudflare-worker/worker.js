@@ -54,7 +54,7 @@ function splitQuotePair(symbol){
 }
 async function candles(symbol,interval,env,marketType="spot"){
  const headers={"Accept":"application/json, text/plain, */*","User-Agent":"MMP-COIN-AI/1.0","Accept-Language":"en-US,en;q=0.9"};
- const minimumCandles=30;
+ const minimumCandles=interval==="1d"?20:30;
  const okxBar={"15m":"15m","1h":"1H","4h":"4H","1d":"1Dutc"}[interval];
  const bybitInterval={"15m":"15","1h":"60","4h":"240","1d":"D"}[interval];
  const toBybitRows=list=>list.slice().reverse().map(x=>[Number(x[0]),x[1],x[2],x[3],x[4],x[5],x[6]||"0","0","0","0"]);
@@ -117,14 +117,38 @@ async function candles(symbol,interval,env,marketType="spot"){
  }
  try{
   const bitgetInterval={"15m":"15m","1h":"1H","4h":"4H","1d":"1D"}[interval];
-  const url="https://api.bitget.com/api/v3/market/history-candles?category=SPOT&symbol="+encodeURIComponent(symbol)+"&interval="+bitgetInterval+"&limit=100";
+  const url="https://api.bitget.com/api/v3/market/candles?category=SPOT&symbol="+encodeURIComponent(symbol)+"&interval="+bitgetInterval+"&limit=250";
   const r=await fetch(url,{headers});
   if(!r.ok)throw new Error("Bitget Spot HTTP "+r.status);
-  const payload=await r.json(),rows=payload?.code==="00000"?payload.data:null;
+  const payload=await r.json(),rows=payload?.code==="00000"||payload?.code==="0"?payload.data:null;
   if(!validRows(rows))throw new Error(payload?.msg||"insufficient Bitget spot candle history");
-  const result=analyzeKlines(rows.map(x=>[Number(x[0]),x[1],x[2],x[3],x[4],x[5],x[6]||"0","0","0","0"]));
-  result.data_provider="Bitget Spot";return result;
+  const normalized=rows.map(x=>[Number(x[0]),x[1],x[2],x[3],x[4],x[5],x[6]||"0","0","0","0"]).sort((a,b)=>a[0]-b[0]);
+  const result=analyzeKlines(normalized);result.data_provider="Bitget Spot";return result;
  }catch(e){bitgetError=e;}
+ const pairInfo=splitQuotePair(symbol);
+ if(pairInfo){
+  try{
+   const kucoinInterval={"15m":"15min","1h":"1hour","4h":"4hour","1d":"1day"}[interval];
+   const url="https://api.kucoin.com/api/v1/market/candles?symbol="+encodeURIComponent(pairInfo.base+"-"+pairInfo.quote)+"&type="+kucoinInterval;
+   const r=await fetch(url,{headers});
+   if(!r.ok)throw new Error("KuCoin Spot HTTP "+r.status);
+   const payload=await r.json(),rows=payload?.code==="200000"?payload.data:null;
+   if(!validRows(rows))throw new Error(payload?.msg||"insufficient KuCoin spot candle history");
+   const normalized=rows.map(x=>[Number(x[0])*1000,x[1],x[3],x[4],x[2],x[5]||"0","0","0","0","0"]).sort((a,b)=>a[0]-b[0]);
+   const result=analyzeKlines(normalized);result.data_provider="KuCoin Spot (fallback)";return result;
+  }catch(e){lastError=new Error((lastError?.message||"Binance unavailable")+"; "+e.message);}
+  try{
+   const gateInterval={"15m":"15m","1h":"1h","4h":"4h","1d":"1d"}[interval];
+   const gatePair=pairInfo.base+"_"+pairInfo.quote;
+   const url="https://api.gateio.ws/api/v4/spot/candlesticks?currency_pair="+encodeURIComponent(gatePair)+"&interval="+gateInterval+"&limit=250";
+   const r=await fetch(url,{headers});
+   if(!r.ok)throw new Error("Gate.io Spot HTTP "+r.status);
+   const rows=await r.json();
+   if(!validRows(rows))throw new Error("insufficient Gate.io spot candle history");
+   const normalized=rows.map(x=>[Number(x[0])<1e12?Number(x[0])*1000:Number(x[0]),x[5],x[3],x[4],x[2],x[6]||"0","0","0","0","0"]).sort((a,b)=>a[0]-b[0]);
+   const result=analyzeKlines(normalized);result.data_provider="Gate.io Spot (fallback)";return result;
+  }catch(e){lastError=new Error((lastError?.message||"Binance unavailable")+"; "+e.message);}
+ }
  for(const host of ["https://api.bybit.eu","https://api.bytick.eu","https://api.bybit.com","https://api.bytick.com"]){
   try{
    const url=host+"/v5/market/kline?category=spot&symbol="+encodeURIComponent(symbol)+"&interval="+bybitInterval+"&limit=250";
@@ -445,30 +469,30 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/health"){
   const intervals=["15m","1h","4h","1d"];
   let spotMarket=null,futuresMarket=null,market={},candleMarket=mode==="futures"?"futures":"spot";
   if(mode==="both"){
-   // Spot-only tokens (for example LEO) have no perpetual contract.
-   // If the exchange catalog confirms spot but no futures, skip the four
-   // futile futures candle requests and analyze the valid spot market directly.
-   if(support.spot.confirmed&&!support.futures.confirmed){
-    const values=await Promise.all(intervals.map(async tf=>[tf,await candles(spotPair,tf,env,"spot")]));
-    spotMarket=Object.fromEntries(values);market=spotMarket;candleMarket="spot";
-   }else if(support.futures.confirmed&&!support.spot.confirmed){
-    const values=await Promise.all(intervals.map(async tf=>[tf,await candles(futuresPair,tf,env,"futures")]));
-    futuresMarket=Object.fromEntries(values);market=futuresMarket;candleMarket="futures";pair=futuresPair;
-   }else{
-    const settled=await Promise.allSettled([
-     Promise.all(intervals.map(async tf=>[tf,await candles(spotPair,tf,env,"spot")])),
-     Promise.all(intervals.map(async tf=>[tf,await candles(futuresPair,tf,env,"futures")]))
-    ]);
-    if(settled[0].status==="fulfilled")spotMarket=Object.fromEntries(settled[0].value);
-    if(settled[1].status==="fulfilled")futuresMarket=Object.fromEntries(settled[1].value);
-    if(spotMarket){market=spotMarket;candleMarket="spot";}
-    else if(futuresMarket){market=futuresMarket;candleMarket="futures";pair=futuresPair;}
-    else{
-     const spotError=String(settled[0].reason?.message||"داده اسپات در دسترس نیست");
-     const futuresError=String(settled[1].reason?.message||"داده فیوچرز در دسترس نیست");
-     const assetNote=symbol==="JAAA"?" این نماد به صندوق/دارایی توکنیزه‌شده Janus Henderson AAA CLO مرتبط است؛ بدون جفت معتبر یا شناسه دقیق توکن، نباید آن را به قرارداد دیگری نگاشت کرد.":"";
-     throw new Error("برای "+symbol+" در بازار اسپات و فیوچرز داده کندلی کافی پیدا نشد. جفت معاملاتی "+pair+" ممکن است در صرافی‌های پشتیبانی‌شده فعال نباشد."+assetNote+" جزئیات: اسپات: "+spotError+"؛ فیوچرز: "+futuresError);
+   const fetchMarket=async(selectedPair,type)=>{
+    const settled=await Promise.allSettled(intervals.map(async tf=>[tf,await candles(selectedPair,tf,env,type)]));
+    const failed=settled.filter(x=>x.status==="rejected");
+    if(failed.length)throw new Error(failed.map(x=>String(x.reason?.message||"candle unavailable")).join(" | "));
+    return Object.fromEntries(settled.map(x=>x.value));
+   };
+   // Always try Spot first. Instrument catalogs can be blocked or stale;
+   // they must never prevent a real spot-only asset from being analyzed.
+   try{
+    spotMarket=await fetchMarket(spotPair,"spot");
+    market=spotMarket;candleMarket="spot";
+   }catch(spotFailure){
+    if(support.futures.confirmed){
+     try{futuresMarket=await fetchMarket(futuresPair,"futures");market=futuresMarket;candleMarket="futures";pair=futuresPair;}
+     catch(futuresFailure){throw new Error("داده اسپات و فیوچرز برای "+symbol+" در دسترس نیست. اسپات: "+spotFailure.message+"؛ فیوچرز: "+futuresFailure.message);}
+    }else{
+     const assetNote=symbol==="JAAA"?" این نماد به صندوق/دارایی توکنیزه‌شده مرتبط است و بدون جفت معتبر نباید به دارایی دیگری نگاشت شود.":"";
+     throw new Error("داده کندلی کافی برای "+symbol+" پیدا نشد. "+spotFailure.message+assetNote);
     }
+   }
+   // Futures is optional in both mode: never discard valid Spot analysis if Futures fails.
+   if(spotMarket&&support.futures.confirmed){
+    try{futuresMarket=await fetchMarket(futuresPair,"futures");}
+    catch{futuresMarket=null;}
    }
   }else{
    const selectedPair=candleMarket==="futures"?futuresPair:spotPair;pair=selectedPair;
