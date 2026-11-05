@@ -659,12 +659,12 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/health"){
    probe("https://fapi.binance.com/fapi/v1/klines?symbol=BTCUSDT&interval=1h&limit=1"),
    probe("https://api.bybit.com/v5/market/kline?category=linear&symbol=BTCUSDT&interval=60&limit=1")
   ]);
-  return json({service:"MMP COIN AI",worker:"online",ai_binding:!!env.AI,providers:{spot_binance:spot,futures_binance:futures,futures_bybit_fallback:bybit},checked_at:new Date().toISOString()},200,request);
+  return json({service:"MMP COIN AI",worker:"online",ai_binding:!!env.AI,ai_fallbacks:{gemini:!!env.GEMINI_API_KEY,groq:!!env.GROQ_API_KEY},providers:{spot_binance:spot,futures_binance:futures,futures_bybit_fallback:bybit},checked_at:new Date().toISOString()},200,request);
  }
  if(request.method!=="POST")return json({error:"Method not allowed"},405,request);
  const limitResult=await checkRateLimit(env.AI_ANALYSIS_LIMITER,request,"ai-analysis");
  const limited=rateLimitReply(limitResult,request);if(limited)return limited;
- if(!env.AI)return json({error:"AI binding is not configured in Cloudflare Worker."},503,request);
+ if(!env.AI&&!env.GEMINI_API_KEY&&!env.GROQ_API_KEY)return json({error:"هیچ ارائه‌دهنده هوش مصنوعی پیکربندی نشده است."},503,request);
  const contentType=request.headers.get("Content-Type")||"";
  if(!contentType.toLowerCase().includes("application/json"))return json({error:"Content-Type must be application/json"},415,request);
  const declaredLength=Number(request.headers.get("Content-Length")||0);
