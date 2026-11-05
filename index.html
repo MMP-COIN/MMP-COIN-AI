@@ -2020,7 +2020,7 @@ html.mmp-native-app .mmp-share-toast{bottom:calc(88px + env(safe-area-inset-bott
      hub.classList.remove("native-page-hidden");
     }
     document.body.setAttribute("data-native-page",page);
-    window.scrollTo({top:0,behavior:"instant"});
+    window.scrollTo({top:0,behavior:"auto"});
    }
    nav.querySelectorAll("[data-native-tab]").forEach(function(button){button.addEventListener("click",function(){showNativePage(button.getAttribute("data-native-tab"));});});
    hub.querySelectorAll("[data-native-module]").forEach(function(button){button.addEventListener("click",function(){showNativePage(button.getAttribute("data-native-module"));});});
