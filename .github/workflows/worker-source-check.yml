@@ -1,0 +1,23 @@
+name: Worker source validation
+
+on:
+  pull_request:
+    paths:
+      - "workers/**"
+      - ".github/workflows/worker-source-check.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7.0.1
+      - name: Set up Node.js
+        uses: actions/setup-node@v6.1.0
+        with:
+          node-version: "22"
+      - name: Validate Worker JavaScript syntax
+        run: node --check workers/mmp-coin-ai-analyzer.js
