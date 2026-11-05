@@ -1284,6 +1284,10 @@ async function fetchTetherRate(){
     const market=rows.find(m=>["USDT_IRT","USDTIRT"].includes(String(m?.symbol||"").toUpperCase()));
     return Number(market?.price);
    }},
+   {source:"Exir",url:AI_ANALYSIS_ENDPOINT+"/market-proxy?source=exir-tickers",read:d=>{
+    const market=d?.["usdt-irt"]||d?.["usdt-IRT"]||d?.["usdt_tmn"]||d?.["usdt-tmn"];
+    return Number(market?.last??market?.close??market?.price);
+   }},
   ];
   const results=await Promise.all(requests.map(async item=>{
    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),9000);
@@ -1557,7 +1561,7 @@ async function checkConnections(){
   if(!response.ok)throw new Error("HTTP "+response.status);
   const payload=await response.json();
   if(!Array.isArray(payload?.checks))throw new Error("پاسخ بررسی اتصال کامل نیست");
-  const expected=["binance spot","bybit spot","okx spot","nobitex","wallex","bitget spot","bitpin"];
+  const expected=["binance spot","bybit spot","okx spot","nobitex","wallex","bitget spot","bitpin","ramzinex spot","exir spot"];
   const checks=new Map(payload.checks.map(c=>[String(c?.name||"").trim().toLowerCase(),c]));
   const directFallbacks=[
    {name:"bybit spot",url:"https://api.bybit.com/v5/market/tickers?category=spot&symbol=BTCUSDT",valid:d=>d?.retCode===0&&Number(d?.result?.list?.[0]?.lastPrice)>0},
