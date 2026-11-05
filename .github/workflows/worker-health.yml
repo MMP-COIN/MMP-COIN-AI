@@ -108,6 +108,13 @@ jobs:
             echo "- Bitget direct API: checked separately with browser CORS"
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Verify CoinPaprika backup market feed
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 1 --max-time 25 "https://api.coinpaprika.com/v1/tickers?quotes=USD&limit=250" -o /tmp/paprika.json
+          jq -e 'type == "array" and length >= 100 and (.[0].quotes.USD.price | tonumber > 0)' /tmp/paprika.json >/dev/null
+          echo "- CoinPaprika backup market feed: responding with ranked prices" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Test end-to-end AI market analysis
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
