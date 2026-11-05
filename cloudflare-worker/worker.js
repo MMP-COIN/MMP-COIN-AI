@@ -387,7 +387,8 @@ async function handle(request,env){
    "binance-tickers":["https://api.binance.com/api/v3/ticker/24hr","https://api.binance.us/api/v3/ticker/24hr","https://api1.binance.com/api/v3/ticker/24hr","https://api2.binance.com/api/v3/ticker/24hr","https://api3.binance.com/api/v3/ticker/24hr","https://data-api.binance.vision/api/v3/ticker/24hr"],
    "coingecko-top":["https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page="+requestedTopPage+"&sparkline=false&price_change_percentage=1h%2C24h%2C7d"],
    "nobitex-tether":["https://apiv2.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls","https://api.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls"],
-   "wallex-markets":["https://api.wallex.ir/v1/markets","https://api.wallex.ir/hector/web/v1/markets","https://api.wallex.ir/v1/otc/markets"]
+   "wallex-markets":["https://api.wallex.ir/v1/markets","https://api.wallex.ir/hector/web/v1/markets","https://api.wallex.ir/v1/otc/markets"],
+   "bitpin-tickers":["https://api.bitpin.ir/api/v1/mkt/tickers/"]
   };
   let candidates=urls[source]||null;
   if(source==="coingecko-extra"){
@@ -402,7 +403,8 @@ async function handle(request,env){
    try{
     const upstreamHeaders={"Accept":"application/json, text/plain, */*","User-Agent":"MMP-COIN-AI/1.0","Accept-Language":"en-US,en;q=0.9"};
    if(source==="wallex-markets"){upstreamHeaders.Origin="https://wallex.ir";upstreamHeaders.Referer="https://wallex.ir/";}
-   const upstream=await fetch(endpoint,{headers:upstreamHeaders,signal:controller.signal,cf:{cacheTtl:source.startsWith("coingecko")?60:source.includes("tether")||source.includes("wallex")?10:5,cacheEverything:true}});
+   if(source==="bitpin-tickers"){upstreamHeaders.Origin="https://bitpin.ir";upstreamHeaders.Referer="https://bitpin.ir/";}
+   const upstream=await fetch(endpoint,{headers:upstreamHeaders,signal:controller.signal,cf:{cacheTtl:source.startsWith("coingecko")?60:source.includes("tether")||source.includes("wallex")||source.includes("bitpin")?10:5,cacheEverything:true}});
     if(!upstream.ok){lastError="Upstream HTTP "+upstream.status;continue;}
     const data=await upstream.json();
     if(data===null||typeof data!=="object")throw new Error("Invalid upstream JSON");
@@ -431,7 +433,7 @@ async function handle(request,env){
    const good=results.filter(x=>x.status!=="down").sort((a,b)=>a.ping-b.ping);
    return good[0]||results[results.length-1]||{status:"down",ping:null,error:"no Wallex endpoint responded"};
   };
-  const [binance,bybit,okx,nobitex,wallex,bitget]=await Promise.all([
+  const [binance,bybit,okx,nobitex,wallex,bitget,bitpin]=await Promise.all([
    probeAny(["https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://api.binance.us/api/v3/ticker/price?symbol=BTCUSDT","https://api1.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://api2.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://api3.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://data-api.binance.vision/api/v3/ticker/price?symbol=BTCUSDT"],d=>Number(d?.price)>0),
    probeAny([
     "https://api.bybit.eu/v5/market/tickers?category=spot&symbol=BTCUSDT",
@@ -449,6 +451,7 @@ async function handle(request,env){
     return false;
    },12000,{"Origin":"https://wallex.ir","Referer":"https://wallex.ir/"}),
    timeoutFetch("https://api.bitget.com/api/v3/market/tickers?category=SPOT&symbol=BTCUSDT",d=>d?.code==="00000"&&Number(d?.data?.[0]?.lastPrice)>0,7000,{"Origin":"https://www.bitget.com","Referer":"https://www.bitget.com/"}),
+   timeoutFetch("https://api.bitpin.ir/api/v1/mkt/tickers/",d=>{const rows=Array.isArray(d)?d:Array.isArray(d?.results)?d.results:[];return rows.some(x=>String(x?.symbol||"").toUpperCase()==="USDT_IRT"&&Number(x?.price)>0);},9000,{"Origin":"https://bitpin.ir","Referer":"https://bitpin.ir/"})
   ]);
   const checks=[
    {name:"Binance Spot",purpose:"قیمت و معاملات اسپات",...binance},
@@ -457,6 +460,7 @@ async function handle(request,env){
    {name:"Nobitex",purpose:"نرخ تتر به تومان",...nobitex},
    {name:"Wallex",purpose:"نرخ تتر به تومان",...wallex},
    {name:"Bitget Spot",purpose:"قیمت و معاملات اسپات",...bitget},
+   {name:"Bitpin",purpose:"نرخ تتر به تومان",...bitpin},
   ];
   return json({checked_at:new Date().toISOString(),checks},200,request);
  }
