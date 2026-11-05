@@ -776,6 +776,28 @@ body{background:
 .mmp-mobile-dock,.app-tabbar{display:none!important}
 @media(max-width:560px){.hero .hero-title{font-size:clamp(20px,5.2vw,26px);max-width:100%;white-space:normal}.hero .hero-title span{white-space:normal}.hero>div:first-child{max-width:calc(100% - 12px);padding-left:0}.hero-visual{left:-54px;opacity:.25;pointer-events:none}.wrap{padding-bottom:40px!important}}
 </style>
+<script src="https://unpkg.com/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+.mmp-pulse-terminal{border-color:rgba(217,182,109,.28);background:radial-gradient(ellipse at 85% 0,rgba(217,182,109,.12),transparent 40%),linear-gradient(145deg,#111b27,#080e17)}
+.mmp-pulse-assets-head{display:flex;justify-content:space-between;align-items:center;color:#e8d4a8;font-size:12px;margin:12px 0 8px}
+.mmp-pulse-assets-head span{color:#8ea4b6;font-size:10px}
+.mmp-pulse-assets{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.mmp-pulse-asset{position:relative;display:flex;align-items:center;gap:10px;min-width:0;padding:11px;border:1px solid rgba(142,179,198,.18);border-radius:13px;background:linear-gradient(140deg,#1a2938,#101923);color:#eee;text-align:right}
+.mmp-pulse-asset.active{border-color:#d9b66d;box-shadow:0 0 0 1px #d9b66d22,inset 0 0 22px #d9b66d0d}
+.mmp-pulse-asset img{width:29px;height:29px;border-radius:50%}
+.mmp-pulse-asset-info{min-width:0;flex:1}.mmp-pulse-asset-info b{display:block;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mmp-pulse-asset-info small{display:block;color:#93a8b8;font-size:9px;margin-top:4px}
+.mmp-pulse-asset-price{display:block;color:#f0dfb8;font-size:11px;font-weight:900;direction:ltr;text-align:left}
+.mmp-pulse-asset-remove{border:0;background:#ffffff0b;color:#aab5bf;border-radius:7px;width:25px;height:25px;flex:0 0 25px;font-size:15px}
+.mmp-pulse-add{display:flex;gap:8px;margin:10px 0 14px}.mmp-pulse-add select{min-width:0;flex:1;background:#0b131e;color:#dce4e9;border:1px solid #34495a;border-radius:10px;padding:10px;font-size:11px}.mmp-pulse-add button,.mmp-pulse-expand{border:1px solid #94743f;background:linear-gradient(130deg,#d9b66d,#a98143);color:#15130e;border-radius:10px;padding:9px 12px;font-weight:900;font-size:10px;white-space:nowrap}
+.mmp-pulse-chart-shell{border:1px solid rgba(217,182,109,.22);border-radius:15px;background:linear-gradient(145deg,#0c1520,#090e16);overflow:hidden}
+.mmp-pulse-chart-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:13px 13px 9px}.mmp-pulse-chart-name{display:block;color:#f1dfb8;font-size:13px;font-weight:900}.mmp-pulse-chart-head small{display:block;color:#8197a9;font-size:9px;margin-top:5px}.mmp-pulse-chart-price{text-align:left;direction:ltr}.mmp-pulse-chart-price b{display:block;color:#e8d6ad;font-size:14px}.mmp-pulse-chart-price small{color:#9bb2c2;font-size:10px}
+.mmp-pulse-chart-tools{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 12px 9px}.mmp-pulse-timeframes{display:flex;gap:5px}.mmp-pulse-timeframes button{border:1px solid #2b3b4b;background:#121e2a;color:#9db0bd;border-radius:7px;padding:7px 10px;font-size:10px}.mmp-pulse-timeframes button.active{background:#d9b66d;color:#17130a;border-color:#d9b66d;font-weight:900}
+.mmp-pulse-expand{padding:7px 10px;background:#1a2632;color:#e6d2a8;border-color:#5b4b31}
+#mmp-pulse-chart{height:390px;width:100%}.mmp-pulse-legend{display:flex;gap:14px;flex-wrap:wrap;padding:0 13px 11px;color:#8299aa;font-size:9px}.mmp-pulse-legend span{display:flex;align-items:center;gap:5px}.mmp-pulse-legend i{width:13px;height:3px;border-radius:3px;display:inline-block}.mmp-pulse-legend .up{height:8px;width:8px;background:#26c99a}.mmp-pulse-legend .down{height:8px;width:8px;background:#f05d69}.mmp-pulse-legend .ema20{background:#e5c57f}.mmp-pulse-legend .ema50{background:#71c9e6}
+.mmp-pulse-status{padding:9px 12px;border-top:1px solid #ffffff0b;color:#8298a9;font-size:9px;line-height:1.8}.mmp-pulse-status.error{color:#f09a9e}
+#mmp-pulse-chart-area[hidden]{display:none}.mmp-pulse-chart-shell.is-collapsed #mmp-pulse-chart-area{display:none}.mmp-pulse-chart-shell.is-collapsed .mmp-pulse-status{border-top:0}
+@media(max-width:560px){.mmp-pulse-assets{grid-template-columns:1fr}.mmp-pulse-asset{padding:9px}.mmp-pulse-chart-head{padding:11px}.mmp-pulse-chart-name{font-size:12px}#mmp-pulse-chart{height:330px}.mmp-pulse-timeframes button{padding:7px 8px}.mmp-pulse-add button{padding:8px;font-size:9px}.mmp-pulse-chart-price b{font-size:12px}}
+</style>
 </head>
 <body class="mmp-app-mode">
 
@@ -837,30 +859,31 @@ body{background:
 <div class="card"><div class="stat-label">اونس جهانی طلا · XAU</div><div class="stat-value" id="gold">$—</div><div class="sub">مرجع جهانی فلزات گرانبها</div></div>
 </section>
 
-<section class="mmp-live-intelligence" id="mmp-live-intelligence" aria-label="نمای زنده هوشمندی بازار">
-  <div class="mmp-viz-heading">
-    <div><span class="mmp-viz-kicker">LIVE MARKET INTELLIGENCE</span><h2>نبض زنده بازار</h2><p>نمودارها از تغییرات واقعی قیمت در همین نشست ساخته می‌شوند.</p></div>
-    <span class="mmp-viz-live"><i></i> پایش زنده</span>
+<section class="mmp-live-intelligence mmp-pulse-terminal" id="mmp-live-intelligence" aria-label="ترمینال کندل زنده بازار">
+ <div class="mmp-viz-heading">
+  <div><span class="mmp-viz-kicker">MMP · LIVE CANDLE TERMINAL</span><h2>نبض زنده بازار</h2><p>کندل‌های واقعی بازار اسپات با حجم معاملات و قیمت دوگانه</p></div>
+  <span class="mmp-viz-live"><i></i> داده بازار</span>
+ </div>
+ <div class="mmp-pulse-assets-head"><b>دارایی‌های منتخب</b><span id="mmp-pulse-count">۲ ارز</span></div>
+ <div class="mmp-pulse-assets" id="mmp-pulse-assets"></div>
+ <div class="mmp-pulse-add">
+  <select id="mmp-pulse-add-select" aria-label="انتخاب ارز برای افزودن"><option value="">افزودن ارز از فهرست ۱۰۰ تایی…</option></select>
+  <button type="button" id="mmp-pulse-add-btn">＋ افزودن ارز</button>
+ </div>
+ <div class="mmp-pulse-chart-shell" id="mmp-pulse-chart-shell">
+  <div class="mmp-pulse-chart-head">
+   <div><span class="mmp-pulse-chart-name" id="mmp-pulse-chart-name">BTC · بیت‌کوین</span><small id="mmp-pulse-chart-source">در حال آماده‌سازی نمودار…</small></div>
+   <div class="mmp-pulse-chart-price"><b id="mmp-pulse-chart-usdt">— USDT</b><small id="mmp-pulse-chart-irt">— تومان</small></div>
   </div>
-  <div class="mmp-viz-grid">
-    <article class="mmp-viz-card mmp-price-viz" data-symbol="BTC">
-      <div class="mmp-viz-card-head"><div><small>BITCOIN · BTC</small><b id="mmp-viz-btc-value">در انتظار قیمت</b></div><span class="mmp-viz-icon">₿</span></div>
-      <canvas id="mmp-viz-btc" aria-label="روند قیمت بیت‌کوین ثبت‌شده در این نشست"></canvas>
-      <div class="mmp-viz-foot"><span>تغییرات ثبت‌شده در این نشست</span><span id="mmp-viz-btc-points">۰ نقطه</span></div>
-    </article>
-    <article class="mmp-viz-card mmp-price-viz" data-symbol="ETH">
-      <div class="mmp-viz-card-head"><div><small>ETHEREUM · ETH</small><b id="mmp-viz-eth-value">در انتظار قیمت</b></div><span class="mmp-viz-icon">Ξ</span></div>
-      <canvas id="mmp-viz-eth" aria-label="روند قیمت اتریوم ثبت‌شده در این نشست"></canvas>
-      <div class="mmp-viz-foot"><span>تغییرات ثبت‌شده در این نشست</span><span id="mmp-viz-eth-points">۰ نقطه</span></div>
-    </article>
-    <article class="mmp-ai-core-card">
-      <div class="mmp-ai-core-top"><span class="mmp-viz-kicker">MMP AI CORE</span><span class="mmp-ai-core-state" id="mmp-ai-core-state">آماده تحلیل</span></div>
-      <div class="mmp-ai-core-visual" aria-hidden="true"><div class="mmp-ai-core-orbit orbit-one"></div><div class="mmp-ai-core-orbit orbit-two"></div><div class="mmp-ai-core-center">M<span>AI</span></div><div class="mmp-ai-wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
-      <b class="mmp-ai-core-title">موتور تحلیل چندلایه</b>
-      <p id="mmp-ai-core-copy">آماده بررسی روند، مومنتوم و سناریوهای بازار</p>
-      <a href="#ai-section" class="mmp-ai-core-link">رفتن به تحلیلگر <span>←</span></a>
-    </article>
+  <div class="mmp-pulse-chart-tools">
+   <div class="mmp-pulse-timeframes" id="mmp-pulse-timeframes">
+    <button type="button" data-tf="15m" class="active">۱۵د</button><button type="button" data-tf="1h">۱س</button><button type="button" data-tf="4h">۴س</button><button type="button" data-tf="1d">۱روز</button>
+   </div>
+   <button type="button" class="mmp-pulse-expand" id="mmp-pulse-expand" aria-expanded="true">جمع‌کردن نمودار ⌃</button>
   </div>
+  <div id="mmp-pulse-chart-area"><div id="mmp-pulse-chart" role="img" aria-label="نمودار کندل واقعی و حجم معاملات"></div><div class="mmp-pulse-legend"><span><i class="up"></i> صعودی</span><span><i class="down"></i> نزولی</span><span><i class="ema20"></i> میانگین ۲۰</span><span><i class="ema50"></i> میانگین ۵۰</span></div></div>
+  <div class="mmp-pulse-status" id="mmp-pulse-status">برای دریافت کندل‌های واقعی در حال اتصال…</div>
+ </div>
 </section>
 
 <!-- دسترسی به بخش‌ها فقط از منوی بالای سایت انجام می‌شود. -->
@@ -2128,6 +2151,87 @@ html.mmp-native-app .footer{padding-bottom:12px}
 })();
 </script>
 
+<script id="mmp-live-candle-terminal">
+(function(){
+ const root=document.getElementById("mmp-live-intelligence");if(!root)return;
+ const $=id=>document.getElementById(id),api=typeof AI_ANALYSIS_ENDPOINT==="string"?AI_ANALYSIS_ENDPOINT:"";
+ const key="mmp_pulse_assets_v1";let selected=[],activeId="bitcoin",tf="15m",chart=null,candleSeries=null,volumeSeries=null,ema20Series=null,ema50Series=null,resizeObserver=null,loading=false,lastLoaded="";
+ const defaults=["bitcoin","ethereum"];
+ const fmt=(n,d)=>Number(n).toLocaleString("en-US",{maximumFractionDigits:d??(n<1?6:2)});
+ function coin(id){return (Array.isArray(cachedCoinsData)?cachedCoinsData:[]).find(c=>c.id===id)}
+ function readSaved(){try{const v=JSON.parse(localStorage.getItem(key)||"null");return Array.isArray(v)?v.filter(x=>typeof x==="string").slice(0,8):defaults.slice()}catch(e){return defaults.slice()}}
+ function save(){try{localStorage.setItem(key,JSON.stringify(selected))}catch(e){}}
+ function priceHtml(c){const p=Number(c.current_price);return Number.isFinite(p)&&p>0?fmt(p)+" USDT":"— USDT"}
+ function renderAssets(){
+  const host=$("mmp-pulse-assets"),select=$("mmp-pulse-add-select");if(!host||!select)return;
+  const available=Array.isArray(cachedCoinsData)?cachedCoinsData:[];
+  const options=available.filter(c=>!selected.includes(c.id)).sort((a,b)=>String(a.name).localeCompare(String(b.name)));
+  select.innerHTML='<option value="">افزودن ارز از فهرست ۱۰۰ تایی…</option>'+options.map(c=>'<option value="'+aiEscape(c.id)+'">'+aiEscape(c.name)+' · '+aiEscape(String(c.symbol||"").toUpperCase())+'</option>').join("");
+  const valid=selected.map(coin).filter(Boolean);$("mmp-pulse-count").textContent=valid.length.toLocaleString("fa-IR")+" ارز";
+  host.innerHTML=valid.map(c=>'<button type="button" class="mmp-pulse-asset '+(c.id===activeId?"active":"")+'" data-pulse-asset="'+aiEscape(c.id)+'"><img src="'+aiEscape(c.image||"")+'" alt="" loading="lazy"><span class="mmp-pulse-asset-info"><b>'+aiEscape(c.name)+'</b><small>'+aiEscape(String(c.symbol||"").toUpperCase())+' · '+(Number(c.price_change_percentage_24h)>=0?"+":"")+fmt(Number(c.price_change_percentage_24h)||0,2)+'%</small></span><span class="mmp-pulse-asset-price">'+priceHtml(c)+'</span><span class="mmp-pulse-asset-remove" data-pulse-remove="'+aiEscape(c.id)+'" aria-label="حذف">×</span></button>').join("");
+  if(!valid.some(c=>c.id===activeId)&&valid.length)activeId=valid[0].id;
+  if(!valid.length){activeId="";$("mmp-pulse-chart-name").textContent="ارزی انتخاب نشده";$("mmp-pulse-chart-source").textContent="از فهرست بالا یک ارز اضافه کنید";}
+  else updateHeaderPrice();
+ }
+ function updateHeaderPrice(){
+  const c=coin(activeId);if(!c)return;
+  const p=Number(c.current_price),t=Number(currentTetherPrice||0);
+  $("mmp-pulse-chart-name").textContent=String(c.symbol||"").toUpperCase()+" · "+c.name;
+  $("mmp-pulse-chart-usdt").textContent=priceHtml(c);
+  $("mmp-pulse-chart-irt").textContent=t>0&&p>0?fmt(p*t,0)+" تومان":"نرخ تبدیل تومان در دسترس نیست";
+ }
+ function ema(values,period){let out=[],k=2/(period+1),v=null;values.forEach((x,i)=>{v=i===period-1?values.slice(0,period).reduce((a,b)=>a+b,0)/period:i>=period?v===null?x:x*k+v*(1-k):null;if(i>=period-1)out.push({time:values[i].time,value:v})});return out}
+ function setStatus(text,error){const el=$("mmp-pulse-status");el.textContent=text;el.classList.toggle("error",!!error)}
+ function ensureChart(){
+  if(chart||!window.LightweightCharts)return;
+  const el=$("mmp-pulse-chart");
+  chart=LightweightCharts.createChart(el,{width:el.clientWidth,height:el.clientHeight,layout:{background:{type:"solid",color:"#0b131d"},textColor:"#9aafbd",fontFamily:"Tahoma,Arial",fontSize:10},grid:{vertLines:{color:"rgba(130,160,180,.08)"},horzLines:{color:"rgba(130,160,180,.10)"}},rightPriceScale:{borderColor:"#263747",scaleMargins:{top:.08,bottom:.25}},timeScale:{borderColor:"#263747",timeVisible:true,secondsVisible:false},crosshair:{mode:LightweightCharts.CrosshairMode.Normal},handleScroll:{mouseWheel:true,pressedMouseMove:true,horzTouchDrag:true,vertTouchDrag:false},handleScale:{mouseWheel:true,pinch:true,axisPressedMouseMove:true}});
+  candleSeries=chart.addCandlestickSeries({upColor:"#20c997",downColor:"#f05d69",borderUpColor:"#20c997",borderDownColor:"#f05d69",wickUpColor:"#20c997",wickDownColor:"#f05d69",priceLineVisible:true});
+  volumeSeries=chart.addHistogramSeries({priceFormat:{type:"volume"},priceScaleId:"volume",scaleMargins:{top:.82,bottom:0},lastValueVisible:false,priceLineVisible:false});
+  chart.priceScale("volume").applyOptions({scaleMargins:{top:.82,bottom:0},visible:false});
+  ema20Series=chart.addLineSeries({color:"#e5c57f",lineWidth:1,priceLineVisible:false,lastValueVisible:false});
+  ema50Series=chart.addLineSeries({color:"#71c9e6",lineWidth:1,priceLineVisible:false,lastValueVisible:false});
+  if("ResizeObserver"in window){resizeObserver=new ResizeObserver(()=>{if(chart)chart.applyOptions({width:el.clientWidth,height:el.clientHeight})});resizeObserver.observe(el)}
+ }
+ async function loadCandles(force){
+  if(!activeId||loading)return;
+  const c=coin(activeId);if(!c)return;
+  const symbol=String(c.symbol||"").toUpperCase().replace(/[^A-Z0-9]/g,"");if(!symbol){setStatus("نماد معاملاتی معتبر برای این ارز پیدا نشد.",true);return}
+  const signature=activeId+"|"+tf;if(!force&&signature===lastLoaded)return;
+  loading=true;setStatus("در حال دریافت کندل‌های واقعی "+symbol+" از منابع بازار…");
+  try{
+   if(!api)throw new Error("نشانی سرویس داده تنظیم نشده است.");
+   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),18000);
+   let response;
+   try{response=await fetch(api+"/market-candles?symbol="+encodeURIComponent(symbol)+"&interval="+encodeURIComponent(tf),{cache:"no-store",signal:controller.signal})}finally{clearTimeout(timer)}
+   const payload=await response.json();if(!response.ok)throw new Error(payload.error||"دریافت داده کندلی ناموفق بود.");
+   if(!Array.isArray(payload.candles)||payload.candles.length<20)throw new Error("تاریخچه کافی برای رسم کندل دریافت نشد.");
+   ensureChart();if(!chart)throw new Error("ابزار رسم نمودار بارگذاری نشد.");
+   const rows=payload.candles.map(x=>({time:Number(x.time),open:Number(x.open),high:Number(x.high),low:Number(x.low),close:Number(x.close)})).filter(x=>x.time>0&&[x.open,x.high,x.low,x.close].every(Number.isFinite));
+   candleSeries.setData(rows);
+   volumeSeries.setData(payload.candles.map(x=>({time:Number(x.time),value:Number(x.volume)||0,color:Number(x.close)>=Number(x.open)?"rgba(32,201,151,.35)":"rgba(240,93,105,.35)"})).filter(x=>x.time>0));
+   ema20Series.setData(ema(rows,20));ema50Series.setData(ema(rows,50));chart.timeScale().fitContent();
+   lastLoaded=signature;
+   const change=Number(payload.change_pct),price=Number(payload.price);
+   $("mmp-pulse-chart-usdt").textContent=fmt(price)+" USDT";
+   $("mmp-pulse-chart-irt").textContent=Number(currentTetherPrice)>0?fmt(price*Number(currentTetherPrice),0)+" تومان":"نرخ تبدیل تومان در دسترس نیست";
+   setStatus("منبع کندل: "+payload.provider+" · "+rows.length.toLocaleString("fa-IR")+" کندل · تغییر بازه: "+(change>=0?"+":"")+fmt(change,2)+"٪ · به‌روزرسانی خودکار هر ۶۰ ثانیه");
+  }catch(e){setStatus(e.name==="AbortError"?"اتصال به منبع کندل بیش از حد طول کشید؛ دوباره تلاش کنید.":(e.message||"خطا در دریافت کندل"),true)}
+  finally{loading=false}
+ }
+ $("mmp-pulse-assets").addEventListener("click",e=>{
+  const remove=e.target.closest("[data-pulse-remove]");if(remove){e.preventDefault();e.stopPropagation();const id=remove.getAttribute("data-pulse-remove");selected=selected.filter(x=>x!==id);if(activeId===id){activeId=selected[0]||"";lastLoaded=""}save();renderAssets();if(activeId)loadCandles(true);else setStatus("برای نمایش نمودار، یک ارز اضافه کنید.");return}
+  const item=e.target.closest("[data-pulse-asset]");if(item){activeId=item.getAttribute("data-pulse-asset");lastLoaded="";renderAssets();loadCandles(true)}
+ });
+ $("mmp-pulse-add-btn").addEventListener("click",()=>{const id=$("mmp-pulse-add-select").value;if(!id)return;if(selected.length>=8){setStatus("حداکثر ۸ ارز را می‌توانید هم‌زمان در فهرست نبض نگه دارید.");return}selected.push(id);activeId=id;save();renderAssets();loadCandles(true)});
+ $("mmp-pulse-timeframes").addEventListener("click",e=>{const b=e.target.closest("[data-tf]");if(!b)return;tf=b.dataset.tf;document.querySelectorAll("#mmp-pulse-timeframes button").forEach(x=>x.classList.toggle("active",x===b));lastLoaded="";loadCandles(true)});
+ $("mmp-pulse-expand").addEventListener("click",()=>{const shell=$("mmp-pulse-chart-shell"),collapsed=shell.classList.toggle("is-collapsed");$("mmp-pulse-expand").textContent=collapsed?"بازکردن نمودار ⌄":"جمع‌کردن نمودار ⌃";$("mmp-pulse-expand").setAttribute("aria-expanded",String(!collapsed));if(!collapsed){ensureChart();if(chart){const el=$("mmp-pulse-chart");chart.applyOptions({width:el.clientWidth,height:el.clientHeight});chart.timeScale().fitContent()}if(!lastLoaded)loadCandles(true)}});
+ selected=readSaved();if(!selected.length)selected=defaults.slice();activeId=selected[0];renderAssets();
+ const boot=()=>{renderAssets();if(activeId)loadCandles(true)};
+ if(Array.isArray(cachedCoinsData)&&cachedCoinsData.length)boot();else setTimeout(boot,1800);
+ setInterval(()=>{renderAssets();if(activeId&&!$("mmp-pulse-chart-shell").classList.contains("is-collapsed"))loadCandles(true)},60000);
+})();
+</script>
 </body>
 </html>
 
