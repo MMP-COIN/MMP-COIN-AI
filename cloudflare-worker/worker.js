@@ -47,7 +47,7 @@ function analyzeKlines(rows){
  const support=Math.min(...lows.slice(-30)),resistance=Math.max(...highs.slice(-30));
  const takerBuyBase=rows.slice(-24).reduce((s,x)=>s+Number(x[9]||0),0);
  const totalBase=rows.slice(-24).reduce((s,x)=>s+Number(x[5]||0),0);
- return {price:last.c,change_pct:(last.c/closes[closes.length-2]-1)*100,rsi:rsi(closes),ema20:e20,ema50:e50,ema200:e200,ema_trend:e20&&e50&&e200?(last.c>e20&&e20>e50&&e50>e200?"bullish":last.c<e20&&e20<e50&&e50<e200?"bearish":"mixed"):"insufficient",macd,macd_signal:macd==null||signal==null?"insufficient":macd>signal?"bullish crossover bias":macd<signal?"bearish crossover bias":"neutral",atr,atr_percent:atr?atr/last.c*100:null,support,resistance,volume_ratio:mean(vols.slice(-5))/(mean(vols.slice(-25))||1),taker_buy_volume_ratio:totalBase?takerBuyBase/totalBase:null,candle_time:new Date(last.t).toISOString()};
+ return {candles,price:last.c,change_pct:(last.c/closes[closes.length-2]-1)*100,rsi:rsi(closes),ema20:e20,ema50:e50,ema200:e200,ema_trend:e20&&e50&&e200?(last.c>e20&&e20>e50&&e50>e200?"bullish":last.c<e20&&e20<e50&&e50<e200?"bearish":"mixed"):"insufficient",macd,macd_signal:macd==null||signal==null?"insufficient":macd>signal?"bullish crossover bias":macd<signal?"bearish crossover bias":"neutral",atr,atr_percent:atr?atr/last.c*100:null,support,resistance,volume_ratio:mean(vols.slice(-5))/(mean(vols.slice(-25))||1),taker_buy_volume_ratio:totalBase?takerBuyBase/totalBase:null,candle_time:new Date(last.t).toISOString()};
 }
 function splitQuotePair(symbol){
  const match=String(symbol||"").toUpperCase().match(/^([A-Z0-9_]+?)(USDT|USDC|FDUSD|BUSD|USD|BTC|ETH)$/);
@@ -376,6 +376,18 @@ async function handle(request,env){
   const assets=symbols.map(symbol=>exchangeSupport(symbol,catalogs));
   const sources=Object.fromEntries(Object.entries(catalogs).map(([k,v])=>[k,{ok:!!v?.ok,status:v?.status||0,error:v?.error||null,source:v?.source||null}]));
   return json({checked_at:new Date().toISOString(),assets,sources},200,request);
+ }
+ if(request.method==="GET"&&new URL(request.url).pathname==="/market-candles"){
+  const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"market-candles");
+  const limited=rateLimitReply(limitResult,request);if(limited)return limited;
+  const url=new URL(request.url),rawSymbol=String(url.searchParams.get("symbol")||"").toUpperCase();
+  const interval=String(url.searchParams.get("interval")||"15m");
+  if(!/^[A-Z0-9]{2,15}$/.test(rawSymbol)||!["15m","1h","4h","1d"].includes(interval))return json({error:"نماد یا بازه زمانی نامعتبر است."},400,request);
+  const symbol=rawSymbol.endsWith("USDT")?rawSymbol:rawSymbol+"USDT";
+  try{
+   const result=await candles(symbol,interval,env,"spot");
+   return json({symbol,interval,provider:result.data_provider,price:result.price,change_pct:result.change_pct,candles:result.candles.map(c=>({time:Math.floor(c.t/1000),open:c.o,high:c.h,low:c.l,close:c.c,volume:c.v}))},200,request);
+  }catch(error){return json({error:"داده کندلی این ارز فعلاً در دسترس نیست.",detail:String(error?.message||"upstream error").slice(0,220),symbol,interval},502,request);}
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/market-proxy"){
   const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"market-proxy");
