@@ -41,10 +41,6 @@ jobs:
           const intervals = ['15m','1h','4h','1d'];
           const minRows = tf => tf === '1d' ? 20 : 30;
           const html = fs.readFileSync('index.html','utf8');
-          const extraMatch = html.match(/const EXTRA_COIN_IDS = \[([\s\S]*?)\];/);
-          if (!extraMatch) throw new Error('Cannot read the canonical extra asset list');
-          const extraIds = [...extraMatch[1].matchAll(/'([^']+)'|LAYERZERO_COIN_ID/g)]
-            .map(m => m[1] || 'layerzero');
           const nonTradableIds = new Set(['tether','usd-coin','dai','usds','ethena-usde','first-digital-usd','paypal-usd','true-usd','frax','usdd','wrapped-bitcoin','coinbase-wrapped-btc','lido-staked-ether','wrapped-steth','rocket-pool-eth','staked-ether','staked-ether-2','tether-gold']);
           const nonTradableSymbols = new Set(['USDT','USDC','DAI','USDS','USDE','FDUSD','PYUSD','TUSD','FRAX','USDD','WBTC','CBBTC','STETH','WSTETH','RETH','XAUT']);
 
@@ -116,13 +112,13 @@ jobs:
             return {id:asset.id,name:asset.name,symbol,rank:asset.market_cap_rank||null,tests,ready:tests.every(x=>x.ok)};
           }
           (async()=>{
-            const [top,extra] = await Promise.all([
-              getJson(WORKER+'/market-proxy?source=coingecko-top'),
-              getJson(WORKER+'/market-proxy?source=coingecko-extra&ids='+encodeURIComponent(extraIds.join(',')))
-            ]);
-            if(!Array.isArray(top)||!Array.isArray(extra)) throw new Error('CoinGecko returned an invalid asset list');
+            const top = await getJson(WORKER+'/market-proxy?source=coingecko-top');
+            if(!Array.isArray(top)) throw new Error('CoinGecko returned an invalid top-market list');
+            // The top 250 already contains every market-cap-ranked candidate
+            // capable of entering the top 100; avoid a second request that can
+            // be rate-limited and cannot change the final top-100 selection.
             const map=new Map();
-            [...top,...extra].forEach(c=>{
+            top.forEach(c=>{
               if(!c?.id||!c?.symbol) return;
               const symbol=String(c.symbol).toUpperCase();
               if(nonTradableIds.has(c.id)||nonTradableSymbols.has(symbol)||map.has(c.id)||[...map.values()].some(x=>String(x.symbol).toUpperCase()===symbol)) return;
