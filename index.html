@@ -1232,11 +1232,11 @@ async function enrichWithBinance(coins){
    if(ticker&&Number.isFinite(price)&&price>0){
     return {...c,current_price:price,price_change_percentage_24h:Number.isFinite(change)?change:c.price_change_percentage_24h,price_source:priceSource,price_updated_at:new Date(Number(ticker.closeTime)||Date.now()).toISOString()};
    }
-   return {...c,price_source:'CoinGecko',price_updated_at:c.last_updated||null};
+   return {...c,price_source:c.price_source||'CoinGecko',price_updated_at:c.last_updated||null};
   });
  }catch(e){
   console.warn('Binance and Bitget live quotes unavailable; using CoinGecko fallback:',e);
-  return coins.map(c=>({...c,price_source:'CoinGecko'}));
+  return coins.map(c=>({...c,price_source:c.price_source||'CoinGecko'}));
  }
 }
 
@@ -1312,8 +1312,20 @@ async function refreshAll(){
     if(!directTop.ok)throw new Error('CoinGecko top-100 HTTP '+directTop.status);
     topData=await directTop.json();
    }catch(directError){
-    if(cachedMarket){topData=cachedMarket.topData;usingCachedMarket=true;console.warn("Using cached market catalog after live sources failed:",directError);}
-    else throw directError;
+    try{
+     const paprikaResponse=await fetch("https://api.coinpaprika.com/v1/tickers?quotes=USD&limit=250",{cache:"no-store"});
+     if(!paprikaResponse.ok)throw new Error("CoinPaprika HTTP "+paprikaResponse.status);
+     const paprikaRows=await paprikaResponse.json();
+     if(!Array.isArray(paprikaRows)||paprikaRows.length<100)throw new Error("CoinPaprika returned insufficient market rows");
+     topData=paprikaRows.filter(x=>Number(x.rank)>0&&x.id&&x.symbol).map(x=>{
+      const usd=x.quotes?.USD||{};
+      return {id:x.id,name:x.name,symbol:x.symbol,image:"https://static.coinpaprika.com/coin/"+encodeURIComponent(x.id)+"/logo.png",market_cap_rank:Number(x.rank),current_price:Number(usd.price)||null,market_cap:Number(usd.market_cap)||null,total_volume:Number(usd.volume_24h)||null,price_change_percentage_1h:Number(usd.percent_change_1h),price_change_percentage_24h:Number(usd.percent_change_24h),price_change_percentage_7d:Number(usd.percent_change_7d),last_updated:x.last_updated||null,price_source:"CoinPaprika"};
+     });
+     console.warn("Using CoinPaprika market catalog after CoinGecko sources failed:",directError);
+    }catch(paprikaError){
+     if(cachedMarket){topData=cachedMarket.topData;usingCachedMarket=true;console.warn("Using cached market catalog after live sources failed:",directError,paprikaError);}
+     else throw new Error("CoinGecko and CoinPaprika unavailable: "+String(paprikaError?.message||paprikaError));
+    }
    }
   }
   if(extraRes?.ok){try{const payload=await extraRes.json();if(Array.isArray(payload))extraData=payload;}catch(error){console.warn("Market proxy returned invalid extra data:",error);}}
