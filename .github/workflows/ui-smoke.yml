@@ -106,6 +106,17 @@ jobs:
                 assert.equal(await pageName(), expected, 'module ' + module + ' opens');
                 assert.equal(await app.locator(selector).isVisible(), true, module + ' content is visible');
                 assert.equal(await app.locator('.native-back-button').isVisible(), true, module + ' has back button');
+                if (module === 'tools') {
+                  await app.locator('#risk-capital').fill('1000');
+                  await app.locator('#risk-percent').fill('2');
+                  await app.locator('#risk-entry').fill('100000');
+                  await app.locator('#risk-stop').fill('98000');
+                  await app.locator('#risk-calc').click();
+                  assert.match(await app.locator('#risk-result').innerText(), /20\.00/, 'risk calculator returns expected 20 USDT loss');
+                }
+                if (module === 'hours') {
+                  assert.ok(await app.locator('#market-hours-grid').locator('*').count() > 0, 'market hours cards render');
+                }
                 await app.locator('.native-back-button').click();
                 assert.equal(await pageName(), 'more', module + ' back button returns to More');
               }
