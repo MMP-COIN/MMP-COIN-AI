@@ -143,6 +143,7 @@ jobs:
               echo "- $source proxy: responding; top-level keys: $(jq -r 'if type=="object" then (keys|join(",")) else "array" end' "/tmp/$source.json")" >> "$GITHUB_STEP_SUMMARY"
               if [ "$source" = "exir-tickers" ]; then
                 echo "Exir USDT pairs: $(jq -r 'keys[] | select(test("usdt";"i"))' /tmp/exir-tickers.json | head -20 | paste -sd, -)"
+                echo "Exir Toman/Rial pairs: $(jq -r 'keys[] | select(test("irt|irr|tmn|toman";"i"))' /tmp/exir-tickers.json | head -30 | paste -sd, -)"
               fi
             else
               echo "::warning::$source proxy unavailable: $(jq -r '.detail // .error // .' "/tmp/$source.json")"
