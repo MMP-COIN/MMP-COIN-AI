@@ -2180,7 +2180,7 @@ html.mmp-native-app .footer{padding-bottom:12px}
   $("mmp-pulse-chart-usdt").textContent=priceHtml(c);
   $("mmp-pulse-chart-irt").textContent=t>0&&p>0?fmt(p*t,0)+" تومان":"نرخ تبدیل تومان در دسترس نیست";
  }
- function ema(values,period){let out=[],k=2/(period+1),v=null;values.forEach((x,i)=>{v=i===period-1?values.slice(0,period).reduce((a,b)=>a+b,0)/period:i>=period?v===null?x:x*k+v*(1-k):null;if(i>=period-1)out.push({time:values[i].time,value:v})});return out}
+ function ema(candles,period){let out=[],k=2/(period+1),v=null;const closes=candles.map(x=>Number(x.close));closes.forEach((x,i)=>{if(i===period-1)v=closes.slice(0,period).reduce((a,b)=>a+b,0)/period;else if(i>=period)v=x*k+v*(1-k);if(i>=period-1)out.push({time:candles[i].time,value:v})});return out}
  function setStatus(text,error){const el=$("mmp-pulse-status");el.textContent=text;el.classList.toggle("error",!!error)}
  function ensureChart(){
   if(chart||!window.LightweightCharts)return;
