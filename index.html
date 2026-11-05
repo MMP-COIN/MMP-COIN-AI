@@ -1052,7 +1052,7 @@ function clock(){$('clock').textContent=new Date().toLocaleTimeString('fa-IR')}
 setInterval(clock,1000);clock();
 
 
-async async function refreshSiteData(){
+async function refreshSiteData(){
  const button=$("refresh-all-btn");
  if(button){button.classList.add("is-refreshing");button.disabled=true;}
  $("updated").textContent="در حال بروزرسانی کامل داده‌های سایت…";
