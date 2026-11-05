@@ -45,6 +45,23 @@ jobs:
       - name: Install Capacitor dependencies
         run: npm install
 
+      - name: Configure secure live dashboard and native build version
+        env:
+          BUILD_VERSION: 1.0.${{ github.run_number }}
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const file = 'capacitor.config.json';
+          const config = JSON.parse(fs.readFileSync(file, 'utf8'));
+          config.server = {
+            ...(config.server || {}),
+            url: 'https://mmp-coin.github.io/?mmp_native_version=' + process.env.BUILD_VERSION,
+            cleartext: false,
+            allowNavigation: ['mmp-coin.github.io']
+          };
+          fs.writeFileSync(file, JSON.stringify(config, null, 2) + '\\n');
+          NODE
+
       - name: Generate Android project
         run: npx cap add android
 
