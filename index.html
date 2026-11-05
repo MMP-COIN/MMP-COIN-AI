@@ -768,12 +768,40 @@ body{background:
 @media(prefers-reduced-motion:reduce){.mmp-viz-live i,.mmp-ai-core-orbit,.mmp-ai-wave i{animation:none!important}.mmp-ai-core-orbit{transform:none!important}}
 </style>
 
+<style id="mmp-premium-redesign-v2">
+.brand .logo,.side-emblem{position:relative!important;isolation:isolate;border-radius:50%!important;border:5px solid transparent!important;background:linear-gradient(145deg,#fff0b7 0%,#d6a84f 36%,#7a4e1d 72%,#f2d58c 100%) padding-box,repeating-conic-gradient(from 0deg,#ffe9a8 0deg 3deg,#714a1d 3deg 6deg,#d7aa59 6deg 9deg) border-box!important;color:#39250d!important;text-shadow:0 1px 1px #fff9,0 -1px 1px #4a2c0d!important;box-shadow:0 0 0 3px #d7b46a20,0 8px 24px #0009,inset 0 2px 4px #fff9,inset 0 -5px 8px #55350e!important;display:grid;place-items:center;font-weight:1000;overflow:visible}
+.brand .logo{width:49px!important;height:49px!important;font-size:27px!important;letter-spacing:-2px!important}.side-emblem{width:46px!important;height:46px!important;font-size:25px!important}
+.brand .logo:before,.side-emblem:before{content:"";position:absolute;inset:4px;border:1px solid #fff9;border-radius:50%;box-shadow:inset 0 0 0 2px #7a4b1828;pointer-events:none}
+.brand .logo:after{content:"";position:absolute;inset:9px;border:1px solid #6d471b99;border-radius:50%;z-index:0;pointer-events:none}
+.hero-coin{width:148px!important;height:148px!important;border:9px solid transparent!important;background:radial-gradient(circle at 35% 25%,#fff4c8 0%,#e7bd68 24%,#9b692e 58%,#372719 76%,#e0b65f 82%) padding-box,repeating-conic-gradient(from 2deg,#ffe5a0 0deg 2.5deg,#69451c 2.5deg 5deg,#d9ab56 5deg 7.5deg) border-box!important;box-shadow:0 0 0 8px #d7b46a18,0 0 0 20px #d7b46a0c,0 24px 48px #000c,inset 0 5px 12px #fff9,inset 0 -12px 18px #39250e!important}
+.hero-coin:before{inset:8px!important;border:2px solid #fff9!important;box-shadow:inset 0 0 0 5px #6f4b1e44,inset 0 0 0 7px #f9df9b88!important}
+.hero-coin:after{content:"";position:absolute;inset:17px;border:1px dashed #68451b99;border-radius:50%;box-shadow:inset 0 0 18px #6b471d55;pointer-events:none}
+.hero-coin b{font-size:69px!important;color:#4b3214!important;z-index:1;text-shadow:0 2px 1px #fff9,0 -3px 2px #68451b!important}.hero-coin small{bottom:19px!important;font-size:8px!important;letter-spacing:2px!important;z-index:1}
+.radar-item{grid-template-columns:minmax(150px,1.15fr) 58px minmax(170px,1.2fr) auto!important;background:linear-gradient(125deg,#1b2b3a,#101925 58%,#171d25)!important;border-color:#354b5d!important;box-shadow:inset 0 1px #ffffff0c,0 8px 20px #0003!important}
+.radar-current-price{display:block;direction:ltr;text-align:right;color:#f3d995;font-size:12px;margin-top:6px;font-variant-numeric:tabular-nums}
+.radar-analyze-btn{border:1px solid #4d8d88;border-radius:9px;background:linear-gradient(120deg,#153c3b,#172d39);color:#b8f0e5;padding:7px 9px;font-size:10px;font-weight:800;white-space:nowrap}
+.radar-action{flex-wrap:wrap!important}.radar-more{border-color:#557080!important;background:linear-gradient(110deg,#172a37,#111b27)!important}.radar-more>summary{color:#d9e9ed!important}
+.radar-ai-levels{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0}
+.radar-ai-levels span{display:block;min-width:0;padding:10px;border:1px solid #3b5362;border-radius:10px;background:linear-gradient(145deg,#182b39,#101b26);color:#91a9b9;font-size:10px}
+.radar-ai-levels b{display:block;margin-top:5px;color:#f3d995;font-size:12px;direction:ltr;text-align:right;overflow-wrap:anywhere}
+.ai-report-accordion,.ai-terminal .ai-details{display:block;margin-top:11px;border:1px solid #46596b;border-radius:14px;overflow:hidden;background:linear-gradient(145deg,#172635,#0f1823);box-shadow:inset 0 1px #ffffff0b,0 8px 20px #0003}
+.ai-report-accordion>summary,.ai-terminal .ai-details>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:57px;padding:13px 15px;cursor:pointer;list-style:none;color:#f4d995;font-size:12px;font-weight:900}
+.ai-report-accordion>summary::-webkit-details-marker,.ai-terminal .ai-details>summary::-webkit-details-marker{display:none}
+.ai-report-accordion>summary:after,.ai-terminal .ai-details>summary:after{content:"⌄";font-size:21px;color:#52dfce;transition:transform .2s}
+.ai-report-accordion[open]>summary:after,.ai-terminal .ai-details[open]>summary:after{transform:rotate(180deg)}
+.ai-report-accordion>summary small,.ai-terminal .ai-details>summary small{color:#91a8b8;font-size:9px;font-weight:500}
+.ai-report-accordion #advanced-ai-analysis{margin:0;border:0;border-top:1px solid #ffffff14;border-radius:0;box-shadow:none}
+.mmp-mobile-dock{display:none!important}
+@media(max-width:900px){.wrap{padding-bottom:32px!important}.brand .logo{width:43px!important;height:43px!important;font-size:24px!important}.hero-visual{opacity:.8!important}.radar-item{grid-template-columns:minmax(0,1fr) 54px!important}.radar-asset{grid-column:1!important}.radar-score{grid-column:2!important;grid-row:1!important}.radar-stats{grid-column:1/-1!important}.radar-action{grid-column:1/-1!important;justify-content:flex-start!important}}
+@media(max-width:650px){.hero-coin{width:116px!important;height:116px!important;border-width:7px!important}.hero-coin b{font-size:53px!important}.radar-ai-levels{grid-template-columns:repeat(2,minmax(0,1fr))}.ai-report-accordion>summary,.ai-terminal .ai-details>summary{align-items:flex-start;flex-wrap:wrap}}
+@media(prefers-reduced-motion:reduce){.hero-coin,.hero:before{animation:none!important}}
+</style>
 </head>
 <body class="mmp-app-mode">
 
 <header class="top">
 <div class="brand">
-  <div class="logo">M</div>
+  <div class="logo" aria-label="MMP Bitcoin coin">₿</div>
   <div><b>MMP COIN AI</b><small>ترمینال هوشمند ارز دیجیتال</small></div>
 </div>
 <div class="top-actions">
@@ -794,7 +822,7 @@ body{background:
 </header>
 
 <aside class="mmp-sidebar" id="mmp-sidebar">
-  <div class="side-brand"><div class="side-emblem">M</div><div><b>MMP <span>COIN AI</span></b><small>PRO TRADING TERMINAL</small></div></div>
+  <div class="side-brand"><div class="side-emblem" aria-label="MMP Bitcoin coin">₿</div><div><b>MMP <span>COIN AI</span></b><small>PRO TRADING TERMINAL</small></div></div>
   <div class="side-caption">INTELLIGENCE FIRST</div>
   <a class="side-link active" href="#hero"><i>◈</i><span>نمای کلی بازار</span><em>01</em></a>
   <a class="side-link" href="#opportunities"><i>⌖</i><span>رادار صعودی و نزولی</span><em>02</em></a>
@@ -809,9 +837,6 @@ body{background:
   <a class="side-link" href="#connections"><i>◉</i><span>سلامت منابع داده</span><em>09</em></a>
   <div class="side-footer"><span class="live-dot"></span><span>اتصال زنده بازار</span><small>DATA STREAM ACTIVE</small></div>
 </aside>
-<nav class="mmp-mobile-dock app-tabbar" aria-label="منوی اختصاصی اپلیکیشن">
-  <a href="#hero"><i>◈</i><span>خانه</span></a><a href="#opportunities"><i>⌖</i><span>رادار</span></a><a href="#ai-section" class="dock-ai"><i>✧</i><span>تحلیل AI</span></a><a href="#chart-section"><i>⌁</i><span>نمودار</span></a><a href="#trading-tools"><i>⌗</i><span>ابزارها</span></a>
-</nav>
 <main class="wrap" id="hero">
 <section class="hero">
 <div>
@@ -819,7 +844,7 @@ body{background:
   <h1>ترمینال جامع و هوشمند بازارهای مالی</h1>
   <p>داده‌های زنده بازار، رادار فرصت‌ها و تحلیل چندلایه هوش مصنوعی؛ برای تصمیم‌گیری آگاهانه، نه دنبال‌کردن سیگنال‌های کور.</p>
 </div>
-<div class="hero-visual"><div class="hero-orbit orbit-a"></div><div class="hero-orbit orbit-b"></div><div class="hero-coin"><b>M</b><small>AI</small></div><div class="hero-spark spark-a"></div><div class="hero-spark spark-b"></div><div class="hero-visual-label">MARKET INTELLIGENCE <span>● LIVE</span></div></div><span class="badge" id="updated">در حال دریافت داده…</span>
+<div class="hero-visual"><div class="hero-orbit orbit-a"></div><div class="hero-orbit orbit-b"></div><div class="hero-coin"><b>₿</b><small>MMP · AI</small></div><div class="hero-spark spark-a"></div><div class="hero-spark spark-b"></div><div class="hero-visual-label">MARKET INTELLIGENCE <span>● LIVE</span></div></div><span class="badge" id="updated">در حال دریافت داده…</span>
 </section>
 
 <section class="market-ticker" id="market-ticker" aria-label="نوار قیمت‌های بازار"><div class="ticker-item"><b>BTC / Bitcoin</b><strong>در حال دریافت…</strong><small>بازار رمزارز</small></div></section>
@@ -889,7 +914,7 @@ body{background:
   <span id="ai-confidence" class="sr-only">—</span>
  </div>
  <div class="ai-status" id="ai-status">ارز را انتخاب کن و تحلیل را اجرا کن.</div>
- <div class="signal ai-report ai-report-clean" id="advanced-ai-analysis"><div class="ai-empty"><div class="symbol">◈</div><b>آماده تحلیل بازار</b><p>گزارش شامل جهت احتمالی، دلیل‌های اصلی، محدوده‌های مهم و شرایط بی‌اعتبارشدن سناریو خواهد بود.</p></div></div>
+ <details class="ai-report-accordion" id="ai-report-details"><summary><span>مشاهده گزارش کامل تحلیل، ورود و خروج</span><small>جمع‌بندی · نقطه ورود · حد ضرر · اهداف خروج · سناریوها</small></summary><div class="signal ai-report ai-report-clean" id="advanced-ai-analysis"><div class="ai-empty"><div class="symbol">◈</div><b>آماده تحلیل بازار</b><p>گزارش شامل جهت احتمالی، دلیل‌های اصلی، محدوده‌های مهم و شرایط بی‌اعتبارشدن سناریو خواهد بود.</p></div></div></details>
  <details class="ai-details" id="ai-details"><summary><span>جزئیات فنی و تایم‌فریم‌ها</span><small>قدرت شواهد · ۱۵ دقیقه · ۱ ساعت · ۴ ساعت · روزانه</small></summary>
   <div class="ai-details-content">
    <div class="ai-confidence-box"><div class="ai-confidence-head"><span>قدرت هم‌جهتی شواهد؛ نه احتمال قطعی سود</span><b id="ai-confidence-label">—</b></div><div class="ai-confidence-track"><div class="ai-confidence-fill" id="ai-confidence-fill"></div></div></div>
@@ -1765,7 +1790,7 @@ function renderOpportunities(){
   const watch='<button class="watch-btn" type="button" data-watch-add="'+aiEscape(c.id)+'">افزودن به دیده‌بان</button>';
   return '<article class="radar-item"><div class="radar-asset"><img src="'+aiEscape(c.image||"")+'" alt="" loading="lazy"><span><b>'+aiEscape(c.name)+'</b><small>'+aiEscape(String(c.symbol).toUpperCase())+' · '+direction+'</small></span></div><div class="radar-score"><b>'+m.score+'</b><small>قدرت جهت</small></div><div class="radar-stats"><span>تغییر ۲۴ساعته<b>'+change(m.h)+'</b></span><span>تغییر هفتگی<b>'+change(m.d)+'</b></span><span>نقدشوندگی نسبی<b>'+ (m.liquidity==null?"ناموجود":m.liquidity.toFixed(2)+"٪")+'</b></span></div><div class="radar-action"><span class="radar-trend">'+(m.dataQuality||"")+'</span>'+watch+'</div></article>';
  };
- const list=(title,items,cls)=>'<section class="radar-side '+cls+'"><div class="section-head"><b>'+title+'</b><span class="badge">'+items.length.toLocaleString("fa-IR")+' ارز</span></div><div class="radar-list">'+items.slice(0,5).map(card).join("")+'</div>'+(items.length>5?'<details class="radar-more"><summary>نمایش همه '+items.length.toLocaleString("fa-IR")+' ارز</summary><div class="radar-list">'+items.slice(5).map(card).join("")+'</div></details>':"")+'</section>';
+ const list=(title,items,cls)=>'<section class="radar-side '+cls+'"><div class="section-head"><b>'+title+'</b><span class="badge">'+items.length.toLocaleString("fa-IR")+' ارز</span></div><div class="radar-list">'+items.slice(0,3).map(card).join("")+'</div>'+(items.length>3?'<details class="radar-more"><summary>نمایش همه '+items.length.toLocaleString("fa-IR")+' ارز</summary><div class="radar-list">'+items.slice(3).map(card).join("")+'</div></details>':"")+'</section>';
  el.innerHTML='<div class="radar-count-grid">'+group("تمایل به صعود",bullish.length,"bull")+group("تمایل به نزول",bearish.length,"bear")+group("خنثی / انتظار",neutral.length,"neutral")+'</div>'+list("فرصت‌های دارای تمایل صعودی",bullish,"bull")+list("دارای تمایل نزولی",bearish,"bear")+list("خنثی و نیازمند تأیید",neutral,"neutral")+(unknown.length?'<p class="sub">برای '+unknown.length.toLocaleString("fa-IR")+' ارز داده تغییرات کافی دریافت نشده؛ این موارد به‌اشتباه صعودی یا نزولی طبقه‌بندی نمی‌شوند.</p>':"");
  if(Date.now()-radarAutoScanAt>300000&&!radarDeepScanBusy&&!aiBusy){
   radarAutoScanAt=Date.now();
@@ -2096,7 +2121,7 @@ html.mmp-native-app .footer{padding-bottom:12px}
 })();
 </script>
 
-</body>
+<script id="mmp-ai-report-accordion-sync">(function(){var report=document.getElementById("advanced-ai-analysis"),details=document.getElementById("ai-report-details");if(!report||!details||!("MutationObserver"in window))return;var sync=function(){if(report.querySelector(".ai-report-head,.ai-report-levels,.ai-report-card,.analysis-result,.ai-result"))details.open=true;};new MutationObserver(sync).observe(report,{childList:true,subtree:true,characterData:true});sync();})();</script></body>
 </html>
 
 <style>
