@@ -1024,7 +1024,7 @@ body{background:
 <p class="sub" style="margin-top:12px">ساعت‌ها بر اساس منطقه زمانی هر بازار و تغییر ساعت تابستانی محاسبه می‌شوند. تعطیلات رسمی و تغییرات اضطراری ممکن است وضعیت را تغییر دهند؛ این نمایش راهنمای زمان‌بندی است، نه تأییدیه رسمی بورس.</p>
 </section>
 <div class="connection-grid" id="connections"></div>
- <div class="connection-more"><button class="connection-more-btn" id="connections-toggle" type="button" aria-expanded="false" aria-controls="connections-extra">نمایش ۳ منبع دیگر <span class="chevron" aria-hidden="true">⌄</span></button><div class="connection-grid connection-extra" id="connections-extra"></div></div>
+ <div class="connection-more"><button class="connection-more-btn" id="connections-toggle" type="button" aria-expanded="false" aria-controls="connections-extra">نمایش ۴ منبع دیگر <span class="chevron" aria-hidden="true">⌄</span></button><div class="connection-grid connection-extra" id="connections-extra"></div></div>
 </section>
 
 <!-- فقط لیست ارزهای دیجیتال -->
@@ -1530,12 +1530,12 @@ function updateDropdowns(data) {
 let coinGeckoConnectionStatus="checking";
 function renderCoinGeckoConnection(){
  const box=$("connections-extra");if(!box)return;
- const wallex=box.querySelector('.conn:not([data-provider="coingecko"])');
- const wallexHtml=wallex?wallex.outerHTML:"";
+ const exchangeCards=Array.from(box.querySelectorAll('.conn:not([data-provider="coingecko"])'));
+ const exchangeHtml=exchangeCards.map(card=>card.outerHTML).join("");
  const status=coinGeckoConnectionStatus;
  const label=status==="ok"?"متصل":status==="down"?"قطع":"در حال بررسی";
  const detail=status==="ok"?"منبع قیمت و فهرست ارزها فعال است":status==="down"?"دریافت اطلاعات بازار ناموفق بود":"در انتظار دریافت اطلاعات بازار";
- box.innerHTML=wallexHtml+'<div class="conn" data-provider="coingecko"><div class="conn-top"><span class="conn-name">CoinGecko · مرجع بازار</span><span class="lamp '+(status==="ok"?"ok":status==="down"?"down":"")+'"></span></div><div class="conn-meta"><span>'+label+'</span><b dir="ltr">—</b></div><small class="conn-purpose">'+detail+'</small></div>';
+ box.innerHTML=exchangeHtml+'<div class="conn" data-provider="coingecko"><div class="conn-top"><span class="conn-name">CoinGecko · مرجع بازار</span><span class="lamp '+(status==="ok"?"ok":status==="down"?"down":"")+'"></span></div><div class="conn-meta"><span>'+label+'</span><b dir="ltr">—</b></div><small class="conn-purpose">'+detail+'</small></div>';
 }
 function setupConnectionsToggle(){
  const button=$("connections-toggle"),extra=$("connections-extra");
