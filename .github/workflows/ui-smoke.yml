@@ -141,7 +141,8 @@ jobs:
                   assert.match(await app.locator('#risk-result').innerText(), /ضرر احتمالی در صورت برخورد به حد ضرر:\s*20 USDT/, 'risk calculator returns expected 20 USDT loss');
                 }
                 if (module === 'hours') {
-                  assert.ok(await app.locator('#market-hours-grid').locator('*').count() > 0, 'market hours cards render');
+                  assert.equal(await app.locator('#market-hours-grid .market-session').count(), 4, 'four market hours cards are visible by default');
+                  assert.equal(await app.locator('#market-hours-extra .market-session').count(), 3, 'remaining market hours are in the collapsed section');
                 }
                 await app.locator('.native-back-button').click();
                 assert.equal(await pageName(), 'more', module + ' back button returns to More');
