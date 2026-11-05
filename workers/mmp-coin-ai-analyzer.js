@@ -438,16 +438,11 @@ async function runHistoricalBacktest(symbol,direction="long"){
 }
 
 
-const GEMINI_MODEL = "gemini-3.8-flash";
-const GROQ_MODEL = "openai/gpt-oss-120b";
+const GEMINI_MODEL = "gemini-2.5-flash";
 
 function extractAIText(result, provider) {
  if (provider === "Gemini") {
   return result?.candidates?.[0]?.content?.parts?.map(part => part.text || "").join("").trim() || "";
- }
- if (provider === "Groq") {
-  const content = result?.choices?.[0]?.message?.content;
-  return typeof content === "string" ? content.trim() : "";
  }
  const value = result?.response || result?.result || result?.output_text || "";
  return typeof value === "string" ? value.trim() : value ? JSON.stringify(value) : "";
@@ -494,32 +489,7 @@ async function runAIWithFallback(env, prompt) {
   }
  }
 
- // Groq is a separate provider and is called only when its own free-plan key is configured.
- if (env.GROQ_API_KEY) {
-  try {
-   const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-    method: "POST",
-    headers: {
-     "Authorization": "Bearer " + env.GROQ_API_KEY,
-     "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-     model: GROQ_MODEL,
-     messages,
-     max_completion_tokens: 2400,
-     temperature: 0.12,
-     response_format: { type: "json_object" }
-    })
-   });
-   const result = await response.json().catch(() => ({}));
-   if (!response.ok) throw new Error("Groq HTTP " + response.status + ": " + JSON.stringify(result).slice(0, 180));
-   const text = extractAIText(result, "Groq");
-   if (!text) throw new Error("Groq returned an empty response");
-   return { response: text, provider: "Groq " + GROQ_MODEL };
-  } catch (error) {
-   failures.push("Groq: " + String(error?.message || error).slice(0, 180));
-  }
- }
+
 
  throw new Error("تمام مسیرهای هوش مصنوعی در دسترس نیستند. " + failures.join(" | ").slice(0, 650));
 }
@@ -539,7 +509,6 @@ async function handle(request,env){
    primary:{name:"Cloudflare Workers AI",configured:!!env.AI,priority:1},
    fallbacks:[
     {name:"Google Gemini "+GEMINI_MODEL,configured:!!env.GEMINI_API_KEY,priority:2,free_tier_only:true},
-    {name:"Groq "+GROQ_MODEL,configured:!!env.GROQ_API_KEY,priority:3,free_tier_only:true}
    ],
    policy:"Primary is retried first on every analysis request; configured free-tier providers are used only after primary failure. No provider key is generated or rotated automatically."
   },200,request);
@@ -659,12 +628,12 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/health"){
    probe("https://fapi.binance.com/fapi/v1/klines?symbol=BTCUSDT&interval=1h&limit=1"),
    probe("https://api.bybit.com/v5/market/kline?category=linear&symbol=BTCUSDT&interval=60&limit=1")
   ]);
-  return json({service:"MMP COIN AI",worker:"online",ai_binding:!!env.AI,ai_fallbacks:{gemini:!!env.GEMINI_API_KEY,groq:!!env.GROQ_API_KEY},providers:{spot_binance:spot,futures_binance:futures,futures_bybit_fallback:bybit},checked_at:new Date().toISOString()},200,request);
+  return json({service:"MMP COIN AI",worker:"online",ai_binding:!!env.AI,ai_fallbacks:{gemini:!!env.GEMINI_API_KEY},providers:{spot_binance:spot,futures_binance:futures,futures_bybit_fallback:bybit},checked_at:new Date().toISOString()},200,request);
  }
  if(request.method!=="POST")return json({error:"Method not allowed"},405,request);
  const limitResult=await checkRateLimit(env.AI_ANALYSIS_LIMITER,request,"ai-analysis");
  const limited=rateLimitReply(limitResult,request);if(limited)return limited;
- if(!env.AI&&!env.GEMINI_API_KEY&&!env.GROQ_API_KEY)return json({error:"هیچ ارائه‌دهنده هوش مصنوعی پیکربندی نشده است."},503,request);
+ if(!env.AI&&!env.GEMINI_API_KEY)return json({error:"هیچ ارائه‌دهنده هوش مصنوعی پیکربندی نشده است."},503,request);
  const contentType=request.headers.get("Content-Type")||"";
  if(!contentType.toLowerCase().includes("application/json"))return json({error:"Content-Type must be application/json"},415,request);
  const declaredLength=Number(request.headers.get("Content-Length")||0);
