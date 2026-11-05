@@ -2228,7 +2228,7 @@ html.mmp-native-app .footer{padding-bottom:12px}
  $("mmp-pulse-expand").addEventListener("click",()=>{const shell=$("mmp-pulse-chart-shell"),collapsed=shell.classList.toggle("is-collapsed");$("mmp-pulse-expand").textContent=collapsed?"بازکردن نمودار ⌄":"جمع‌کردن نمودار ⌃";$("mmp-pulse-expand").setAttribute("aria-expanded",String(!collapsed));if(!collapsed){ensureChart();if(chart){const el=$("mmp-pulse-chart");chart.applyOptions({width:el.clientWidth,height:el.clientHeight});chart.timeScale().fitContent()}if(!lastLoaded)loadCandles(true)}});
  selected=readSaved();if(!selected.length)selected=defaults.slice();activeId=selected[0];renderAssets();
  const boot=()=>{renderAssets();if(activeId)loadCandles(true)};
- if(Array.isArray(cachedCoinsData)&&cachedCoinsData.length)boot();else setTimeout(boot,1800);
+ if(Array.isArray(cachedCoinsData)&&cachedCoinsData.length)boot();else{let tries=0;const wait=setInterval(()=>{tries++;if(Array.isArray(cachedCoinsData)&&cachedCoinsData.length){clearInterval(wait);boot()}else if(tries>=20)clearInterval(wait)},1000)}
  setInterval(()=>{renderAssets();if(activeId&&!$("mmp-pulse-chart-shell").classList.contains("is-collapsed"))loadCandles(true)},60000);
 })();
 </script>
