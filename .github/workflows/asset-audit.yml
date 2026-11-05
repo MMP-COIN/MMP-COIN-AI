@@ -112,8 +112,31 @@ jobs:
             return {id:asset.id,name:asset.name,symbol,rank:asset.market_cap_rank||null,tests,ready:tests.every(x=>x.ok)};
           }
           (async()=>{
-            const top = await getJson(WORKER+'/market-proxy?source=coingecko-top');
-            if(!Array.isArray(top)) throw new Error('CoinGecko returned an invalid top-market list');
+            let top, assetSource='CoinGecko Worker Proxy';
+            try {
+              top=await getJson(WORKER+'/market-proxy?source=coingecko-top');
+              if(!Array.isArray(top)) throw new Error('Invalid worker market list');
+            } catch(workerError) {
+              console.warn('Worker/CoinGecko proxy unavailable; trying public market-list fallbacks:',workerError.message);
+              try {
+                top=await getJson('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=false');
+                assetSource='CoinGecko direct';
+              } catch(coingeckoError) {
+                console.warn('CoinGecko direct unavailable; trying CoinPaprika:',coingeckoError.message);
+                try {
+                  const rows=await getJson('https://api.coinpaprika.com/v1/tickers?quotes=USD');
+                  top=rows.filter(x=>Number(x.rank)>0).map(x=>({id:x.id,name:x.name,symbol:x.symbol,market_cap_rank:Number(x.rank)}));
+                  assetSource='CoinPaprika fallback';
+                } catch(paprikaError) {
+                  console.warn('CoinPaprika unavailable; trying CoinCap:',paprikaError.message);
+                  const payload=await getJson('https://api.coincap.io/v2/assets?limit=250');
+                  top=(payload.data||[]).map(x=>({id:x.id,name:x.name,symbol:x.symbol,market_cap_rank:Number(x.rank)}));
+                  assetSource='CoinCap fallback';
+                }
+              }
+            }
+            if(!Array.isArray(top)) throw new Error('All public asset-list sources returned invalid data');
+            console.log('Asset list source: '+assetSource);
             // The top 250 already contains every market-cap-ranked candidate
             // capable of entering the top 100; avoid a second request that can
             // be rate-limited and cannot change the final top-100 selection.
