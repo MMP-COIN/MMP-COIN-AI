@@ -1279,6 +1279,11 @@ async function fetchTetherRate(){
     const rial=Number(rialMarket?.stats?.lastPrice??rialMarket?.lastPrice);
     return toman>0?toman:rial/10;
    }},
+   {source:"Bitpin",url:AI_ANALYSIS_ENDPOINT+"/market-proxy?source=bitpin-tickers",read:d=>{
+    const rows=Array.isArray(d)?d:Array.isArray(d?.results)?d.results:[];
+    const market=rows.find(m=>["USDT_IRT","USDTIRT"].includes(String(m?.symbol||"").toUpperCase()));
+    return Number(market?.price);
+   }},
   ];
   const results=await Promise.all(requests.map(async item=>{
    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),9000);
@@ -1552,23 +1557,28 @@ async function checkConnections(){
   if(!response.ok)throw new Error("HTTP "+response.status);
   const payload=await response.json();
   if(!Array.isArray(payload?.checks))throw new Error("پاسخ بررسی اتصال کامل نیست");
-  const expected=["binance spot","bybit spot","okx spot","nobitex","wallex","bitget spot"];
+  const expected=["binance spot","bybit spot","okx spot","nobitex","wallex","bitget spot","bitpin"];
   const checks=new Map(payload.checks.map(c=>[String(c?.name||"").trim().toLowerCase(),c]));
-  const bitgetCheck=checks.get("bitget spot");
-  if(bitgetCheck?.status==="down"||bitgetCheck?.status==="restricted"){
-   const started=Date.now(),bitgetController=new AbortController(),bitgetTimer=setTimeout(()=>bitgetController.abort(),7000);
+  const directFallbacks=[
+   {name:"bybit spot",url:"https://api.bybit.com/v5/market/tickers?category=spot&symbol=BTCUSDT",valid:d=>d?.retCode===0&&Number(d?.result?.list?.[0]?.lastPrice)>0},
+   {name:"wallex",url:"https://api.wallex.ir/v1/markets",valid:d=>d?.success===true&&Object.keys(d?.result?.symbols||d?.result?.markets||{}).length>0},
+   {name:"bitget spot",url:"https://api.bitget.com/api/v3/market/tickers?category=SPOT&symbol=BTCUSDT",valid:d=>d?.code==="00000"&&Number(d?.data?.[0]?.lastPrice)>0}
+  ];
+  for(const fallback of directFallbacks){
+   const check=checks.get(fallback.name);
+   if(check?.status!=="down"&&check?.status!=="restricted")continue;
+   const started=Date.now(),directController=new AbortController(),directTimer=setTimeout(()=>directController.abort(),7000);
    try{
-    const direct=await fetch("https://api.bitget.com/api/v3/market/tickers?category=SPOT&symbol=BTCUSDT",{cache:"no-store",signal:bitgetController.signal});
+    const direct=await fetch(fallback.url,{cache:"no-store",signal:directController.signal});
     if(!direct.ok)throw new Error("HTTP "+direct.status);
     const data=await direct.json();
-    if(data?.code!=="00000"||!(Number(data?.data?.[0]?.lastPrice)>0))throw new Error("پاسخ معتبر دریافت نشد");
-    bitgetCheck.status=Date.now()-started>2500?"slow":"ok";
-    bitgetCheck.ping=Date.now()-started;
-    bitgetCheck.error=null;
-    bitgetCheck.purpose="اتصال مستقیم از مرورگر";
-   }catch(directError){bitgetCheck.error="اتصال مستقیم: "+String(directError?.message||"خطای شبکه").slice(0,80);}
-   finally{clearTimeout(bitgetTimer);}
+    if(!fallback.valid(data))throw new Error("پاسخ معتبر دریافت نشد");
+    check.status=Date.now()-started>2500?"slow":"ok";
+    check.ping=Date.now()-started;check.error=null;check.purpose="اتصال مستقیم از مرورگر";
+   }catch(directError){check.error="اتصال مستقیم: "+String(directError?.message||"خطای شبکه").slice(0,80);}
+   finally{clearTimeout(directTimer);}
   }
+  const bitgetCheck=checks.get("bitget spot");
   const ordered=expected.map(name=>checks.get(name)).filter(Boolean);
   if(ordered.length!==expected.length)throw new Error("پاسخ بررسی اتصال کامل نیست");
 
