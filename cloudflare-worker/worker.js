@@ -149,10 +149,10 @@ async function candles(symbol,interval,env,marketType="spot"){
    const result=analyzeKlines(normalized);result.data_provider="Gate.io Spot (fallback)";return result;
   }catch(e){lastError=new Error((lastError?.message||"Binance unavailable")+"; "+e.message);}
  }
- const pair=splitQuotePair(symbol);
- if(pair){
+ const whitebitPair=splitQuotePair(symbol);
+ if(whitebitPair){
   let whitebitError=null;
-  const market=pair.base+"_"+pair.quote;
+  const market=whitebitPair.base+"_"+whitebitPair.quote;
   const whitebitInterval={"15m":"15m","1h":"1h","4h":"4h","1d":"1d"}[interval];
   for(const host of ["https://whitebit.com","https://whitebit.eu","https://whitebit.tr","https://whitebit.ge"]){
    try{
