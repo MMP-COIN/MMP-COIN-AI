@@ -1950,8 +1950,8 @@ html.mmp-native-app .footer{padding-bottom:12px}
    function openNativeApk(url,sizeBytes){
     if(!/^https:\/\/github\.com\/MMP-COIN\/MMP-COIN-AI\/releases\/download\//.test(url)){showNativeUpdateMessage("پیوند بروزرسانی معتبر نیست.");return;}
     var sizeMb=sizeBytes>0?(sizeBytes/1048576).toFixed(1):"نامشخص";
-    var warning=sizeBytes>=15*1048576?"\\nحجم فایل زیاد است؛ برای دانلود از اینترنت پایدار یا Wi-Fi استفاده کنید.":"\\nپیشنهاد: دانلود را با اتصال اینترنت پایدار انجام دهید.";
-    if(!window.confirm("دانلود نسخه جدید MMP COIN AI؟\\nحجم فایل: "+sizeMb+" مگابایت"+warning+"\\nپس از دانلود، نصب را تأیید کنید تا نسخه فعلی به‌روزرسانی شود."))return;
+    var warning=sizeBytes>=15*1048576?"\nحجم فایل زیاد است؛ برای دانلود از اینترنت پایدار یا Wi-Fi استفاده کنید.":"\nپیشنهاد: دانلود را با اتصال اینترنت پایدار انجام دهید.";
+    if(!window.confirm("دانلود نسخه جدید MMP COIN AI؟\nحجم فایل: "+sizeMb+" مگابایت"+warning+"\nپس از دانلود، نصب را تأیید کنید تا نسخه فعلی به‌روزرسانی شود."))return;
     var browser=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.Browser;
     if(browser&&typeof browser.open==="function"){browser.open({url:url}).catch(function(){window.open(url,"_blank");});}
     else{window.open(url,"_blank");}
