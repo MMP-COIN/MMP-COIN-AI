@@ -1947,23 +1947,27 @@ html.mmp-native-app .footer{padding-bottom:12px}
     for(var i=0;i<length;i++){var x=aa[i]||0,y=bb[i]||0;if(x>y)return 1;if(x<y)return -1;}
     return 0;
    }
-   function openNativeApk(url){
+   function openNativeApk(url,sizeBytes){
     if(!/^https:\/\/github\.com\/MMP-COIN\/MMP-COIN-AI\/releases\/download\//.test(url)){showNativeUpdateMessage("پیوند بروزرسانی معتبر نیست.");return;}
+    var sizeMb=sizeBytes>0?(sizeBytes/1048576).toFixed(1):"نامشخص";
+    var warning=sizeBytes>=15*1048576?"\\nحجم فایل زیاد است؛ برای دانلود از اینترنت پایدار یا Wi-Fi استفاده کنید.":"\\nپیشنهاد: دانلود را با اتصال اینترنت پایدار انجام دهید.";
+    if(!window.confirm("دانلود نسخه جدید MMP COIN AI؟\\nحجم فایل: "+sizeMb+" مگابایت"+warning+"\\nپس از دانلود، نصب را تأیید کنید تا نسخه فعلی به‌روزرسانی شود."))return;
     var browser=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.Browser;
     if(browser&&typeof browser.open==="function"){browser.open({url:url}).catch(function(){window.open(url,"_blank");});}
     else{window.open(url,"_blank");}
-    showNativeUpdateMessage("فایل بروزرسانی را دانلود کنید؛ سپس نصب را تأیید کنید.");
+    showNativeUpdateMessage("دانلود APK آغاز شد؛ پس از پایان دانلود، نصب را تأیید کنید. نسخه قبلی را حذف نکنید.");
    }
-   function showNativeUpdateBanner(version,url){
+   function showNativeUpdateBanner(version,url,sizeBytes){
     var existing=document.querySelector(".native-update-banner");if(existing)existing.remove();
     var banner=document.createElement("div");banner.className="native-update-banner";
     var copy=document.createElement("div");copy.className="native-update-copy";
     var title=document.createElement("strong");title.textContent="نسخه جدید MMP COIN AI موجود است";
-    var detail=document.createElement("small");detail.textContent="نسخه فعلی "+currentNativeVersion+"  ←  نسخه جدید "+version;
+    var sizeText=sizeBytes>0?(sizeBytes/1048576).toFixed(1)+" مگابایت":"حجم نامشخص";
+    var detail=document.createElement("small");detail.textContent="نسخه فعلی "+currentNativeVersion+" ← نسخه جدید "+version+" · "+sizeText;
     copy.appendChild(title);copy.appendChild(detail);
     var actions=document.createElement("div");actions.className="native-update-actions";
     var download=document.createElement("button");download.type="button";download.textContent="دانلود و بروزرسانی";
-    download.addEventListener("click",function(){openNativeApk(url);});
+    download.addEventListener("click",function(){openNativeApk(url,sizeBytes);});
     var close=document.createElement("button");close.type="button";close.className="native-update-close";close.setAttribute("aria-label","بستن");close.textContent="×";
     close.addEventListener("click",function(){banner.remove();});
     actions.appendChild(download);actions.appendChild(close);banner.appendChild(copy);banner.appendChild(actions);document.body.appendChild(banner);
@@ -2017,7 +2021,7 @@ html.mmp-native-app .footer{padding-bottom:12px}
        if(manual)showNativeUpdateMessage("نسخه اندروید به‌روز است · "+currentNativeVersion);
        return;
       }
-      showNativeUpdateBanner(version,apk.browser_download_url);
+      showNativeUpdateBanner(version,apk.browser_download_url,Number(apk.size)||0);
      })
      .catch(function(){if(manual)showNativeUpdateMessage("بررسی نسخه جدید انجام نشد؛ اتصال اینترنت را بررسی کنید.");})
      .finally(function(){
