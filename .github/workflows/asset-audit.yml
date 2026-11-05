@@ -7,6 +7,12 @@ on:
       - "cloudflare-worker/worker.js"
       - "index.html"
       - ".github/workflows/asset-audit.yml"
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "cloudflare-worker/worker.js"
+      - "index.html"
+      - ".github/workflows/asset-audit.yml"
   schedule:
     - cron: "25 16 * * *"
   workflow_dispatch:
