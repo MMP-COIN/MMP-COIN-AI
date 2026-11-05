@@ -1184,6 +1184,7 @@ const NON_TRADABLE_SYMBOLS = new Set([
  'USDT','USDC','DAI','USDS','USDE','FDUSD','PYUSD','TUSD','FRAX','USDD','WBTC','CBBTC',
  'STETH','WSTETH','RETH','XAUT'
 ]);
+const UNSUPPORTED_CANDLE_SYMBOLS = new Set(['USDY','GT','PEARL','DRV']);
 
 async function enrichWithBinance(coins){
  let tickers=[],priceSource="Binance Spot";
@@ -1322,7 +1323,7 @@ async function refreshAll(){
   [...topData,...extraData].forEach(c => {
     if(!c || !c.id || !c.symbol) return;
     const symbol = String(c.symbol).toUpperCase();
-    if(NON_TRADABLE_COIN_IDS.has(c.id) || NON_TRADABLE_SYMBOLS.has(symbol)) return;
+    if(NON_TRADABLE_COIN_IDS.has(c.id) || NON_TRADABLE_SYMBOLS.has(symbol) || UNSUPPORTED_CANDLE_SYMBOLS.has(symbol)) return;
     if(merged.has(c.id) || seenSymbols.has(symbol)) return;
     merged.set(c.id,c);
     seenSymbols.add(symbol);
@@ -1355,7 +1356,7 @@ async function refreshAll(){
     if(Array.isArray(pageTwo)){
      const knownIds=new Set(candidateCoins.map(c=>c.id));
      const knownSymbols=new Set(candidateCoins.map(c=>String(c.symbol||"").toUpperCase()));
-     const extraCandidates=pageTwo.filter(c=>c&&c.id&&c.symbol&&!knownIds.has(c.id)&&!NON_TRADABLE_COIN_IDS.has(c.id)&&!NON_TRADABLE_SYMBOLS.has(String(c.symbol).toUpperCase())&&!knownSymbols.has(String(c.symbol).toUpperCase()));
+     const extraCandidates=pageTwo.filter(c=>c&&c.id&&c.symbol&&!knownIds.has(c.id)&&!NON_TRADABLE_COIN_IDS.has(c.id)&&!NON_TRADABLE_SYMBOLS.has(String(c.symbol).toUpperCase())&&!UNSUPPORTED_CANDLE_SYMBOLS.has(String(c.symbol).toUpperCase())&&!knownSymbols.has(String(c.symbol).toUpperCase()));
      const extraVerified=await verifyCoinBatch(extraCandidates);
      verifiedCoins=verifiedCoins.concat(extraVerified);
     }
