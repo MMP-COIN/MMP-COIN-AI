@@ -933,7 +933,7 @@ const NON_TRADABLE_COIN_IDS = new Set([
 ]);
 const NON_TRADABLE_SYMBOLS = new Set([
  'USDT','USDC','DAI','USDS','USDE','FDUSD','PYUSD','TUSD','FRAX','USDD','WBTC','CBBTC',
- 'STETH','WSTETH','RETH','XAUT','USDY','GT','PEARL','DRV'
+ 'STETH','WSTETH','RETH','XAUT'
 ]);
 
 async function enrichWithBinance(coins){
@@ -1095,7 +1095,7 @@ async function refreshAll(){
    }
    return validItems.filter(coin=>{
     const support=supportBySymbol[String(coin.symbol||"").toUpperCase()];
-    return !!(support?.spot?.confirmed||support?.futures?.confirmed);
+    return !!support?.spot?.confirmed;
    });
   };
   let verifiedCoins=await verifyCoinBatch(candidateCoins);
