@@ -90,6 +90,11 @@ jobs:
 
               const pageName = () => app.locator('body').getAttribute('data-native-page');
               await app.locator('[data-native-tab="radar"]').click();
+              await app.evaluate(() => window.eval(`cachedCoinsData = [
+                {id:'bitcoin',name:'Bitcoin',symbol:'BTC',current_price:90000,price_change_percentage_24h:3,price_change_percentage_7d_in_currency:6,market_cap:1000000,total_volume:100000,high_24h:92000,low_24h:88000},
+                {id:'ethereum',name:'Ethereum',symbol:'ETH',current_price:3000,price_change_percentage_24h:-4,price_change_percentage_7d_in_currency:-7,market_cap:500000,total_volume:50000,high_24h:3200,low_24h:2900},
+                {id:'stellar',name:'Stellar',symbol:'XLM',current_price:0.2,price_change_percentage_24h:0.1,price_change_percentage_7d_in_currency:-0.1,market_cap:100000,total_volume:10000,high_24h:0.21,low_24h:0.19}
+              ]; radarAutoScanAt = Date.now(); renderOpportunities();`));
               assert.equal(await app.locator('.radar-count-grid .radar-count-card').count(), 2, 'radar shows only bullish and bearish counts');
               assert.equal(await app.locator('.radar-count-card.neutral').count(), 0, 'radar hides neutral count for a simpler view');
               assert.equal(await app.locator('#radar-deep-bull-results').count(), 1, 'bullish AI suggestions have a dedicated group');
