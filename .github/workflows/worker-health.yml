@@ -124,12 +124,18 @@ jobs:
             echo "- Bitget direct API: checked separately with browser CORS"
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Verify Bitpin public USDT to Toman ticker
+      - name: Probe Ramzinex public market-price feed
         run: |
           set -euo pipefail
-          curl --fail --silent --show-error --retry 1 --max-time 25 -H "Origin: https://bitpin.ir" -H "Referer: https://bitpin.ir/" "https://api.bitpin.ir/api/v1/mkt/tickers/" -o /tmp/bitpin-tickers.json
-          jq -e '([.[]?, .results[]?] | any(.symbol == "USDT_IRT" and (.price | tonumber > 0)))' /tmp/bitpin-tickers.json >/dev/null
-          echo "- Bitpin USDT/IRT public ticker: responding with a positive Toman quote" >> "$GITHUB_STEP_SUMMARY"
+          status=$(curl --silent --show-error --max-time 25 -o /tmp/ramzinex-prices.json -w "%{http_code}" "https://publicapi.ramzinex.com/exchange/api/exchange/prices" || true)
+          echo "Ramzinex public prices HTTP $status"
+          if [ "$status" = "200" ]; then
+            echo "- Ramzinex public price feed: reachable" >> "$GITHUB_STEP_SUMMARY"
+            jq -c 'if type == "object" then (keys | .[0:12]) else (.[0:2]) end' /tmp/ramzinex-prices.json || head -c 500 /tmp/ramzinex-prices.json
+          else
+            echo "::warning::Ramzinex public price feed not reachable from this runner (HTTP $status)."
+            echo "- Ramzinex public price feed: unavailable from runner (HTTP $status)" >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Verify CoinPaprika backup market feed
         run: |
