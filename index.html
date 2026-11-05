@@ -677,6 +677,49 @@ body{background:
  *,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 }
 </style>
+
+<style id="mmp-component-polish">
+/* Component-level polish: market scanner, watchlist, tools and data health */
+.radar-count-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:8px 0 14px}
+.radar-count-card{display:flex;align-items:baseline;gap:8px;padding:12px 13px;border:1px solid #354456;border-radius:13px;background:linear-gradient(140deg,#1a2937,#101822);min-width:0}
+.radar-count-card span{font-size:11px;color:#c1ced8}
+.radar-count-card b{font-size:21px;font-variant-numeric:tabular-nums;color:#f5e5bd}
+.radar-count-card small{font-size:9px;color:var(--muted)}
+.radar-count-card.bull{border-top:2px solid var(--green)}
+.radar-count-card.bear{border-top:2px solid var(--red)}
+.radar-count-card.neutral{border-top:2px solid var(--gold)}
+.radar-side{padding:13px;border:1px solid rgba(139,164,184,.18);border-radius:15px;background:linear-gradient(145deg,rgba(17,27,39,.95),rgba(10,17,26,.95))}
+.radar-side.bull{border-top:2px solid rgba(33,212,154,.8)}
+.radar-side.bear{border-top:2px solid rgba(255,101,118,.8)}
+.radar-side.neutral{border-top:2px solid rgba(215,180,106,.65)}
+.radar-side .section-head{margin-bottom:10px}
+.radar-side .section-head>b{font-size:13px}
+.radar-item{border-color:rgba(139,164,184,.2);background:linear-gradient(110deg,#1a2735,#111a25);transition:border-color .18s,transform .18s,background .18s}
+.radar-item:hover{border-color:rgba(215,180,106,.48);transform:translateY(-1px)}
+.radar-group .radar-item{background:linear-gradient(110deg,#1a2735,#111a25)}
+.radar-score{background:rgba(215,180,106,.1)}
+.watch-card{background:radial-gradient(ellipse at 100% 0,rgba(56,216,192,.1),transparent 45%),linear-gradient(145deg,#14232d,#0c151e)}
+.watch-item{border-color:rgba(86,178,165,.22);background:linear-gradient(110deg,#172a33,#101a23)}
+.tool-card{border-color:rgba(135,166,190,.2);box-shadow:inset 0 1px rgba(255,255,255,.035);transition:transform .2s,border-color .2s}
+.tool-card:hover{transform:translateY(-2px);border-color:rgba(215,180,106,.38)}
+.tool-card h3{display:flex;align-items:center;gap:8px}
+.conn{background:linear-gradient(145deg,#182635,#101923);border-color:rgba(135,166,190,.2);transition:border-color .2s,transform .2s}
+.conn:hover{transform:translateY(-1px);border-color:rgba(215,180,106,.4)}
+.market-session{background:linear-gradient(145deg,#1a2938,#101923);border-color:rgba(135,166,190,.2)}
+#coins-section .section-head{align-items:center}
+#coins-section .section-head h2{font-size:18px;color:#f4e4bd}
+#coins-section .market-table th{color:#9fb2c3}
+#coins-section .market-table td{border-color:rgba(139,164,184,.15)}
+#connections .section-head h2{font-size:15px}
+@media(max-width:650px){
+ .radar-count-grid{gap:6px}
+ .radar-count-card{padding:10px 8px;gap:5px;flex-wrap:wrap}
+ .radar-count-card span{width:100%;font-size:10px}
+ .radar-count-card b{font-size:18px}
+ .radar-side{padding:9px}
+ .radar-side .section-head>b{font-size:12px}
+}
+</style>
 </head>
 <body class="mmp-app-mode">
 
@@ -726,7 +769,7 @@ body{background:
 <div>
   <div class="eyebrow">ULTRA-PRO CRYPTO INTELLIGENCE HUB</div>
   <h1>ترمینال جامع و هوشمند بازارهای مالی</h1>
-  <p>پایش لحظه‌ای قیمت‌ها به تومان و تتر، نمودار استاندارد تریدینگ‌ویو و تحلیلگر هوش مصنوعی</p>
+  <p>داده‌های زنده بازار، رادار فرصت‌ها و تحلیل چندلایه هوش مصنوعی؛ برای تصمیم‌گیری آگاهانه، نه دنبال‌کردن سیگنال‌های کور.</p>
 </div>
 <div class="hero-visual"><div class="hero-orbit orbit-a"></div><div class="hero-orbit orbit-b"></div><div class="hero-coin"><b>M</b><small>AI</small></div><div class="hero-spark spark-a"></div><div class="hero-spark spark-b"></div><div class="hero-visual-label">MARKET INTELLIGENCE <span>● LIVE</span></div></div><span class="badge" id="updated">در حال دریافت داده…</span>
 </section>
@@ -801,8 +844,8 @@ body{background:
 
 <section class="collapsible-coins-container" id="coins-section">
 <div class="section-head">
-  <h2>لیست ارزهای دیجیتال</h2>
-  <span class="badge" id="currency-indicator">نمایش هم‌زمان: USDT + تومان</span>
+  <div><div class="section-kicker">LIVE ASSET UNIVERSE</div><h2>بازار رمزارزها</h2><p class="sub">قیمت لحظه‌ای، تغییر ۲۴ ساعته و ارزش بازار؛ به تتر و تومان</p></div>
+  <span class="badge" id="currency-indicator">USDT + تومان</span>
 </div>
 
 <div class="table-wrap"><table class="market-table">
