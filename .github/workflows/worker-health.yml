@@ -31,7 +31,7 @@ jobs:
     steps:
       - name: Verify staged Worker version before production
         env:
-          WORKER_PREVIEW_URL: https://56894e1a-mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
+          WORKER_PREVIEW_URL: https://c10ef4e2-mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
           set -euo pipefail
           curl --fail --silent --show-error --max-time 20 "$WORKER_PREVIEW_URL/health" -o /tmp/preview-health.json
