@@ -149,6 +149,19 @@ async function candles(symbol,interval,env,marketType="spot"){
    const result=analyzeKlines(normalized);result.data_provider="Gate.io Spot (fallback)";return result;
   }catch(e){lastError=new Error((lastError?.message||"Binance unavailable")+"; "+e.message);}
  }
+ try{
+  const pair=splitQuotePair(symbol);
+  if(!pair)throw new Error("Unsupported WhiteBIT quote currency");
+  const market=pair.base+"_"+pair.quote;
+  const whitebitInterval={"15m":"15m","1h":"1h","4h":"4h","1d":"1d"}[interval];
+  const url="https://whitebit.com/api/v1/public/kline?market="+encodeURIComponent(market)+"&interval="+whitebitInterval+"&limit=250";
+  const r=await fetch(url,{headers});
+  if(!r.ok)throw new Error("WhiteBIT HTTP "+r.status);
+  const payload=await r.json(),rows=payload?.success===true?payload.result:null;
+  if(!validRows(rows))throw new Error(payload?.message||"insufficient WhiteBIT candle history");
+  const normalized=rows.map(x=>[Number(x[0])*1000,x[1],x[3],x[4],x[2],x[5]||"0","0","0","0","0"]).sort((a,b)=>a[0]-b[0]);
+  const result=analyzeKlines(normalized);result.data_provider="WhiteBIT Spot";return result;
+ }catch(e){lastError=new Error((lastError?.message||"Earlier spot sources unavailable")+"; "+e.message);}
  for(const host of ["https://api.bybit.eu","https://api.bytick.eu","https://api.bybit.com","https://api.bytick.com"]){
   try{
    const url=host+"/v5/market/kline?category=spot&symbol="+encodeURIComponent(symbol)+"&interval="+bybitInterval+"&limit=250";
@@ -244,7 +257,8 @@ async function getExchangeCatalogs(){
    "https://api.bybit.com/v5/market/instruments-info?category=linear&limit=1000",
    "https://api.bytick.com/v5/market/instruments-info?category=linear&limit=1000"
   ]],
-  ["bitget_spot","https://api.bitget.com/api/v3/market/instruments?category=SPOT"]
+  ["bitget_spot","https://api.bitget.com/api/v3/market/instruments?category=SPOT"],
+  ["whitebit_spot","https://whitebit.com/api/v1/public/markets"]
  ];
  const results=await Promise.all(urls.map(async ([key,endpoint])=>[key,Array.isArray(endpoint)?await readAnyPublicJson(endpoint):await readPublicJson(endpoint)]));
  const out=Object.fromEntries(results);
@@ -260,10 +274,11 @@ function exchangeSupport(symbol,catalogs){
  const bybitSpotPair=(catalogs.bybit_spot?.data?.result?.list||[]).filter(x=>x.status==="Trading"&&x.baseCoin===base&&quotes.includes(x.quoteCoin)).map(x=>({pair:x.symbol,quote:x.quoteCoin})).sort((a,b)=>quotes.indexOf(a.quote)-quotes.indexOf(b.quote))[0]||null;
  const okxSpotPair=(catalogs.okx_spot?.data?.data||[]).filter(x=>x.state==="live"&&x.baseCcy===base&&quotes.includes(x.quoteCcy)).map(x=>({pair:String(x.instId||"").replaceAll("-",""),quote:x.quoteCcy})).sort((a,b)=>quotes.indexOf(a.quote)-quotes.indexOf(b.quote))[0]||null;
  const bitgetSpotPair=(catalogs.bitget_spot?.data?.data||[]).filter(x=>x.status==="online"&&String(x.symbol||"").toUpperCase().startsWith(base)&&quotes.some(q=>String(x.symbol||"").toUpperCase()===base+q)).map(x=>{const q=quotes.find(q=>String(x.symbol||"").toUpperCase()===base+q);return q?{pair:String(x.symbol).toUpperCase(),quote:q}:null;}).filter(Boolean).sort((a,b)=>quotes.indexOf(a.quote)-quotes.indexOf(b.quote))[0]||null;
+ const whitebitSpotPair=(catalogs.whitebit_spot?.data?.success===true?(catalogs.whitebit_spot.data.result||[]):[]).filter(x=>String(x.stock||"").toUpperCase()===base&&quotes.includes(String(x.money||"").toUpperCase())).map(x=>({pair:String(x.name||"").toUpperCase().replace("_",""),quote:String(x.money).toUpperCase()})).sort((a,b)=>quotes.indexOf(a.quote)-quotes.indexOf(b.quote))[0]||null;
  const binanceFuturesPair=(catalogs.binance_futures?.data?.symbols||[]).filter(x=>x.status==="TRADING"&&(!x.contractType||x.contractType==="PERPETUAL")&&x.baseAsset===base&&quotes.includes(x.quoteAsset)).map(x=>({pair:x.symbol,quote:x.quoteAsset})).sort((a,b)=>quotes.indexOf(a.quote)-quotes.indexOf(b.quote))[0]||null;
  const bybitFuturesPair=(catalogs.bybit_futures?.data?.result?.list||[]).filter(x=>x.status==="Trading"&&(!x.contractType||x.contractType==="LinearPerpetual")&&x.baseCoin===base&&quotes.includes(x.quoteCoin)).map(x=>({pair:x.symbol,quote:x.quoteCoin})).sort((a,b)=>quotes.indexOf(a.quote)-quotes.indexOf(b.quote))[0]||null;
  const okxFuturesPair=(catalogs.okx_futures?.data?.data||[]).filter(x=>x.state==="live"&&(!x.ctType||x.ctType==="linear")&&String(x.instId||"").endsWith("-SWAP")).map(x=>{const p=String(x.instId||"").split("-");return p[0]===base&&quotes.includes(p[1])?{pair:p[0]+p[1],quote:p[1]}:null;}).filter(Boolean).sort((a,b)=>quotes.indexOf(a.quote)-quotes.indexOf(b.quote))[0]||null;
- const spotEntries=[["Binance",binanceSpotPair,catalogs.binance_spot],["Bybit",bybitSpotPair,catalogs.bybit_spot],["OKX",okxSpotPair,catalogs.okx_spot],["Bitget",bitgetSpotPair,catalogs.bitget_spot]];
+ const spotEntries=[["Binance",binanceSpotPair,catalogs.binance_spot],["Bybit",bybitSpotPair,catalogs.bybit_spot],["OKX",okxSpotPair,catalogs.okx_spot],["Bitget",bitgetSpotPair,catalogs.bitget_spot],["WhiteBIT",whitebitSpotPair,catalogs.whitebit_spot]];
  const futuresEntries=[["Binance",binanceFuturesPair,catalogs.binance_futures],["Bybit",bybitFuturesPair,catalogs.bybit_futures],["OKX",okxFuturesPair,catalogs.okx_futures]];
  const spot=choose(spotEntries.map(x=>x[1])),futures=choose(futuresEntries.map(x=>x[1]));
  const providerStates=entries=>Object.fromEntries(entries.map(([name,pair,source])=>[name,!source?.ok?(source?.error||"تأیید نشد"):pair?"فعال":"جفت فعال پیدا نشد"]));
