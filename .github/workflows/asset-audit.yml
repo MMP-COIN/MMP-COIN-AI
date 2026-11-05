@@ -42,7 +42,7 @@ jobs:
           const minRows = tf => tf === '1d' ? 20 : 30;
           const html = fs.readFileSync('index.html','utf8');
           const nonTradableIds = new Set(['tether','usd-coin','dai','usds','ethena-usde','first-digital-usd','paypal-usd','true-usd','frax','usdd','wrapped-bitcoin','coinbase-wrapped-btc','lido-staked-ether','wrapped-steth','rocket-pool-eth','staked-ether','staked-ether-2','tether-gold']);
-          const nonTradableSymbols = new Set(['USDT','USDC','DAI','USDS','USDE','FDUSD','PYUSD','TUSD','FRAX','USDD','WBTC','CBBTC','STETH','WSTETH','RETH','XAUT','USDY','GT','PEARL','DRV']);
+          const nonTradableSymbols = new Set(['USDT','USDC','DAI','USDS','USDE','FDUSD','PYUSD','TUSD','FRAX','USDD','WBTC','CBBTC','STETH','WSTETH','RETH','XAUT']);
 
           async function getJson(url, timeout=7000) {
             const controller = new AbortController();
@@ -158,7 +158,7 @@ jobs:
             if(!Object.values(supportSources).some(x=>x?.ok))throw new Error('Exchange catalogs unavailable; cannot verify tradable assets');
             const assets=candidates.filter(x=>{
               const support=supportMap[String(x.symbol||"").toUpperCase()];
-              return !!(support?.spot?.confirmed||support?.futures?.confirmed);
+              return !!support?.spot?.confirmed;
             }).slice(0,100);
             if(assets.length!==100)throw new Error('Only '+assets.length+' assets have confirmed active exchange pairs; 100 required');
             const results=[];
