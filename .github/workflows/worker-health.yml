@@ -100,3 +100,13 @@ jobs:
             echo "- Binance ticker proxy: responding"
             echo "- Bitget direct API: checked separately with browser CORS"
           } >> "$GITHUB_STEP_SUMMARY"
+ 
+      - name: Smoke-test live spot candlestick endpoint
+        env:
+          WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
+        run: |
+          set -euo pipefail
+          status=$(curl --fail --silent --show-error --retry 2 --retry-delay 2 --max-time 35 -o /tmp/candles.json -w "%{http_code}" "$WORKER_URL/market-candles?symbol=BTC&interval=15m")
+          echo "Live candle endpoint HTTP $status"
+          jq -e '.symbol == "BTCUSDT" and .interval == "15m" and (.candles | length >= 30) and (.provider | type == "string" and length > 0) and (.candles[0].open > 0)' /tmp/candles.json >/dev/null
+          echo "- Live spot candlesticks: responding with real OHLCV data" >> "$GITHUB_STEP_SUMMARY"
