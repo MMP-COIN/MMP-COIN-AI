@@ -1698,6 +1698,11 @@ function renderAiReport(r,c,market={}){
  $("advanced-ai-analysis").innerHTML=html;
  $("advanced-ai-analysis").dataset.hasReport="true";
 }
+function friendlyAiProviderError(error){
+ const message=String(error?.message||error||"خطای نامشخص");
+ if(/4006|daily free allocation|neurons/i.test(message))return "سهمیه رایگان روزانه هوش مصنوعی Cloudflare تمام شده است؛ تا بازنشانی سهمیه یا فعال‌سازی پلن Workers Paid، تحلیل AI در دسترس نیست.";
+ return message;
+}
 async function runAiAnalysis(force=false){
  const id=$("ai-coin-select").value;
  const out=$("advanced-ai-analysis"),btn=$("ai-run-btn");
@@ -1744,8 +1749,9 @@ async function runAiAnalysis(force=false){
  }catch(e){
   if(token===aiRequestToken){
    $("ai-action").textContent="تحلیل ناموفق";
-   aiSetStatus("خطا در دریافت تحلیل: "+(e.name==="AbortError"?"زمان پاسخ سرویس بیش از حد طول کشید":e.message));
-   if(out.dataset.hasReport!=="true")out.innerHTML='<div class="ai-empty"><b>تحلیل فعلاً در دسترس نیست</b><p>علت خطا: '+aiEscape(e.name==="AbortError"?"زمان پاسخ سرویس بیش از حد طول کشید":e.message||"خطای نامشخص")+'</p><p>پس از رفع خطا، دوباره تحلیل را اجرا کن.</p></div>';
+   const friendlyError=e.name==="AbortError"?"زمان پاسخ سرویس بیش از حد طول کشید":friendlyAiProviderError(e);
+   aiSetStatus("خطا در دریافت تحلیل: "+friendlyError);
+   if(out.dataset.hasReport!=="true")out.innerHTML='<div class="ai-empty"><b>تحلیل فعلاً در دسترس نیست</b><p>علت خطا: '+aiEscape(friendlyError)+'</p><p>پس از رفع محدودیت سرویس، دوباره تحلیل را اجرا کن.</p></div>';
   }
  }finally{
   if(token===aiRequestToken){aiBusy=false;btn.disabled=false;btn.textContent="دریافت تحلیل جدید";}
