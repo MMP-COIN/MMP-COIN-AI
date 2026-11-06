@@ -552,6 +552,217 @@ body:after{content:"";position:fixed;width:42vw;height:42vw;max-width:620px;max-
 .boom-coin-select{display:flex;align-items:center;gap:8px;background:#090f18;border:1px solid #354255;border-radius:10px;padding:5px 10px}.boom-coin-select img{width:27px;height:27px;object-fit:contain;border-radius:50%;background:#202a38}.boom-coin-select input{border:0!important;background:transparent!important;padding:7px 2px!important;flex:1}.boom-coin-name{display:block;color:#c6a968;font-size:10px;margin-top:5px}
 .boom-chart-modal{display:none;position:fixed;inset:0;z-index:100000;background:rgba(3,7,12,.97);padding:12px;overflow:auto}.boom-chart-modal.open{display:block}.boom-chart-modal-head{position:sticky;top:0;z-index:3;display:flex;justify-content:space-between;align-items:center;padding:10px 12px;margin:-12px -12px 12px;background:#111a26;border-bottom:1px solid #79633c;color:#f1d596}.boom-chart-modal-head button{border:1px solid #59677a;background:#202b39;color:#fff;border-radius:9px;padding:7px 12px}.boom-chart-modal #boom-hunter-expanded{max-width:1100px;margin:0 auto}.boom-chart-modal #boom-hunter-expanded .boom-chart{min-height:260px}.boom-chart-modal #boom-hunter-expanded .boom-chart svg{width:100%;height:auto}.boom-modal-open{overflow:hidden}
 </style>
+<style id="mmp-hunter-app-styles">
+/* High-energy hunter: compact animated candlestick ticker */
+.hunter-card{border-radius:16px;box-shadow:0 8px 26px #0005;transition:transform .2s,border-color .2s,box-shadow .2s}
+.hunter-card.up{background:radial-gradient(ellipse at 74% 0%,#0bc48b1b,transparent 45%),linear-gradient(120deg,#10251f,#0c151b 66%,#101923);border-color:#1d9d7766;animation:hunterRiseGlow 2.8s ease-in-out infinite}
+.hunter-card.down{background:radial-gradient(ellipse at 74% 0%,#ff536d1b,transparent 45%),linear-gradient(120deg,#2a151d,#10151d 66%,#17131b);border-color:#c4475d66;animation:hunterFallGlow 2.8s ease-in-out infinite}
+@keyframes hunterRiseGlow{0%,100%{box-shadow:0 0 0 #20e0a000,0 8px 24px #0005}50%{box-shadow:0 0 22px #20e0a022,0 8px 28px #0007}}
+@keyframes hunterFallGlow{0%,100%{box-shadow:0 0 0 #ff526800,0 8px 24px #0005}50%{box-shadow:0 0 22px #ff526822,0 8px 28px #0007}}
+.hunter-mini-move{width:148px;min-width:110px;display:flex;flex-direction:column;align-items:center;gap:1px;margin-inline:auto}
+.hunter-mini-move>span{font-size:9px;font-weight:1000;letter-spacing:.4px;color:#72e9c2;text-shadow:0 0 12px #25d9a855;white-space:nowrap}
+.hunter-card.down .hunter-mini-move>span{color:#ff91a0;text-shadow:0 0 12px #ff536d55}
+.hunter-mini-svg{display:block;width:100%;height:54px;overflow:visible;filter:drop-shadow(0 0 5px #2be5b433)}
+.hunter-card.down .hunter-mini-svg{filter:drop-shadow(0 0 5px #ff526833)}
+.hunter-mini-wait{color:#d6b76b;animation:hunterPulse .8s infinite alternate}
+.hunter-card-head{display:grid;grid-template-columns:minmax(0,1fr) 148px auto;align-items:center;gap:10px}
+.hunter-coin{min-width:0}
+.hunter-score{min-width:56px}
+.hunter-card-bottom{gap:10px}
+.hunter-exchanges{margin-top:10px}
+@media(max-width:560px){.hunter-early-feed{grid-template-columns:1fr}
+}
+@keyframes hunterPulse{from{opacity:.35;transform:scale(.85)}to{opacity:1;transform:scale(1.1)}}
+@media(max-width:560px){.hunter-card-head{grid-template-columns:minmax(0,1fr) 112px auto;gap:5px}
+.hunter-mini-move{width:112px;min-width:90px}
+.hunter-mini-svg{height:46px}
+.hunter-mini-move>span{font-size:8px}
+.hunter-score{min-width:48px}
+}
+@media(prefers-reduced-motion:reduce){.hunter-card.up,.hunter-card.down{animation:none}
+}
+/* Hunter identity: tactical radar and verified exchange access */
+.market-hunter{border-color:#927b4c;background:radial-gradient(ellipse at 12% 8%,#b08b3b20,transparent 32%),radial-gradient(ellipse at 100% 40%,#14a98712,transparent 36%),linear-gradient(145deg,#111a22,#090e15 78%);isolation:isolate}
+.market-hunter:after{content:"";position:absolute;top:-110px;right:-100px;width:270px;height:270px;border:1px solid #bfa15b20;border-radius:50%;box-shadow:0 0 0 22px #bfa15b08,0 0 0 45px #bfa15b06;pointer-events:none;z-index:-1}
+.hunter-topline{position:relative}
+.hunter-topline:before{content:"◉";display:grid;place-items:center;width:40px;height:40px;float:right;margin-left:12px;border:1px solid #b89b5b;border-radius:12px;color:#f0d18c;background:linear-gradient(145deg,#e0bd6d25,#0b1118);font-size:22px;box-shadow:0 0 25px #c7a65b22}
+.hunter-live-badge{box-shadow:0 0 18px #21d6a01a}
+.hunter-card{position:relative;overflow:hidden;background:linear-gradient(112deg,#131d28 0%,#0c131c 60%,#111b20 100%);border-color:#465263}
+.hunter-card:before{content:"";position:absolute;inset:0 auto 0 0;width:2px;background:linear-gradient(transparent,#d6b76b,transparent);opacity:.65}
+.hunter-card.up:before{background:linear-gradient(transparent,#2bd4a0,transparent)}
+.hunter-card.down:before{background:linear-gradient(transparent,#ff6477,transparent)}
+.hunter-coin-emblem{position:relative;flex:0 0 44px;width:44px;height:44px;display:grid;place-items:center;border-radius:14px;background:linear-gradient(145deg,#d4b66b24,#27323d);border:1px solid #b89b5b66;box-shadow:inset 0 0 15px #d8bd7620,0 0 16px #0008}
+.hunter-coin-emblem img{width:34px;height:34px;border-radius:50%;object-fit:contain}
+.hunter-coin-emblem i{position:absolute;bottom:-5px;right:-5px;width:16px;height:16px;display:grid;place-items:center;border-radius:50%;background:#d6b76b;color:#111;font-size:11px;font-style:normal;font-weight:900}
+.hunter-symbol-tag{font-size:9px;color:#d2b66e;letter-spacing:.4px}
+.hunter-origin-tag{display:inline-flex;align-items:center;gap:3px;margin-right:5px;padding:2px 6px;border:1px solid #c7a75b88;border-radius:6px;background:linear-gradient(135deg,#d8b65a26,#8d6a241c);color:#f0d38c;font-size:9px;font-weight:900;line-height:1.4;white-space:nowrap;box-shadow:0 0 9px #c49b3b18}
+.hunter-exchanges{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin:13px 0 10px;padding:10px 11px;border:1px solid #b99a5a36;border-radius:11px;background:linear-gradient(90deg,#b9974c12,#101820)}
+.hunter-exchange-label{font-size:10px;color:#b8c2cf;margin-left:3px}
+.hunter-exchange-link{display:inline-flex;align-items:center;gap:5px;padding:7px 11px;border-radius:8px;border:1px solid #3b8b77;background:linear-gradient(135deg,#123b32,#10251f);color:#7ce2c0;font-size:10px;font-weight:900;text-decoration:none;transition:transform .18s,border-color .18s,box-shadow .18s}
+.hunter-exchange-link:hover{transform:translateY(-2px);border-color:#63e0b9;box-shadow:0 5px 16px #20b78b25}
+.hunter-exchange-link b{font-size:12px}
+.hunter-no-exchange{font-size:10px;color:#f0bd78}
+/* Compact exchange identity chips with real exchange marks */
+.hunter-exchanges{gap:6px;margin:9px 0 8px;padding:7px 9px;border-radius:10px}
+.hunter-exchange-label{width:100%;font-size:9px;color:#aeb9c7;margin:0 0 1px}
+.hunter-exchange-link{gap:5px;padding:5px 8px;border-radius:9px;font-size:9px;background:linear-gradient(135deg,#102a28,#101b23);border-color:#3a756c88}
+.hunter-exchange-logo{width:16px;height:16px;object-fit:contain;filter:drop-shadow(0 0 4px #d6c18a33)}
+.hunter-exchange-fallback{width:16px;height:16px;display:grid;place-items:center;border-radius:50%;background:#c7a65b;color:#10151c;font-size:10px;font-weight:900}
+.hunter-exchange-link b{font-size:10px;margin-right:1px}
+.hunter-card-head{gap:8px}
+.hunter-card{padding:12px}
+.hunter-card.up .hunter-exchange-link{border-color:#2a987b88}
+.hunter-card.down .hunter-exchange-link{border-color:#a64b5c88;background:linear-gradient(135deg,#321923,#17151d)}
+@media(max-width:560px){.hunter-exchanges{gap:5px;padding:7px}
+.hunter-exchange-link{padding:5px 7px}
+.hunter-exchange-logo{width:15px;height:15px}
+}
+.hunter-card.up .hunter-score{border-color:#238d6b77;background:#123a2e66}
+.hunter-card.down .hunter-score{border-color:#a8445577;background:#421c2766}
+.hunter-card.up .hunter-score b{color:#62e3ba}
+.hunter-card.down .hunter-score b{color:#ff8795}
+/* Dedicated live market hunter */
+.market-hunter{position:relative;overflow:hidden;border:1px solid #806a3d;background:radial-gradient(ellipse at 95% 0%,#5b482522,transparent 42%),linear-gradient(145deg,#151a23,#0c1018 78%);box-shadow:0 16px 44px #0005}
+.market-hunter:before{content:"";position:absolute;inset:0 0 auto;height:2px;background:linear-gradient(90deg,transparent,#e3c477,#39d8a7,#e3c477,transparent);opacity:.8}
+.hunter-topline{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.hunter-topline h2{font-size:clamp(22px,3vw,30px);margin:4px 0;color:#f4d48d;letter-spacing:-.5px}
+.hunter-topline p{max-width:650px;line-height:1.8;margin:0}
+.hunter-live-badge{display:flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid #1c8e6b66;border-radius:30px;background:#0c352a66;color:#62e4b6;font-size:11px;white-space:nowrap}
+.hunter-live-badge i,.hunter-stream-state i{width:7px;height:7px;border-radius:50%;background:#31e0a8;box-shadow:0 0 12px #31e0a8;display:inline-block;animation:hunterPulse 1.5s infinite}
+@keyframes hunterPulse{50%{opacity:.35;box-shadow:0 0 3px #31e0a8}}
+.hunter-overview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:18px 0 20px}
+.hunter-stat{padding:12px 14px;border:1px solid #ffffff12;border-radius:13px;background:linear-gradient(130deg,#1a2230,#10151e)}
+.hunter-stat small{display:block;color:#9da9b8;font-size:11px}
+.hunter-stat b{display:block;color:#f1d18a;font-size:21px;margin-top:5px;font-variant-numeric:tabular-nums}
+.hunter-early-panel{margin:4px 0 18px;padding:13px;border:1px solid #8f743d66;border-radius:15px;background:linear-gradient(135deg,#1a1b20,#10151d)}
+.hunter-early-head{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:9px}
+.hunter-early-head b{font-size:13px;color:#f0d28f}
+.hunter-early-head span{font-size:10px;color:#9ca8b7}
+.hunter-early-feed{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.hunter-early-item{min-width:0;padding:9px 10px;border-radius:11px;background:#ffffff08;border:1px solid #ffffff12;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.hunter-early-item b{font-size:12px;color:#e8edf5}
+.hunter-early-item small{display:block;color:#94a0af;font-size:10px;margin-top:3px}
+.hunter-early-item.up{border-right:2px solid #2bd4a0}
+.hunter-early-item.down{border-right:2px solid #ff6477}
+.hunter-early-item strong{font-size:12px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.hunter-early-empty{grid-column:1/-1;color:#98a4b3;font-size:11px;line-height:1.8;padding:9px 4px}
+.hunter-feed-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:4px 0 12px}
+.hunter-feed-head>b{color:#f1d18a;font-size:14px}
+.hunter-feed-head>span{font-size:10px;color:#8794a5}
+.hunter-feed{display:grid;gap:14px}
+.hunter-empty{min-height:170px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;border:1px dashed #4a5260;border-radius:15px;background:radial-gradient(ellipse at center,#1c2935,#11151d 70%);text-align:center;padding:20px}
+.hunter-empty>b{color:#e9d09a;font-size:15px}
+.hunter-empty small{color:#9ca7b5;font-size:11px;line-height:1.8;max-width:440px}
+.hunter-radar-icon{display:grid;place-items:center;width:45px;height:45px;border-radius:50%;font-size:26px;color:#e7ca86;border:1px solid #a88b4a;background:#c9a65a16;box-shadow:0 0 24px #d4b46a22}
+.hunter-card{padding:15px;border:1px solid #3c4856;border-radius:16px;background:linear-gradient(145deg,#161d28,#0d121a);box-shadow:0 10px 28px #0004;min-width:0}
+.hunter-card.up{border-right:3px solid #2bd4a0}
+.hunter-card.down{border-right:3px solid #ff6477}
+.hunter-card-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.hunter-coin{display:flex;align-items:center;gap:10px;min-width:0}
+.hunter-coin img{width:39px;height:39px;border-radius:50%;background:#fff;padding:3px;object-fit:contain}
+.hunter-coin span{display:grid;gap:4px;min-width:0}
+.hunter-coin b{color:#f0f3f8;font-size:14px}
+.hunter-coin b small{color:#9eabba;font-size:11px}
+.hunter-coin em{font-style:normal;font-size:11px;font-weight:800;color:#36d9aa}
+.hunter-card.down .hunter-coin em{color:#ff7888}
+.hunter-score{text-align:center;min-width:57px;padding:5px 9px;border-radius:10px;background:#d7b66b13;border:1px solid #b18f4c44}
+.hunter-score b{display:block;color:#f2d18c;font-size:20px}
+.hunter-score small{font-size:9px;color:#a8afbb}
+.hunter-price-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:13px 0}
+.hunter-price-row>span{padding:9px;border-radius:9px;background:#090e15;border:1px solid #ffffff0a;color:#8f9baa;font-size:10px;min-width:0}
+.hunter-price-row b{display:block;color:#e8edf4;font-size:12px;margin-top:5px;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.hunter-price-row b.up{color:#43d9ad}
+.hunter-price-row b.down{color:#ff7584}
+.hunter-card-bottom{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:12px}
+.hunter-warning{font-size:10px;color:#ffbd74;background:#4a2c191a;border:1px solid #9c683c66;border-radius:20px;padding:7px 10px}
+.hunter-confirm{font-size:10px;color:#75dfbd}
+.hunter-analyze-btn{border:1px solid #9b8049;border-radius:9px;padding:9px 12px;background:linear-gradient(120deg,#9b7434,#dfc27d);color:#17130b;font-size:11px;font-weight:900;white-space:nowrap}
+.hunter-footnote{font-size:10px;line-height:1.8;margin:13px 0 0}
+.hunter-nav-link{border-color:#927844!important;background:linear-gradient(90deg,#b58b3c18,transparent)!important}
+@media(max-width:650px){.hunter-overview{gap:7px}
+.hunter-stat{padding:10px}
+.hunter-stat b{font-size:18px}
+.hunter-price-row{grid-template-columns:repeat(2,minmax(0,1fr))}
+.hunter-card{padding:11px}
+.hunter-card-bottom{align-items:flex-start;flex-direction:column}
+.hunter-analyze-btn{width:100%}
+.hunter-feed-head{align-items:flex-start;flex-direction:column}
+.hunter-topline{align-items:flex-start}
+.hunter-live-badge{padding:7px 9px;font-size:10px}
+}
+
+
+
+
+
+
+
+
+
+
+.boom-chart-modal #boom-hunter-expanded{max-width:1100px;margin:0 auto}
+.boom-chart-modal #boom-hunter-expanded .boom-chart{min-height:260px}
+.boom-chart-modal #boom-hunter-expanded .boom-chart svg{width:100%;height:auto}
+
+
+
+/* Hunter responsive density */
+.hunter-card{cursor:default}
+.hunter-density-wide .hunter-mini-move{width:148px;min-width:130px}
+.hunter-density-medium .hunter-mini-move{width:124px;min-width:112px}
+.hunter-density-compact .hunter-mini-move{width:104px;min-width:92px}
+.hunter-density-compact .hunter-card-head{display:grid;grid-template-columns:minmax(0,1fr) 104px auto;gap:7px}
+.hunter-density-medium .hunter-card-head{display:grid;grid-template-columns:minmax(0,1fr) 124px auto;gap:8px}
+.hunter-density-compact .hunter-mini-svg{height:48px}
+.hunter-density-medium .hunter-mini-svg{height:52px}
+@media(max-width:560px){.hunter-density-compact .hunter-card-head{grid-template-columns:minmax(0,1fr) 88px auto;gap:4px}
+.hunter-density-compact .hunter-mini-move{width:88px;min-width:82px}
+.hunter-density-compact .hunter-mini-svg{height:44px}
+}
+/* Expand hunter mini-candles on tap; coin logos remain non-interactive */
+.hunter-chart-trigger{border:0;padding:0;background:transparent;color:inherit;font:inherit;cursor:zoom-in;touch-action:manipulation}
+.hunter-chart-trigger:focus-visible{outline:2px solid #d9b96d;outline-offset:3px;border-radius:9px}
+.hunter-chart-modal{display:none;position:fixed;inset:0;z-index:100000}
+.hunter-chart-modal.show{display:grid;place-items:center;padding:16px}
+.hunter-chart-backdrop{position:absolute;inset:0;background:#03070cdd;backdrop-filter:blur(9px)}
+.hunter-chart-dialog{position:relative;width:min(900px,100%);max-height:92dvh;overflow:auto;border:1px solid #a98c50;border-radius:20px;padding:18px;background:radial-gradient(ellipse at 15% 0%,#17b88a18,transparent 38%),linear-gradient(145deg,#121d28,#080e16);box-shadow:0 25px 90px #000c}
+.hunter-chart-dialog.down{background:radial-gradient(ellipse at 15% 0%,#f04f681b,transparent 38%),linear-gradient(145deg,#21151e,#080e16)}
+.hunter-chart-header{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.hunter-chart-header small,.hunter-chart-foot{color:#aeb9c5;font-size:11px}
+.hunter-chart-header h3{margin:5px 0;color:#f4d995;font-size:17px}
+.hunter-chart-close{width:38px;height:38px;border:1px solid #b99b5c77;border-radius:12px;background:#d6b76b18;color:#f3d68f;font-size:27px;line-height:1;cursor:pointer}
+.hunter-chart-trend{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:14px 0;padding:11px 13px;border:1px solid #a88b503b;border-radius:12px;background:#ffffff08}
+.hunter-chart-trend b{color:#35e5ad}
+.hunter-chart-dialog.down .hunter-chart-trend b{color:#ff647d}
+.hunter-chart-trend span{color:#c0cad4;font-size:11px}
+.hunter-chart-trend strong{margin-inline-start:auto;color:#35e5ad;font-size:16px}
+.hunter-chart-dialog.down .hunter-chart-trend strong{color:#ff8395}
+.hunter-chart-canvas{width:100%;min-height:190px;padding:8px 0}
+.hunter-expanded-svg{display:block;width:100%;height:auto;max-height:390px;overflow:visible}
+.hunter-flow-title{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:14px 0 4px;color:#e7d4a9;font-size:12px}
+.hunter-flow-title small{color:#91a4b5;font-size:10px}
+.hunter-flow-svg{display:block;width:100%;height:auto;max-height:166px}
+.hunter-flow-canvas{padding-top:4px}
+.hunter-chart-foot{line-height:1.8}
+.hunter-chart-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:8px}
+.hunter-chart-stats>div{min-width:0;padding:10px;border:1px solid #ffffff18;border-radius:11px;background:#ffffff08}
+.hunter-chart-stats small{display:block;color:#9eacba;font-size:10px}
+.hunter-chart-stats b{display:block;margin-top:5px;color:#f2d68f;font-size:12px;overflow-wrap:anywhere}
+.hunter-chart-foot{margin:12px 0 0;line-height:1.8}
+.hunter-chart-no-data{padding:45px 10px;text-align:center;color:#d4b66b}
+body.hunter-chart-open{overflow:hidden}
+@media(max-width:560px){.hunter-chart-modal.show{padding:8px}
+.hunter-chart-dialog{padding:13px;border-radius:15px;max-height:94dvh}
+.hunter-chart-header h3{font-size:14px}
+.hunter-chart-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+.hunter-chart-canvas{min-height:150px}
+.hunter-expanded-svg{min-height:180px}
+}
+
+/* MMP independent Boom Hunter research lab */
+.mmp-boom-lab{scroll-margin-top:100px;border-color:#806a3d;background:radial-gradient(ellipse at 90% 0,#b58b3920,transparent 38%),linear-gradient(145deg,#151c28,#0b111a)}
+
+</style>
 </head>
 <body class="mmp-app-mode">
 
@@ -572,6 +783,7 @@ body:after{content:"";position:fixed;width:42vw;height:42vw;max-width:620px;max-
 <div class="dropdown-menu" id="dropdownMenu">
   <a href="#hero" onclick="toggleMenu()">🏠 صفحه اصلی</a>
   <a href="#chart-section" onclick="toggleMenu()">📊 نمودار تریدینگ‌ویو</a>
+  <a href="#market-hunter" onclick="toggleMenu()">🎯 شکارچی بازار</a>
   <a href="#boom-hunter" onclick="toggleMenu()">◉ آزمایشگاه Boom Hunter</a>
   <a href="#ai-section" onclick="toggleMenu()">🤖 هوش مصنوعی تحلیلگر</a>
   <a href="#coins-section" onclick="toggleMenu()">🪙 لیست ارزهای دیجیتال</a>
@@ -632,6 +844,14 @@ body:after{content:"";position:fixed;width:42vw;height:42vw;max-width:620px;max-
 </section>
 
 <!-- تحلیلگر واقعی: داده‌های بازار + اندیکاتورها + تفسیر مدل هوش مصنوعی -->
+<section class="card market-hunter" id="market-hunter">
+ <div class="hunter-topline"><div><div class="section-kicker">MMP · LIVE MOMENTUM HUNTER</div><h2>شکارچی بازار</h2><p class="sub">پایش مستقل همه نمادهای مشترک Binance Spot و CoinMarketCap؛ شکار جهش‌ها و ریزش‌های تازه</p></div><div class="hunter-live-badge"><i></i><span>پایش زنده</span></div></div>
+ <div class="hunter-overview"><div class="hunter-stat"><small>فرصت‌های صعودی · حداکثر ۶</small><b id="hunter-bull-count">۰</b></div><div class="hunter-stat"><small>حرکت‌های نزولی · حداکثر ۶</small><b id="hunter-bear-count">۰</b></div><div class="hunter-stat"><small>آخرین پایش</small><b id="hunter-last-scan">در انتظار داده</b></div></div>
+ <div class="hunter-early-panel"><div class="hunter-early-head"><b>رادار هشدار اولیه</b><span id="hunter-early-status">در انتظار اتصال جریان سریع قیمت</span></div><div id="hunter-early-feed" class="hunter-early-feed"><div class="hunter-early-empty">حرکت‌های سریع قیمت پیش از تأیید کندلی، اینجا به‌صورت هشدار اولیه نمایش داده می‌شوند.</div></div></div>
+ <div class="hunter-feed-head"><b>حرکت‌های شناسایی‌شده</b><span id="hunter-feed-status">در حال آماده‌سازی پایش کندلی…</span></div>
+ <div id="hunter-feed" class="hunter-feed"><div class="hunter-empty"><span class="hunter-radar-icon">⌁</span><b>شکارچی آماده است</b><small>به‌محض شناسایی حرکت غیرعادی، نمودار همان ارز همین‌جا نمایش داده می‌شود.</small></div></div>
+ <p class="sub hunter-footnote">نمودار از کندل‌های ۵ دقیقه‌ای ساخته می‌شود و در صورت پشتیبانی منبع، کندل جاری با جریان زنده به‌روزرسانی خواهد شد. نمایش حرکت به معنی توصیه قطعی خرید یا فروش نیست.</p>
+</section>
 <section class="card mmp-boom-lab" id="boom-hunter">
  <div class="section-head"><div><div class="section-kicker">MMP · MOMENTUM OSCILLATOR LAB</div><h2>آزمایشگاه Boom Hunter</h2><p class="sub">بررسی مستقل مومنتوم، چرخش احتمالی قیمت، حجم و جریان خرید و فروش</p></div><span class="badge">تحلیل مستقل</span></div>
  <div class="boom-toolbar">
@@ -1547,6 +1767,491 @@ setInterval(refreshAll, 60000);
  document.addEventListener("keydown",e=>{if(e.key==="Escape")closeBoom();});
 })();
 
+</script>
+<div id="hunter-chart-modal" class="hunter-chart-modal" aria-live="polite"></div>
+<script>
+const MIN_TRUSTED_EXCHANGE_LISTINGS=1;
+const fastRadarSignals=new Map();
+const hunterCoinIndex=new Map();
+const hunterEarlyAlerts=new Map(),hunterPriceHistory=new Map(),hunterSymbolIndex=new Map(),hunterEarlyVenueSignals=new Map();
+let hunterEarlySocket=null,hunterEarlyRetryTimer=null,hunterEarlyRenderTimer=null,hunterEarlyExpiryTimer=null;
+const hunterEarlyExchangeSockets=new Map(),hunterEarlyExchangeRetry=new Map(),hunterEarlyExchangeKeepalive=new Map(),hunterEarlyExchangeState=new Map();
+let hunterStreamMarkets=[];
+
+let hunterUniverseCache={expires:0,coins:[]};
+let hunterMetadataCache={expires:0,coins:[]};
+let fastRadarBusy=false,fastRadarLastRun=0,fastRadarLastMessage="در انتظار اولین پایش سریع",fastRadarCursor=0;
+async function fetchFastCandles(symbol,coin){
+ const pair=String(symbol||"").toUpperCase()+"USDT";
+ const attempts=[
+  ["Binance Spot",async()=>{let last;for(const base of ["https://api.binance.com","https://data-api.binance.vision"]){try{const d=await hunterFetchJson(base+"/api/v3/klines?symbol="+encodeURIComponent(pair)+"&interval=1m&limit=30");if(!Array.isArray(d)||d.length<25)throw new Error("کمبود کندل");return d.map(x=>x.slice(0,6).map(Number));}catch(e){last=e;}}throw last||new Error("Binance unavailable");}],
+  ["Bybit Spot",async()=>{const d=await hunterFetchJson("https://api.bybit.com/v5/market/kline?category=spot&symbol="+encodeURIComponent(pair)+"&interval=1&limit=30");if(String(d.retCode)!=="0"||!Array.isArray(d.result?.list)||d.result.list.length<25)throw new Error(d.retMsg||"Bybit candles unavailable");return d.result.list.map(x=>[Number(x[0]),Number(x[1]),Number(x[2]),Number(x[3]),Number(x[4]),Number(x[5])]).sort((a,b)=>a[0]-b[0]);}],
+  ["OKX Spot",async()=>{const inst=String(symbol).toUpperCase()+"-USDT";const d=await hunterFetchJson("https://www.okx.com/api/v5/market/candles?instId="+encodeURIComponent(inst)+"&bar=1m&limit=30");if(String(d.code)!=="0"||!Array.isArray(d.data)||d.data.length<25)throw new Error(d.msg||"OKX candles unavailable");return d.data.map(x=>[Number(x[0]),Number(x[1]),Number(x[2]),Number(x[3]),Number(x[4]),Number(x[5])]).sort((a,b)=>a[0]-b[0]);}],
+  ["Bitget Spot",async()=>{const d=await hunterFetchJson("https://api.bitget.com/api/v3/market/candles?category=SPOT&symbol="+encodeURIComponent(pair)+"&interval=1m&limit=30");if(!["00000","0"].includes(String(d.code))||!Array.isArray(d.data)||d.data.length<25)throw new Error(d.msg||"Bitget candles unavailable");return d.data.map(x=>[Number(x[0]),Number(x[1]),Number(x[2]),Number(x[3]),Number(x[4]),Number(x[5]||0)]).sort((a,b)=>a[0]-b[0]);}],
+  ["Gate Spot",async()=>{const d=await hunterFetchJson("https://api.gateio.ws/api/v4/spot/candlesticks?currency_pair="+encodeURIComponent(String(symbol).toUpperCase()+"_USDT")+"&interval=1m&limit=30");if(!Array.isArray(d)||d.length<25)throw new Error("Gate candles unavailable");return d.map(x=>[Number(x[0])*1000,Number(x[5]),Number(x[3]),Number(x[4]),Number(x[2]),Number(x[1])]).sort((a,b)=>a[0]-b[0]);}],
+  ["KuCoin Spot",async()=>{const d=await hunterFetchJson("https://api.kucoin.com/api/v1/market/candles?type=1min&symbol="+encodeURIComponent(String(symbol).toUpperCase()+"-USDT"));if(String(d.code)!=="200000"||!Array.isArray(d.data)||d.data.length<25)throw new Error("KuCoin candles unavailable");return d.data.map(x=>[Number(x[0])*1000,Number(x[1]),Number(x[3]),Number(x[4]),Number(x[2]),Number(x[6]||x[5]||0)]).sort((a,b)=>a[0]-b[0]);}]
+ ];
+ let errors=[];
+ // اولویت منبع کندل بین صرافی‌های معتبر چرخشی است تا همیشه فقط Binance بررسی نشود.
+ const preferred=Object.entries(coin?.hunterVenueVolume||{}).filter(([,volume])=>Number(volume)>=15000).sort((a,b)=>Number(b[1])-Number(a[1])).map(([name])=>name);
+ const byName=new Map(attempts);const preferredAttempts=preferred.map(name=>[name,byName.get(name)]).filter(x=>x[1]);
+ const fallback=attempts.filter(([name])=>!preferred.includes(name));
+ const rotation=Math.floor(Date.now()/60000)%Math.max(1,fallback.length);
+ const ordered=preferredAttempts.concat(fallback.slice(rotation),fallback.slice(0,rotation));
+ for(const [provider,load] of ordered){try{const rows=await load();if(rows.length>=25&&rows.every(r=>r.slice(1,6).every(Number.isFinite)))return {rows,provider};}catch(error){errors.push(provider+": "+(error?.message||"unavailable"));}}
+ throw new Error(errors.join(" · "));
+}
+async function fetchHunterOrderFlow(symbol){
+ const pair=String(symbol||"").toUpperCase()+"USDT";
+ const raw=await hunterFetchJson("https://api.binance.com/api/v3/klines?symbol="+encodeURIComponent(pair)+"&interval=1m&limit=36",8500);
+ if(!Array.isArray(raw)||raw.length<25)throw new Error("insufficient Binance flow candles");
+ const rows=raw.map(k=>{const quote=Number(k[7])||0,buy=Number(k[10])||0,sell=Math.max(0,quote-buy);return [Number(k[0]),quote,buy,sell,buy-sell];});
+ const closed=rows.slice(0,-1),idx=closed.length-1,last=closed[idx],base=closed.slice(Math.max(0,idx-20),idx).map(x=>x[1]).filter(x=>x>0);
+ if(!last||base.length<16)throw new Error("insufficient flow baseline");
+ const avg=base.reduce((a,b)=>a+b,0)/base.length,ratio=avg>0?last[1]/avg:0;
+ const recent=closed.slice(-5),sum=k=>recent.reduce((a,x)=>a+x[k],0),quote5=sum(1),buy5=sum(2),sell5=sum(3),net5=buy5-sell5,netPct=quote5>0?net5/quote5*100:0;
+ const prev5=closed.slice(-25,-5),prevAvg=prev5.length?prev5.reduce((a,x)=>a+x[1],0)/prev5.length:0,ratio5=prevAvg>0?quote5/(prevAvg*5):0;
+ const chartRows=closed.slice(-30).map((x,i,arr)=>{const prior=arr.slice(Math.max(0,i-20),i).map(v=>v[1]).filter(v=>v>0),mean=prior.length?prior.reduce((a,b)=>a+b,0)/prior.length:avg;return [...x,mean>0?x[1]/mean:0];});
+ return {source:"Binance Spot · taker buy/sell",quote1m:last[1],buy1m:last[2],sell1m:last[3],net1m:last[4],ratio1m:ratio,quote5m,buy5m,sell5m,net5m:net5,netPct5m:netPct,volumeRatio5m:ratio5,rows:chartRows,updatedAt:Date.now(),unusual:ratio>=2||ratio5>=2.2};
+}
+async function scanFastCoin(coin){
+ const symbol=String(coin?.symbol||"").toUpperCase();
+ if(!/^[A-Z0-9]{2,20}$/.test(symbol)||NON_TRADABLE_SYMBOLS.has(symbol))return null;
+ const [{rows,provider},flowResult]=await Promise.all([fetchFastCandles(symbol),fetchHunterOrderFlow(symbol).then(flow=>({flow})).catch(error=>({flow:null,error}))]);
+ const flow=flowResult.flow;
+ if(!Array.isArray(rows)||rows.length<25)return null;
+ const valid=rows.every(r=>r.length>=6&&r.slice(1,6).every(Number.isFinite)&&Number(r[1])>0&&Number(r[2])>=Number(r[3])&&Number(r[3])>0&&Number(r[4])>0&&Number(r[5])>=0);
+ if(!valid)return null;
+ const listedVenues=Object.entries(coin.hunterVenueVolume||{}).filter(([,volume])=>Number(volume)>=15000);
+ // فیلتر نقدشوندگی متعادل‌تر: بازار واقعی و حداقل یک محل معامله فعال؛ بدون حذف خودکار فرصت‌های صرافی‌محور.
+ if(Number(coin.total_volume||0)<50000||listedVenues.length<1)return null;
+ const now=Date.now(),index=rows.length-2,last=rows[index],close=Number(last[4]),open=Number(last[1]),volume=Number(last[5]);
+ // فقط کندل بسته‌شده و تازه؛ کندل نیمه‌کاره اجازه تولید سیگنال ندارد.
+ const candleAge=now-Number(last[0]);
+ if(candleAge<60000||candleAge>3*60*1000||close<=0||open<=0||volume<=0)return null;
+ const baseline=rows.slice(index-20,index).map(x=>Number(x[5])).filter(x=>x>0);
+ if(baseline.length<16)return null;
+ const avgVolume=baseline.reduce((a,b)=>a+b,0)/baseline.length,volumeRatio=avgVolume>0?volume/avgVolume:0;
+ const change1m=(close/open-1)*100,start5=Number(rows[index-4][1]);
+ if(!Number.isFinite(start5)||start5<=0)return null;
+ const change5m=(close/start5-1)*100,dailyChange24h=Number(coin.hunterChange24h)||0,recent=rows.slice(index-7,index);
+ const priorHigh=Math.max(...recent.map(x=>Number(x[2]))),priorLow=Math.min(...recent.map(x=>Number(x[3])));
+ const breakoutUp=close>priorHigh,breakoutDown=close<priorLow,price=Number(coin.current_price)||close;
+ const overextended=Math.abs(change5m)>=1.5||Math.abs(change1m)>=0.8||Math.abs(dailyChange24h)>=18;
+ // رادار کوتاه‌مدت: کندل بسته‌شده ۱ دقیقه‌ای با تأیید حرکت ۵ دقیقه‌ای و حجم نسبی.
+ const bullMomentum=change1m>=0.08&&change5m>=0.18&&volumeRatio>=1.15&&(breakoutUp||change1m>=0.18);
+ const bearMomentum=change1m<=-0.08&&change5m<=-0.18&&volumeRatio>=1.15&&(breakoutDown||change1m<=-0.18);
+ const bullDaily=dailyChange24h>=8&&change5m>=-0.15&&volumeRatio>=0.9;
+ const bearDaily=dailyChange24h<=-8&&change5m<=0.15&&volumeRatio>=0.9;
+ const bullFlow=!!flow&&flow.unusual&&flow.netPct5m>=12&&flow.net5m>=5000&&change5m>=-0.15;
+ const bearFlow=!!flow&&flow.unusual&&flow.netPct5m<=-12&&flow.net5m<=-5000&&change5m<=0.15;
+ let trend="neutral",score=0;
+ if(bullMomentum||bearMomentum||bullFlow||bearFlow||bullDaily||bearDaily){
+  trend=(bullMomentum||bullFlow||bullDaily)?"bull":"bear";
+  const flowStrength=flow?Math.min(20,Math.abs(flow.netPct5m)*.35)+Math.min(15,Math.max(0,flow.volumeRatio5m-1)*5):0;
+  score=Math.min(99,Math.max((bullFlow||bearFlow||bullDaily||bearDaily)?72:0,Math.round(55+Math.min(16,Math.abs(change1m)*30)+Math.min(14,Math.abs(change5m)*8)+Math.min(16,Math.max(0,volumeRatio-1)*8)+(breakoutUp||breakoutDown?8:0)+flowStrength)));
+  if(score<64)return null;
+ }
+ return {trend,score,change1m,change5m,dailyChange24h,dailyMover:Math.abs(dailyChange24h)>=8,lowLiquidity:Number(coin.total_volume||0)<150000,volumeRatio,breakout:breakoutUp||breakoutDown,overextended,price,provider,flow,flowSignal:bullFlow?"inflow":bearFlow?"outflow":"",updatedAt:now,candleTime:Number(last[0]),rows:rows.map(x=>x.slice(0,6).map(Number))};
+}
+async function fetchHunterUniverse(){
+ if(Date.now()<hunterUniverseCache.expires&&hunterUniverseCache.coins.length)return hunterUniverseCache.coins;
+ // دریافت متمرکز فهرست مشترک Binance و CoinMarketCap از Worker
+ const payload=await hunterFetchJson(AI_ANALYSIS_ENDPOINT+"/hunter-universe",20000);
+ if(!Array.isArray(payload.assets)||!payload.assets.length)throw new Error(payload.detail||payload.error||"فهرست مشترک Binance و CoinMarketCap دریافت نشد");
+ const allUniverse=payload.assets.map(c=>({
+  id:String(c.id||("cmc:"+c.cmcId)),cmcId:Number(c.cmcId)||null,symbol:String(c.symbol||"").toUpperCase(),name:c.name||c.symbol,
+  image:c.image||"",current_price:Number(c.current_price)||0,total_volume:Number(c.total_volume)||0,market_cap:Number(c.market_cap)||null,
+  market_cap_rank:Number(c.market_cap_rank)||null,hunterExchange:c.hunterExchange||"Binance",hunterPriceExchange:c.hunterPriceExchange||"CoinMarketCap",
+  hunterChange24h:Number(c.hunterChange24h)||0,hunterVenueVolume:c.hunterVenueVolume||{},cmcDuplicateCount:Number(c.cmcDuplicateCount)||1
+ })).filter(c=>c.symbol&&c.current_price>0&&/^[A-Z0-9]{2,20}$/.test(c.symbol));
+ if(!allUniverse.length)throw new Error("هیچ دارایی مشترک با قیمت معتبر دریافت نشد");
+ hunterStreamMarkets=allUniverse;
+ hunterCoinIndex.clear();hunterSymbolIndex.clear();
+ allUniverse.forEach(c=>{hunterCoinIndex.set(c.id,c);hunterSymbolIndex.set(c.symbol,c);});
+ hunterUniverseCache={expires:Date.now()+60000,coins:allUniverse,sources:payload.sources||{},checkedAt:payload.checked_at||new Date().toISOString()};
+ connectHunterEarlyStream();connectHunterEarlyExchangeStreams();
+ return allUniverse;
+}
+function renderHunterEarlyAlerts(){
+ const feed=$("hunter-early-feed");if(!feed)return;
+ const now=Date.now(),items=[...hunterEarlyAlerts.values()].filter(x=>now-x.updatedAt<4*60*1000).sort((a,b)=>b.updatedAt-a.updatedAt||Math.max(Math.abs(b.move1m||0),Math.abs(b.move3m||0))-Math.max(Math.abs(a.move1m||0),Math.abs(a.move3m||0))).slice(0,8);
+ for(const [symbol,item] of hunterEarlyAlerts)if(now-item.updatedAt>=4*60*1000)hunterEarlyAlerts.delete(symbol);
+ if(!items.length){feed.innerHTML='<div class="hunter-early-empty">فعلاً جهش یا ریزش سریعِ عبورکرده از آستانه هشدار دیده نشده؛ رصد جریان قیمت ادامه دارد.</div>';return;}
+ feed.innerHTML=items.map(x=>{const m=x.triggerMove??(x.move15s!=null&&Math.abs(x.move15s)>=0.28?x.move15s:x.move30s!=null&&Math.abs(x.move30s)>=0.42?x.move30s:x.move1m!=null?x.move1m:x.move3m),label=x.triggerWindow|| (m===x.move15s?"۱۵ث":m===x.move30s?"۳۰ث":m===x.move1m?"۱د":"۳د");return '<div class="hunter-early-item '+(x.trend==="bull"?"up":"down")+'"><span><b>'+aiEscape(x.name)+' ('+aiEscape(x.symbol)+')</b><small>قیمت '+hunterPrice(x.price)+' · '+aiEscape(x.exchange||"منبع زنده")+' · هشدار '+label+' · '+new Date(x.updatedAt).toLocaleTimeString("fa-IR")+'</small></span><strong class="'+(x.trend==="bull"?"positive":"negative")+'">'+(m>0?"+":"")+Number(m||0).toFixed(2)+"٪ / "+label+'</strong></div>';}).join("");
+}
+function queueHunterEarlyRender(){
+ if(hunterEarlyRenderTimer)return;
+ hunterEarlyRenderTimer=setTimeout(()=>{hunterEarlyRenderTimer=null;renderHunterEarlyAlerts();},1500);
+}
+function updateHunterEarlyStatus(){
+ const status=$("hunter-early-status");if(!status)return;
+ const names=[["Binance","Binance"],["Bybit","Bybit"],["OKX","OKX"],["Bitget","Bitget"]].filter(([key])=>hunterEarlyExchangeState.get(key)==="connected").map(x=>x[1]);
+ status.textContent=names.length?"جریان سریع متصل: "+names.join("، ")+" · هشدار مقدماتی":"در انتظار اتصال جریان سریع صرافی‌ها";
+}
+function ingestHunterEarlyPrice(exchange,baseSymbol,rawPrice){
+ const base=String(baseSymbol||"").toUpperCase(),price=Number(rawPrice),coin=hunterSymbolIndex.get(base);
+ if(!coin||!Number.isFinite(price)||price<=0)return;
+ const now=Date.now(),historyKey=exchange+":"+base;
+ const listedVenues=Object.entries(coin.hunterVenueVolume||{}).filter(([,volume])=>Number(volume)>=50000);
+ if(Number(coin.total_volume||0)<150000||listedVenues.length<1)return;
+ let history=hunterPriceHistory.get(historyKey);if(!history){history=[];hunterPriceHistory.set(historyKey,history);}
+ const last=history[history.length-1];if(last&&now-last.t<650)return;
+ history.push({t:now,p:price});while(history.length&&now-history[0].t>240000)history.shift();
+ const prior15=[...history].reverse().find(x=>now-x.t>=12000&&now-x.t<=20000);
+ const prior30=[...history].reverse().find(x=>now-x.t>=25000&&now-x.t<=38000);
+ const prior1=[...history].reverse().find(x=>now-x.t>=55000&&now-x.t<=95000);
+ const prior3=[...history].reverse().find(x=>now-x.t>=165000&&now-x.t<=215000);
+ const samples15=history.filter(x=>now-x.t<=20000).length;
+ const move15=prior15&&samples15>=6?(price/prior15.p-1)*100:null,move30=prior30?(price/prior30.p-1)*100:null;
+ const move1=prior1?(price/prior1.p-1)*100:null,move3=prior3?(price/prior3.p-1)*100:null;
+ const trigger=move15!=null&&Math.abs(move15)>=0.28?{move:move15,window:"۱۵ث"}:move30!=null&&Math.abs(move30)>=0.42?{move:move30,window:"۳۰ث"}:move1!=null&&Math.abs(move1)>=0.65?{move:move1,window:"۱د"}:move3!=null&&Math.abs(move3)>=1.0?{move:move3,window:"۳د"}:null;
+ const trend=trigger?(trigger.move>0?"bull":"bear"):null;
+ if(!trend)return;
+ let venueSignals=hunterEarlyVenueSignals.get(base);if(!venueSignals){venueSignals=new Map();hunterEarlyVenueSignals.set(base,venueSignals);}
+ venueSignals.set(exchange,{trend,move:trigger.move,price,updatedAt:now});
+ for(const [venue,signal] of venueSignals)if(now-signal.updatedAt>30000)venueSignals.delete(venue);
+ const corroborating=[...venueSignals.values()].filter(signal=>signal.trend===trend&&now-signal.updatedAt<=30000);
+ const prices=corroborating.map(signal=>signal.price),priceSpread=prices.length>1?(Math.max(...prices)/Math.min(...prices)-1)*100:Infinity;
+ if(corroborating.length<2||priceSpread>1.5)return;
+ const movement=trigger.move,old=hunterEarlyAlerts.get(base);
+ if(!old||old.trend!==trend||now-old.updatedAt>12000||Math.abs(movement)>Math.abs(old.triggerMove||old.move1m||old.move3m||0)+0.12){
+  hunterEarlyAlerts.set(base,{id:coin.id,symbol:base,name:coin.name,trend,move15s:move15,move30s:move30,move1m:move1,move3m:move3,triggerMove:movement,triggerWindow:trigger.window,price,exchange,updatedAt:now});
+  queueHunterEarlyRender();updateHunterEarlyStatus();
+ }
+}
+function connectHunterExchangeStream(exchange,symbols){
+ if(typeof WebSocket==="undefined"||!symbols.length)return;
+ const existing=hunterEarlyExchangeSockets.get(exchange);
+ if(existing&&[WebSocket.OPEN,WebSocket.CONNECTING].includes(existing.readyState))return;
+ const retry=hunterEarlyExchangeRetry.get(exchange);if(retry){clearTimeout(retry);hunterEarlyExchangeRetry.delete(exchange);}
+ const configs={
+  Bybit:{url:"wss://stream.bybit.com/v5/public/spot",chunk:10,make:s=>"tickers."+s,heartbeat:()=>JSON.stringify({op:"ping"}),interval:20000},
+  OKX:{url:"wss://ws.okx.com:8443/ws/v5/public",chunk:80,make:s=>({channel:"tickers",instId:s.slice(0,-4)+"-USDT"}),heartbeat:()=>"ping",interval:25000},
+  Bitget:{url:"wss://ws.bitget.com/v2/ws/public",chunk:50,make:s=>({instType:"SPOT",channel:"ticker",instId:s}),heartbeat:()=>"ping",interval:25000}
+ };
+ const cfg=configs[exchange];if(!cfg)return;
+ try{
+  const ws=new WebSocket(cfg.url);hunterEarlyExchangeSockets.set(exchange,ws);hunterEarlyExchangeState.set(exchange,"connecting");
+  ws.onopen=()=>{
+   if(hunterEarlyExchangeSockets.get(exchange)!==ws)return;
+   hunterEarlyExchangeState.set(exchange,"connected");updateHunterEarlyStatus();
+   const args=symbols.map(cfg.make);
+   for(let i=0;i<args.length;i+=cfg.chunk){
+    const batch=args.slice(i,i+cfg.chunk);
+    setTimeout(()=>{if(ws.readyState===WebSocket.OPEN){try{ws.send(JSON.stringify(exchange==="Bybit"?{op:"subscribe",args:batch}:exchange==="OKX"?{op:"subscribe",args:batch}:{op:"subscribe",args:batch}));}catch(error){console.debug("Hunter "+exchange+" subscribe:",error);}}},Math.floor(i/cfg.chunk)*180);
+   }
+   const timer=setInterval(()=>{if(ws.readyState===WebSocket.OPEN){try{ws.send(cfg.heartbeat());}catch(error){}}else clearInterval(timer);},cfg.interval);
+   hunterEarlyExchangeKeepalive.set(exchange,timer);
+  };
+  ws.onmessage=event=>{
+   if(hunterEarlyExchangeSockets.get(exchange)!==ws)return;
+   try{
+    if(event.data==="pong")return;const payload=JSON.parse(event.data);if(payload.event||payload.op==="pong")return;
+    let base="",price=0;
+    if(exchange==="Bybit"){
+     const d=payload.data||{};base=String(d.symbol||payload.topic||"").replace(/^tickers\./,"").replace(/USDT$/,"");price=Number(d.lastPrice);
+    }else if(exchange==="OKX"){
+     const d=payload.data?.[0]||{};base=String(d.instId||payload.arg?.instId||"").replace("-USDT","");price=Number(d.last);
+    }else{
+     const d=payload.data?.[0]||{};base=String(payload.arg?.instId||d.instId||"").replace(/USDT$/,"");price=Number(d.lastPr||d.lastPrice);
+    }
+    if(base&&price>0)ingestHunterEarlyPrice(exchange,base,price);
+   }catch(error){console.debug("Hunter "+exchange+" ticker parse:",error);}
+  };
+  ws.onerror=()=>{try{ws.close();}catch(error){}};
+  ws.onclose=()=>{
+   if(hunterEarlyExchangeSockets.get(exchange)!==ws)return;
+   hunterEarlyExchangeSockets.delete(exchange);hunterEarlyExchangeState.set(exchange,"disconnected");
+   const timer=hunterEarlyExchangeKeepalive.get(exchange);if(timer)clearInterval(timer);hunterEarlyExchangeKeepalive.delete(exchange);
+   updateHunterEarlyStatus();
+   const retryTimer=setTimeout(()=>connectHunterExchangeStream(exchange,symbols),6000);hunterEarlyExchangeRetry.set(exchange,retryTimer);
+  };
+ }catch(error){
+  hunterEarlyExchangeState.set(exchange,"disconnected");updateHunterEarlyStatus();
+  const retryTimer=setTimeout(()=>connectHunterExchangeStream(exchange,symbols),10000);hunterEarlyExchangeRetry.set(exchange,retryTimer);
+  console.debug("Hunter "+exchange+" stream unavailable:",error);
+ }
+}
+function connectHunterEarlyExchangeStreams(){
+ const exchangeNames=["Bybit","OKX","Bitget"];
+ exchangeNames.forEach(exchange=>{
+  const symbols=hunterStreamMarkets.filter(c=>String(c.hunterExchange||"").split(",").map(x=>x.trim()).includes(exchange)).sort((a,b)=>(Number(b.hunterVenueVolume?.[exchange])||0)-(Number(a.hunterVenueVolume?.[exchange])||0)).slice(0,160).map(c=>String(c.symbol||"").toUpperCase()+"USDT").filter((x,i,a)=>/^[A-Z0-9]{2,24}USDT$/.test(x)&&a.indexOf(x)===i);
+  connectHunterExchangeStream(exchange,symbols);
+ });
+}
+function connectHunterEarlyStream(){
+ if(!hunterEarlyExpiryTimer)hunterEarlyExpiryTimer=setInterval(renderHunterEarlyAlerts,15000);
+ if(typeof WebSocket==="undefined"||hunterEarlySocket&&[WebSocket.OPEN,WebSocket.CONNECTING].includes(hunterEarlySocket.readyState))return;
+ if(hunterEarlyRetryTimer){clearTimeout(hunterEarlyRetryTimer);hunterEarlyRetryTimer=null;}
+ try{
+  const ws=new WebSocket("wss://stream.binance.com:9443/ws/!ticker@arr");hunterEarlySocket=ws;
+  ws.onopen=()=>{if(hunterEarlySocket===ws){hunterEarlyExchangeState.set("Binance","connected");updateHunterEarlyStatus();}};
+  ws.onmessage=event=>{
+   if(hunterEarlySocket!==ws)return;
+   try{
+    const payload=JSON.parse(event.data),tickers=Array.isArray(payload)?payload:(payload.data||[]);
+    tickers.forEach(t=>{const symbol=String(t.s||"");if(symbol.endsWith("USDT"))ingestHunterEarlyPrice("Binance",symbol.slice(0,-4),t.c);});
+   }catch(error){console.debug("Hunter Binance ticker parse:",error);}
+  };
+  ws.onerror=()=>{try{ws.close();}catch(error){}};
+  ws.onclose=()=>{if(hunterEarlySocket===ws){hunterEarlySocket=null;hunterEarlyExchangeState.set("Binance","disconnected");updateHunterEarlyStatus();hunterEarlyRetryTimer=setTimeout(connectHunterEarlyStream,5000);}};
+ }catch(error){hunterEarlyExchangeState.set("Binance","disconnected");updateHunterEarlyStatus();hunterEarlyRetryTimer=setTimeout(connectHunterEarlyStream,10000);}
+}
+async function runFastRadarScan(){
+ if(fastRadarBusy||Date.now()-fastRadarLastRun<45000)return;
+ fastRadarBusy=true;fastRadarLastRun=Date.now();
+ const status=$("radar-updated"),hunterStatus=$("hunter-feed-status"),hunterLast=$("hunter-last-scan");
+ let completed=0,failed=0,cursor=0,universe=[];
+ const scanned=new Map(),failedIds=new Set();
+ if(hunterStatus)hunterStatus.textContent="در حال تازه‌سازی فهرست بازارهای اسپات…";
+ if(hunterLast)hunterLast.textContent=new Date().toLocaleTimeString("fa-IR");
+ try{universe=await fetchHunterUniverse();}catch(error){console.debug("Hunter universe unavailable:",error?.message||error);universe=[];}
+ if(!universe.length){fastRadarLastMessage="دریافت فهرست بازارهای اسپات ناموفق بود؛ اتصال صرافی‌ها را بررسی کنید.";if(status)status.textContent=fastRadarLastMessage;if(hunterStatus)hunterStatus.textContent="فهرست بازارها دریافت نشد؛ پایش کندلی انجام نشد.";if(hunterLast)hunterLast.textContent="خطای دریافت داده";fastRadarBusy=false;return;}
+ // پایش چرخشی: در هر نوبت ۳۶ بازار بررسی می‌شود تا نتایج تازه‌تر به‌جای انتظار طولانی برای کل فهرست برسند.
+ const batchSize=Math.min(60,universe.length),batch=[],selectedIds=new Set();
+ // هشدارهای اولیه در اولویت بررسی کندلی قرار می‌گیرند؛ ظرفیت باقی‌مانده همچنان چرخشی است.
+ [...hunterEarlyAlerts.values()].filter(x=>Date.now()-x.updatedAt<4*60*1000).sort((a,b)=>b.updatedAt-a.updatedAt).slice(0,12).forEach(alert=>{
+  const coin=hunterCoinIndex.get(alert.id);if(coin&&!selectedIds.has(coin.id)&&batch.length<Math.min(12,batchSize)){batch.push(coin);selectedIds.add(coin.id);}
+ });
+ let offset=0;while(batch.length<batchSize&&offset<universe.length){const coin=universe[(fastRadarCursor+offset)%universe.length];offset++;if(!selectedIds.has(coin.id)){batch.push(coin);selectedIds.add(coin.id);}}
+ fastRadarCursor=(fastRadarCursor+offset)%universe.length;
+ const workers=Array.from({length:18},async()=>{
+  while(cursor<batch.length){
+   const coin=batch[cursor++];
+   try{const signal=await scanFastCoin(coin);scanned.set(coin.id,signal&&signal.trend!=="neutral"?signal:null);}
+   catch(error){failed++;failedIds.add(coin.id);if(failed<=3)console.debug("Fast radar skipped "+coin.symbol,error?.message||error);}
+   completed++;
+   if(completed%6===0||completed===batch.length){
+    const message="رصد زنده · "+completed.toLocaleString("fa-IR")+" از "+batch.length.toLocaleString("fa-IR")+" بازار این نوبت · نامزدهای تازه: "+[...scanned.values()].filter(Boolean).length.toLocaleString("fa-IR");
+    if(hunterStatus)hunterStatus.textContent=message;
+    if(status)status.textContent=message+(failed?" · خطاهای منبع: "+failed:"");
+   }
+  }
+ });
+ try{
+  await Promise.all(workers);
+  const previous=new Map(fastRadarSignals);
+  scanned.forEach((signal,id)=>{if(signal)fastRadarSignals.set(id,signal);else if(!failedIds.has(id))fastRadarSignals.delete(id);});
+  // فرصت‌های قدیمی بیش از ۸ دقیقه در فهرست فعال باقی نمی‌مانند.
+  for(const [id,signal] of fastRadarSignals){if(Date.now()-signal.updatedAt>8*60*1000)fastRadarSignals.delete(id);}
+  fastRadarLastMessage="این نوبت "+completed+" بازار از "+universe.length+" بازار اولویت‌دار بررسی شد · فرصت‌های فعال: "+fastRadarSignals.size+" · "+new Date().toLocaleTimeString("fa-IR");
+  if(status)status.textContent=fastRadarLastMessage+(failed?" · خطاهای دریافت: "+failed:"");
+  renderOpportunities();renderMarketHunter();connectHunterStreams();
+  if(!fastRadarSignals.size&&hunterStatus)hunterStatus.textContent="رصد این نوبت کامل شد؛ هنوز حرکت غیرعادی با شرایط سخت‌گیرانه تأیید نشده است.";
+  else if(hunterStatus)hunterStatus.textContent=fastRadarSignals.size.toLocaleString("fa-IR")+" شکار فعال · رصد چرخشی بازار ادامه دارد";
+  const displayed=[...fastRadarSignals.entries()].map(([id,signal])=>({coin:hunterCoinIndex.get(id),signal,id})).filter(x=>x.coin&&x.signal.score>=72).sort((a,b)=>b.signal.score-a.signal.score).slice(0,6);
+  displayed.filter(item=>{const old=previous.get(item.id);return !old||old.trend!==item.signal.trend;}).slice(0,3).forEach(item=>notifyHunterOpportunity(item.coin,item.signal));
+ }catch(error){fastRadarLastMessage="این نوبت پایش کامل نشد؛ شکارهای قبلی معتبر تا پایان مهلت نمایش حفظ شدند.";if(status)status.textContent=fastRadarLastMessage;if(hunterStatus)hunterStatus.textContent="پایش این نوبت کامل نشد؛ رصد در نوبت بعدی ادامه می‌یابد.";console.warn("Fast radar:",error);}
+ finally{fastRadarBusy=false;}
+}
+function radarScore(c){
+ const fast=fastRadarSignals.get(c.id);
+ if(fast&&Date.now()-fast.updatedAt<150000){
+  const baseVolume=Number(c.total_volume),cap=Number(c.market_cap);
+  return {score:fast.score,trend:fast.trend,h1:fast.change1m,h:fast.change5m,d:null,directional:fast.change5m,liquidity:cap>0?baseVolume/cap*100:null,range:null,dataQuality:fast.provider+" · حجم "+fast.volumeRatio.toFixed(1)+" برابر",fast};
+ }
+ const raw1h=c.price_change_percentage_1h_in_currency??c.price_change_percentage_1h;
+ const raw24=c.price_change_percentage_24h,raw7=c.price_change_percentage_7d_in_currency;
+ const h1=raw1h==null?null:Number(raw1h),h=raw24==null?null:Number(raw24),d=raw7==null?null:Number(raw7);
+ const has1h=h1!=null&&Number.isFinite(h1),has24=h!=null&&Number.isFinite(h),has7=d!=null&&Number.isFinite(d);
+ const weights={h1:.65,h24:.25,d7:.10};
+ const total=(has1h?weights.h1:0)+(has24?weights.h24:0)+(has7?weights.d7:0);
+ const directional=total?((has1h?h1*weights.h1:0)+(has24?h*weights.h24:0)+(has7?d*weights.d7:0))/total:null;
+ const v=Number(c.total_volume),m=Number(c.market_cap),hi=Number(c.high_24h),lo=Number(c.low_24h),price=Number(c.current_price);
+ const liquidity=m>0&&v>0?Math.max(0,Math.min(100,(v/m)*100*2.5)):null;
+ const range=hi>lo&&price>0?(price-lo)/(hi-lo)*100:null;
+ const trend=directional==null?"unknown":directional>.15?"bull":directional<-.15?"bear":"neutral";
+ // مومنتوم کوتاه‌مدت وزن اصلی را دارد؛ امتیاز شاخص قدرت حرکت است، نه احتمال سود.
+ const score=directional==null?0:Math.round(50+Math.min(45,Math.abs(directional)*8));
+ const parts=(has1h?1:0)+(has24?1:0)+(has7?1:0);
+ return {score,trend,h1:has1h?h1:null,h:has24?h:null,d:has7?d:null,directional,liquidity:liquidity==null?null:v/m*100,range,dataQuality:parts===3?"۱ساعت، ۲۴ساعت و هفتگی":parts===2?"دو بازه معتبر":parts===1?"یک بازه معتبر":"داده تغییرات ناقص"};
+}
+const hunterExchangeCache={expires:0,sets:null,loading:null};
+function hunterSafeSymbol(value){const symbol=String(value||"").toUpperCase();return /^[A-Z0-9]{2,24}$/.test(symbol)?symbol:"";}
+async function hunterFetchJson(url,timeoutMs){const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),Math.max(4000,Number(timeoutMs)||7000));let response;try{response=await fetch(url,{cache:"no-store",signal:controller.signal});}finally{clearTimeout(timer);}if(!response.ok)throw new Error("HTTP "+response.status);return response.json();}
+async function getHunterExchangeMarkets(){
+ if(hunterExchangeCache.sets&&Date.now()<hunterExchangeCache.expires)return hunterExchangeCache.sets;
+ if(hunterExchangeCache.loading)return hunterExchangeCache.loading;
+ hunterExchangeCache.loading=(async()=>{
+  const jobs=[
+   ["Binance",async()=>{const d=await hunterFetchJson("https://api.binance.com/api/v3/exchangeInfo");return new Set((d.symbols||[]).filter(x=>x.status==="TRADING"&&x.isSpotTradingAllowed!==false).map(x=>x.symbol));}],
+   ["Bybit",async()=>{const d=await hunterFetchJson("https://api.bybit.com/v5/market/instruments-info?category=spot&limit=1000");return new Set((d.result?.list||[]).filter(x=>x.status==="Trading").map(x=>x.symbol));}],
+   ["OKX",async()=>{const d=await hunterFetchJson("https://www.okx.com/api/v5/public/instruments?instType=SPOT");return new Set((d.data||[]).filter(x=>x.state==="live").map(x=>x.instId.replace("-","")));}],
+   ["Bitget",async()=>{const d=await hunterFetchJson("https://api.bitget.com/api/v2/spot/public/symbols");return new Set((d.data||[]).filter(x=>String(x.status).toLowerCase()==="online").map(x=>x.symbol));}],
+   ["Gate",async()=>{const d=await hunterFetchJson("https://api.gateio.ws/api/v4/spot/currency_pairs");return new Set((Array.isArray(d)?d:[]).filter(x=>x.quote==="USDT"&&x.trade_status==="tradable").map(x=>String(x.id).replace("_","")));}],
+   ["KuCoin",async()=>{const d=await hunterFetchJson("https://api.kucoin.com/api/v1/market/allTickers");return new Set((d.data?.ticker||[]).filter(x=>String(x.symbol).endsWith("-USDT")).map(x=>String(x.symbol).replace("-","")));}]
+  ];
+  const results=await Promise.all(jobs.map(async([name,fn])=>{try{return [name,await fn()];}catch(error){console.debug("Hunter listing check "+name,error?.message||error);return [name,null];}}));
+  const sets=new Map(results.filter(x=>x[1]));
+  hunterExchangeCache.sets=sets;hunterExchangeCache.expires=Date.now()+10*60*1000;return sets;
+ })().finally(()=>{hunterExchangeCache.loading=null;});
+ return hunterExchangeCache.loading;
+}
+function hunterTradeUrl(exchange,symbol){
+ const pair=hunterSafeSymbol(symbol)+"USDT";if(!/^[A-Z0-9]+USDT$/.test(pair))return "";
+ if(exchange==="Binance")return "https://www.binance.com/en/trade/"+hunterSafeSymbol(symbol)+"_USDT";
+ if(exchange==="Bybit")return "https://www.bybit.com/trade/spot/"+pair;
+ if(exchange==="OKX")return "https://www.okx.com/trade-spot/"+hunterSafeSymbol(symbol).toLowerCase()+"-usdt";
+ if(exchange==="Bitget")return "https://www.bitget.com/en/spot/"+pair+"_SPBL";
+ if(exchange==="Gate")return "https://www.gate.com/trade/"+hunterSafeSymbol(symbol)+"_USDT";
+ if(exchange==="KuCoin")return "https://www.kucoin.com/trade/"+hunterSafeSymbol(symbol)+"-USDT";
+ return "";
+}
+function hunterCoinImage(coin){
+ const symbol=String(coin?.symbol||"").toUpperCase();
+ if(coin?.image&&/^https:\/\//i.test(String(coin.image)))return String(coin.image);
+ const matches=cachedCoinsData.filter(c=>String(c.symbol||"").toUpperCase()===symbol&&/^https:\/\//i.test(String(c.image||"")));
+ const named=matches.find(c=>String(c.name||"").toLowerCase()===String(coin?.name||"").toLowerCase());
+ if(named)return named.image;
+ if(matches.length===1)return matches[0].image;
+ // آیکون مستقل از صرافی؛ در صورت نبود تصویر اصلی از سرویس آیکون جایگزین استفاده می‌شود.
+ return "https://assets.coincap.io/assets/icons/"+symbol.toLowerCase()+"@2x.png";
+}
+function hunterCoinImageError(img){
+ if(!img||!img.dataset)return;
+ const symbol=String(img.dataset.symbol||"").toLowerCase(),step=Number(img.dataset.imageFallback||"0");
+ if(step===0){img.dataset.imageFallback="1";img.src="https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/"+symbol+".png";return;}
+ img.style.display="none";
+ if(img.nextElementSibling)img.nextElementSibling.style.display="grid";
+}
+function hunterExchangeLogo(name){
+ const key=String(name||"").trim().toLowerCase();
+ const logos={binance:"binance",bybit:"bybit",okx:"okx",bitget:"bitget",gate:"gateio",kucoin:"kucoin"};
+ const slug=logos[key];return slug?"https://cdn.jsdelivr.net/npm/simple-icons@v15/icons/"+slug+".svg":"";
+}
+async function loadHunterListings(entries){
+ entries.forEach(({id,coin})=>{
+  const target=document.querySelector('[data-hunter-exchanges="'+id+'"]');if(!target)return;
+  const symbol=hunterSafeSymbol(coin.symbol);if(!symbol)return;
+  const listed=String(coin.hunterExchange||"").split(",").map(x=>x.trim()).filter(Boolean);
+  if(listed.length<MIN_TRUSTED_EXCHANGE_LISTINGS){target.innerHTML='<span class="hunter-no-exchange">در صرافی‌های معتبر فهرست نشده · معامله غیرفعال</span>';return;}
+  target.innerHTML='<span class="hunter-exchange-label">صرافی‌های دارای این جفت‌ارز:</span>'+listed.map(name=>{const logo=hunterExchangeLogo(name);return '<a class="hunter-exchange-link" href="'+hunterTradeUrl(name,symbol)+'" target="_blank" rel="noopener noreferrer" aria-label="معامله '+symbol+' در '+aiEscape(name)+'">'+(logo?'<img class="hunter-exchange-logo" src="'+logo+'" alt="" loading="lazy">':'<span class="hunter-exchange-fallback">'+aiEscape(name.slice(0,1))+'</span>')+'<span>'+aiEscape(name)+'</span><b>↗</b></a>';}).join("");
+ });
+}
+// هشدارهای شکارچی عمداً به‌صورت اعلان یا پیام روی صفحه نمایش داده نمی‌شوند.
+function notifyHunterOpportunity(){return;}
+
+const hunterSockets=new Map();
+function hunterPrice(value){const n=Number(value);return Number.isFinite(n)?n.toLocaleString("en-US",{maximumFractionDigits:n<1?8:3}):"—";}
+function hunterMiniCandles(rows,trend){
+ const data=(rows||[]).slice(-12);if(data.length<2)return '<span class="hunter-mini-wait">●</span>';
+ const W=148,H=54,p=5,hi=Math.max(...data.map(x=>Number(x[2]))),lo=Math.min(...data.map(x=>Number(x[3]))),span=Math.max(hi-lo,Math.abs(hi)*.00001,1e-12),y=v=>p+(hi-Number(v))/span*(H-p*2),slot=(W-p*2)/data.length,cw=Math.max(3,Math.min(6,slot*.56));
+ let svg='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="نمای کوچک حرکت کندل‌ها" class="hunter-mini-svg"><defs><linearGradient id="hunterGlow'+(trend==="bull"?"Up":"Down")+'" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="'+(trend==="bull"?"#35f0b5":"#ff647d")+'" stop-opacity=".3"/><stop offset="1" stop-color="'+(trend==="bull"?"#35f0b5":"#ff647d")+'" stop-opacity="0"/></linearGradient></defs><path d="M0 '+(H-3)+' L0 '+(H-15)+' L'+W+' '+(trend==="bull"?7:H-10)+' L'+W+' '+H+' Z" fill="url(#hunterGlow'+(trend==="bull"?"Up":"Down")+')"/>';
+ data.forEach((c,i)=>{const x=p+i*slot+slot/2,o=Number(c[1]),cl=Number(c[4]),up=cl>=o,col=up?"#35e5ad":"#ff647d",top=Math.min(y(o),y(cl)),body=Math.max(2,Math.abs(y(o)-y(cl)));svg+='<path d="M'+x+' '+y(c[2])+' V'+y(c[3])+'" stroke="'+col+'" stroke-width="1.5" stroke-linecap="round"/><rect x="'+(x-cw/2)+'" y="'+top+'" width="'+cw+'" height="'+body+'" rx="1.2" fill="'+col+'"/>';});
+ const last=data[data.length-1],x=W-8,yy=y(Number(last[4])),arrow=trend==="bull"?"M132 18 L143 7 M136 7 H143 V14":"M132 36 L143 47 M136 47 H143 V40";
+ svg+='<path d="'+arrow+'" fill="none" stroke="'+(trend==="bull"?"#6affc8":"#ff8395")+'" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="'+x+'" cy="'+yy+'" r="3" fill="'+(trend==="bull"?"#6affc8":"#ff8395")+'"/><circle cx="'+x+'" cy="'+yy+'" r="6" fill="none" stroke="'+(trend==="bull"?"#6affc8":"#ff8395")+'" opacity=".45"/>';return svg+'</svg>';
+}
+function hunterExpandedCandles(rows,trend){
+ const data=(rows||[]).filter(c=>Array.isArray(c)&&c.length>=5&&[1,2,3,4].every(i=>Number.isFinite(Number(c[i])))).slice(-30);
+ if(data.length<2)return '<div class="hunter-chart-no-data">داده کندلی کافی برای نمایش نمودار وجود ندارد.</div>';
+ const W=760,H=300,L=54,R=18,T=20,B=34,hi=Math.max(...data.map(c=>Number(c[2]))),lo=Math.min(...data.map(c=>Number(c[3]))),span=Math.max(hi-lo,Math.abs(hi)*.00001,1e-12),y=v=>T+(hi-Number(v))/span*(H-T-B),slot=(W-L-R)/data.length,cw=Math.max(5,Math.min(15,slot*.58));
+ let svg='<svg class="hunter-expanded-svg" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="نمودار کندل یک دقیقه‌ای" preserveAspectRatio="xMidYMid meet">';
+ for(let g=0;g<5;g++){const yy=T+g*(H-T-B)/4,val=hi-g*span/4;svg+='<line x1="'+L+'" y1="'+yy+'" x2="'+(W-R)+'" y2="'+yy+'" stroke="#8290a0" stroke-opacity=".18" stroke-dasharray="4 5"/><text x="'+(L-9)+'" y="'+(yy+4)+'" text-anchor="end" fill="#aab5c2" font-size="11">'+hunterPrice(val)+'</text>';}
+ data.forEach((c,i)=>{const x=L+i*slot+slot/2,o=Number(c[1]),cl=Number(c[4]),up=cl>=o,col=up?"#35e5ad":"#ff647d",top=Math.min(y(o),y(cl)),body=Math.max(2,Math.abs(y(o)-y(cl)));svg+='<line x1="'+x+'" y1="'+y(c[2])+'" x2="'+x+'" y2="'+y(c[3])+'" stroke="'+col+'" stroke-width="2" stroke-linecap="round"/><rect x="'+(x-cw/2)+'" y="'+top+'" width="'+cw+'" height="'+body+'" rx="2" fill="'+col+'"/>'+(i%Math.max(1,Math.ceil(data.length/6))===0?'<text x="'+x+'" y="'+(H-9)+'" text-anchor="middle" fill="#9aa7b5" font-size="10">'+new Date(Number(c[0])).toLocaleTimeString("fa-IR",{hour:"2-digit",minute:"2-digit"})+'</text>':'');});
+ const first=Number(data[0][4]),last=Number(data[data.length-1][4]),color=trend==="bull"?"#35e5ad":"#ff647d",lastY=y(last);
+ svg+='<line x1="'+L+'" y1="'+lastY+'" x2="'+(W-R)+'" y2="'+lastY+'" stroke="'+color+'" stroke-width="1.5" stroke-dasharray="5 4" opacity=".8"/><circle cx="'+(W-R)+'" cy="'+lastY+'" r="4" fill="'+color+'"/></svg>';return svg;
+}
+function hunterExpandedFlow(flow){
+ const rows=(flow?.rows||[]).slice(-30);if(rows.length<2)return '<div class="hunter-chart-no-data">جریان خرید و فروش تهاجمی Binance در دسترس نیست.</div>';
+ const W=760,H=166,L=54,R=18,T=22,B=22,slot=(W-L-R)/rows.length,max=Math.max(1,...rows.map(x=>Math.abs(Number(x[4])||0))),scale=(H-T-B)/2/max,mid=T+(H-T-B)/2,cw=Math.max(5,Math.min(15,slot*.58));
+ let svg='<svg class="hunter-flow-svg" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="جریان خالص خرید و فروش تهاجمی بر حسب تتر" preserveAspectRatio="xMidYMid meet"><line x1="'+L+'" y1="'+mid+'" x2="'+(W-R)+'" y2="'+mid+'" stroke="#8c9baa" stroke-opacity=".55" stroke-dasharray="4 4"/>';
+ rows.forEach((r,i)=>{const x=L+i*slot+slot/2,net=Number(r[4])||0,bar=Math.abs(net)*scale,col=net>=0?"#35e5ad":"#ff647d";svg+='<rect x="'+(x-cw/2)+'" y="'+(net>=0?mid-bar:mid)+'" width="'+cw+'" height="'+Math.max(1,bar)+'" rx="2" fill="'+col+'" opacity=".9"/>'+(i%Math.max(1,Math.ceil(rows.length/6))===0?'<text x="'+x+'" y="'+(H-4)+'" text-anchor="middle" fill="#9aa7b5" font-size="10">'+new Date(Number(r[0])).toLocaleTimeString("fa-IR",{hour:"2-digit",minute:"2-digit"})+'</text>':'');});
+ svg+='<text x="'+L+'" y="12" fill="#35e5ad" font-size="11">خرید تهاجمی ↑</text><text x="'+(W-R)+'" y="12" text-anchor="end" fill="#ff647d" font-size="11">فروش تهاجمی ↓</text></svg>';return svg;
+}
+function hunterUsd(value){const n=Number(value)||0;return (n>=1000000?(n/1000000).toFixed(2)+"M":n>=1000?(n/1000).toFixed(1)+"K":n.toFixed(0))+" USDT";}
+
+function openHunterChart(id){
+ const signal=fastRadarSignals.get(id),coin=hunterCoinIndex.get(id)||cachedCoinsData.find(c=>c.id===id);
+ if(!signal||!coin)return;
+ const rows=(signal.rows||[]).slice(-30),symbol=String(coin.symbol||"").toUpperCase(),up=signal.trend==="bull",trend=up?"روند صعودی":"روند نزولی",change=rows.length>1&&Number(rows[0][1])?(Number(rows[rows.length-1][4])/Number(rows[0][1])-1)*100:signal.change5m;
+ const modal=document.getElementById("hunter-chart-modal");
+ if(!modal)return;
+ modal.innerHTML='<div class="hunter-chart-backdrop" data-hunter-chart-close="1"></div><section class="hunter-chart-dialog '+(up?"up":"down")+'" role="dialog" aria-modal="true" aria-labelledby="hunter-chart-title"><header class="hunter-chart-header"><div><small>نمودار زنده شکار · تایم‌فریم ۱ دقیقه</small><h3 id="hunter-chart-title">'+aiEscape(coin.name)+' ('+aiEscape(symbol)+'/USDT)</h3></div><button type="button" class="hunter-chart-close" data-hunter-chart-close="1" aria-label="بستن نمودار">×</button></header><div class="hunter-chart-trend"><b>'+trend+'</b><span>قدرت حرکت '+Number(signal.score||0).toLocaleString("fa-IR")+' از ۱۰۰</span><strong>'+((Number(change)>=0?"+":"")+Number(change||0).toFixed(2))+'٪</strong></div><div class="hunter-chart-canvas">'+hunterExpandedCandles(rows,signal.trend)+'</div><div class="hunter-flow-title"><b>جریان خرید و فروش تهاجمی · Binance Spot</b><small>سبز: خرید به قیمت بازار · قرمز: فروش به قیمت بازار</small></div><div class="hunter-chart-canvas hunter-flow-canvas">'+hunterExpandedFlow(signal.flow)+'</div><div class="hunter-chart-stats"><div><small>خرید تهاجمی ۵ دقیقه</small><b>'+hunterUsd(signal.flow?.buy5m)+'</b></div><div><small>فروش تهاجمی ۵ دقیقه</small><b>'+hunterUsd(signal.flow?.sell5m)+'</b></div><div><small>خالص جریان ۵ دقیقه</small><b class="'+(Number(signal.flow?.net5m)>=0?"up":"down")+'">'+(Number(signal.flow?.net5m)>=0?"+":"")+hunterUsd(signal.flow?.net5m)+'</b></div><div><small>حجم غیرعادی</small><b>'+Number(signal.flow?.volumeRatio5m||signal.volumeRatio||0).toFixed(1)+'× میانگین</b></div><div><small>آخرین قیمت</small><b>'+hunterPrice(signal.price)+'</b></div><div><small>بالاترین کندل</small><b>'+hunterPrice(Math.max(...rows.map(c=>Number(c[2])||0)))+'</b></div><div><small>پایین‌ترین کندل</small><b>'+hunterPrice(Math.min(...rows.map(c=>Number(c[3])||0)))+'</b></div><div><small>حجم نسبی</small><b>'+Number(signal.volumeRatio||0).toFixed(1)+'×</b></div></div><p class="hunter-chart-foot">'+(signal.flow?.unusual?"حجم غیرعادی شناسایی شد. ":"")+'جریان خالص از حجم خرید و فروش تهاجمی Binance محاسبه شده و معادل ورود یا خروج قطعی سرمایه کل بازار نیست.</p></section>';
+ modal.classList.add("show");document.body.classList.add("hunter-chart-open");
+ const close=modal.querySelector(".hunter-chart-close");if(close)close.focus();
+}
+function closeHunterChart(){
+ const modal=document.getElementById("hunter-chart-modal");if(!modal)return;
+ modal.classList.remove("show");document.body.classList.remove("hunter-chart-open");
+}
+function renderMarketHunter(){
+ const feed=$("hunter-feed");if(!feed)return;
+ const candidates=[...fastRadarSignals.entries()].map(([id,signal])=>({coin:hunterCoinIndex.get(id)||cachedCoinsData.find(c=>c.id===id),signal,id})).filter(x=>x.coin&&Date.now()-x.signal.updatedAt<8*60*1000&&x.signal.score>=72);
+ const rank=(a,b)=>b.signal.score-a.signal.score;
+ const entries=[...candidates.filter(x=>x.signal.trend==="bull").sort(rank).slice(0,6),...candidates.filter(x=>x.signal.trend==="bear").sort(rank).slice(0,6)];
+ const density=entries.length<=2?"wide":entries.length<=6?"medium":"compact";
+ const bulls=entries.filter(x=>x.signal.trend==="bull").length,bears=entries.filter(x=>x.signal.trend==="bear").length;
+ if($("hunter-bull-count"))$("hunter-bull-count").textContent=bulls.toLocaleString("fa-IR");
+ if($("hunter-bear-count"))$("hunter-bear-count").textContent=bears.toLocaleString("fa-IR");
+ if($("hunter-last-scan"))$("hunter-last-scan").textContent=fastRadarLastRun?new Date(fastRadarLastRun).toLocaleTimeString("fa-IR"):"—";
+ if($("hunter-feed-status"))$("hunter-feed-status").textContent=entries.length?entries.length.toLocaleString("fa-IR")+" حرکت فعال · مرتب‌سازی بر اساس قدرت حرکت":"هنوز حرکت تأییدشده‌ای پیدا نشده";
+ if(!entries.length){feed.innerHTML='<div class="hunter-empty"><span class="hunter-radar-icon">⌁</span><b>در حال رصد بازار</b><small>تمام نمادهای مشترک Binance Spot و CoinMarketCap به‌صورت چرخشی از نظر جهش، ریزش و حجم غیرعادی بررسی می‌شوند.</small></div>';return;}
+ feed.innerHTML=entries.map(({coin:c,signal:m,id})=>{
+  const up=m.trend==="bull",direction=up?"جهش صعودی":"ریزش نزولی",cls=up?"up":"down",mainSymbols=new Set(cachedCoinsData.map(x=>String(x.symbol||"").toUpperCase())),isMain100=mainSymbols.has(String(c.symbol||"").toUpperCase()),originTag=isMain100?"":'<small class="hunter-origin-tag" title="این ارز خارج از فهرست اصلی ۱۰۰ ارز است">🎯 شکار</small>',risk=m.overextended?'<span class="hunter-warning">حرکت کش‌آمده · ورود دیرهنگام پرریسک</span>':m.dailyMover?'<span class="hunter-confirm">حرکت ۲۴ساعته قابل‌توجه · منتظر تأیید کندلی</span>':m.lowLiquidity?'<span class="hunter-warning">نقدشوندگی محدود · ریسک لغزش قیمت</span>':'<span class="hunter-confirm">'+(m.breakout?"شکست محدوده تأیید شد":"شتاب حرکت در حال شکل‌گیری")+'</span>';
+  return '<article class="hunter-card '+cls+' hunter-density-'+density+'" data-hunter-card="'+aiEscape(id)+'"><div class="hunter-card-head"><div class="hunter-coin"><div class="hunter-coin-emblem"><img src="'+aiEscape(hunterCoinImage(c))+'" data-symbol="'+aiEscape(String(c.symbol).toUpperCase())+'" alt="'+aiEscape(String(c.symbol).toUpperCase())+'" loading="lazy" onerror="hunterCoinImageError(this)"><i style="display:none">'+aiEscape(String(c.symbol).slice(0,1).toUpperCase())+'</i></div><span><b>'+aiEscape(c.name)+' <small>('+aiEscape(String(c.symbol).toUpperCase())+')</small>'+originTag+'</b><em>'+direction+'</em><small class="hunter-symbol-tag">نماد معاملاتی: '+aiEscape(String(c.symbol).toUpperCase())+'/USDT</small></span></div><button type="button" class="hunter-mini-move hunter-chart-trigger" data-hunter-mini="'+aiEscape(id)+'" data-hunter-chart="'+aiEscape(id)+'" aria-label="نمایش نمودار بزرگ '+aiEscape(String(c.symbol).toUpperCase())+'"><span>'+(up?'پرواز قیمت ↑':'سقوط قیمت ↓')+'</span>'+hunterMiniCandles(m.rows,m.trend)+'</button><div class="hunter-score"><b>'+m.score.toLocaleString("fa-IR")+'</b><small>قدرت حرکت</small></div></div><div class="hunter-exchanges" data-hunter-exchanges="'+aiEscape(id)+'"><span class="hunter-exchange-label">در حال بررسی بازارهای قابل معامله…</span></div><div class="hunter-price-row"><span>قیمت مرجع <b class="hunter-live-price">'+hunterPrice(m.price)+'</b></span><span>حجم نسبی <b>'+m.volumeRatio.toFixed(1)+'×</b></span><span>خالص جریان ۵ دقیقه <b class="'+(Number(m.flow?.net5m)>=0?"up":"down")+'">'+(Number(m.flow?.net5m)>=0?"+":"")+hunterUsd(m.flow?.net5m)+'</b></span><span>تغییر ۱ دقیقه <b class="'+cls+'">'+(m.change1m>0?"+":"")+m.change1m.toFixed(2)+'٪</b></span><span>تغییر ۵ دقیقه <b class="'+cls+'">'+(m.change5m>0?"+":"")+m.change5m.toFixed(2)+'٪</b></span><span>تغییر ۲۴ ساعت <b class="'+(m.dailyChange24h>=0?"up":"down")+'">'+(m.dailyChange24h>0?"+":"")+Number(m.dailyChange24h||0).toFixed(2)+'٪</b></span></div><div class="hunter-card-bottom">'+risk+'</div></article>';
+ }).join("");
+ loadHunterListings(entries.map(({coin,id})=>({coin,id}))).catch(error=>console.debug("Hunter exchange listing check:",error));
+}
+
+document.addEventListener("click",function(event){
+ const trigger=event.target.closest("[data-hunter-chart]");
+ if(trigger){event.preventDefault();event.stopPropagation();openHunterChart(trigger.getAttribute("data-hunter-chart"));return;}
+ if(event.target.closest("[data-hunter-chart-close]"))closeHunterChart();
+});
+document.addEventListener("keydown",function(event){if(event.key==="Escape")closeHunterChart();});
+function connectHunterStreams(){
+ const entries=[...fastRadarSignals.entries()].filter(([,m])=>m.provider.includes("Binance")).sort((a,b)=>b[1].score-a[1].score).slice(0,12),wanted=new Set(entries.map(([id])=>id));
+ for(const [id,ws] of hunterSockets){if(!wanted.has(id)){try{ws.close();}catch(e){}hunterSockets.delete(id);}}
+ entries.forEach(([id,m])=>{
+  if(hunterSockets.has(id)||typeof WebSocket==="undefined")return;
+  const coin=hunterCoinIndex.get(id)||cachedCoinsData.find(c=>c.id===id);if(!coin)return;
+  try{
+   const ws=new WebSocket("wss://stream.binance.com:9443/ws/"+String(coin.symbol||"").toLowerCase()+"usdt@kline_5m");hunterSockets.set(id,ws);
+   ws.onmessage=event=>{try{const payload=JSON.parse(event.data),k=payload.k;if(!k)return;const current=fastRadarSignals.get(id);if(!current)return;const row=[Number(k.t),Number(k.o),Number(k.h),Number(k.l),Number(k.c),Number(k.v)],rows=current.rows||[],last=rows[rows.length-1];if(last&&Number(last[0])===row[0])rows[rows.length-1]=row;else rows.push(row);current.rows=rows.slice(-30);current.price=row[4];current.change1m=(row[4]/row[1]-1)*100;current.change5m=(row[4]/Number(current.rows[Math.max(0,current.rows.length-5)][1])-1)*100;current.updatedAt=Date.now();const mini=document.querySelector('[data-hunter-mini="'+id+'"]');if(mini)mini.innerHTML='<span>'+(current.trend==="bull"?"پرواز قیمت ↑":"سقوط قیمت ↓")+'</span>'+hunterMiniCandles(current.rows,current.trend);const card=document.querySelector('[data-hunter-card="'+id+'"]');if(card){const price=card.querySelector(".hunter-live-price");if(price)price.textContent=hunterPrice(current.price);}}catch(error){console.debug("Hunter stream parse:",error);}};
+   ws.onerror=()=>{try{ws.close();}catch(e){}};ws.onclose=()=>{if(hunterSockets.get(id)===ws)hunterSockets.delete(id);};
+  }catch(error){console.debug("Hunter websocket unavailable:",error);}
+ });
+}
+function renderOpportunities(){
+ const el=$("opportunity-list");
+ if(!el)return;
+ if(!cachedCoinsData.length){el.innerHTML='<div class="ai-empty">داده بازار هنوز دریافت نشده است.</div>';return;}
+ const scored=cachedCoinsData.map(c=>({coin:c,metrics:radarScore(c)}));
+ const rankRadar=(a,b)=>(b.metrics.score-a.metrics.score)||(Math.abs(b.metrics.directional??0)-Math.abs(a.metrics.directional??0));
+ const bullish=scored.filter(x=>x.metrics.trend==="bull"&&x.metrics.score>=80).sort(rankRadar);
+ const bearish=scored.filter(x=>x.metrics.trend==="bear"&&x.metrics.score>=80).sort(rankRadar);
+ const bullish70=scored.filter(x=>x.metrics.trend==="bull"&&x.metrics.score>=70&&x.metrics.score<80).sort(rankRadar);
+ const bearish70=scored.filter(x=>x.metrics.trend==="bear"&&x.metrics.score>=70&&x.metrics.score<80).sort(rankRadar);
+ const updated=$("radar-updated");
+ if(updated)updated.textContent="غربالگری خودکار "+cachedCoinsData.length+" ارز · صعودی: "+bullish.length+" قوی + "+bullish70.length+" در انتظار · نزولی: "+bearish.length+" قوی + "+bearish70.length+" در انتظار · "+new Date().toLocaleTimeString("fa-IR"); const chartSelect=$("tv-symbol");
+ if(chartSelect){
+  const previous=chartSelect.value||"BINANCE:BTCUSDT";
+  const options=['<option value="BINANCE:BTCUSDT">Bitcoin (BTC)</option>'];
+  cachedCoinsData.forEach(c=>{
+   const symbol="BINANCE:"+String(c.symbol||"").toUpperCase()+"USDT";
+   if(symbol!=="BINANCE:BTCUSDT"&&!options.some(x=>x.includes('value="'+symbol+'"')))options.push('<option value="'+aiEscape(symbol)+'">'+aiEscape(c.name)+' ('+aiEscape(String(c.symbol).toUpperCase())+')</option>');
+  });
+  chartSelect.innerHTML=options.join("");
+  if([...chartSelect.options].some(o=>o.value===previous))chartSelect.value=previous;
+ }
+ const group=(title,count,trend)=>'<section class="radar-count-card '+trend+'"><span>'+title+'</span><b>'+count.toLocaleString("fa-IR")+'</b><small>ارز</small></section>';
+ const card=x=>{
+  const c=x.coin,m=x.metrics,up=m.trend==="bull",down=m.trend==="bear";
+  const direction=up?"تمایل صعودی":down?"تمایل نزولی":m.trend==="neutral"?"خنثی / در انتظار":"داده ناکافی";
+  const change=v=>v==null?"ناموجود":(v>0?"+":"")+v.toFixed(2)+"٪";
+  const change1h=m.h1==null?"ناموجود":(m.h1>0?"+":"")+m.h1.toFixed(2)+"٪";
+
+  return '<article class="radar-item '+(up?"radar-item-bullish":down?"radar-item-bearish":"radar-item-neutral")+'"><div class="radar-asset"><img src="'+aiEscape(c.image||"")+'" alt="" loading="lazy"><span><b>'+aiEscape(c.name)+'</b><small>'+aiEscape(String(c.symbol).toUpperCase())+'</small><strong class="radar-direction-label">'+direction+'</strong></span></div><div class="radar-score"><b>'+m.score.toLocaleString("fa-IR")+'</b><small>قدرت روند</small></div><div class="radar-stats">'+(m.fast?'<span>تغییر ۱دقیقه<b class="'+(m.fast.change1m>=0?"positive":"negative")+'">'+change(m.fast.change1m)+'</b></span><span>تغییر ۵دقیقه<b class="'+(m.fast.change5m>=0?"positive":"negative")+'">'+change(m.fast.change5m)+'</b></span><span>حجم نسبی<b>'+m.fast.volumeRatio.toFixed(1)+'×</b></span>':'<span>تغییر ۱ساعته<b>'+change1h+'</b></span><span>تغییر ۲۴ساعته<b>'+change(m.h)+'</b></span><span>نقدشوندگی نسبی<b>'+(m.liquidity==null?"ناموجود":m.liquidity.toFixed(2)+"٪")+'</b></span>')+'</div><div class="radar-action"><span class="radar-trend">'+(m.fast?(m.fast.overextended?"حرکت سریع؛ ورود دیرهنگام پرریسک":"شتاب لحظه‌ای · "+(m.fast.breakout?"شکست محدوده":"در حال شکل‌گیری")):(m.dataQuality||""))+'</span></div></article>';
+ };
+ const list=(title,items,lower,cls)=>'<section class="radar-side '+cls+'"><div class="section-head radar-group-head"><div><b class="radar-large-heading">'+title+'</b></div><span class="badge">'+items.length.toLocaleString("fa-IR")+' ارز</span></div><div class="radar-list">'+items.slice(0,4).map(card).join("")+'</div>'+(items.length>4?'<details class="radar-more"><summary><span class="radar-toggle-copy"><b>'+items.length.toLocaleString("fa-IR")+' ارز</b></span><span class="radar-expand-action" aria-hidden="true"></span></summary><div class="radar-list">'+items.slice(4).map(card).join("")+'</div></details>':"")+(lower.length?'<details class="radar-more radar-below-threshold"><summary><span class="radar-toggle-copy"><b>'+lower.length.toLocaleString("fa-IR")+' ارز</b></span><span class="radar-expand-action" aria-hidden="true"></span></summary><div class="radar-list">'+lower.map(card).join("")+'</div></details>':"")+'</section>';
+ el.innerHTML=list("فرصت‌های صعودی",bullish,bullish70,"bull")+list("فرصت‌های نزولی",bearish,bearish70,"bear");
+ // AI radar scan is manual to prevent background requests exhausting the analysis quota.
+}
+
+renderOpportunities();
+setTimeout(()=>runFastRadarScan(),5000);
+setInterval(()=>runFastRadarScan(),60000);
 </script>
 </body>
 </html>
