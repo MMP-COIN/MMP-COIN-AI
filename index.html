@@ -633,6 +633,18 @@ body:after{content:"";position:fixed;width:42vw;height:42vw;max-width:620px;max-
 .hunter-exchanges{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin:13px 0 10px;padding:10px 11px;border:1px solid #b99a5a36;border-radius:11px;background:linear-gradient(90deg,#b9974c12,#101820)}
 .hunter-exchange-label{font-size:10px;color:#b8c2cf;margin-left:3px}.hunter-exchange-link{display:inline-flex;align-items:center;gap:5px;padding:7px 11px;border-radius:8px;border:1px solid #3b8b77;background:linear-gradient(135deg,#123b32,#10251f);color:#7ce2c0;font-size:10px;font-weight:900;text-decoration:none;transition:transform .18s,border-color .18s,box-shadow .18s}
 .hunter-exchange-link:hover{transform:translateY(-2px);border-color:#63e0b9;box-shadow:0 5px 16px #20b78b25}.hunter-exchange-link b{font-size:12px}.hunter-no-exchange{font-size:10px;color:#f0bd78}
+/* Compact exchange identity chips with real exchange marks */
+.hunter-exchanges{gap:6px;margin:9px 0 8px;padding:7px 9px;border-radius:10px}
+.hunter-exchange-label{width:100%;font-size:9px;color:#aeb9c7;margin:0 0 1px}
+.hunter-exchange-link{gap:5px;padding:5px 8px;border-radius:9px;font-size:9px;background:linear-gradient(135deg,#102a28,#101b23);border-color:#3a756c88}
+.hunter-exchange-logo{width:16px;height:16px;object-fit:contain;filter:drop-shadow(0 0 4px #d6c18a33)}
+.hunter-exchange-fallback{width:16px;height:16px;display:grid;place-items:center;border-radius:50%;background:#c7a65b;color:#10151c;font-size:10px;font-weight:900}
+.hunter-exchange-link b{font-size:10px;margin-right:1px}
+.hunter-card-head{gap:8px}
+.hunter-card{padding:12px}
+.hunter-card.up .hunter-exchange-link{border-color:#2a987b88}
+.hunter-card.down .hunter-exchange-link{border-color:#a64b5c88;background:linear-gradient(135deg,#321923,#17151d)}
+@media(max-width:560px){.hunter-exchanges{gap:5px;padding:7px}.hunter-exchange-link{padding:5px 7px}.hunter-exchange-logo{width:15px;height:15px}}
 .hunter-card.up .hunter-score{border-color:#238d6b77;background:#123a2e66}.hunter-card.down .hunter-score{border-color:#a8445577;background:#421c2766}
 .hunter-card.up .hunter-score b{color:#62e3ba}.hunter-card.down .hunter-score b{color:#ff8795}
 /* Dedicated live market hunter */
@@ -2193,13 +2205,18 @@ function hunterTradeUrl(exchange,symbol){
  if(exchange==="Bitget")return "https://www.bitget.com/spot/"+pair;
  return "";
 }
+function hunterExchangeLogo(name){
+ const key=String(name||"").trim().toLowerCase();
+ const logos={binance:"binance",bybit:"bybit",okx:"okx","bitget":"bitget"};
+ const slug=logos[key];return slug?"https://cdn.jsdelivr.net/npm/simple-icons@v15/icons/"+slug+".svg":"";
+}
 async function loadHunterListings(entries){
  entries.forEach(({id,coin})=>{
   const target=document.querySelector('[data-hunter-exchanges="'+id+'"]');if(!target)return;
   const symbol=hunterSafeSymbol(coin.symbol);if(!symbol)return;
   const listed=String(coin.hunterExchange||"").split(",").map(x=>x.trim()).filter(Boolean);
   if(listed.length<MIN_TRUSTED_EXCHANGE_LISTINGS){target.innerHTML='<span class="hunter-no-exchange">در صرافی‌های معتبر فهرست نشده · معامله غیرفعال</span>';return;}
-  target.innerHTML='<span class="hunter-exchange-label">قابل معامله در:</span>'+listed.map(name=>'<a class="hunter-exchange-link" href="'+hunterTradeUrl(name,symbol)+'" target="_blank" rel="noopener noreferrer" aria-label="معامله '+symbol+' در '+name+'">'+name+' <b>↗</b></a>').join("");
+  target.innerHTML='<span class="hunter-exchange-label">صرافی‌های دارای این جفت‌ارز:</span>'+listed.map(name=>{const logo=hunterExchangeLogo(name);return '<a class="hunter-exchange-link" href="'+hunterTradeUrl(name,symbol)+'" target="_blank" rel="noopener noreferrer" aria-label="معامله '+symbol+' در '+aiEscape(name)+'">'+(logo?'<img class="hunter-exchange-logo" src="'+logo+'" alt="" loading="lazy">':'<span class="hunter-exchange-fallback">'+aiEscape(name.slice(0,1))+'</span>')+'<span>'+aiEscape(name)+'</span><b>↗</b></a>';}).join("");
  });
 }
 // هشدارهای شکارچی عمداً به‌صورت اعلان یا پیام روی صفحه نمایش داده نمی‌شوند.
