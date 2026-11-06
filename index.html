@@ -2963,8 +2963,9 @@ setInterval(()=>mmpSendEvent("heartbeat"),240000);
  if(addCustomButton)addCustomButton.addEventListener("click",()=>{
   const symbol=hunterSafeSymbol($("boom-symbol")?.value);
   if(!symbol){$("boom-status").textContent="ابتدا نماد معتبر را وارد کن.";return;}
-  const custom=[...boomCoins.values()].filter(c=>c.custom);
-  addBoomCoin({symbol,name:symbol});const next=[...new Map([...custom,{symbol,name:symbol,custom:true}].map(c=>[c.symbol,c])).values()];
+  addBoomCoin({symbol,name:symbol});
+  let saved=[];try{saved=JSON.parse(localStorage.getItem("mmp_boom_custom_coins")||"[]");}catch(e){}
+  const next=[...new Map([...saved,{symbol,name:symbol}].map(c=>[String(c.symbol).toUpperCase(),c])).values()];
   try{localStorage.setItem("mmp_boom_custom_coins",JSON.stringify(next));}catch(e){}
   renderBoomCoins();$("boom-status").textContent=symbol+" به فهرست شخصی این دستگاه اضافه شد؛ اعتبار جفت USDT هنگام دریافت کندل بررسی می‌شود.";
  });
