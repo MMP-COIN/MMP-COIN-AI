@@ -3472,8 +3472,8 @@ body:before{opacity:.23;background-size:34px 34px}
   }
   if(changed){writeStore(ALERT_KEY,readStore(ALERT_KEY).map(old=>items.find(a=>a.id===old.id)||old));renderAlerts();}
  }
- byId("derivatives-load")?.addEventListener("click",()=>{loadDerivatives();});
- byId("derivatives-refresh")?.addEventListener("click",()=>{loadDerivatives();});
+ /* derivatives are loaded through the same-origin Worker endpoint below */
+ /* derivatives refresh is bound to the Worker endpoint below */
  /* order-flow is loaded through the same-origin Worker endpoint below */
  byId("forecast-run")?.addEventListener("click",loadForecast);
  byId("journal-save")?.addEventListener("click",saveJournal);
@@ -3489,9 +3489,9 @@ body:before{opacity:.23;background-size:34px 34px}
   byId("smart-alerts")?.querySelector(".intel-panel-head")?.appendChild(notifyButton);
  }
  renderJournal();renderAlerts();
- loadDerivatives();loadOrderflow();loadForecast();
+ loadForecast();
  setInterval(()=>{refreshJournal();checkAlerts();},60000);
- setInterval(()=>{loadDerivatives();loadOrderflow();},180000);
+ /* worker-backed market intelligence refresh is initialized below */
 })();
 
  async function runHistoricalBacktest(){
@@ -3666,6 +3666,22 @@ body:before{opacity:.23;background-size:34px 34px}
  if(tv){const picker=tv.closest(".mmp-tv-picker");if(picker){const trigger=picker.querySelector(".mmp-symbol-trigger");const update=()=>{const s=String(tv.value||"BINANCE:BTCUSDT").split(":").pop().replace(/USDT$/,""),c=pool().find(x=>x.symbol===s)||{symbol:s,name:s};if(trigger){const im=trigger.querySelector("img"),sp=trigger.querySelector("span");if(im)im.src=c.image;if(sp)sp.textContent=c.name+" · "+s;}};tv.addEventListener("change",update);update();}}
  // Replace the order-flow fetches blocked in browsers with the same-origin Cloudflare Worker route.
  const orderButton=$("orderflow-refresh"),derivButton=$("derivatives-load");
+
+ async function loadDerivativesViaWorker(){
+  const symbol=safe($("intel-symbol")?.value||"BTC")||"BTC",status=$("derivatives-status"),box=$("derivatives-metrics"),button=$("derivatives-refresh");
+  if(status)status.textContent="در حال دریافت داده مشتقات از منابع جایگزین صرافی‌ها…";
+  if(button){button.disabled=true;button.textContent="در حال دریافت…";}
+  try{
+   const d=await get(api()+"/market-derivatives?symbol="+encodeURIComponent(symbol),14000);
+   const values=[d.funding_rate==null?"دریافت نشد":fmt(d.funding_rate*100,5)+"٪",d.open_interest==null?"دریافت نشد":fmt(d.open_interest,2)+" "+symbol,d.long_short_ratio==null?"دریافت نشد":fmt(d.long_short_ratio,3),d.mark_price==null?"دریافت نشد":usd(d.mark_price)];
+   if(box)box.innerHTML=values.map((v,i)=>'<div><small>'+["نرخ تأمین مالی","موجودی قرارداد باز","نسبت خرید به فروش","قیمت نشانگر"][i]+'</small><b>'+v+'</b><em>'+["Funding Rate","Open Interest","Long / Short","Mark Price"][i]+'</em></div>').join("");
+   if(status)status.textContent="نماد "+symbol+" · منبع: "+d.source+" · آخرین بررسی "+new Date(d.checked_at).toLocaleTimeString("fa-IR")+(values.some(v=>v==="دریافت نشد")?" · بعضی شاخص‌ها در این منبع ارائه نمی‌شوند.":"");
+  }catch(e){if(status)status.textContent="داده مشتقات دریافت نشد: "+(e.message||"خطای اتصال");}
+  finally{if(button){button.disabled=false;button.textContent="↻ تازه‌سازی";}}
+ }
+ $("derivatives-load")?.addEventListener("click",()=>{loadDerivativesViaWorker();loadOrderflowViaWorker();});
+ $("derivatives-refresh")?.addEventListener("click",loadDerivativesViaWorker);
+ $("intel-symbol")?.addEventListener("change",loadDerivativesViaWorker);
  async function loadOrderflowViaWorker(){
   const symbol=safe($("intel-symbol")?.value||"BTC")||"BTC",status=$("orderflow-status"),box=$("orderflow-metrics");
   if(status)status.textContent="در حال دریافت دفتر سفارش و جریان معاملات از سرویس واسط امن…";
@@ -3684,7 +3700,7 @@ body:before{opacity:.23;background-size:34px 34px}
  orderButton?.addEventListener("click",loadOrderflowViaWorker);
  derivButton?.addEventListener("click",loadOrderflowViaWorker);
  $("intel-symbol")?.addEventListener("change",loadOrderflowViaWorker);
- loadOrderflowViaWorker();
+ loadOrderflowViaWorker();loadDerivativesViaWorker();
  // The original intelligence engine remains authoritative for futures; this adds a working BTC large-transfer feed without inventing exchange labels.
  const whale=$("whale-panel");
  if(whale&&!$("whale-refresh-btn")){
