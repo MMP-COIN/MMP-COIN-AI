@@ -2320,10 +2320,10 @@ function renderOpportunities(){
  if(!cachedCoinsData.length){el.innerHTML='<div class="ai-empty">داده بازار هنوز دریافت نشده است.</div>';return;}
  const scored=cachedCoinsData.map(c=>({coin:c,metrics:radarScore(c)}));
  const rankRadar=(a,b)=>(b.metrics.score-a.metrics.score)||(Math.abs(b.metrics.directional??0)-Math.abs(a.metrics.directional??0));
- const bullish=scored.filter(x=>x.metrics.trend==="bull"&&x.metrics.score>=75).sort(rankRadar);
- const bearish=scored.filter(x=>x.metrics.trend==="bear"&&x.metrics.score>=75).sort(rankRadar);
- const bullish70=scored.filter(x=>x.metrics.trend==="bull"&&x.metrics.score>=65&&x.metrics.score<75).sort(rankRadar);
- const bearish70=scored.filter(x=>x.metrics.trend==="bear"&&x.metrics.score>=65&&x.metrics.score<75).sort(rankRadar);
+ const bullish=scored.filter(x=>x.metrics.trend==="bull"&&x.metrics.score>=80).sort(rankRadar);
+ const bearish=scored.filter(x=>x.metrics.trend==="bear"&&x.metrics.score>=80).sort(rankRadar);
+ const bullish70=scored.filter(x=>x.metrics.trend==="bull"&&x.metrics.score>=70&&x.metrics.score<80).sort(rankRadar);
+ const bearish70=scored.filter(x=>x.metrics.trend==="bear"&&x.metrics.score>=70&&x.metrics.score<80).sort(rankRadar);
  const updated=$("radar-updated");
  if(updated)updated.textContent="غربالگری خودکار "+cachedCoinsData.length+" ارز · صعودی: "+bullish.length+" قوی + "+bullish70.length+" در انتظار · نزولی: "+bearish.length+" قوی + "+bearish70.length+" در انتظار · "+new Date().toLocaleTimeString("fa-IR"); const chartSelect=$("tv-symbol");
  if(chartSelect){
