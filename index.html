@@ -1856,7 +1856,9 @@ async function fetchFastCandles(symbol){
   ["Binance Spot",async()=>{let last;for(const base of ["https://api.binance.com","https://data-api.binance.vision"]){try{const d=await hunterFetchJson(base+"/api/v3/klines?symbol="+encodeURIComponent(pair)+"&interval=5m&limit=30");if(!Array.isArray(d)||d.length<25)throw new Error("کمبود کندل");return d.map(x=>x.slice(0,6).map(Number));}catch(e){last=e;}}throw last||new Error("Binance unavailable");}],
   ["Bybit Spot",async()=>{const d=await hunterFetchJson("https://api.bybit.com/v5/market/kline?category=spot&symbol="+encodeURIComponent(pair)+"&interval=5&limit=30");if(String(d.retCode)!=="0"||!Array.isArray(d.result?.list)||d.result.list.length<25)throw new Error(d.retMsg||"Bybit candles unavailable");return d.result.list.map(x=>[Number(x[0]),Number(x[1]),Number(x[2]),Number(x[3]),Number(x[4]),Number(x[5])]).sort((a,b)=>a[0]-b[0]);}],
   ["OKX Spot",async()=>{const inst=String(symbol).toUpperCase()+"-USDT";const d=await hunterFetchJson("https://www.okx.com/api/v5/market/candles?instId="+encodeURIComponent(inst)+"&bar=5m&limit=30");if(String(d.code)!=="0"||!Array.isArray(d.data)||d.data.length<25)throw new Error(d.msg||"OKX candles unavailable");return d.data.map(x=>[Number(x[0]),Number(x[1]),Number(x[2]),Number(x[3]),Number(x[4]),Number(x[5])]).sort((a,b)=>a[0]-b[0]);}],
-  ["Bitget Spot",async()=>{const d=await hunterFetchJson("https://api.bitget.com/api/v3/market/candles?category=SPOT&symbol="+encodeURIComponent(pair)+"&interval=5m&limit=30");if(!["00000","0"].includes(String(d.code))||!Array.isArray(d.data)||d.data.length<25)throw new Error(d.msg||"Bitget candles unavailable");return d.data.map(x=>[Number(x[0]),Number(x[1]),Number(x[2]),Number(x[3]),Number(x[4]),Number(x[5]||0)]).sort((a,b)=>a[0]-b[0]);}]
+  ["Bitget Spot",async()=>{const d=await hunterFetchJson("https://api.bitget.com/api/v3/market/candles?category=SPOT&symbol="+encodeURIComponent(pair)+"&interval=5m&limit=30");if(!["00000","0"].includes(String(d.code))||!Array.isArray(d.data)||d.data.length<25)throw new Error(d.msg||"Bitget candles unavailable");return d.data.map(x=>[Number(x[0]),Number(x[1]),Number(x[2]),Number(x[3]),Number(x[4]),Number(x[5]||0)]).sort((a,b)=>a[0]-b[0]);}],
+  ["Gate Spot",async()=>{const d=await hunterFetchJson("https://api.gateio.ws/api/v4/spot/candlesticks?currency_pair="+encodeURIComponent(String(symbol).toUpperCase()+"_USDT")+"&interval=5m&limit=30");if(!Array.isArray(d)||d.length<25)throw new Error("Gate candles unavailable");return d.map(x=>[Number(x[0])*1000,Number(x[5]),Number(x[3]),Number(x[4]),Number(x[2]),Number(x[1])]).sort((a,b)=>a[0]-b[0]);}],
+  ["KuCoin Spot",async()=>{const d=await hunterFetchJson("https://api.kucoin.com/api/v1/market/candles?type=5min&symbol="+encodeURIComponent(String(symbol).toUpperCase()+"-USDT"));if(String(d.code)!=="200000"||!Array.isArray(d.data)||d.data.length<25)throw new Error("KuCoin candles unavailable");return d.data.map(x=>[Number(x[0])*1000,Number(x[1]),Number(x[3]),Number(x[4]),Number(x[2]),Number(x[6]||x[5]||0)]).sort((a,b)=>a[0]-b[0]);}]
  ];
  let errors=[];
  // اولویت منبع کندل بین صرافی‌های معتبر چرخشی است تا همیشه فقط Binance بررسی نشود.
@@ -1905,7 +1907,9 @@ async function fetchHunterUniverse(){
   async()=>{const d=await hunterFetchJson("https://api.binance.com/api/v3/ticker/24hr");return (Array.isArray(d)?d:[]).filter(x=>String(x.symbol).endsWith("USDT")).map(x=>({symbol:String(x.symbol).slice(0,-4),volume:Number(x.quoteVolume)||0,price:Number(x.lastPrice)||0,change24h:Number(x.priceChangePercent)||0,exchange:"Binance"}));},
   async()=>{const d=await hunterFetchJson("https://api.bybit.com/v5/market/tickers?category=spot");return (d.result?.list||[]).filter(x=>String(x.symbol).endsWith("USDT")).map(x=>({symbol:String(x.symbol).slice(0,-4),volume:Number(x.turnover24h)||0,price:Number(x.lastPrice)||0,change24h:Number(x.price24hPcnt)*100||0,exchange:"Bybit"}));},
   async()=>{const d=await hunterFetchJson("https://www.okx.com/api/v5/market/tickers?instType=SPOT");return (d.data||[]).filter(x=>String(x.instId).endsWith("-USDT")).map(x=>({symbol:String(x.instId).replace("-USDT",""),volume:Number(x.volCcy24h)||(Number(x.vol24h)||0)*(Number(x.last)||0),price:Number(x.last)||0,change24h:Number(x.open24h)>0?(Number(x.last)/Number(x.open24h)-1)*100:0,exchange:"OKX"}));},
-  async()=>{const d=await hunterFetchJson("https://api.bitget.com/api/v2/spot/market/tickers");return (d.data||[]).filter(x=>String(x.symbol).endsWith("USDT")).map(x=>({symbol:String(x.symbol).slice(0,-4),volume:Number(x.usdtVolume||x.quoteVolume)||0,price:Number(x.lastPr)||0,change24h:Number(x.change24h)*100||0,exchange:"Bitget"}));}
+  async()=>{const d=await hunterFetchJson("https://api.bitget.com/api/v2/spot/market/tickers");return (d.data||[]).filter(x=>String(x.symbol).endsWith("USDT")).map(x=>({symbol:String(x.symbol).slice(0,-4),volume:Number(x.usdtVolume||x.quoteVolume)||0,price:Number(x.lastPr)||0,change24h:Number(x.change24h)*100||0,exchange:"Bitget"}));},
+  async()=>{const d=await hunterFetchJson("https://api.gateio.ws/api/v4/spot/tickers");return (Array.isArray(d)?d:[]).filter(x=>String(x.currency_pair).endsWith("_USDT")).map(x=>({symbol:String(x.currency_pair).replace("_USDT",""),volume:Number(x.quote_volume)||0,price:Number(x.last)||0,change24h:Number(x.change_percentage)||0,exchange:"Gate"}));},
+  async()=>{const d=await hunterFetchJson("https://api.kucoin.com/api/v1/market/allTickers");return (d.data?.ticker||[]).filter(x=>String(x.symbol).endsWith("-USDT")).map(x=>({symbol:String(x.symbol).replace("-USDT",""),volume:Number(x.volValue)||0,price:Number(x.last)||0,change24h:Number(x.changeRate)*100||0,exchange:"KuCoin"}));}
  ];
  const settled=await Promise.all(jobs.map(async fn=>{try{return await fn();}catch(error){console.debug("Hunter trusted exchange:",error?.message||error);return []}}));
  const marketsBySymbol=new Map();
@@ -2188,7 +2192,9 @@ async function getHunterExchangeMarkets(){
    ["Binance",async()=>{const d=await hunterFetchJson("https://api.binance.com/api/v3/exchangeInfo");return new Set((d.symbols||[]).filter(x=>x.status==="TRADING"&&x.isSpotTradingAllowed!==false).map(x=>x.symbol));}],
    ["Bybit",async()=>{const d=await hunterFetchJson("https://api.bybit.com/v5/market/instruments-info?category=spot&limit=1000");return new Set((d.result?.list||[]).filter(x=>x.status==="Trading").map(x=>x.symbol));}],
    ["OKX",async()=>{const d=await hunterFetchJson("https://www.okx.com/api/v5/public/instruments?instType=SPOT");return new Set((d.data||[]).filter(x=>x.state==="live").map(x=>x.instId.replace("-","")));}],
-   ["Bitget",async()=>{const d=await hunterFetchJson("https://api.bitget.com/api/v2/spot/public/symbols");return new Set((d.data||[]).filter(x=>String(x.status).toLowerCase()==="online").map(x=>x.symbol));}]
+   ["Bitget",async()=>{const d=await hunterFetchJson("https://api.bitget.com/api/v2/spot/public/symbols");return new Set((d.data||[]).filter(x=>String(x.status).toLowerCase()==="online").map(x=>x.symbol));}],
+   ["Gate",async()=>{const d=await hunterFetchJson("https://api.gateio.ws/api/v4/spot/currency_pairs");return new Set((Array.isArray(d)?d:[]).filter(x=>x.quote==="USDT"&&x.trade_status==="tradable").map(x=>String(x.id).replace("_","")));}],
+   ["KuCoin",async()=>{const d=await hunterFetchJson("https://api.kucoin.com/api/v1/market/allTickers");return new Set((d.data?.ticker||[]).filter(x=>String(x.symbol).endsWith("-USDT")).map(x=>String(x.symbol).replace("-","")));}]
   ];
   const results=await Promise.all(jobs.map(async([name,fn])=>{try{return [name,await fn()];}catch(error){console.debug("Hunter listing check "+name,error?.message||error);return [name,null];}}));
   const sets=new Map(results.filter(x=>x[1]));
@@ -2202,11 +2208,20 @@ function hunterTradeUrl(exchange,symbol){
  if(exchange==="Bybit")return "https://www.bybit.com/trade/spot/"+pair;
  if(exchange==="OKX")return "https://www.okx.com/trade-spot/"+hunterSafeSymbol(symbol).toLowerCase()+"-usdt";
  if(exchange==="Bitget")return "https://www.bitget.com/en/spot/"+pair+"_SPBL";
+ if(exchange==="Gate")return "https://www.gate.com/trade/"+hunterSafeSymbol(symbol)+"_USDT";
+ if(exchange==="KuCoin")return "https://www.kucoin.com/trade/"+hunterSafeSymbol(symbol)+"-USDT";
  return "";
+}
+function hunterCoinImage(coin){
+ const symbol=String(coin?.symbol||"").toUpperCase();
+ if(coin?.image&&/^https:\/\//i.test(String(coin.image)))return String(coin.image);
+ const matches=cachedCoinsData.filter(c=>String(c.symbol||"").toUpperCase()===symbol&&/^https:\/\//i.test(String(c.image||"")));
+ if(matches.length===1)return matches[0].image;
+ return "https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/"+symbol.toLowerCase()+".png";
 }
 function hunterExchangeLogo(name){
  const key=String(name||"").trim().toLowerCase();
- const logos={binance:"binance",bybit:"bybit",okx:"okx","bitget":"bitget"};
+ const logos={binance:"binance",bybit:"bybit",okx:"okx",bitget:"bitget",gate:"gateio",kucoin:"kucoin"};
  const slug=logos[key];return slug?"https://cdn.jsdelivr.net/npm/simple-icons@v15/icons/"+slug+".svg":"";
 }
 async function loadHunterListings(entries){
@@ -2242,10 +2257,10 @@ function renderMarketHunter(){
  if($("hunter-bear-count"))$("hunter-bear-count").textContent=bears.toLocaleString("fa-IR");
  if($("hunter-last-scan"))$("hunter-last-scan").textContent=fastRadarLastRun?new Date(fastRadarLastRun).toLocaleTimeString("fa-IR"):"—";
  if($("hunter-feed-status"))$("hunter-feed-status").textContent=entries.length?entries.length.toLocaleString("fa-IR")+" حرکت فعال · مرتب‌سازی بر اساس قدرت حرکت":"هنوز حرکت تأییدشده‌ای پیدا نشده";
- if(!entries.length){feed.innerHTML='<div class="hunter-empty"><span class="hunter-radar-icon">⌁</span><b>در حال رصد بازار</b><small>بازارهای اسپات Binance، Bybit، OKX و Bitget پیوسته از نظر جهش و ریزش غیرعادی قیمت و حجم بررسی می‌شوند.</small></div>';return;}
+ if(!entries.length){feed.innerHTML='<div class="hunter-empty"><span class="hunter-radar-icon">⌁</span><b>در حال رصد بازار</b><small>بازارهای اسپات Binance، Bybit، OKX، Bitget، Gate و KuCoin از نظر جهش و ریزش غیرعادی قیمت و حجم بررسی می‌شوند.</small></div>';return;}
  feed.innerHTML=entries.map(({coin:c,signal:m,id})=>{
   const up=m.trend==="bull",direction=up?"جهش صعودی":"ریزش نزولی",cls=up?"up":"down",mainSymbols=new Set(cachedCoinsData.map(x=>String(x.symbol||"").toUpperCase())),isMain100=mainSymbols.has(String(c.symbol||"").toUpperCase()),originTag=isMain100?"":'<small class="hunter-origin-tag" title="این ارز خارج از فهرست اصلی ۱۰۰ ارز است">🎯 شکار</small>',risk=m.overextended?'<span class="hunter-warning">حرکت کش‌آمده · ورود دیرهنگام پرریسک</span>':'<span class="hunter-confirm">'+(m.breakout?"شکست محدوده تأیید شد":"شتاب حرکت در حال شکل‌گیری")+'</span>';
-  return '<article class="hunter-card '+cls+' hunter-density-'+density+'" data-hunter-card="'+aiEscape(id)+'"><div class="hunter-card-head"><div class="hunter-coin"><div class="hunter-coin-emblem"><img src="'+aiEscape(c.image||"")+'" alt="'+aiEscape(String(c.symbol).toUpperCase())+'" loading="lazy"><i>⌖</i></div><span><b>'+aiEscape(c.name)+' <small>('+aiEscape(String(c.symbol).toUpperCase())+')</small>'+originTag+'</b><em>'+direction+'</em><small class="hunter-symbol-tag">نماد معاملاتی: '+aiEscape(String(c.symbol).toUpperCase())+'/USDT</small></span></div><div class="hunter-mini-move" data-hunter-mini="'+aiEscape(id)+'"><span>'+(up?'پرواز قیمت ↑':'سقوط قیمت ↓')+'</span>'+hunterMiniCandles(m.rows,m.trend)+'</div><div class="hunter-score"><b>'+m.score.toLocaleString("fa-IR")+'</b><small>قدرت حرکت</small></div></div><div class="hunter-exchanges" data-hunter-exchanges="'+aiEscape(id)+'"><span class="hunter-exchange-label">در حال بررسی بازارهای قابل معامله…</span></div><div class="hunter-price-row"><span>قیمت مرجع <b class="hunter-live-price">'+hunterPrice(m.price)+'</b></span><span>حجم نسبی <b>'+m.volumeRatio.toFixed(1)+'×</b></span><span>تغییر ۵ دقیقه <b class="'+cls+'">'+(m.change5m>0?"+":"")+m.change5m.toFixed(2)+'٪</b></span><span>تغییر ۱۵ دقیقه <b class="'+cls+'">'+(m.change15m>0?"+":"")+m.change15m.toFixed(2)+'٪</b></span></div><div class="hunter-card-bottom">'+risk+'</div></article>';
+  return '<article class="hunter-card '+cls+' hunter-density-'+density+'" data-hunter-card="'+aiEscape(id)+'"><div class="hunter-card-head"><div class="hunter-coin"><div class="hunter-coin-emblem"><img src="'+aiEscape(hunterCoinImage(c))+'" data-symbol="'+aiEscape(String(c.symbol).toUpperCase())+'" alt="'+aiEscape(String(c.symbol).toUpperCase())+'" loading="lazy" onerror="if(!this.dataset.fallback){this.dataset.fallback='1';this.src='https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/'+this.dataset.symbol.toLowerCase()+'.png';}else{this.style.display='none';this.nextElementSibling.style.display='grid';}"><i style="display:none">'+aiEscape(String(c.symbol).slice(0,1).toUpperCase())+'</i></div><span><b>'+aiEscape(c.name)+' <small>('+aiEscape(String(c.symbol).toUpperCase())+')</small>'+originTag+'</b><em>'+direction+'</em><small class="hunter-symbol-tag">نماد معاملاتی: '+aiEscape(String(c.symbol).toUpperCase())+'/USDT</small></span></div><div class="hunter-mini-move" data-hunter-mini="'+aiEscape(id)+'"><span>'+(up?'پرواز قیمت ↑':'سقوط قیمت ↓')+'</span>'+hunterMiniCandles(m.rows,m.trend)+'</div><div class="hunter-score"><b>'+m.score.toLocaleString("fa-IR")+'</b><small>قدرت حرکت</small></div></div><div class="hunter-exchanges" data-hunter-exchanges="'+aiEscape(id)+'"><span class="hunter-exchange-label">در حال بررسی بازارهای قابل معامله…</span></div><div class="hunter-price-row"><span>قیمت مرجع <b class="hunter-live-price">'+hunterPrice(m.price)+'</b></span><span>حجم نسبی <b>'+m.volumeRatio.toFixed(1)+'×</b></span><span>تغییر ۵ دقیقه <b class="'+cls+'">'+(m.change5m>0?"+":"")+m.change5m.toFixed(2)+'٪</b></span><span>تغییر ۱۵ دقیقه <b class="'+cls+'">'+(m.change15m>0?"+":"")+m.change15m.toFixed(2)+'٪</b></span></div><div class="hunter-card-bottom">'+risk+'</div></article>';
  }).join("");
  loadHunterListings(entries.map(({coin,id})=>({coin,id}))).catch(error=>console.debug("Hunter exchange listing check:",error));
 }
@@ -2643,8 +2658,8 @@ setInterval(()=>mmpSendEvent("heartbeat"),240000);
 .ai-terminal .ai-timeframe-panel .tf-grid{display:grid}
 @media(max-width:760px){.ai-terminal .ai-timeframe-panel .tf-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
-/* Hunter responsive density and tap-to-expand chart */
-.hunter-card{cursor:zoom-in}.hunter-card:focus-visible{outline:2px solid #d9b96d;outline-offset:3px}
+/* Hunter responsive density */
+.hunter-card{cursor:default}
 .hunter-density-wide .hunter-mini-move{width:148px;min-width:130px}.hunter-density-medium .hunter-mini-move{width:124px;min-width:112px}.hunter-density-compact .hunter-mini-move{width:104px;min-width:92px}
 .hunter-density-compact .hunter-card-head{display:grid;grid-template-columns:minmax(0,1fr) 104px auto;gap:7px}.hunter-density-medium .hunter-card-head{display:grid;grid-template-columns:minmax(0,1fr) 124px auto;gap:8px}
 .hunter-density-compact .hunter-mini-svg{height:48px}.hunter-density-medium .hunter-mini-svg{height:52px}
