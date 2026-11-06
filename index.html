@@ -1840,27 +1840,30 @@ async function scanFastCoin(coin){
  const symbol=String(coin?.symbol||"").toUpperCase();
  if(!/^[A-Z0-9]{2,20}$/.test(symbol)||NON_TRADABLE_SYMBOLS.has(symbol))return null;
  const {rows,provider}=await fetchFastCandles(symbol);
- const now=Date.now(),last=rows[rows.length-1],prev=rows[rows.length-2];
- const close=Number(last[4]),open=Number(last[1]),volume=Number(last[5]);
- const previousClose=Number(prev[4]),previousVolumes=rows.slice(-22,-2).map(x=>Number(x[5])).filter(x=>x>0);
- const avgVolume=previousVolumes.reduce((a,b)=>a+b,0)/(previousVolumes.length||1);
- const elapsed=Math.max(30,Math.min(300,(now-Number(last[0]))/1000));
- const volumeRatio=avgVolume>0?volume/avgVolume*(300/elapsed):0;
- const change5m=(close/open-1)*100;
- const change15m=(close/Number(rows[rows.length-3][1])-1)*100;
- const recent=rows.slice(-8,-1);
- const priorHigh=Math.max(...recent.map(x=>Number(x[2])));
- const priorLow=Math.min(...recent.map(x=>Number(x[3])));
- const breakoutUp=close>priorHigh,breakoutDown=close<priorLow;
- const price=Number(coin.current_price)||close;
+ if(!Array.isArray(rows)||rows.length<25)return null;
+ const valid=rows.every(r=>r.length>=6&&r.slice(1,6).every(Number.isFinite)&&Number(r[1])>0&&Number(r[2])>=Number(r[3])&&Number(r[3])>0&&Number(r[4])>0&&Number(r[5])>=0);
+ if(!valid)return null;
+ const now=Date.now(),index=rows.length-2,last=rows[index],close=Number(last[4]),open=Number(last[1]),volume=Number(last[5]);
+ // فقط کندل بسته‌شده و تازه؛ کندل نیمه‌کاره اجازه تولید سیگنال ندارد.
+ const candleAge=now-Number(last[0]);
+ if(candleAge<300000||candleAge>10*60*1000||close<=0||open<=0||volume<=0)return null;
+ const baseline=rows.slice(index-20,index).map(x=>Number(x[5])).filter(x=>x>0);
+ if(baseline.length<16)return null;
+ const avgVolume=baseline.reduce((a,b)=>a+b,0)/baseline.length,volumeRatio=avgVolume>0?volume/avgVolume:0;
+ const change5m=(close/open-1)*100,start15=Number(rows[index-2][1]);
+ if(!Number.isFinite(start15)||start15<=0)return null;
+ const change15m=(close/start15-1)*100,recent=rows.slice(index-7,index);
+ const priorHigh=Math.max(...recent.map(x=>Number(x[2]))),priorLow=Math.min(...recent.map(x=>Number(x[3])));
+ const breakoutUp=close>priorHigh,breakoutDown=close<priorLow,price=Number(coin.current_price)||close;
  const overextended=Math.abs(change15m)>=2.5||Math.abs(change5m)>=1.8;
- const bullMomentum=change5m>=0.22&&change15m>=0.42&&volumeRatio>=1.35&&(breakoutUp||change5m>=0.55);
- const bearMomentum=change5m<=-0.22&&change15m<=-0.42&&volumeRatio>=1.35&&(breakoutDown||change5m<=-0.55);
- let trend="neutral",score=50;
+ // شروط سخت: هم‌جهتی ۵ و ۱۵ دقیقه، حجم غیرعادی و شکست محدوده یا شتاب قوی‌تر.
+ const bullMomentum=change5m>=0.35&&change15m>=0.55&&volumeRatio>=1.5&&(breakoutUp||change5m>=0.75);
+ const bearMomentum=change5m<=-0.35&&change15m<=-0.55&&volumeRatio>=1.5&&(breakoutDown||change5m<=-0.75);
+ let trend="neutral",score=0;
  if(bullMomentum||bearMomentum){
   trend=bullMomentum?"bull":"bear";
-  score=Math.min(98,Math.round(52+Math.min(16,Math.abs(change5m)*16)+Math.min(14,Math.abs(change15m)*8)+Math.min(12,Math.max(0,volumeRatio-1)*7)+(breakoutUp||breakoutDown?10:0)));
-  if(overextended)score=Math.min(score,69);
+  score=Math.min(99,Math.round(55+Math.min(16,Math.abs(change5m)*14)+Math.min(14,Math.abs(change15m)*7)+Math.min(16,Math.max(0,volumeRatio-1)*8)+(breakoutUp||breakoutDown?8:0)));
+  if(score<72)return null;
  }
  return {trend,score,change5m,change15m,volumeRatio,breakout:breakoutUp||breakoutDown,overextended,price,provider,updatedAt:now,candleTime:Number(last[0]),rows:rows.map(x=>x.slice(0,6).map(Number))};
 }
@@ -1930,7 +1933,8 @@ async function runFastRadarScan(){
   fastRadarLastMessage="پایش مستقل "+completed+" از "+universe.length+" بازار اسپات · حرکت‌های غیرعادی: "+fresh.size+" · "+new Date().toLocaleTimeString("fa-IR");
   if(status)status.textContent=fastRadarLastMessage+(failed?" · داده ناموفق: "+failed:"");
   renderOpportunities();renderMarketHunter();connectHunterStreams();
-  newlyDetected.slice(0,3).forEach(item=>notifyHunterOpportunity(item.coin,item.signal));
+  const displayed=[...fresh.entries()].map(([id,signal])=>({coin:hunterCoinIndex.get(id),signal,id})).filter(x=>x.coin&&x.signal.score>=72).sort((a,b)=>b.signal.score-a.signal.score).slice(0,6);
+  displayed.filter(item=>{const old=previous.get(item.id);return !old||old.trend!==item.signal.trend;}).slice(0,3).forEach(item=>notifyHunterOpportunity(item.coin,item.signal));
  }catch(error){fastRadarLastMessage="پایش سریع کامل نشد؛ داده قبلی حفظ شد.";if(status)status.textContent=fastRadarLastMessage;console.warn("Fast radar:",error);}
  finally{fastRadarBusy=false;}
 }
@@ -2072,7 +2076,8 @@ function hunterChart(rows){
 }
 function renderMarketHunter(){
  const feed=$("hunter-feed");if(!feed)return;
- const entries=[...fastRadarSignals.entries()].map(([id,signal])=>({coin:hunterCoinIndex.get(id)||cachedCoinsData.find(c=>c.id===id),signal,id})).filter(x=>x.coin&&Date.now()-x.signal.updatedAt<8*60*1000).sort((a,b)=>(b.signal.score-a.signal.score));
+ const entries=[...fastRadarSignals.entries()].map(([id,signal])=>({coin:hunterCoinIndex.get(id)||cachedCoinsData.find(c=>c.id===id),signal,id})).filter(x=>x.coin&&Date.now()-x.signal.updatedAt<8*60*1000&&x.signal.score>=72).sort((a,b)=>(b.signal.score-a.signal.score)).slice(0,6);
+ const density=entries.length<=2?"wide":entries.length<=4?"medium":"compact";
  const bulls=entries.filter(x=>x.signal.trend==="bull").length,bears=entries.filter(x=>x.signal.trend==="bear").length;
  if($("hunter-bull-count"))$("hunter-bull-count").textContent=bulls.toLocaleString("fa-IR");
  if($("hunter-bear-count"))$("hunter-bear-count").textContent=bears.toLocaleString("fa-IR");
@@ -2081,10 +2086,20 @@ function renderMarketHunter(){
  if(!entries.length){feed.innerHTML='<div class="hunter-empty"><span class="hunter-radar-icon">⌁</span><b>در حال رصد بازار</b><small>بازارهای اسپات Binance، Bybit، OKX و Bitget پیوسته از نظر جهش و ریزش غیرعادی قیمت و حجم بررسی می‌شوند.</small></div>';return;}
  feed.innerHTML=entries.map(({coin:c,signal:m,id})=>{
   const up=m.trend==="bull",direction=up?"جهش صعودی":"ریزش نزولی",cls=up?"up":"down",mainSymbols=new Set(cachedCoinsData.map(x=>String(x.symbol||"").toUpperCase())),isMain100=mainSymbols.has(String(c.symbol||"").toUpperCase()),originTag=isMain100?"":'<small class="hunter-origin-tag" title="این ارز خارج از فهرست اصلی ۱۰۰ ارز است">🎯 شکار</small>',risk=m.overextended?'<span class="hunter-warning">حرکت کش‌آمده · ورود دیرهنگام پرریسک</span>':'<span class="hunter-confirm">'+(m.breakout?"شکست محدوده تأیید شد":"شتاب حرکت در حال شکل‌گیری")+'</span>';
-  return '<article class="hunter-card '+cls+'" data-hunter-card="'+aiEscape(id)+'"><div class="hunter-card-head"><div class="hunter-coin"><div class="hunter-coin-emblem"><img src="'+aiEscape(c.image||"")+'" alt="'+aiEscape(String(c.symbol).toUpperCase())+'" loading="lazy"><i>⌖</i></div><span><b>'+aiEscape(c.name)+' <small>('+aiEscape(String(c.symbol).toUpperCase())+')</small>'+originTag+'</b><em>'+direction+'</em><small class="hunter-symbol-tag">نماد معاملاتی: '+aiEscape(String(c.symbol).toUpperCase())+'/USDT</small></span></div><div class="hunter-mini-move"><span>'+(up?'پرواز قیمت ↑':'سقوط قیمت ↓')+'</span>'+hunterMiniCandles(m.rows,m.trend)+'</div><div class="hunter-score"><b>'+m.score.toLocaleString("fa-IR")+'</b><small>قدرت حرکت</small></div></div><div class="hunter-exchanges" data-hunter-exchanges="'+aiEscape(id)+'"><span class="hunter-exchange-label">در حال بررسی بازارهای قابل معامله…</span></div><div class="hunter-price-row"><span>قیمت مرجع <b class="hunter-live-price">'+hunterPrice(m.price)+'</b></span><span>حجم نسبی <b>'+m.volumeRatio.toFixed(1)+'×</b></span><span>تغییر ۵ دقیقه <b class="'+cls+'">'+(m.change5m>0?"+":"")+m.change5m.toFixed(2)+'٪</b></span><span>تغییر ۱۵ دقیقه <b class="'+cls+'">'+(m.change15m>0?"+":"")+m.change15m.toFixed(2)+'٪</b></span></div><div class="hunter-card-bottom">'+risk+'<button type="button" class="hunter-analyze-btn" data-hunter-analyze="'+aiEscape(id)+'">تحلیل کامل این حرکت ↗</button></div></article>';
+  return '<article class="hunter-card '+cls+' hunter-density-'+density+'" data-hunter-card="'+aiEscape(id)+'" tabindex="0" role="button" aria-label="نمایش نمودار بزرگ '+aiEscape(c.name)+'"><div class="hunter-card-head"><div class="hunter-coin"><div class="hunter-coin-emblem"><img src="'+aiEscape(c.image||"")+'" alt="'+aiEscape(String(c.symbol).toUpperCase())+'" loading="lazy"><i>⌖</i></div><span><b>'+aiEscape(c.name)+' <small>('+aiEscape(String(c.symbol).toUpperCase())+')</small>'+originTag+'</b><em>'+direction+'</em><small class="hunter-symbol-tag">نماد معاملاتی: '+aiEscape(String(c.symbol).toUpperCase())+'/USDT</small></span></div><div class="hunter-mini-move" data-hunter-mini="'+aiEscape(id)+'"><span>'+(up?'پرواز قیمت ↑':'سقوط قیمت ↓')+'</span>'+hunterMiniCandles(m.rows,m.trend)+'</div><div class="hunter-score"><b>'+m.score.toLocaleString("fa-IR")+'</b><small>قدرت حرکت</small></div></div><div class="hunter-exchanges" data-hunter-exchanges="'+aiEscape(id)+'"><span class="hunter-exchange-label">در حال بررسی بازارهای قابل معامله…</span></div><div class="hunter-price-row"><span>قیمت مرجع <b class="hunter-live-price">'+hunterPrice(m.price)+'</b></span><span>حجم نسبی <b>'+m.volumeRatio.toFixed(1)+'×</b></span><span>تغییر ۵ دقیقه <b class="'+cls+'">'+(m.change5m>0?"+":"")+m.change5m.toFixed(2)+'٪</b></span><span>تغییر ۱۵ دقیقه <b class="'+cls+'">'+(m.change15m>0?"+":"")+m.change15m.toFixed(2)+'٪</b></span></div><div class="hunter-card-bottom">'+risk+'<button type="button" class="hunter-analyze-btn" data-hunter-analyze="'+aiEscape(id)+'">تحلیل کامل این حرکت ↗</button></div></article>';
  }).join("");
  loadHunterListings(entries.map(({coin,id})=>({coin,id}))).catch(error=>console.debug("Hunter exchange listing check:",error));
 }
+
+function openHunterChart(id){
+ const signal=fastRadarSignals.get(id),coin=hunterCoinIndex.get(id)||cachedCoinsData.find(c=>c.id===id);if(!signal||!coin)return;
+ document.getElementById("hunter-chart-modal")?.remove();const modal=document.createElement("div");modal.id="hunter-chart-modal";modal.className="hunter-chart-modal";modal.setAttribute("role","dialog");modal.setAttribute("aria-modal","true");
+ modal.innerHTML='<div class="hunter-chart-dialog"><div class="hunter-chart-dialog-head"><b>'+aiEscape(coin.name)+' · '+aiEscape(String(coin.symbol).toUpperCase())+'/USDT</b><button type="button" class="hunter-chart-close">بستن ✕</button></div><div class="hunter-chart-wrap"><div class="hunter-chart-title"><span>نمودار کندل ۵ دقیقه‌ای</span><span class="hunter-stream-state">نمای بزرگ‌تر</span></div>'+hunterChart(signal.rows)+'</div><div class="hunter-chart-meta"><span>جهت: '+(signal.trend==="bull"?"صعودی":"نزولی")+'</span><span>قدرت: '+signal.score+'</span><span>حجم نسبی: '+signal.volumeRatio.toFixed(1)+'×</span><span>تغییر ۵ دقیقه: '+signal.change5m.toFixed(2)+'٪</span></div></div>';
+ document.body.appendChild(modal);modal.querySelector(".hunter-chart-close").focus();const close=()=>modal.remove();modal.addEventListener("click",event=>{if(event.target===modal||event.target.closest(".hunter-chart-close"))close();});
+ const onKey=event=>{if(event.key==="Escape"){close();document.removeEventListener("keydown",onKey);}};document.addEventListener("keydown",onKey);
+}
+document.addEventListener("click",event=>{const card=event.target.closest("[data-hunter-card]");if(!card||event.target.closest("a,button"))return;openHunterChart(card.getAttribute("data-hunter-card"));});
+document.addEventListener("keydown",event=>{const card=event.target.closest?.("[data-hunter-card]");if(card&&(event.key==="Enter"||event.key===" ")){event.preventDefault();openHunterChart(card.getAttribute("data-hunter-card"));}});
 function connectHunterStreams(){
  const entries=[...fastRadarSignals.entries()].filter(([,m])=>m.provider.includes("Binance")).sort((a,b)=>b[1].score-a[1].score).slice(0,12),wanted=new Set(entries.map(([id])=>id));
  for(const [id,ws] of hunterSockets){if(!wanted.has(id)){try{ws.close();}catch(e){}hunterSockets.delete(id);}}
@@ -2093,7 +2108,7 @@ function connectHunterStreams(){
   const coin=hunterCoinIndex.get(id)||cachedCoinsData.find(c=>c.id===id);if(!coin)return;
   try{
    const ws=new WebSocket("wss://stream.binance.com:9443/ws/"+String(coin.symbol||"").toLowerCase()+"usdt@kline_5m");hunterSockets.set(id,ws);
-   ws.onmessage=event=>{try{const payload=JSON.parse(event.data),k=payload.k;if(!k)return;const current=fastRadarSignals.get(id);if(!current)return;const row=[Number(k.t),Number(k.o),Number(k.h),Number(k.l),Number(k.c),Number(k.v)],rows=current.rows||[],last=rows[rows.length-1];if(last&&Number(last[0])===row[0])rows[rows.length-1]=row;else rows.push(row);current.rows=rows.slice(-30);current.price=row[4];current.change5m=(row[4]/row[1]-1)*100;current.change15m=(row[4]/Number(current.rows[Math.max(0,current.rows.length-3)][1])-1)*100;current.updatedAt=Date.now();const chart=document.querySelector('[data-hunter-chart="'+id+'"]');if(chart)chart.innerHTML=hunterChart(current.rows);const card=document.querySelector('[data-hunter-card="'+id+'"]');if(card){const price=card.querySelector(".hunter-live-price");if(price)price.textContent=hunterPrice(current.price);}}catch(error){console.debug("Hunter stream parse:",error);}};
+   ws.onmessage=event=>{try{const payload=JSON.parse(event.data),k=payload.k;if(!k)return;const current=fastRadarSignals.get(id);if(!current)return;const row=[Number(k.t),Number(k.o),Number(k.h),Number(k.l),Number(k.c),Number(k.v)],rows=current.rows||[],last=rows[rows.length-1];if(last&&Number(last[0])===row[0])rows[rows.length-1]=row;else rows.push(row);current.rows=rows.slice(-30);current.price=row[4];current.change5m=(row[4]/row[1]-1)*100;current.change15m=(row[4]/Number(current.rows[Math.max(0,current.rows.length-3)][1])-1)*100;current.updatedAt=Date.now();const mini=document.querySelector('[data-hunter-mini="'+id+'"]');if(mini)mini.innerHTML='<span>'+(current.trend==="bull"?"پرواز قیمت ↑":"سقوط قیمت ↓")+'</span>'+hunterMiniCandles(current.rows,current.trend);const card=document.querySelector('[data-hunter-card="'+id+'"]');if(card){const price=card.querySelector(".hunter-live-price");if(price)price.textContent=hunterPrice(current.price);}}catch(error){console.debug("Hunter stream parse:",error);}};
    ws.onerror=()=>{try{ws.close();}catch(e){}};ws.onclose=()=>{if(hunterSockets.get(id)===ws)hunterSockets.delete(id);};
   }catch(error){console.debug("Hunter websocket unavailable:",error);}
  });
@@ -2474,4 +2489,15 @@ setInterval(()=>mmpSendEvent("heartbeat"),240000);
 .ai-terminal .ai-timeframe-subtitle{margin:0 0 12px;font-size:11px}
 .ai-terminal .ai-timeframe-panel .tf-grid{display:grid}
 @media(max-width:760px){.ai-terminal .ai-timeframe-panel .tf-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Hunter responsive density and tap-to-expand chart */
+.hunter-card{cursor:zoom-in}.hunter-card:focus-visible{outline:2px solid #d9b96d;outline-offset:3px}
+.hunter-density-wide .hunter-mini-move{width:148px;min-width:130px}.hunter-density-medium .hunter-mini-move{width:124px;min-width:112px}.hunter-density-compact .hunter-mini-move{width:104px;min-width:92px}
+.hunter-density-compact .hunter-card-head{display:grid;grid-template-columns:minmax(0,1fr) 104px auto;gap:7px}.hunter-density-medium .hunter-card-head{display:grid;grid-template-columns:minmax(0,1fr) 124px auto;gap:8px}
+.hunter-density-compact .hunter-mini-svg{height:48px}.hunter-density-medium .hunter-mini-svg{height:52px}
+.hunter-chart-modal{position:fixed;inset:0;z-index:100500;display:flex;align-items:center;justify-content:center;padding:18px;background:#03070bdc;backdrop-filter:blur(8px)}
+.hunter-chart-dialog{width:min(900px,100%);max-height:90vh;overflow:auto;border:1px solid #a88b4d;border-radius:18px;background:linear-gradient(145deg,#17212d,#090e15);box-shadow:0 24px 90px #000b;padding:16px}
+.hunter-chart-dialog-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;color:#f1d18c}.hunter-chart-dialog-head b{font-size:16px}.hunter-chart-close{border:1px solid #8d7548;border-radius:9px;background:#2a2419;color:#f4d995;padding:8px 12px;font-weight:900}
+.hunter-chart-dialog .hunter-chart-wrap{width:100%}.hunter-chart-dialog .hunter-candle-chart{min-height:180px}.hunter-chart-dialog .hunter-chart-meta{display:flex;flex-wrap:wrap;gap:12px;margin-top:12px;color:#c4cfda;font-size:12px}
+@media(max-width:560px){.hunter-density-compact .hunter-card-head{grid-template-columns:minmax(0,1fr) 88px auto;gap:4px}.hunter-density-compact .hunter-mini-move{width:88px;min-width:82px}.hunter-density-compact .hunter-mini-svg{height:44px}.hunter-chart-modal{padding:9px}.hunter-chart-dialog{padding:11px}}
 </style>
