@@ -3037,7 +3037,7 @@ setInterval(()=>mmpSendEvent("heartbeat"),240000);
    const markets=await getHunterExchangeMarkets(),seen=new Set();
    for(const [provider,pairs] of markets){for(const pair of pairs||[]){const p=String(pair||"").toUpperCase();if(!p.endsWith("USDT")||p.length<6)continue;const base=p.slice(0,-4);if(!/^[A-Z0-9]{2,24}$/.test(base)||seen.has(base))continue;seen.add(base);addBoomCoin({symbol:base,name:base});}}
   }catch(e){console.debug("Boom multi-exchange universe unavailable",e?.message||e);}
-  try{const saved=JSON.parse(localStorage.getItem("mmp_boom_custom_coins")||"[]");saved.forEach(c=>addBoomCoin(c));}catch(e){}
+  try{const saved=JSON.parse(localStorage.getItem("mmp_boom_custom_coins")||"[]");saved.forEach(c=>addBoomCoin(c));const shared=JSON.parse(localStorage.getItem("mmp_manual_coin_symbols_v1")||"[]");shared.forEach(symbol=>addBoomCoin({symbol,name:symbol}));}catch(e){}
   renderBoomCoins();if(expandedBoomClone)renderBoomCoins(expandedBoomClone);
   const label=$("boom-coin-name");if(label)label.textContent=boomCoins.size.toLocaleString("fa-IR")+" نماد در فهرست · جستجو یا افزودن نماد دلخواه";
  }
