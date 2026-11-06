@@ -1423,22 +1423,24 @@ async function fetchTetherRate(){
   return {price:(a.price+b.price)/2,sources:valid.map(x=>x.source),warning:""};
  }
 
-function normalizeCoinCapAssets(payload){
+function normalizeCoinLoreAssets(payload){
  const rows=Array.isArray(payload?.data)?payload.data:[];
- const stamp=Number(payload?.timestamp)||Date.now();
- const updated=new Date(stamp).toISOString();
+ const stamp=Number(payload?.info?.time)||Math.floor(Date.now()/1000);
+ const updated=new Date(stamp*1000).toISOString();
  return rows.map(item=>({
-  id:String(item?.id||""),
+  id:String(item?.nameid||item?.id||""),
   symbol:String(item?.symbol||""),
   name:String(item?.name||item?.symbol||""),
   image:"https://assets.coincap.io/assets/icons/"+String(item?.symbol||"").toLowerCase()+"@2x.png",
-  current_price:Number(item?.priceUsd),
-  market_cap:Number(item?.marketCapUsd),
+  current_price:Number(item?.price_usd),
+  market_cap:Number(item?.market_cap_usd),
   market_cap_rank:Number(item?.rank),
-  total_volume:Number(item?.volumeUsd24Hr),
-  price_change_percentage_24h:Number(item?.changePercent24Hr),
+  total_volume:Number(item?.volume24),
+  price_change_percentage_1h:Number(item?.percent_change_1h),
+  price_change_percentage_24h:Number(item?.percent_change_24h),
+  price_change_percentage_7d:Number(item?.percent_change_7d),
   last_updated:updated,
-  price_source:"CoinCap"
+  price_source:"CoinLore"
  })).filter(item=>item.id&&item.symbol&&Number.isFinite(item.current_price)&&item.current_price>0);
 }
 
@@ -1476,11 +1478,11 @@ async function refreshAll(){
   if(topRes.ok) topData=await topRes.json();
   else {
     // CoinGecko may rate-limit the shared Worker IP. Switch to a genuinely separate provider.
-    const fallback=await fetch(AI_ANALYSIS_ENDPOINT+"/market-proxy?source=coincap-top&offset=0",{cache:"no-store"});
+    const fallback=await fetch(AI_ANALYSIS_ENDPOINT+"/market-proxy?source=coinlore-top&offset=0",{cache:"no-store"});
     if(!fallback.ok)throw new Error("CoinGecko محدود شده و CoinCap نیز پاسخ نداد · HTTP "+fallback.status);
-    topData=normalizeCoinCapAssets(await fallback.json());
-    marketMetadataSource="CoinCap";
-    if(!topData.length)throw new Error("CoinCap فهرست معتبر دارایی‌ها را برنگرداند");
+    topData=normalizeCoinLoreAssets(await fallback.json());
+    marketMetadataSource="CoinLore";
+    if(!topData.length)throw new Error("CoinLore فهرست معتبر دارایی‌ها را برنگرداند");
   }
   let extraData = [];
   if(extraRes.ok) {
@@ -1531,13 +1533,13 @@ async function refreshAll(){
   };
   let verifiedCoins=await verifyCoinBatch(candidateCoins);
   if(verifiedCoins.length<100){
-   const pageTwoUrl=marketMetadataSource==="CoinCap"
-    ?AI_ANALYSIS_ENDPOINT+"/market-proxy?source=coincap-top&offset=250"
+   const pageTwoUrl=marketMetadataSource==="CoinLore"
+    ?AI_ANALYSIS_ENDPOINT+"/market-proxy?source=coinlore-top&offset=100"
     :AI_ANALYSIS_ENDPOINT+"/market-proxy?source=coingecko-top&page=2";
    const pageTwoResponse=await fetch(pageTwoUrl,{cache:"no-store"});
    if(pageTwoResponse.ok){
     const pageTwoPayload=await pageTwoResponse.json();
-    const pageTwo=marketMetadataSource==="CoinCap"?normalizeCoinCapAssets(pageTwoPayload):pageTwoPayload;
+    const pageTwo=marketMetadataSource==="CoinCap"?normalizeCoinLoreAssets(pageTwoPayload):pageTwoPayload;
     if(Array.isArray(pageTwo)){
      const knownIds=new Set(candidateCoins.map(c=>c.id));
      const knownSymbols=new Set(candidateCoins.map(c=>String(c.symbol||"").toUpperCase()));
@@ -1606,7 +1608,7 @@ function renderCoinsTables(data) {
   const priceText=Number.isFinite(price)&&price>0?money(price,price<1?6:2)+" USDT":"داده در دسترس نیست";
   const tomanText=currentTetherPrice>0&&Number.isFinite(price)&&price>0?toman(price*currentTetherPrice)+" تومان":"نرخ تبدیل در دسترس نیست";
   const source=aiEscape(c.price_source||"CoinGecko");
-  const sourceLabel=source==="CoinGecko"?"مرجع دلاری CoinGecko":source==="CoinCap"?"مرجع دلاری CoinCap":"قیمت بازار اسپات";
+  const sourceLabel=source==="CoinGecko"?"مرجع دلاری CoinGecko":source==="CoinLore"?"مرجع دلاری CoinLore":"قیمت بازار اسپات";
   const updatedAt=c.price_updated_at||c.last_updated;
   const updatedText=updatedAt&&!Number.isNaN(Date.parse(updatedAt))?new Date(updatedAt).toLocaleTimeString("fa-IR"):"زمان بروزرسانی نامشخص";
   const spot=c.exchange_support?.spot;
