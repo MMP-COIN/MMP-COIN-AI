@@ -2060,7 +2060,7 @@ async function scanFastCoin(coin){
  if(baseline.length<16)return null;
  const avgVolume=baseline.reduce((a,b)=>a+b,0)/baseline.length,volumeRatio=avgVolume>0?volume/avgVolume:0;
  const change1m=(close/open-1)*100,start3=Number(rows[index-2][1]);
- if(!Number.isFinite(start3)||!Number.isFinite(start5)||start3<=0||start5<=0)return null;
+ if(!Number.isFinite(start3)||start3<=0)return null;
  const change3m=(close/start3-1)*100,dailyChange24h=Number(coin.hunterChange24h)||0;
  const recent=rows.slice(Math.max(0,index-7),index),priorHigh=Math.max(...recent.map(x=>Number(x[2]))),priorLow=Math.min(...recent.map(x=>Number(x[3])));
  const breakoutUp=close>priorHigh,breakoutDown=close<priorLow;
