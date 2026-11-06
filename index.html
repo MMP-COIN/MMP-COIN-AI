@@ -1974,10 +1974,24 @@ async function fetchFastCandles(symbol){
  for(const [provider,load] of ordered){try{const rows=await load();if(rows.length>=25&&rows.every(r=>r.slice(1,6).every(Number.isFinite)))return {rows,provider};}catch(error){errors.push(provider+": "+(error?.message||"unavailable"));}}
  throw new Error(errors.join(" · "));
 }
+async function fetchHunterOrderFlow(symbol){
+ const pair=String(symbol||"").toUpperCase()+"USDT";
+ const raw=await hunterFetchJson("https://api.binance.com/api/v3/klines?symbol="+encodeURIComponent(pair)+"&interval=1m&limit=36",8500);
+ if(!Array.isArray(raw)||raw.length<25)throw new Error("insufficient Binance flow candles");
+ const rows=raw.map(k=>{const quote=Number(k[7])||0,buy=Number(k[10])||0,sell=Math.max(0,quote-buy);return [Number(k[0]),quote,buy,sell,buy-sell];});
+ const closed=rows.slice(0,-1),idx=closed.length-1,last=closed[idx],base=closed.slice(Math.max(0,idx-20),idx).map(x=>x[1]).filter(x=>x>0);
+ if(!last||base.length<16)throw new Error("insufficient flow baseline");
+ const avg=base.reduce((a,b)=>a+b,0)/base.length,ratio=avg>0?last[1]/avg:0;
+ const recent=closed.slice(-5),sum=k=>recent.reduce((a,x)=>a+x[k],0),quote5=sum(1),buy5=sum(2),sell5=sum(3),net5=buy5-sell5,netPct=quote5>0?net5/quote5*100:0;
+ const prev5=closed.slice(-25,-5),prevAvg=prev5.length?prev5.reduce((a,x)=>a+x[1],0)/prev5.length:0,ratio5=prevAvg>0?quote5/prevAvg:0;
+ const chartRows=closed.slice(-30).map((x,i,arr)=>{const prior=arr.slice(Math.max(0,i-20),i).map(v=>v[1]).filter(v=>v>0),mean=prior.length?prior.reduce((a,b)=>a+b,0)/prior.length:avg;return [...x,mean>0?x[1]/mean:0];});
+ return {source:"Binance Spot · taker buy/sell",quote1m:last[1],buy1m:last[2],sell1m:last[3],net1m:last[4],ratio1m:ratio,quote5m,buy5m,sell5m,net5m:net5,netPct5m:netPct,volumeRatio5m:ratio5,rows:chartRows,updatedAt:Date.now(),unusual:ratio>=2||ratio5>=2.2};
+}
 async function scanFastCoin(coin){
  const symbol=String(coin?.symbol||"").toUpperCase();
  if(!/^[A-Z0-9]{2,20}$/.test(symbol)||NON_TRADABLE_SYMBOLS.has(symbol))return null;
- const {rows,provider}=await fetchFastCandles(symbol);
+ const [{rows,provider},flowResult]=await Promise.all([fetchFastCandles(symbol),fetchHunterOrderFlow(symbol).then(flow=>({flow})).catch(error=>({flow:null,error}))]);
+ const flow=flowResult.flow;
  if(!Array.isArray(rows)||rows.length<25)return null;
  const valid=rows.every(r=>r.length>=6&&r.slice(1,6).every(Number.isFinite)&&Number(r[1])>0&&Number(r[2])>=Number(r[3])&&Number(r[3])>0&&Number(r[4])>0&&Number(r[5])>=0);
  if(!valid)return null;
@@ -2000,13 +2014,16 @@ async function scanFastCoin(coin){
  // رادار کوتاه‌مدت: کندل بسته‌شده ۱ دقیقه‌ای با تأیید حرکت ۵ دقیقه‌ای و حجم نسبی.
  const bullMomentum=change1m>=0.08&&change5m>=0.18&&volumeRatio>=1.15&&(breakoutUp||change1m>=0.18);
  const bearMomentum=change1m<=-0.08&&change5m<=-0.18&&volumeRatio>=1.15&&(breakoutDown||change1m<=-0.18);
+ const bullFlow=!!flow&&flow.unusual&&flow.netPct5m>=12&&flow.net5m>=5000&&change5m>=-0.15;
+ const bearFlow=!!flow&&flow.unusual&&flow.netPct5m<=-12&&flow.net5m<=-5000&&change5m<=0.15;
  let trend="neutral",score=0;
- if(bullMomentum||bearMomentum){
-  trend=bullMomentum?"bull":"bear";
-  score=Math.min(99,Math.round(55+Math.min(16,Math.abs(change1m)*30)+Math.min(14,Math.abs(change5m)*8)+Math.min(16,Math.max(0,volumeRatio-1)*8)+(breakoutUp||breakoutDown?8:0)));
+ if(bullMomentum||bearMomentum||bullFlow||bearFlow){
+  trend=(bullMomentum||bullFlow)?"bull":"bear";
+  const flowStrength=flow?Math.min(20,Math.abs(flow.netPct5m)*.35)+Math.min(15,Math.max(0,flow.volumeRatio5m-1)*5):0;
+  score=Math.min(99,Math.round(55+Math.min(16,Math.abs(change1m)*30)+Math.min(14,Math.abs(change5m)*8)+Math.min(16,Math.max(0,volumeRatio-1)*8)+(breakoutUp||breakoutDown?8:0)+flowStrength));
   if(score<64)return null;
  }
- return {trend,score,change1m,change5m,volumeRatio,breakout:breakoutUp||breakoutDown,overextended,price,provider,updatedAt:now,candleTime:Number(last[0]),rows:rows.map(x=>x.slice(0,6).map(Number))};
+ return {trend,score,change1m,change5m,volumeRatio,breakout:breakoutUp||breakoutDown,overextended,price,provider,flow,flowSignal:bullFlow?"inflow":bearFlow?"outflow":"",updatedAt:now,candleTime:Number(last[0]),rows:rows.map(x=>x.slice(0,6).map(Number))};
 }
 async function fetchHunterUniverse(){
  if(Date.now()<hunterUniverseCache.expires&&hunterUniverseCache.coins.length)return hunterUniverseCache.coins;
@@ -2344,20 +2361,28 @@ function hunterExpandedCandles(rows,trend){
  const data=(rows||[]).filter(c=>Array.isArray(c)&&c.length>=5&&[1,2,3,4].every(i=>Number.isFinite(Number(c[i])))).slice(-30);
  if(data.length<2)return '<div class="hunter-chart-no-data">داده کندلی کافی برای نمایش نمودار وجود ندارد.</div>';
  const W=760,H=300,L=54,R=18,T=20,B=34,hi=Math.max(...data.map(c=>Number(c[2]))),lo=Math.min(...data.map(c=>Number(c[3]))),span=Math.max(hi-lo,Math.abs(hi)*.00001,1e-12),y=v=>T+(hi-Number(v))/span*(H-T-B),slot=(W-L-R)/data.length,cw=Math.max(5,Math.min(15,slot*.58));
- let svg='<svg class="hunter-expanded-svg" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="نمودار بزرگ کندل‌های پنج دقیقه‌ای" preserveAspectRatio="xMidYMid meet">';
+ let svg='<svg class="hunter-expanded-svg" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="نمودار کندل یک دقیقه‌ای" preserveAspectRatio="xMidYMid meet">';
  for(let g=0;g<5;g++){const yy=T+g*(H-T-B)/4,val=hi-g*span/4;svg+='<line x1="'+L+'" y1="'+yy+'" x2="'+(W-R)+'" y2="'+yy+'" stroke="#8290a0" stroke-opacity=".18" stroke-dasharray="4 5"/><text x="'+(L-9)+'" y="'+(yy+4)+'" text-anchor="end" fill="#aab5c2" font-size="11">'+hunterPrice(val)+'</text>';}
  data.forEach((c,i)=>{const x=L+i*slot+slot/2,o=Number(c[1]),cl=Number(c[4]),up=cl>=o,col=up?"#35e5ad":"#ff647d",top=Math.min(y(o),y(cl)),body=Math.max(2,Math.abs(y(o)-y(cl)));svg+='<line x1="'+x+'" y1="'+y(c[2])+'" x2="'+x+'" y2="'+y(c[3])+'" stroke="'+col+'" stroke-width="2" stroke-linecap="round"/><rect x="'+(x-cw/2)+'" y="'+top+'" width="'+cw+'" height="'+body+'" rx="2" fill="'+col+'"/>'+(i%Math.max(1,Math.ceil(data.length/6))===0?'<text x="'+x+'" y="'+(H-9)+'" text-anchor="middle" fill="#9aa7b5" font-size="10">'+new Date(Number(c[0])).toLocaleTimeString("fa-IR",{hour:"2-digit",minute:"2-digit"})+'</text>':'');});
- const first=Number(data[0][4]),last=Number(data[data.length-1][4]),change=first?(last/first-1)*100:0,color=trend==="bull"?"#35e5ad":"#ff647d",lastY=y(last);
- svg+='<line x1="'+L+'" y1="'+lastY+'" x2="'+(W-R)+'" y2="'+lastY+'" stroke="'+color+'" stroke-width="1.5" stroke-dasharray="5 4" opacity=".8"/><circle cx="'+(W-R)+'" cy="'+lastY+'" r="4" fill="'+color+'"/></svg>';
- return svg;
+ const first=Number(data[0][4]),last=Number(data[data.length-1][4]),color=trend==="bull"?"#35e5ad":"#ff647d",lastY=y(last);
+ svg+='<line x1="'+L+'" y1="'+lastY+'" x2="'+(W-R)+'" y2="'+lastY+'" stroke="'+color+'" stroke-width="1.5" stroke-dasharray="5 4" opacity=".8"/><circle cx="'+(W-R)+'" cy="'+lastY+'" r="4" fill="'+color+'"/></svg>';return svg;
 }
+function hunterExpandedFlow(flow){
+ const rows=(flow?.rows||[]).slice(-30);if(rows.length<2)return '<div class="hunter-chart-no-data">جریان خرید و فروش تهاجمی Binance در دسترس نیست.</div>';
+ const W=760,H=166,L=54,R=18,T=22,B=22,slot=(W-L-R)/rows.length,max=Math.max(1,...rows.map(x=>Math.abs(Number(x[4])||0))),scale=(H-T-B)/2/max,mid=T+(H-T-B)/2,cw=Math.max(5,Math.min(15,slot*.58));
+ let svg='<svg class="hunter-flow-svg" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="جریان خالص خرید و فروش تهاجمی بر حسب تتر" preserveAspectRatio="xMidYMid meet"><line x1="'+L+'" y1="'+mid+'" x2="'+(W-R)+'" y2="'+mid+'" stroke="#8c9baa" stroke-opacity=".55" stroke-dasharray="4 4"/>';
+ rows.forEach((r,i)=>{const x=L+i*slot+slot/2,net=Number(r[4])||0,bar=Math.abs(net)*scale,col=net>=0?"#35e5ad":"#ff647d";svg+='<rect x="'+(x-cw/2)+'" y="'+(net>=0?mid-bar:mid)+'" width="'+cw+'" height="'+Math.max(1,bar)+'" rx="2" fill="'+col+'" opacity=".9"/>'+(i%Math.max(1,Math.ceil(rows.length/6))===0?'<text x="'+x+'" y="'+(H-4)+'" text-anchor="middle" fill="#9aa7b5" font-size="10">'+new Date(Number(r[0])).toLocaleTimeString("fa-IR",{hour:"2-digit",minute:"2-digit"})+'</text>':'');});
+ svg+='<text x="'+L+'" y="12" fill="#35e5ad" font-size="11">خرید تهاجمی ↑</text><text x="'+(W-R)+'" y="12" text-anchor="end" fill="#ff647d" font-size="11">فروش تهاجمی ↓</text></svg>';return svg;
+}
+function hunterUsd(value){const n=Number(value)||0;return (n>=1000000?(n/1000000).toFixed(2)+"M":n>=1000?(n/1000).toFixed(1)+"K":n.toFixed(0))+" USDT";}
+
 function openHunterChart(id){
  const signal=fastRadarSignals.get(id),coin=hunterCoinIndex.get(id)||cachedCoinsData.find(c=>c.id===id);
  if(!signal||!coin)return;
  const rows=(signal.rows||[]).slice(-30),symbol=String(coin.symbol||"").toUpperCase(),up=signal.trend==="bull",trend=up?"روند صعودی":"روند نزولی",change=rows.length>1&&Number(rows[0][1])?(Number(rows[rows.length-1][4])/Number(rows[0][1])-1)*100:signal.change5m;
  const modal=document.getElementById("hunter-chart-modal");
  if(!modal)return;
- modal.innerHTML='<div class="hunter-chart-backdrop" data-hunter-chart-close="1"></div><section class="hunter-chart-dialog '+(up?"up":"down")+'" role="dialog" aria-modal="true" aria-labelledby="hunter-chart-title"><header class="hunter-chart-header"><div><small>نمودار زنده شکار · تایم‌فریم ۱ دقیقه</small><h3 id="hunter-chart-title">'+aiEscape(coin.name)+' ('+aiEscape(symbol)+'/USDT)</h3></div><button type="button" class="hunter-chart-close" data-hunter-chart-close="1" aria-label="بستن نمودار">×</button></header><div class="hunter-chart-trend"><b>'+trend+'</b><span>قدرت حرکت '+Number(signal.score||0).toLocaleString("fa-IR")+' از ۱۰۰</span><strong>'+((Number(change)>=0?"+":"")+Number(change||0).toFixed(2))+'٪</strong></div><div class="hunter-chart-canvas">'+hunterExpandedCandles(rows,signal.trend)+'</div><div class="hunter-chart-stats"><div><small>آخرین قیمت</small><b>'+hunterPrice(signal.price)+'</b></div><div><small>بالاترین کندل</small><b>'+hunterPrice(Math.max(...rows.map(c=>Number(c[2])||0)))+'</b></div><div><small>پایین‌ترین کندل</small><b>'+hunterPrice(Math.min(...rows.map(c=>Number(c[3])||0)))+'</b></div><div><small>حجم نسبی</small><b>'+Number(signal.volumeRatio||0).toFixed(1)+'×</b></div></div><p class="hunter-chart-foot">نمایش بر پایه کندل‌های ثبت‌شده در شکارچی بازار؛ جهت رنگ‌ها، وضعیت حرکت را نشان می‌دهد.</p></section>';
+ modal.innerHTML='<div class="hunter-chart-backdrop" data-hunter-chart-close="1"></div><section class="hunter-chart-dialog '+(up?"up":"down")+'" role="dialog" aria-modal="true" aria-labelledby="hunter-chart-title"><header class="hunter-chart-header"><div><small>نمودار زنده شکار · تایم‌فریم ۱ دقیقه</small><h3 id="hunter-chart-title">'+aiEscape(coin.name)+' ('+aiEscape(symbol)+'/USDT)</h3></div><button type="button" class="hunter-chart-close" data-hunter-chart-close="1" aria-label="بستن نمودار">×</button></header><div class="hunter-chart-trend"><b>'+trend+'</b><span>قدرت حرکت '+Number(signal.score||0).toLocaleString("fa-IR")+' از ۱۰۰</span><strong>'+((Number(change)>=0?"+":"")+Number(change||0).toFixed(2))+'٪</strong></div><div class="hunter-chart-canvas">'+hunterExpandedCandles(rows,signal.trend)+'</div><div class="hunter-flow-title"><b>جریان خرید و فروش تهاجمی · Binance Spot</b><small>سبز: خرید به قیمت بازار · قرمز: فروش به قیمت بازار</small></div><div class="hunter-chart-canvas hunter-flow-canvas">'+hunterExpandedFlow(signal.flow)+'</div><div class="hunter-chart-stats"><div><small>خرید تهاجمی ۵ دقیقه</small><b>'+hunterUsd(signal.flow?.buy5m)+'</b></div><div><small>فروش تهاجمی ۵ دقیقه</small><b>'+hunterUsd(signal.flow?.sell5m)+'</b></div><div><small>خالص جریان ۵ دقیقه</small><b class="'+(Number(signal.flow?.net5m)>=0?"up":"down")+'">'+(Number(signal.flow?.net5m)>=0?"+":"")+hunterUsd(signal.flow?.net5m)+'</b></div><div><small>حجم غیرعادی</small><b>'+Number(signal.flow?.volumeRatio5m||signal.volumeRatio||0).toFixed(1)+'× میانگین</b></div><div><small>آخرین قیمت</small><b>'+hunterPrice(signal.price)+'</b></div><div><small>بالاترین کندل</small><b>'+hunterPrice(Math.max(...rows.map(c=>Number(c[2])||0)))+'</b></div><div><small>پایین‌ترین کندل</small><b>'+hunterPrice(Math.min(...rows.map(c=>Number(c[3])||0)))+'</b></div><div><small>حجم نسبی</small><b>'+Number(signal.volumeRatio||0).toFixed(1)+'×</b></div></div><p class="hunter-chart-foot">'+(signal.flow?.unusual?"حجم غیرعادی شناسایی شد. ":"")+'جریان خالص از حجم خرید و فروش تهاجمی Binance محاسبه شده و معادل ورود یا خروج قطعی سرمایه کل بازار نیست.</p></section>';
  modal.classList.add("show");document.body.classList.add("hunter-chart-open");
  const close=modal.querySelector(".hunter-chart-close");if(close)close.focus();
 }
@@ -2379,7 +2404,7 @@ function renderMarketHunter(){
  if(!entries.length){feed.innerHTML='<div class="hunter-empty"><span class="hunter-radar-icon">⌁</span><b>در حال رصد بازار</b><small>بازارهای اسپات Binance، Bybit، OKX، Bitget، Gate و KuCoin از نظر جهش و ریزش غیرعادی قیمت و حجم بررسی می‌شوند.</small></div>';return;}
  feed.innerHTML=entries.map(({coin:c,signal:m,id})=>{
   const up=m.trend==="bull",direction=up?"جهش صعودی":"ریزش نزولی",cls=up?"up":"down",mainSymbols=new Set(cachedCoinsData.map(x=>String(x.symbol||"").toUpperCase())),isMain100=mainSymbols.has(String(c.symbol||"").toUpperCase()),originTag=isMain100?"":'<small class="hunter-origin-tag" title="این ارز خارج از فهرست اصلی ۱۰۰ ارز است">🎯 شکار</small>',risk=m.overextended?'<span class="hunter-warning">حرکت کش‌آمده · ورود دیرهنگام پرریسک</span>':'<span class="hunter-confirm">'+(m.breakout?"شکست محدوده تأیید شد":"شتاب حرکت در حال شکل‌گیری")+'</span>';
-  return '<article class="hunter-card '+cls+' hunter-density-'+density+'" data-hunter-card="'+aiEscape(id)+'"><div class="hunter-card-head"><div class="hunter-coin"><div class="hunter-coin-emblem"><img src="'+aiEscape(hunterCoinImage(c))+'" data-symbol="'+aiEscape(String(c.symbol).toUpperCase())+'" alt="'+aiEscape(String(c.symbol).toUpperCase())+'" loading="lazy" onerror="hunterCoinImageError(this)"><i style="display:none">'+aiEscape(String(c.symbol).slice(0,1).toUpperCase())+'</i></div><span><b>'+aiEscape(c.name)+' <small>('+aiEscape(String(c.symbol).toUpperCase())+')</small>'+originTag+'</b><em>'+direction+'</em><small class="hunter-symbol-tag">نماد معاملاتی: '+aiEscape(String(c.symbol).toUpperCase())+'/USDT</small></span></div><button type="button" class="hunter-mini-move hunter-chart-trigger" data-hunter-mini="'+aiEscape(id)+'" data-hunter-chart="'+aiEscape(id)+'" aria-label="نمایش نمودار بزرگ '+aiEscape(String(c.symbol).toUpperCase())+'"><span>'+(up?'پرواز قیمت ↑':'سقوط قیمت ↓')+'</span>'+hunterMiniCandles(m.rows,m.trend)+'</button><div class="hunter-score"><b>'+m.score.toLocaleString("fa-IR")+'</b><small>قدرت حرکت</small></div></div><div class="hunter-exchanges" data-hunter-exchanges="'+aiEscape(id)+'"><span class="hunter-exchange-label">در حال بررسی بازارهای قابل معامله…</span></div><div class="hunter-price-row"><span>قیمت مرجع <b class="hunter-live-price">'+hunterPrice(m.price)+'</b></span><span>حجم نسبی <b>'+m.volumeRatio.toFixed(1)+'×</b></span><span>تغییر ۱ دقیقه <b class="'+cls+'">'+(m.change1m>0?"+":"")+m.change1m.toFixed(2)+'٪</b></span><span>تغییر ۵ دقیقه <b class="'+cls+'">'+(m.change5m>0?"+":"")+m.change5m.toFixed(2)+'٪</b></span></div><div class="hunter-card-bottom">'+risk+'</div></article>';
+  return '<article class="hunter-card '+cls+' hunter-density-'+density+'" data-hunter-card="'+aiEscape(id)+'"><div class="hunter-card-head"><div class="hunter-coin"><div class="hunter-coin-emblem"><img src="'+aiEscape(hunterCoinImage(c))+'" data-symbol="'+aiEscape(String(c.symbol).toUpperCase())+'" alt="'+aiEscape(String(c.symbol).toUpperCase())+'" loading="lazy" onerror="hunterCoinImageError(this)"><i style="display:none">'+aiEscape(String(c.symbol).slice(0,1).toUpperCase())+'</i></div><span><b>'+aiEscape(c.name)+' <small>('+aiEscape(String(c.symbol).toUpperCase())+')</small>'+originTag+'</b><em>'+direction+'</em><small class="hunter-symbol-tag">نماد معاملاتی: '+aiEscape(String(c.symbol).toUpperCase())+'/USDT</small></span></div><button type="button" class="hunter-mini-move hunter-chart-trigger" data-hunter-mini="'+aiEscape(id)+'" data-hunter-chart="'+aiEscape(id)+'" aria-label="نمایش نمودار بزرگ '+aiEscape(String(c.symbol).toUpperCase())+'"><span>'+(up?'پرواز قیمت ↑':'سقوط قیمت ↓')+'</span>'+hunterMiniCandles(m.rows,m.trend)+'</button><div class="hunter-score"><b>'+m.score.toLocaleString("fa-IR")+'</b><small>قدرت حرکت</small></div></div><div class="hunter-exchanges" data-hunter-exchanges="'+aiEscape(id)+'"><span class="hunter-exchange-label">در حال بررسی بازارهای قابل معامله…</span></div><div class="hunter-price-row"><span>قیمت مرجع <b class="hunter-live-price">'+hunterPrice(m.price)+'</b></span><span>حجم نسبی <b>'+m.volumeRatio.toFixed(1)+'×</b></span><span>خالص جریان ۵ دقیقه <b class="'+(Number(m.flow?.net5m)>=0?"up":"down")+'">'+(Number(m.flow?.net5m)>=0?"+":"")+hunterUsd(m.flow?.net5m)+'</b></span><span>تغییر ۱ دقیقه <b class="'+cls+'">'+(m.change1m>0?"+":"")+m.change1m.toFixed(2)+'٪</b></span><span>تغییر ۵ دقیقه <b class="'+cls+'">'+(m.change5m>0?"+":"")+m.change5m.toFixed(2)+'٪</b></span></div><div class="hunter-card-bottom">'+risk+'</div></article>';
  }).join("");
  loadHunterListings(entries.map(({coin,id})=>({coin,id}))).catch(error=>console.debug("Hunter exchange listing check:",error));
 }
@@ -2788,7 +2813,7 @@ setInterval(()=>mmpSendEvent("heartbeat"),240000);
 .hunter-chart-trend span{color:#c0cad4;font-size:11px}.hunter-chart-trend strong{margin-inline-start:auto;color:#35e5ad;font-size:16px}.hunter-chart-dialog.down .hunter-chart-trend strong{color:#ff8395}
 .hunter-chart-canvas{width:100%;min-height:190px;padding:8px 0}
 .hunter-expanded-svg{display:block;width:100%;height:auto;max-height:390px;overflow:visible}
-.hunter-chart-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:8px}
+.hunter-flow-title{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:14px 0 4px;color:#e7d4a9;font-size:12px}.hunter-flow-title small{color:#91a4b5;font-size:10px}.hunter-flow-svg{display:block;width:100%;height:auto;max-height:166px}.hunter-flow-canvas{padding-top:4px}.hunter-chart-foot{line-height:1.8}.hunter-chart-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:8px}
 .hunter-chart-stats>div{min-width:0;padding:10px;border:1px solid #ffffff18;border-radius:11px;background:#ffffff08}
 .hunter-chart-stats small{display:block;color:#9eacba;font-size:10px}
 .hunter-chart-stats b{display:block;margin-top:5px;color:#f2d68f;font-size:12px;overflow-wrap:anywhere}
