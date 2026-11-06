@@ -543,6 +543,49 @@ async function handle(request,env){
   const sources=Object.fromEntries(Object.entries(catalogs).map(([k,v])=>[k,{ok:!!v?.ok,status:v?.status||0,error:v?.error||null,source:v?.source||null}]));
   return json({checked_at:new Date().toISOString(),assets,sources},200,request);
  }
+
+ if(request.method==="GET"&&new URL(request.url).pathname==="/market-orderflow"){
+  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"market-orderflow"),request);if(limited)return limited;
+  const url=new URL(request.url),raw=String(url.searchParams.get("symbol")||"BTC").toUpperCase();
+  if(!/^[A-Z0-9]{2,15}$/.test(raw))return json({error:"نماد نامعتبر است."},400,request);
+  const symbol=raw.endsWith("USDT")?raw:raw+"USDT",base=symbol.replace(/USDT$/,"");
+  const get=async(u,ms=8500)=>{const c=new AbortController(),t=setTimeout(()=>c.abort(),ms);try{const r=await fetch(u,{signal:c.signal,headers:{"Accept":"application/json"}});if(!r.ok)throw new Error("HTTP "+r.status);return await r.json();}finally{clearTimeout(t);}};
+  const depthUrls=[
+   "https://api.binance.com/api/v3/depth?symbol="+symbol+"&limit=100",
+   "https://api.binance.us/api/v3/depth?symbol="+symbol+"&limit=100",
+   "https://api1.binance.com/api/v3/depth?symbol="+symbol+"&limit=100",
+   "https://data-api.binance.vision/api/v3/depth?symbol="+symbol+"&limit=100"
+  ];
+  let depth=null,depthSource=null,depthError=null;
+  for(const u of depthUrls){try{const d=await get(u);if(Array.isArray(d.bids)&&Array.isArray(d.asks)){depth=d;depthSource="Binance Spot";break;}}catch(e){depthError=String(e?.message||e);}}
+  if(!depth){try{const d=await get("https://www.okx.com/api/v5/market/books?instId="+base+"-USDT&sz=100");const b=d?.data?.[0];if(b?.bids&&b?.asks){depth={bids:b.bids,asks:b.asks};depthSource="OKX Spot";}}catch(e){depthError=String(e?.message||e);}}
+  let bid=0,ask=0,mid=0;
+  if(depth){const bp=Number(depth.bids?.[0]?.[0]||0),ap=Number(depth.asks?.[0]?.[0]||0);mid=(bp+ap)/2;
+   for(const [p,q] of depth.bids||[])if(mid&&Number(p)>=mid*.99)bid+=Number(p)*Number(q);
+   for(const [p,q] of depth.asks||[])if(mid&&Number(p)<=mid*1.01)ask+=Number(p)*Number(q);
+  }
+  let klines=null,candleSource=null,candleError=null;
+  const klineUrls=[
+   "https://api.binance.com/api/v3/klines?symbol="+symbol+"&interval=1m&limit=60",
+   "https://api.binance.us/api/v3/klines?symbol="+symbol+"&interval=1m&limit=60",
+   "https://api1.binance.com/api/v3/klines?symbol="+symbol+"&interval=1m&limit=60",
+   "https://data-api.binance.vision/api/v3/klines?symbol="+symbol+"&interval=1m&limit=60"
+  ];
+  for(const u of klineUrls){try{const d=await get(u);if(Array.isArray(d)&&d.length>=10){klines=d;candleSource="Binance Spot";break;}}catch(e){candleError=String(e?.message||e);}}
+  let buy=null,sell=null,cvd=null;
+  if(klines){buy=0;sell=0;for(const k of klines){const quote=Number(k[7])||0,takerBuy=Number(k[10])||0;buy+=takerBuy;sell+=Math.max(0,quote-takerBuy);}cvd=buy-sell;}
+  const imbalance=bid+ask?(bid-ask)/(bid+ask)*100:null;
+  return json({symbol,depth:{available:!!depth,source:depthSource,bid_usdt:depth?bid:null,ask_usdt:depth?ask:null,imbalance_pct:imbalance},flow:{available:!!klines,source:candleSource,buy_usdt:buy,sell_usdt:sell,cvd_usdt:cvd,minutes:klines?klines.length:0},errors:{depth:depth?null:depthError,candles:klines?null:candleError},checked_at:new Date().toISOString()},200,request);
+ }
+ if(request.method==="GET"&&new URL(request.url).pathname==="/whale-watch"){
+  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"whale-watch"),request);if(limited)return limited;
+  try{
+   const c=new AbortController(),timer=setTimeout(()=>c.abort(),9000);
+   let rows;try{const r=await fetch("https://mempool.space/api/mempool/recent",{signal:c.signal,headers:{"Accept":"application/json"}});if(!r.ok)throw new Error("HTTP "+r.status);rows=await r.json();}finally{clearTimeout(timer);}
+   const txs=(Array.isArray(rows)?rows:[]).map(x=>({txid:String(x.txid||""),value_btc:Number(x.value)/1e8,fee:Number(x.fee)||0,fee_rate:Number(x.feeRate)||0})).filter(x=>x.txid&&x.value_btc>=10).sort((a,b)=>b.value_btc-a.value_btc).slice(0,20);
+   return json({asset:"BTC",scope:"unconfirmed_mempool",provider:"mempool.space",threshold_btc:10,count:txs.length,transfers:txs,checked_at:new Date().toISOString(),limitation:"این داده فقط تراکنش‌های بزرگِ در انتظار تأیید شبکه بیت‌کوین را نشان می‌دهد؛ آدرس‌های صرافی برچسب‌گذاری نشده‌اند و جریان ورودی/خروجی صرافی از آن استنباط نمی‌شود."},200,request);
+  }catch(e){return json({error:"داده عمومی تراکنش‌های بزرگ بیت‌کوین در دسترس نیست.",detail:String(e?.message||e).slice(0,180)},502,request);}
+ }
  if(request.method==="GET"&&new URL(request.url).pathname==="/market-candles"){
   const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"market-candles");
   const limited=rateLimitReply(limitResult,request);if(limited)return limited;
