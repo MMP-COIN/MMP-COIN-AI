@@ -940,13 +940,13 @@ body{background:
 <p class="sub radar-footnote">پیشنهادها بر اساس داده‌های واقعی بازار تهیه می‌شوند و تضمین سود نیستند. در نبود داده معتبر، پیشنهادی صادر نمی‌شود.</p></section></section>
 
 <section class="card ai-terminal" id="ai-section">
- <div class="ai-console-head"><div><div class="section-kicker">MMP AI · ON-DEMAND ANALYSIS</div><h2>تحلیلگر هوشمند چندلایه بازار</h2><p class="sub ai-intro">تحلیل فقط با درخواست مستقیم تو اجرا می‌شود؛ انتخاب ارز یا بازکردن این بخش هیچ استعلام هوش مصنوعی ارسال نمی‌کند.</p></div><span class="ai-manual-badge"><i></i> استعلام خودکار خاموش</span></div>
- <div class="ai-control-panel">
-  <div class="ai-control-field"><label for="ai-coin-select">دارایی موردنظر</label><select id="ai-coin-select" class="dropdown-select-box"><option value="">انتخاب ارز…</option></select></div>
-  <div class="ai-control-field"><label for="ai-market-mode">نوع بازار</label><select id="ai-market-mode" class="dropdown-select-box" aria-label="نوع بازار"><option value="both">اسپات + فیوچرز</option><option value="spot">فقط اسپات</option><option value="futures">فقط فیوچرز</option></select></div>
-  <button class="btn primary ai-run-action" id="ai-run-btn" type="button" onclick="runAiAnalysis(true)"><span>✦</span> اجرای تحلیل درخواستی</button>
+ <div class="section-head"><div><div class="section-kicker">MMP AI · MARKET INTELLIGENCE</div><h2>تحلیلگر هوشمند چندلایه بازار</h2></div><span class="badge">تحلیل داده‌محور</span></div>
+ <p class="sub ai-intro">یک ارز را انتخاب کن تا روند، سطوح کلیدی و سناریوهای احتمالی بازار بررسی شود؛ تصمیم نهایی با خودت است.</p>
+ <div class="ai-toolbar">
+  <select id="ai-coin-select" class="dropdown-select-box"><option value="">انتخاب ارز…</option></select>
+  <select id="ai-market-mode" class="dropdown-select-box" aria-label="نوع بازار"><option value="both">اسپات + فیوچرز</option><option value="spot">فقط اسپات</option><option value="futures">فقط فیوچرز</option></select>
+  <button class="btn primary" id="ai-run-btn" type="button" onclick="runAiAnalysis(true)">دریافت تحلیل جدید</button>
  </div>
- <div class="ai-manual-hint"><span>◉</span> تا زمانی که دکمه بالا را نزنی، هیچ درخواست تحلیلی به سرویس‌های AI ارسال نمی‌شود.</div>
  <div class="ai-grid ai-grid-compact">
   <div class="ai-metric"><small>جمع‌بندی جهت بازار</small><b id="ai-action">منتظر انتخاب ارز</b></div>
   <div class="ai-metric"><small>قیمت مرجع</small><b id="ai-live-price">—</b></div>
@@ -2098,18 +2098,4 @@ html.mmp-native-app .native-refresh-label{font:700 9px Tahoma,Arial,sans-serif!i
 }
 @media(max-width:420px){.ai-terminal .ai-toolbar{grid-template-columns:1fr}.ai-terminal .ai-toolbar button{grid-column:auto}}
 
-/* Manual-only AI console redesign */
-.ai-terminal{position:relative;overflow:hidden;border:1px solid #8e713b66;background:radial-gradient(ellipse at 92% 0%,#b58b3820,transparent 38%),linear-gradient(145deg,#171a24,#0c1018)}
-.ai-console-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:15px}
-.ai-console-head h2{margin:3px 0 6px}
-.ai-console-head .ai-intro{max-width:720px;margin:0;line-height:1.9}
-.ai-manual-badge{display:inline-flex;align-items:center;gap:8px;white-space:nowrap;border:1px solid #37b98566;border-radius:30px;padding:7px 11px;color:#8de0b9;background:#12332655;font-size:11px}
-.ai-manual-badge i{width:7px;height:7px;border-radius:50%;background:#45d69b;box-shadow:0 0 10px #45d69b}
-.ai-control-panel{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(150px,1fr) minmax(190px,auto);gap:10px;align-items:end;padding:14px;border:1px solid #8e713b55;border-radius:14px;background:#0a0e16}
-.ai-control-field{min-width:0}.ai-control-field label{display:block;color:#d5c18f;font-size:11px;margin:0 0 7px}.ai-control-field .dropdown-select-box{width:100%;margin:0;min-height:44px}
-.ai-run-action{min-height:44px;white-space:nowrap;box-shadow:0 7px 22px #b18a3c24}.ai-run-action span{margin-left:5px;color:#ffe4a1}
-.ai-manual-hint{display:flex;align-items:center;gap:8px;margin:10px 2px 13px;color:#9ca8ba;font-size:11px}.ai-manual-hint span{color:#d8b56b}
-.ai-terminal .ai-grid-compact{margin-top:12px}
-@media(max-width:700px){.ai-console-head{display:block}.ai-manual-badge{margin-top:10px}.ai-control-panel{grid-template-columns:1fr 1fr}.ai-run-action{grid-column:1/-1;width:100%}}
-@media(max-width:420px){.ai-control-panel{grid-template-columns:1fr}.ai-run-action{grid-column:auto}}
 </style>
