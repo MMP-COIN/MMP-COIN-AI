@@ -948,6 +948,10 @@ body{background:
 #dropdownMenu .menu-version-row{width:calc(100% - 4px)}
 @media(max-width:560px){#refresh-all-btn{min-width:0!important;width:auto!important;padding:7px 8px!important;font-size:9px!important;color:#f5dda2!important}#refresh-all-btn:before,#refresh-all-btn:after{content:none!important}}
 </style>
+<style>
+.boom-coin-select{display:flex;align-items:center;gap:8px;background:#090f18;border:1px solid #354255;border-radius:10px;padding:5px 10px}.boom-coin-select img{width:27px;height:27px;object-fit:contain;border-radius:50%;background:#202a38}.boom-coin-select input{border:0!important;background:transparent!important;padding:7px 2px!important;flex:1}.boom-coin-name{display:block;color:#c6a968;font-size:10px;margin-top:5px}
+.boom-chart-modal{display:none;position:fixed;inset:0;z-index:100000;background:rgba(3,7,12,.97);padding:12px;overflow:auto}.boom-chart-modal.open{display:block}.boom-chart-modal-head{position:sticky;top:0;z-index:3;display:flex;justify-content:space-between;align-items:center;padding:10px 12px;margin:-12px -12px 12px;background:#111a26;border-bottom:1px solid #79633c;color:#f1d596}.boom-chart-modal-head button{border:1px solid #59677a;background:#202b39;color:#fff;border-radius:9px;padding:7px 12px}.boom-chart-modal #boom-hunter-expanded{max-width:1100px;margin:0 auto}.boom-chart-modal #boom-hunter-expanded .boom-chart{min-height:260px}.boom-chart-modal #boom-hunter-expanded .boom-chart svg{width:100%;height:auto}.boom-modal-open{overflow:hidden}
+</style>
 </head>
 <body class="mmp-app-mode">
 
@@ -1057,9 +1061,9 @@ body{background:
 </section>
 
 <section class="card mmp-boom-lab" id="boom-hunter">
- <div class="section-head"><div><div class="section-kicker">MMP · MOMENTUM OSCILLATOR LAB</div><h2>آزمایشگاه Boom Hunter</h2><p class="sub">نسخه آزمایشی مستقل MMP برای بررسی مومنتوم، چرخش احتمالی و فشار حرکت قیمت</p></div><span class="badge">آزمایشی · مستقل</span></div>
+ <div class="section-head"><div><div class="section-kicker">MMP · MOMENTUM OSCILLATOR LAB</div><h2>آزمایشگاه Boom Hunter</h2><p class="sub">بررسی مستقل مومنتوم، چرخش احتمالی قیمت، حجم و جریان خرید و فروش</p></div><span class="badge">تحلیل مستقل</span></div>
  <div class="boom-toolbar">
-  <label>نماد ارز <input id="boom-symbol" type="text" value="BTC" maxlength="20" autocomplete="off" spellcheck="false" aria-label="نماد ارز"></label>
+  <label>انتخاب ارز <div class="boom-coin-select"><img id="boom-coin-icon" src="https://assets.coincap.io/assets/icons/btc@2x.png" alt="BTC"><input id="boom-symbol" type="text" value="BTC" list="boom-coin-options" maxlength="20" autocomplete="off" spellcheck="false" aria-label="جستجو و انتخاب ارز"><datalist id="boom-coin-options"></datalist></div><small id="boom-coin-name" class="boom-coin-name">Bitcoin · BTC</small></label>
   <label>تایم‌فریم <select id="boom-interval" aria-label="تایم فریم"><option value="1m">۱ دقیقه</option><option value="5m" selected>۵ دقیقه</option><option value="15m">۱۵ دقیقه</option><option value="1h">۱ ساعت</option></select></label>
   <button class="btn primary" id="boom-run" type="button">تحلیل اندیکاتور</button>
  </div>
@@ -1079,8 +1083,9 @@ body{background:
   <div><small>حجم آخرین کندل</small><b id="boom-volume-ratio">—</b></div>
  </div>
  <div class="boom-chart-wrap"><div class="boom-chart-title">نوسانگر مومنتوم MMP</div><div id="boom-oscillator" class="boom-chart boom-osc-chart"><div class="ai-empty">پس از دریافت داده نمایش داده می‌شود.</div></div></div>
- <p class="boom-disclaimer">این ابزار کپی کد اختصاصی Boom Hunter Pro نیست؛ یک نمونه مستقل و آزمایشی با منطق نوسانگر مومنتوم MMP است. سیگنال‌ها تأییدشده یا سودآور فرض نمی‌شوند و تا پایان بک‌تست نباید مبنای معامله قرار گیرند.</p>
+ <p class="boom-disclaimer">این ابزار از داده‌های کندلی و محاسبات مستقل MMP استفاده می‌کند؛ سیگنال‌ها تضمین سود نیستند و باید همراه با مدیریت ریسک بررسی شوند.</p>
 </section>
+<div id="boom-chart-modal" class="boom-chart-modal" aria-hidden="true"><div class="boom-chart-modal-head"><b>نمایش کامل Boom Hunter</b><button type="button" id="boom-chart-modal-close">✕</button></div><div id="boom-chart-modal-content"></div></div>
 
 <section class="card ai-terminal" id="ai-section">
  <div class="section-head"><div><div class="section-kicker">MMP AI · MARKET INTELLIGENCE</div><h2>تحلیلگر هوشمند چندلایه بازار</h2></div><span class="badge">تحلیل داده‌محور</span></div>
@@ -2866,6 +2871,49 @@ setInterval(()=>mmpSendEvent("heartbeat"),240000);
  }
  const btn=$("boom-run");if(btn)btn.addEventListener("click",run);
  const symbol=$("boom-symbol");if(symbol)symbol.addEventListener("keydown",e=>{if(e.key==="Enter")run();});
+ const boomCoins=new Map();
+ function addBoomCoin(c){if(!c)return;const k=String(c.symbol||"").toUpperCase();if(k)boomCoins.set(k,{symbol:k,name:c.name||k,image:c.image||"https://assets.coincap.io/assets/icons/"+k.toLowerCase()+"@2x.png"});}
+ function renderBoomCoins(){
+  (Array.isArray(cachedCoinsData)?cachedCoinsData:[]).forEach(addBoomCoin);
+  if(typeof hunterUniverseCache!=="undefined"&&hunterUniverseCache?.coins)hunterUniverseCache.coins.forEach(addBoomCoin);
+  const list=$("boom-coin-options");if(list)list.innerHTML=[...boomCoins.values()].sort((a,b)=>a.name.localeCompare(b.name)).map(c=>'<option value="'+c.symbol+'" label="'+c.name.replace(/"/g,"")+' · '+c.symbol+'"></option>').join("");
+  const selected=boomCoins.get(($("boom-symbol")?.value||"").toUpperCase()),icon=$("boom-coin-icon"),name=$("boom-coin-name");
+  if(selected){if(icon){icon.src=selected.image;icon.style.display="";}if(name)name.textContent=selected.name+" · "+selected.symbol;}
+  else if(name)name.textContent="دارایی Binance · "+($("boom-symbol")?.value||"").toUpperCase();
+ }
+ async function loadBoomCoins(){
+  try{
+   let data=null;
+   for(const url of ["https://api.binance.com/api/v3/exchangeInfo","https://data-api.binance.vision/api/v3/exchangeInfo"]){
+    try{const res=await fetch(url);if(!res.ok)continue;const x=await res.json();if(Array.isArray(x.symbols)){data=x;break;}}catch(e){}
+   }
+   if(!data)throw new Error("Binance list unavailable");
+   const seen=new Set();
+   data.symbols.forEach(x=>{if(x.status==="TRADING"&&x.quoteAsset==="USDT"&&x.isSpotTradingAllowed!==false&&!seen.has(x.baseAsset)){seen.add(x.baseAsset);addBoomCoin({symbol:x.baseAsset,name:x.baseAsset});}});
+  }catch(e){}
+  renderBoomCoins();
+ }
+ $("boom-symbol")?.addEventListener("input",renderBoomCoins);
+ loadBoomCoins();setTimeout(renderBoomCoins,12000);setInterval(renderBoomCoins,60000);
+ const modal=$("boom-chart-modal"),content=$("boom-chart-modal-content");
+ function closeBoom(){modal?.classList.remove("open");modal?.setAttribute("aria-hidden","true");document.body.classList.remove("boom-modal-open");if(content)content.innerHTML="";}
+ function openBoom(){
+  if(!modal||!content)return;
+  content.innerHTML="";
+  const clone=$("boom-hunter").cloneNode(true);clone.id="boom-hunter-expanded";
+  clone.querySelectorAll("[id]").forEach(el=>el.id="expanded-"+el.id);
+  content.appendChild(clone);
+  const cs=clone.querySelector("#expanded-boom-symbol"),ci=clone.querySelector("#expanded-boom-interval"),cr=clone.querySelector("#expanded-boom-run");
+  if(cs){cs.value=$("boom-symbol").value;cs.addEventListener("input",()=>{$("boom-symbol").value=cs.value;renderBoomCoins();});}
+  if(ci){ci.value=$("boom-interval").value;ci.addEventListener("change",()=>{$("boom-interval").value=ci.value;});}
+  if(cr)cr.addEventListener("click",()=>{$("boom-symbol").value=cs.value;$("boom-interval").value=ci.value;btn.click();setTimeout(()=>{clone.querySelectorAll("[id^='expanded-boom-']").forEach(el=>{const src=$(el.id.replace("expanded-",""));if(src&&el.tagName!=="BUTTON")el.innerHTML=src.innerHTML;});},1800);});
+  modal.classList.add("open");modal.setAttribute("aria-hidden","false");document.body.classList.add("boom-modal-open");
+ }
+ const candle=$("boom-candles")?.closest(".boom-chart-wrap");
+ if(candle){candle.style.cursor="zoom-in";candle.title="برای بازکردن نمودار و ابزارهای کامل لمس کنید";candle.addEventListener("click",openBoom);}
+ $("boom-chart-modal-close")?.addEventListener("click",closeBoom);
+ modal?.addEventListener("click",e=>{if(e.target===modal)closeBoom();});
+ document.addEventListener("keydown",e=>{if(e.key==="Escape")closeBoom();});
 })();
 </script>
 </body>
