@@ -1233,7 +1233,7 @@ body{background:
 
 </div></section>
 <section class="card">
-<div class="section-head"><h2>وضعیت اتصال صرافی‌ها و مراجع</h2><span class="badge" id="conn-summary">پایش لایو</span></div>
+<div class="section-head"><h2>وضعیت زنده اتصال ۸ منبع بازار</h2><span class="badge" id="conn-summary">پایش لایو</span></div>
 
 <section class="card" id="market-hours">
 <div class="section-head"><div><div class="section-kicker">GLOBAL MARKET CLOCK</div><h2>ساعت کاری بازارهای مالی جهان</h2></div><span class="badge" id="market-clock-zone">زمان محلی دستگاه</span></div>
@@ -3563,5 +3563,9 @@ body:before{opacity:.23;background-size:34px 34px}
 })();
 </script>
 <style id="mmp-symbol-icon-fallbacks">.radar-icon-fallback,.boom-icon-fallback{width:27px;height:27px;flex:0 0 27px;display:inline-grid;place-items:center;border-radius:50%;background:linear-gradient(145deg,#e8ca82,#80602e);color:#15120b;font-size:8px;font-weight:900;direction:ltr}</style>
+<style id="mmp-global-coin-icon-fallback-style">.coin-icon-fallback{width:28px;height:28px;flex:0 0 28px;display:inline-grid;place-items:center;border-radius:50%;background:linear-gradient(145deg,#e8ca82,#80602e);color:#15120b;font-size:8px;font-weight:900;direction:ltr}</style>
+<script id="mmp-global-coin-icon-fallback">
+(()=>{document.addEventListener("error",event=>{const img=event.target;if(!(img instanceof HTMLImageElement)||img.hasAttribute("onerror"))return;const symbol=img.dataset.symbol||img.alt||img.closest("[data-symbol]")?.dataset.symbol||img.closest(".coin-identity")?.querySelector(".coin-symbol")?.textContent||"COIN";const span=document.createElement("span");span.className="coin-icon-fallback";span.textContent=String(symbol).trim().slice(0,4).toUpperCase();img.replaceWith(span);},true);})();
+</script>
 </body>
 </html>
