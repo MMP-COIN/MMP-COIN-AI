@@ -3634,7 +3634,6 @@ body:before{opacity:.23;background-size:34px 34px}
   };
   const open=()=>{render();menu.hidden=false;menu.dataset.open="1";if(toggle)toggle.textContent="بستن فهرست ارزها";};
   input.addEventListener("focus",open);input.addEventListener("click",open);input.addEventListener("input",open);
-  toggle?.addEventListener("click",()=>menu.hidden?open():(menu.hidden=true,menu.dataset.open="0",toggle.textContent="نمایش فهرست ارزها"));
   menu.addEventListener("click",e=>{const b=e.target.closest("[data-symbol]");if(!b)return;input.value=b.dataset.symbol;input.dispatchEvent(new Event("change",{bubbles:true}));menu.hidden=true;menu.dataset.open="0";if(toggle)toggle.textContent="نمایش فهرست ارزها";$("boom-coin-name")&&( $("boom-coin-name").textContent=(pool().find(c=>c.symbol===input.value)?.name||input.value)+" · "+input.value);});
   document.addEventListener("click",e=>{if(!e.target.closest(".boom-coin-picker")){menu.hidden=true;menu.dataset.open="0";}});
  }
