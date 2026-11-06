@@ -139,6 +139,30 @@ jobs:
           jq -e '.symbol == "BTCUSDT" and .interval == "15m" and (.candles | length >= 30) and (.provider | type == "string" and length > 0) and (.candles[0].open > 0)' /tmp/candles.json >/dev/null
           echo "- Live spot candlesticks: responding with real OHLCV data" >> "$GITHUB_STEP_SUMMARY"
 
+
+      - name: Smoke-test market intelligence endpoints
+        env:
+          WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
+        run: |
+          set -euo pipefail
+          status=$(curl --silent --show-error --max-time 25 -o /tmp/orderflow.json -w "%{http_code}" "$WORKER_URL/market-orderflow?symbol=BTC")
+          echo "Order-flow endpoint HTTP $status"
+          if [ "$status" != "200" ]; then cat /tmp/orderflow.json; exit 1; fi
+          jq -e '.symbol == "BTCUSDT" and (.depth | has("available")) and (.flow | has("available"))' /tmp/orderflow.json >/dev/null
+          status=$(curl --silent --show-error --max-time 25 -o /tmp/derivatives.json -w "%{http_code}" "$WORKER_URL/market-derivatives?symbol=BTC")
+          echo "Derivatives endpoint HTTP $status"
+          if [ "$status" != "200" ]; then cat /tmp/derivatives.json; exit 1; fi
+          jq -e '.symbol == "BTC" and (.source | type == "string" and length > 0)' /tmp/derivatives.json >/dev/null
+          status=$(curl --silent --show-error --max-time 20 -o /tmp/whales.json -w "%{http_code}" "$WORKER_URL/whale-watch")
+          echo "Whale-watch endpoint HTTP $status"
+          if [ "$status" != "200" ]; then cat /tmp/whales.json; exit 1; fi
+          jq -e '.asset == "BTC" and .provider == "mempool.space" and (.transfers | type == "array")' /tmp/whales.json >/dev/null
+          {
+            echo "- Order flow: endpoint responding with structured data"
+            echo "- Derivatives: endpoint responding with provider attribution"
+            echo "- Whale watch: public BTC large-transfer feed responding"
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Live AI analyzer end-to-end smoke test
         if: github.event_name == 'push'
         env:
