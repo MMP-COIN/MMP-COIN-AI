@@ -663,6 +663,14 @@ body:after{content:"";position:fixed;width:42vw;height:42vw;max-width:620px;max-
 .hunter-footnote{font-size:10px;line-height:1.8;margin:13px 0 0}.hunter-nav-link{border-color:#927844!important;background:linear-gradient(90deg,#b58b3c18,transparent)!important}
 @media(max-width:650px){.hunter-overview{gap:7px}.hunter-stat{padding:10px}.hunter-stat b{font-size:18px}.hunter-price-row{grid-template-columns:repeat(2,minmax(0,1fr))}.hunter-card{padding:11px}.hunter-card-bottom{align-items:flex-start;flex-direction:column}.hunter-analyze-btn{width:100%}.hunter-feed-head{align-items:flex-start;flex-direction:column}.hunter-topline{align-items:flex-start}.hunter-live-badge{padding:7px 9px;font-size:10px}}
 </style>
+/* Independent image-based coin picker for the AI analyst */
+.ai-terminal .ai-coin-picker{position:relative;min-width:0}
+.ai-terminal .ai-coin-picker-trigger{width:100%;min-height:46px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 12px;border:1px solid rgba(218,181,104,.38);border-radius:11px;background:rgba(8,15,25,.94);color:var(--text,#f4f0e6);text-align:right;cursor:pointer;font:inherit}
+.ai-coin-picker-current{display:flex;align-items:center;gap:9px;min-width:0}.ai-coin-picker-current img,.ai-coin-picker-option img{width:27px;height:27px;border-radius:50%;object-fit:contain;flex:0 0 27px;background:rgba(255,255,255,.06)}
+.ai-coin-picker-current span,.ai-coin-picker-option span{display:flex;flex-direction:column;min-width:0;gap:2px}.ai-coin-picker-current b,.ai-coin-picker-option b{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ai-coin-picker-current small,.ai-coin-picker-option small{font-size:10px;color:#aab5c5;direction:ltr;text-align:right}.ai-coin-picker-placeholder{font-size:12px;color:#b9c2cf}.ai-coin-picker-chevron{color:#d9b66d;font-size:19px}
+.ai-coin-picker-menu{position:absolute;z-index:1000;top:calc(100% + 7px);right:0;left:0;max-height:340px;padding:9px;border:1px solid rgba(218,181,104,.35);border-radius:13px;background:#0c1420;box-shadow:0 14px 35px rgba(0,0,0,.48)}.ai-coin-picker-menu[hidden]{display:none}.ai-coin-picker-menu input{width:100%;height:38px;margin-bottom:7px;padding:0 10px;border:1px solid rgba(255,255,255,.13);border-radius:8px;background:#111d2b;color:#fff;font:12px Tahoma,Arial}.ai-coin-picker-options{max-height:275px;overflow:auto}.ai-coin-picker-group{padding:8px 5px 5px;color:#d8b66d;font-size:10px;font-weight:700}.ai-coin-picker-option{width:100%;display:flex;align-items:center;gap:9px;padding:7px 8px;border:0;border-radius:8px;background:transparent;color:#f4f0e6;text-align:right;cursor:pointer}.ai-coin-picker-option:hover,.ai-coin-picker-option[aria-selected=true]{background:rgba(218,181,104,.13)}.ai-coin-picker-option[hidden],.ai-coin-picker-group[hidden]{display:none}
+@media(max-width:680px){.ai-terminal .ai-toolbar{grid-template-columns:1fr}.ai-coin-picker-menu{max-height:300px}.ai-coin-picker-options{max-height:235px}}
+
 <link href="https://fonts.googleapis.com/css2?family=Estedad:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 
 <style id="mmp-experience-redesign">
@@ -1039,7 +1047,7 @@ body{background:
  <div class="section-head"><div><div class="section-kicker">MMP AI · MARKET INTELLIGENCE</div><h2>تحلیلگر هوشمند چندلایه بازار</h2></div><span class="badge">تحلیل داده‌محور</span></div>
  <p class="sub ai-intro">یک ارز را انتخاب کن تا روند، سطوح کلیدی و سناریوهای احتمالی بازار بررسی شود؛ تصمیم نهایی با خودت است.</p>
  <div class="ai-toolbar">
-  <select id="ai-coin-select" class="dropdown-select-box"><option value="">انتخاب ارز…</option></select>
+  <div class="ai-coin-picker" id="ai-coin-picker"><select id="ai-coin-select" class="sr-only" aria-label="انتخاب ارز برای تحلیل"><option value="">انتخاب ارز…</option></select><button type="button" class="ai-coin-picker-trigger" id="ai-coin-picker-trigger" aria-expanded="false" aria-controls="ai-coin-picker-menu"><span class="ai-coin-picker-current" id="ai-coin-picker-current"><span class="ai-coin-picker-placeholder">انتخاب ارز دیجیتال برای تحلیل</span></span><span class="ai-coin-picker-chevron">⌄</span></button><div class="ai-coin-picker-menu" id="ai-coin-picker-menu" hidden><input id="ai-coin-picker-search" type="search" placeholder="جست‌وجوی نام یا نماد ارز…" autocomplete="off"><div class="ai-coin-picker-options" id="ai-coin-picker-options"><div class="ai-empty">در انتظار دریافت فهرست ارزها…</div></div></div></div>
   <select id="ai-market-mode" class="dropdown-select-box" aria-label="نوع بازار"><option value="both">اسپات + فیوچرز</option><option value="spot">فقط اسپات</option><option value="futures">فقط فیوچرز</option></select>
   <button class="btn primary" id="ai-run-btn" type="button" onclick="runAiAnalysis(true)">دریافت تحلیل جدید</button>
  </div>
@@ -1596,29 +1604,75 @@ function renderCoinsTables(data) {
  if(count)count.textContent=data.slice(5).length+" ارز دیگر · برای مشاهده باز کنید";
 }
 
-function syncAiCoinOptions(extraCoins=[]) {
-  const selectAi=$("ai-coin-select");
-  if(!selectAi)return;
-  const currentAiVal=selectAi.value;
-  const byId=new Map();
-  [...(Array.isArray(cachedCoinsData)?cachedCoinsData:[]),...(Array.isArray(extraCoins)?extraCoins:[])].forEach(c=>{
-    if(!c?.id||!c?.symbol)return;
-    const symbol=String(c.symbol).toUpperCase();
-    if(NON_TRADABLE_COIN_IDS.has(c.id)||NON_TRADABLE_SYMBOLS.has(symbol)||byId.has(c.id))return;
-    byId.set(c.id,c);
-  });
-  const available=[...byId.values()];
-  const primaryCoins=available.filter(c=>PRIMARY_ANALYSIS_ORDER.has(String(c.symbol||"").toUpperCase()));
-  const otherCoins=available.filter(c=>!PRIMARY_ANALYSIS_ORDER.has(String(c.symbol||"").toUpperCase()));
-  const optionHtml=c=>'<option value="'+aiEscape(c.id)+'">'+aiEscape(c.name||c.symbol)+' ('+aiEscape(String(c.symbol).toUpperCase())+')</option>';
-  let aiHtml='<option value="">انتخاب ارز دیجیتال...</option><optgroup label="'+primaryCoins.length+' ارز اصلی · تحلیل در اولویت">';
-  aiHtml+=primaryCoins.map(optionHtml).join("");
-  aiHtml+='</optgroup><optgroup label="سایر ارزهای قابل تحلیل ('+otherCoins.length+')">';
-  aiHtml+=otherCoins.map(optionHtml).join("");
-  aiHtml+='</optgroup>';
-  selectAi.innerHTML=aiHtml;
-  if(currentAiVal&&[...selectAi.options].some(o=>o.value===currentAiVal))selectAi.value=currentAiVal;
+
+function syncAiCoinOptions(data=[]) {
+ const selectAi=$("ai-coin-select"),optionsBox=$("ai-coin-picker-options");
+ if(!selectAi||!optionsBox)return;
+ const currentAiVal=selectAi.value,byId=new Map();
+ (Array.isArray(data)?data:[]).forEach(c=>{
+  if(!c?.id||!c?.symbol)return;
+  const symbol=String(c.symbol).toUpperCase();
+  if(NON_TRADABLE_COIN_IDS.has(c.id)||NON_TRADABLE_SYMBOLS.has(symbol)||byId.has(c.id))return;
+  byId.set(c.id,c);
+ });
+ const available=[...byId.values()];
+ const primary=available.filter(c=>PRIMARY_ANALYSIS_ORDER.has(String(c.symbol||"").toUpperCase()));
+ const others=available.filter(c=>!PRIMARY_ANALYSIS_ORDER.has(String(c.symbol||"").toUpperCase()));
+ const optionHtml=c=>{
+  const symbol=String(c.symbol||"").toUpperCase(),image=/^https:\/\//i.test(String(c.image||""))?String(c.image):"https://assets.coincap.io/assets/icons/"+symbol.toLowerCase()+"@2x.png";
+  return '<button type="button" class="ai-coin-picker-option" role="option" aria-selected="'+(c.id===currentAiVal?'true':'false')+'" data-ai-coin-id="'+aiEscape(c.id)+'" data-search="'+aiEscape((c.name||"")+" "+symbol).toLowerCase()+'"><img src="'+aiEscape(image)+'" alt="" loading="lazy" onerror="this.hidden=true"><span><b>'+aiEscape(c.name||symbol)+'</b><small>'+aiEscape(symbol)+'</small></span></button>';
+ };
+ let html="";
+ if(primary.length)html+='<div class="ai-coin-picker-group">ارزهای اصلی</div>'+primary.map(optionHtml).join("");
+ if(others.length)html+='<div class="ai-coin-picker-group">سایر ارزهای قابل تحلیل</div>'+others.map(optionHtml).join("");
+ optionsBox.innerHTML=html||'<div class="ai-empty">فهرست ارزها هنوز دریافت نشده است.</div>';
+ selectAi.innerHTML='<option value="">انتخاب ارز…</option>'+available.map(c=>'<option value="'+aiEscape(c.id)+'">'+aiEscape(c.name||c.symbol)+' ('+aiEscape(String(c.symbol).toUpperCase())+')</option>').join("");
+ if(currentAiVal&&[...selectAi.options].some(o=>o.value===currentAiVal))selectAi.value=currentAiVal;else selectAi.value="";
+ updateAiCoinPickerCurrent();
 }
+function updateAiCoinPickerCurrent(){
+ const select=$("ai-coin-select"),current=$("ai-coin-picker-current");
+ if(!select||!current)return;
+ const selected=select.options[select.selectedIndex];
+ if(!selected||!selected.value){current.innerHTML='<span class="ai-coin-picker-placeholder">انتخاب ارز دیجیتال برای تحلیل</span>';return;}
+ const coin=(Array.isArray(cachedCoinsData)?cachedCoinsData:[]).find(c=>c.id===selected.value);
+ if(!coin){current.textContent=selected.textContent;return;}
+ const symbol=String(coin.symbol||"").toUpperCase(),image=/^https:\/\//i.test(String(coin.image||""))?String(coin.image):"https://assets.coincap.io/assets/icons/"+symbol.toLowerCase()+"@2x.png";
+ current.innerHTML='<img src="'+aiEscape(image)+'" alt="" onerror="this.hidden=true"><span><b>'+aiEscape(coin.name||symbol)+'</b><small>'+aiEscape(symbol)+'</small></span>';
+}
+function closeAiCoinPicker(){
+ const menu=$("ai-coin-picker-menu"),trigger=$("ai-coin-picker-trigger");
+ if(menu)menu.hidden=true;
+ if(trigger)trigger.setAttribute("aria-expanded","false");
+}
+function setupAiCoinPicker(){
+ const picker=$("ai-coin-picker"),trigger=$("ai-coin-picker-trigger"),menu=$("ai-coin-picker-menu"),search=$("ai-coin-picker-search"),options=$("ai-coin-picker-options"),select=$("ai-coin-select");
+ if(!picker||picker.dataset.ready)return;
+ picker.dataset.ready="1";
+ trigger.addEventListener("click",()=>{
+  const opening=menu.hidden;menu.hidden=!opening;trigger.setAttribute("aria-expanded",String(opening));
+  if(opening){search.value="";options.querySelectorAll("[data-ai-coin-id]").forEach(el=>el.hidden=false);search.focus();}
+ });
+ search.addEventListener("input",()=>{
+  const query=search.value.trim().toLowerCase();
+  options.querySelectorAll("[data-ai-coin-id]").forEach(el=>{el.hidden=!el.dataset.search.includes(query);});
+  options.querySelectorAll(".ai-coin-picker-group").forEach(group=>{
+   let next=group.nextElementSibling,visible=false;
+   while(next&&!next.classList.contains("ai-coin-picker-group")){if(!next.hidden)visible=true;next=next.nextElementSibling;}
+   group.hidden=!visible;
+  });
+ });
+ options.addEventListener("click",event=>{
+  const item=event.target.closest("[data-ai-coin-id]");if(!item)return;
+  select.value=item.dataset.aiCoinId;select.dispatchEvent(new Event("change",{bubbles:true}));
+  options.querySelectorAll("[data-ai-coin-id]").forEach(el=>el.setAttribute("aria-selected",String(el===item)));
+  updateAiCoinPickerCurrent();closeAiCoinPicker();
+ });
+ select.addEventListener("change",updateAiCoinPickerCurrent);
+ document.addEventListener("click",event=>{if(!picker.contains(event.target))closeAiCoinPicker();});
+ document.addEventListener("keydown",event=>{if(event.key==="Escape")closeAiCoinPicker();});
+}
+
 function updateDropdowns(data) {
   // منوی تحلیل از فهرست اصلی و در صورت نیاز از بازارهای معتبر شکارچی نیز تغذیه می‌شود.
   syncAiCoinOptions(data);
@@ -1783,7 +1837,7 @@ async function runAiAnalysis(force=false){
  const id=$("ai-coin-select").value;
  const out=$("advanced-ai-analysis"),btn=$("ai-run-btn");
  if(!id){$("ai-action").textContent="منتظر انتخاب ارز";aiSetStatus("ابتدا یک ارز برای تحلیل انتخاب کنید.");return;}
- const c=cachedCoinsData.find(x=>x.id===id)||hunterCoinIndex.get(id);
+ const c=cachedCoinsData.find(x=>x.id===id);
  if(!c){aiSetStatus("داده قیمت این ارز هنوز بارگذاری نشده است.");return;}
  const cacheKey=id+"|"+$("ai-market-mode").value;
  const cached=aiCache.get(cacheKey);
@@ -1848,8 +1902,7 @@ function loadWatch(){try{const a=JSON.parse(localStorage.getItem(MMP_WATCH_KEY)|
 function saveWatch(a){try{localStorage.setItem(MMP_WATCH_KEY,JSON.stringify([...new Set(a)]));return true}catch(e){const f=$("watch-feedback");if(f)f.textContent="ذخیره‌سازی در این مرورگر در دسترس نیست.";return false}}
 function watchFeedback(message){const f=$("watch-feedback");if(f)f.textContent=message; if(f) setTimeout(()=>{if(f.textContent===message)f.textContent=""},2600)}
 function removeWatch(id){const next=loadWatch().filter(x=>x!==id);saveWatch(next);renderWatch();renderOpportunities();const c=cachedCoinsData.find(x=>x.id===id);watchFeedback((c?c.name:"ارز")+" از دیده‌بان حذف شد.");}
-function renderWatch(){const list=$("watch-list");if(!list)return;const ids=loadWatch();const count=$("watch-count");if(count)count.textContent=ids.length+" دارایی";const items=ids.map(id=>cachedCoinsData.find(x=>x.id===id)).filter(Boolean);list.innerHTML=items.length?items.map(c=>{const change=Number(c.price_change_percentage_24h),positive=change>=0;return '<article class="watch-item"><div class="watch-coin"><img src="'+aiEscape(c.image||"")+'" alt="" loading="lazy"><span><b>'+aiEscape(c.name)+'</b><small>'+c.symbol.toUpperCase()+'</small></span></div><div class="watch-price"><b>'+formatVal(c.current_price)+'</b><small class="'+(positive?"positive":"negative")+'">'+(positive?"+":"")+change.toFixed(2)+'% <span>۲۴ ساعت</span></small></div><div class="watch-actions"><button class="watch-analyze" type="button" data-watch-analyze="'+aiEscape(c.id)+'">تحلیل این ارز</button><button class="watch-remove" type="button" data-watch-remove="'+aiEscape(c.id)+'" aria-label="حذف '+aiEscape(c.name)+'">حذف</button></div></article>'}).join(""):('<div class="watch-empty"><b>دیده‌بان هنوز خالی است</b><span>از فهرست ۱۰۰ ارز، ارز دلخواهت را اضافه کن.</span></div>');}
-function analyzeWatchCoin(id){const coin=cachedCoinsData.find(x=>x.id===id)||hunterCoinIndex.get(id);if(!coin){watchFeedback("داده این ارز در دسترس نیست.");return;}const select=$("ai-coin-select");if(select){let option=[...select.options].find(o=>o.value===id);if(!option){option=document.createElement("option");option.value=id;option.textContent=coin.name+" ("+String(coin.symbol).toUpperCase()+") · شکارچی بازار";select.appendChild(option);}select.value=id;}$("ai-section")?.scrollIntoView({behavior:"smooth",block:"start"});runAiAnalysis(true);}
+function renderWatch(){const list=$("watch-list");if(!list)return;const ids=loadWatch();const count=$("watch-count");if(count)count.textContent=ids.length+" دارایی";const items=ids.map(id=>cachedCoinsData.find(x=>x.id===id)).filter(Boolean);list.innerHTML=items.length?items.map(c=>{const change=Number(c.price_change_percentage_24h),positive=change>=0;return '<article class="watch-item"><div class="watch-coin"><img src="'+aiEscape(c.image||"")+'" alt="" loading="lazy"><span><b>'+aiEscape(c.name)+'</b><small>'+c.symbol.toUpperCase()+'</small></span></div><div class="watch-price"><b>'+formatVal(c.current_price)+'</b><small class="'+(positive?"positive":"negative")+'">'+(positive?"+":"")+change.toFixed(2)+'% <span>۲۴ ساعت</span></small></div><div class="watch-actions"><button class="watch-remove" type="button" data-watch-remove="'+aiEscape(c.id)+'" aria-label="حذف '+aiEscape(c.name)+'">حذف</button></div></article>'}).join(""):('<div class="watch-empty"><b>دیده‌بان هنوز خالی است</b><span>از فهرست ۱۰۰ ارز، ارز دلخواهت را اضافه کن.</span></div>');}
 function renderMarketTicker(){const el=$("market-ticker");if(!el||!cachedCoinsData.length)return;const wanted=["bitcoin","ethereum","binancecoin","solana","ripple","layerzero"];const picks=wanted.map(id=>cachedCoinsData.find(c=>c.id===id)).filter(Boolean);el.innerHTML=picks.map(c=>'<div class="ticker-item"><b>'+aiEscape(c.name)+' · '+c.symbol.toUpperCase()+'</b><strong>'+formatVal(c.current_price)+'</strong><small class="'+(c.price_change_percentage_24h>=0?"positive":"negative")+'">'+(c.price_change_percentage_24h>=0?"+":"")+(Number(c.price_change_percentage_24h)||0).toFixed(2)+'% در ۲۴ ساعت</small></div>').join("");}
 let radarFilter="all";
 const fastRadarSignals=new Map();
@@ -1958,8 +2011,7 @@ async function fetchHunterUniverse(){
  hunterStreamMarkets=allUniverse;
  hunterCoinIndex.clear();hunterSymbolIndex.clear();allUniverse.forEach(c=>{hunterCoinIndex.set(c.id,c);hunterSymbolIndex.set(String(c.symbol||"").toUpperCase(),c);});
  // اگر فهرست اصلی بازار به هر دلیل دیر برسد، انتخاب‌گر تحلیل از بازار زنده شکارچی خالی نمی‌ماند.
- syncAiCoinOptions(allUniverse);
- connectHunterEarlyStream();connectHunterEarlyExchangeStreams();
+  connectHunterEarlyStream();connectHunterEarlyExchangeStreams();
  hunterUniverseCache={expires:Date.now()+60000,coins:universe};return universe;
 }
 function renderHunterEarlyAlerts(){
@@ -2362,7 +2414,7 @@ function renderOpportunities(){
   const change=v=>v==null?"ناموجود":(v>0?"+":"")+v.toFixed(2)+"٪";
   const change1h=m.h1==null?"ناموجود":(m.h1>0?"+":"")+m.h1.toFixed(2)+"٪";
   const watch='<button class="watch-btn" type="button" data-watch-add="'+aiEscape(c.id)+'">افزودن به دیده‌بان</button>';
-  return '<article class="radar-item '+(up?"radar-item-bullish":down?"radar-item-bearish":"radar-item-neutral")+'"><div class="radar-asset"><img src="'+aiEscape(c.image||"")+'" alt="" loading="lazy"><span><b>'+aiEscape(c.name)+'</b><small>'+aiEscape(String(c.symbol).toUpperCase())+'</small><strong class="radar-direction-label">'+direction+'</strong></span></div><div class="radar-score"><b>'+m.score.toLocaleString("fa-IR")+'</b><small>قدرت روند</small></div><div class="radar-stats">'+(m.fast?'<span>تغییر ۱دقیقه<b class="'+(m.fast.change1m>=0?"positive":"negative")+'">'+change(m.fast.change1m)+'</b></span><span>تغییر ۵دقیقه<b class="'+(m.fast.change5m>=0?"positive":"negative")+'">'+change(m.fast.change5m)+'</b></span><span>حجم نسبی<b>'+m.fast.volumeRatio.toFixed(1)+'×</b></span>':'<span>تغییر ۱ساعته<b>'+change1h+'</b></span><span>تغییر ۲۴ساعته<b>'+change(m.h)+'</b></span><span>نقدشوندگی نسبی<b>'+(m.liquidity==null?"ناموجود":m.liquidity.toFixed(2)+"٪")+'</b></span>')+'</div><div class="radar-action"><span class="radar-trend">'+(m.fast?(m.fast.overextended?"حرکت سریع؛ ورود دیرهنگام پرریسک":"شتاب لحظه‌ای · "+(m.fast.breakout?"شکست محدوده":"در حال شکل‌گیری")):(m.dataQuality||""))+'</span>'+ (m.fast?'<button class="watch-btn" type="button" data-watch-analyze="'+aiEscape(c.id)+'">تحلیل ورود و خروج</button>':watch)+'</div></article>';
+  return '<article class="radar-item '+(up?"radar-item-bullish":down?"radar-item-bearish":"radar-item-neutral")+'"><div class="radar-asset"><img src="'+aiEscape(c.image||"")+'" alt="" loading="lazy"><span><b>'+aiEscape(c.name)+'</b><small>'+aiEscape(String(c.symbol).toUpperCase())+'</small><strong class="radar-direction-label">'+direction+'</strong></span></div><div class="radar-score"><b>'+m.score.toLocaleString("fa-IR")+'</b><small>قدرت روند</small></div><div class="radar-stats">'+(m.fast?'<span>تغییر ۱دقیقه<b class="'+(m.fast.change1m>=0?"positive":"negative")+'">'+change(m.fast.change1m)+'</b></span><span>تغییر ۵دقیقه<b class="'+(m.fast.change5m>=0?"positive":"negative")+'">'+change(m.fast.change5m)+'</b></span><span>حجم نسبی<b>'+m.fast.volumeRatio.toFixed(1)+'×</b></span>':'<span>تغییر ۱ساعته<b>'+change1h+'</b></span><span>تغییر ۲۴ساعته<b>'+change(m.h)+'</b></span><span>نقدشوندگی نسبی<b>'+(m.liquidity==null?"ناموجود":m.liquidity.toFixed(2)+"٪")+'</b></span>')+'</div><div class="radar-action"><span class="radar-trend">'+(m.fast?(m.fast.overextended?"حرکت سریع؛ ورود دیرهنگام پرریسک":"شتاب لحظه‌ای · "+(m.fast.breakout?"شکست محدوده":"در حال شکل‌گیری")):(m.dataQuality||""))+'</span>'+ (m.fast?'<button class="watch-btn" type="button" data-watch-add="'+aiEscape(c.id)+'">افزودن به دیده‌بان</button>':watch)+'</div></article>';
  };
  const list=(title,items,lower,cls)=>'<section class="radar-side '+cls+'"><div class="section-head radar-group-head"><div><b class="radar-large-heading">'+title+'</b></div><span class="badge">'+items.length.toLocaleString("fa-IR")+' ارز</span></div><div class="radar-list">'+items.slice(0,4).map(card).join("")+'</div>'+(items.length>4?'<details class="radar-more"><summary><span class="radar-toggle-copy"><b>'+items.length.toLocaleString("fa-IR")+' ارز</b></span><span class="radar-expand-action" aria-hidden="true"></span></summary><div class="radar-list">'+items.slice(4).map(card).join("")+'</div></details>':"")+(lower.length?'<details class="radar-more radar-below-threshold"><summary><span class="radar-toggle-copy"><b>'+lower.length.toLocaleString("fa-IR")+' ارز</b></span><span class="radar-expand-action" aria-hidden="true"></span></summary><div class="radar-list">'+lower.map(card).join("")+'</div></details>':"")+'</section>';
  el.innerHTML=list("فرصت‌های صعودی",bullish,bullish70,"bull")+list("فرصت‌های نزولی",bearish,bearish70,"bear");
@@ -2377,14 +2429,14 @@ $("market-refresh-btn")?.addEventListener("click",()=>refreshAll());
  $("radar-refresh-btn")?.addEventListener("click",()=>{refreshAll();checkConnections();});
  $("risk-calc")?.addEventListener("click",calcRisk);
 $("watch-add-btn")?.addEventListener("click",()=>addWatch($("watch-add-select")?.value));
-$("watch-list")?.addEventListener("click",e=>{const analyze=e.target.closest("[data-watch-analyze]");if(analyze){analyzeWatchCoin(analyze.dataset.watchAnalyze);return;}const button=e.target.closest("[data-watch-remove]");if(button)removeWatch(button.dataset.watchRemove)});
-$("opportunity-list")?.addEventListener("click",e=>{const analyze=e.target.closest("[data-watch-analyze]");if(analyze){analyzeWatchCoin(analyze.dataset.watchAnalyze);return;}const button=e.target.closest("[data-watch-add]");if(button)addWatch(button.dataset.watchAdd)});
+$("watch-list")?.addEventListener("click",e=>{const button=e.target.closest("[data-watch-remove]");if(button)removeWatch(button.dataset.watchRemove)});
+$("opportunity-list")?.addEventListener("click",e=>{const button=e.target.closest("[data-watch-add]");if(button)addWatch(button.dataset.watchAdd)});
 /* دکمه و درخواست تحلیل کامل اختصاصی شکارچی حذف شده است. */
 $("radar-deep-scan")?.addEventListener("click",runRadarDeepScan);
 $("opportunities")?.addEventListener("click",e=>{const button=e.target.closest("[data-radar-filter]");if(!button)return;radarFilter=button.dataset.radarFilter;document.querySelectorAll("[data-radar-filter]").forEach(x=>x.classList.toggle("active",x===button));renderOpportunities()});
 $("risk-calc")?.addEventListener("click",calcRisk);
 $("journal-clear")?.addEventListener("click",()=>{if(confirm("سوابق تحلیل ذخیره‌شده روی این دستگاه پاک شود؟")){localStorage.removeItem(MMP_JOURNAL_KEY);renderJournal()}});
-renderMarketHours();renderJournal();renderWatch();setInterval(renderMarketHours,15000);
+setupAiCoinPicker();renderMarketHours();renderJournal();renderWatch();setInterval(renderMarketHours,15000);
 
 refreshAll();
  checkConnections();setInterval(checkConnections,300000);
