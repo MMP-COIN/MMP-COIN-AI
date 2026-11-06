@@ -920,10 +920,11 @@ body{background:
     <button class="curr-btn" id="btn-usdt" onclick="setCurrency('USDT')">تتر</button>
   </div>
   <span class="pill" id="clock">--:--:--</span>
-  <button class="btn" id="refresh-all-btn" type="button" onclick="refreshSiteData()" aria-label="بروزرسانی داده‌های اپلیکیشن" title="برای تازه‌سازی قیمت‌ها و وضعیت اتصال منابع داده بزنید">⚙ بروزرسانی</button>
+  <button class="btn" id="refresh-all-btn" type="button" onclick="refreshSiteData()" aria-label="تازه‌سازی کامل داده‌ها" title="دریافت دوباره قیمت‌ها، داده‌های بازار و بررسی اتصال همه منابع">⟳ تازه‌سازی داده‌ها</button>
   <button class="menu-btn" type="button" onclick="toggleMenu()" aria-label="باز کردن منوی اصلی" aria-controls="dropdownMenu" aria-expanded="false"><span aria-hidden="true">☰</span></button>
 </div>
 <div class="dropdown-menu" id="dropdownMenu">
+  <div class="menu-version-row"><span>نسخه فعلی اپ</span><b id="site-menu-version">1.0.0</b></div>
   <a href="#hero" onclick="toggleMenu()">🏠 نمای کلی اپلیکیشن</a>
   <a href="#opportunities" onclick="toggleMenu()">📡 رادار صعودی و نزولی</a>
   <a href="#market-hunter" onclick="toggleMenu()">🎯 شکارچی بازار</a>
@@ -1009,7 +1010,7 @@ body{background:
 
 <section class="card market-hunter" id="market-hunter">
  <div class="hunter-topline"><div><div class="section-kicker">MMP · LIVE MOMENTUM HUNTER</div><h2>شکارچی بازار</h2><p class="sub">شناسایی جهش و ریزش ناگهانی در میان ارزهای فهرست بازار؛ بدون افزودن آن‌ها به فهرست اصلی</p></div><div class="hunter-live-badge"><i></i><span>پایش زنده</span></div></div>
- <div class="hunter-overview"><div class="hunter-stat"><small>فرصت‌های صعودی</small><b id="hunter-bull-count">۰</b></div><div class="hunter-stat"><small>حرکت‌های نزولی</small><b id="hunter-bear-count">۰</b></div><div class="hunter-stat"><small>آخرین پایش</small><b id="hunter-last-scan">در انتظار داده</b></div></div>
+ <div class="hunter-overview"><div class="hunter-stat"><small>فرصت‌های صعودی · حداکثر ۶</small><b id="hunter-bull-count">۰</b></div><div class="hunter-stat"><small>حرکت‌های نزولی · حداکثر ۶</small><b id="hunter-bear-count">۰</b></div><div class="hunter-stat"><small>آخرین پایش</small><b id="hunter-last-scan">در انتظار داده</b></div></div>
  <div class="hunter-early-panel"><div class="hunter-early-head"><b>رادار هشدار اولیه</b><span id="hunter-early-status">در انتظار اتصال جریان سریع قیمت</span></div><div id="hunter-early-feed" class="hunter-early-feed"><div class="hunter-early-empty">حرکت‌های سریع قیمت پیش از تأیید کندلی، اینجا به‌صورت هشدار اولیه نمایش داده می‌شوند.</div></div></div>
  <div class="hunter-feed-head"><b>حرکت‌های شناسایی‌شده</b><span id="hunter-feed-status">در حال آماده‌سازی پایش کندلی…</span></div>
  <div id="hunter-feed" class="hunter-feed"><div class="hunter-empty"><span class="hunter-radar-icon">⌁</span><b>شکارچی آماده است</b><small>به‌محض شناسایی حرکت غیرعادی، نمودار همان ارز همین‌جا نمایش داده می‌شود.</small></div></div>
@@ -1823,7 +1824,7 @@ function renderMarketTicker(){const el=$("market-ticker");if(!el||!cachedCoinsDa
 let radarFilter="all";
 const fastRadarSignals=new Map();
 const hunterCoinIndex=new Map();
-const hunterEarlyAlerts=new Map(),hunterPriceHistory=new Map(),hunterSymbolIndex=new Map();
+const hunterEarlyAlerts=new Map(),hunterPriceHistory=new Map(),hunterSymbolIndex=new Map(),hunterEarlyVenueSignals=new Map();
 let hunterEarlySocket=null,hunterEarlyRetryTimer=null,hunterEarlyRenderTimer=null,hunterEarlyExpiryTimer=null;
 const hunterEarlyExchangeSockets=new Map(),hunterEarlyExchangeRetry=new Map(),hunterEarlyExchangeKeepalive=new Map(),hunterEarlyExchangeState=new Map();
 let hunterStreamMarkets=[];
@@ -1853,6 +1854,8 @@ async function scanFastCoin(coin){
  if(!Array.isArray(rows)||rows.length<25)return null;
  const valid=rows.every(r=>r.length>=6&&r.slice(1,6).every(Number.isFinite)&&Number(r[1])>0&&Number(r[2])>=Number(r[3])&&Number(r[3])>0&&Number(r[4])>0&&Number(r[5])>=0);
  if(!valid)return null;
+ const listedVenues=Object.entries(coin.hunterVenueVolume||{}).filter(([,volume])=>Number(volume)>=50000);
+ if(Number(coin.total_volume||0)<500000||listedVenues.length<2)return null;
  const now=Date.now(),index=rows.length-2,last=rows[index],close=Number(last[4]),open=Number(last[1]),volume=Number(last[5]);
  // فقط کندل بسته‌شده و تازه؛ کندل نیمه‌کاره اجازه تولید سیگنال ندارد.
  const candleAge=now-Number(last[0]);
@@ -1867,8 +1870,8 @@ async function scanFastCoin(coin){
  const breakoutUp=close>priorHigh,breakoutDown=close<priorLow,price=Number(coin.current_price)||close;
  const overextended=Math.abs(change15m)>=2.5||Math.abs(change5m)>=1.8;
  // شروط سخت: هم‌جهتی ۵ و ۱۵ دقیقه، حجم غیرعادی و شکست محدوده یا شتاب قوی‌تر.
- const bullMomentum=change5m>=0.35&&change15m>=0.55&&volumeRatio>=1.5&&(breakoutUp||change5m>=0.75);
- const bearMomentum=change5m<=-0.35&&change15m<=-0.55&&volumeRatio>=1.5&&(breakoutDown||change5m<=-0.75);
+ const bullMomentum=change5m>=0.35&&change15m>=0.55&&volumeRatio>=1.7&&(breakoutUp||change5m>=0.75);
+ const bearMomentum=change5m<=-0.35&&change15m<=-0.55&&volumeRatio>=1.7&&(breakoutDown||change5m<=-0.75);
  let trend="neutral",score=0;
  if(bullMomentum||bearMomentum){
   trend=bullMomentum?"bull":"bear";
@@ -1942,6 +1945,8 @@ function ingestHunterEarlyPrice(exchange,baseSymbol,rawPrice){
  const base=String(baseSymbol||"").toUpperCase(),price=Number(rawPrice),coin=hunterSymbolIndex.get(base);
  if(!coin||!Number.isFinite(price)||price<=0)return;
  const now=Date.now(),historyKey=exchange+":"+base;
+ const listedVenues=Object.entries(coin.hunterVenueVolume||{}).filter(([,volume])=>Number(volume)>=50000);
+ if(Number(coin.total_volume||0)<500000||listedVenues.length<2)return;
  let history=hunterPriceHistory.get(historyKey);if(!history){history=[];hunterPriceHistory.set(historyKey,history);}
  const last=history[history.length-1];if(last&&now-last.t<650)return;
  history.push({t:now,p:price});while(history.length&&now-history[0].t>240000)history.shift();
@@ -1955,6 +1960,12 @@ function ingestHunterEarlyPrice(exchange,baseSymbol,rawPrice){
  const trigger=move15!=null&&Math.abs(move15)>=0.28?{move:move15,window:"۱۵ث"}:move30!=null&&Math.abs(move30)>=0.42?{move:move30,window:"۳۰ث"}:move1!=null&&Math.abs(move1)>=0.65?{move:move1,window:"۱د"}:move3!=null&&Math.abs(move3)>=1.0?{move:move3,window:"۳د"}:null;
  const trend=trigger?(trigger.move>0?"bull":"bear"):null;
  if(!trend)return;
+ let venueSignals=hunterEarlyVenueSignals.get(base);if(!venueSignals){venueSignals=new Map();hunterEarlyVenueSignals.set(base,venueSignals);}
+ venueSignals.set(exchange,{trend,move:trigger.move,price,updatedAt:now});
+ for(const [venue,signal] of venueSignals)if(now-signal.updatedAt>30000)venueSignals.delete(venue);
+ const corroborating=[...venueSignals.values()].filter(signal=>signal.trend===trend&&now-signal.updatedAt<=30000);
+ const prices=corroborating.map(signal=>signal.price),priceSpread=prices.length>1?(Math.max(...prices)/Math.min(...prices)-1)*100:Infinity;
+ if(corroborating.length<2||priceSpread>1.5)return;
  const movement=trigger.move,old=hunterEarlyAlerts.get(base);
  if(!old||old.trend!==trend||now-old.updatedAt>12000||Math.abs(movement)>Math.abs(old.triggerMove||old.move1m||old.move3m||0)+0.12){
   hunterEarlyAlerts.set(base,{id:coin.id,symbol:base,name:coin.name,trend,move15s:move15,move30s:move30,move1m:move1,move3m:move3,triggerMove:movement,triggerWindow:trigger.window,price,exchange,updatedAt:now});
@@ -2225,8 +2236,10 @@ function hunterChart(rows){
 }
 function renderMarketHunter(){
  const feed=$("hunter-feed");if(!feed)return;
- const entries=[...fastRadarSignals.entries()].map(([id,signal])=>({coin:hunterCoinIndex.get(id)||cachedCoinsData.find(c=>c.id===id),signal,id})).filter(x=>x.coin&&Date.now()-x.signal.updatedAt<8*60*1000&&x.signal.score>=72).sort((a,b)=>(b.signal.score-a.signal.score)).slice(0,6);
- const density=entries.length<=2?"wide":entries.length<=4?"medium":"compact";
+ const candidates=[...fastRadarSignals.entries()].map(([id,signal])=>({coin:hunterCoinIndex.get(id)||cachedCoinsData.find(c=>c.id===id),signal,id})).filter(x=>x.coin&&Date.now()-x.signal.updatedAt<8*60*1000&&x.signal.score>=72);
+ const rank=(a,b)=>b.signal.score-a.signal.score;
+ const entries=[...candidates.filter(x=>x.signal.trend==="bull").sort(rank).slice(0,6),...candidates.filter(x=>x.signal.trend==="bear").sort(rank).slice(0,6)];
+ const density=entries.length<=2?"wide":entries.length<=6?"medium":"compact";
  const bulls=entries.filter(x=>x.signal.trend==="bull").length,bears=entries.filter(x=>x.signal.trend==="bear").length;
  if($("hunter-bull-count"))$("hunter-bull-count").textContent=bulls.toLocaleString("fa-IR");
  if($("hunter-bear-count"))$("hunter-bear-count").textContent=bears.toLocaleString("fa-IR");
@@ -2428,9 +2441,10 @@ html.mmp-native-app .native-refresh-label{font:700 9px Tahoma,Arial,sans-serif!i
   document.addEventListener("DOMContentLoaded",function(){
    if(document.querySelector(".native-appbar"))return;
    var header=document.createElement("header");header.className="native-appbar";
-   header.innerHTML='<div class="native-brand"><div class="native-mark"><img src="assets/mmp-coin-ai-icon.svg" alt="MMP COIN AI"></div><div><b>MMP COIN AI</b><small>SMART MARKET TERMINAL</small></div></div><div class="native-appbar-actions"><div class="native-currency-switch" role="group" aria-label="واحد نمایش قیمت"><button type="button" id="native-currency-irt" class="active" aria-pressed="true" onclick="setCurrency(\'IRT\')">تومان</button><button type="button" id="native-currency-usdt" aria-pressed="false" onclick="setCurrency(\'USDT\')">تتر</button></div><button type="button" class="native-update-check-btn" id="native-update-check-btn" aria-label="بررسی نسخه جدید" title="بررسی نسخه جدید">⇧</button><button type="button" class="native-refresh-btn" id="native-refresh-btn" aria-label="بروزرسانی بازار" title="برای تازه‌سازی قیمت‌ها و وضعیت اتصال منابع داده بزنید">⚙<span class="native-refresh-label">بروزرسانی</span></button><button type="button" class="native-menu-toggle" id="native-menu-toggle" aria-label="منوی اپلیکیشن" aria-expanded="false">☰</button></div><nav class="native-app-menu" id="native-app-menu" aria-label="منوی اپلیکیشن"><a href="#hero">⌂ نمای کلی بازار</a><a href="#opportunities">◈ رادار صعودی و نزولی</a><a href="#market-hunter">🎯 شکارچی بازار</a><a href="#ai-section">✧ تحلیلگر هوشمند AI</a><a href="#chart-section">▥ نمودار تریدینگ‌ویو</a><a href="#coins-section">◉ بازار رمزارزها</a><a href="#watchlist">☆ دیده‌بان شخصی</a><a href="#trading-tools">⌗ ابزارهای معامله‌گری</a><a href="#market-hours">◷ ساعت بازارهای جهان</a><a href="#connections">◉ سلامت منابع داده</a><a href="#contact-us">✉ ارتباط با مدیریت</a><a href="https://mmp-coin.github.io/admin.html">⚙ پنل مدیریت</a><button type="button" id="native-share-app">↗ ارسال اپلیکیشن برای دوستان</button></nav>';
+   header.innerHTML='<div class="native-brand"><div class="native-mark"><img src="assets/mmp-coin-ai-icon.svg" alt="MMP COIN AI"></div><div><b>MMP COIN AI</b><small>SMART MARKET TERMINAL</small></div></div><div class="native-appbar-actions"><div class="native-currency-switch" role="group" aria-label="واحد نمایش قیمت"><button type="button" id="native-currency-irt" class="active" aria-pressed="true" onclick="setCurrency(\'IRT\')">تومان</button><button type="button" id="native-currency-usdt" aria-pressed="false" onclick="setCurrency(\'USDT\')">تتر</button></div><button type="button" class="native-update-check-btn" id="native-update-check-btn" aria-label="بررسی نسخه جدید" title="بررسی نسخه جدید">⇧</button><button type="button" class="native-refresh-btn" id="native-refresh-btn" aria-label="بروزرسانی بازار" title="دریافت دوباره قیمت‌ها و وضعیت اتصال منابع داده">⟳<span class="native-refresh-label">تازه‌سازی داده‌ها</span></button><button type="button" class="native-menu-toggle" id="native-menu-toggle" aria-label="منوی اپلیکیشن" aria-expanded="false">☰</button></div><nav class="native-app-menu" id="native-app-menu" aria-label="منوی اپلیکیشن"><a href="#hero">⌂ نمای کلی بازار</a><a href="#opportunities">◈ رادار صعودی و نزولی</a><a href="#market-hunter">🎯 شکارچی بازار</a><a href="#ai-section">✧ تحلیلگر هوشمند AI</a><a href="#chart-section">▥ نمودار تریدینگ‌ویو</a><a href="#coins-section">◉ بازار رمزارزها</a><a href="#watchlist">☆ دیده‌بان شخصی</a><a href="#trading-tools">⌗ ابزارهای معامله‌گری</a><a href="#market-hours">◷ ساعت بازارهای جهان</a><a href="#connections">◉ سلامت منابع داده</a><a href="#contact-us">✉ ارتباط با مدیریت</a><a href="https://mmp-coin.github.io/admin.html">⚙ پنل مدیریت</a><div class="native-menu-version" id="native-menu-version">نسخه فعلی اپ · 1.0.0</div><button type="button" id="native-share-app">↗ ارسال اپلیکیشن برای دوستان</button></nav>';
    document.body.insertBefore(header,document.body.firstChild);
    var menuToggle=header.querySelector("#native-menu-toggle"),appMenu=header.querySelector("#native-app-menu");
+   var nativeVersionLabel=header.querySelector("#native-menu-version");if(nativeVersionLabel)nativeVersionLabel.textContent="نسخه فعلی اپ · "+(document.querySelector('meta[name="mmp-app-version"]')?.content||"1.0.0");
    if(menuToggle&&appMenu){
     menuToggle.addEventListener("click",function(){var open=appMenu.classList.toggle("show");menuToggle.setAttribute("aria-expanded",open?"true":"false");});
     appMenu.querySelectorAll("a").forEach(function(link){link.addEventListener("click",function(){appMenu.classList.remove("show");menuToggle.setAttribute("aria-expanded","false");var target=document.querySelector(link.getAttribute("href"));if(target){setTimeout(function(){target.scrollIntoView({behavior:"smooth",block:"start"});},0);}});});
@@ -2502,6 +2516,7 @@ html.mmp-native-app .native-refresh-label{font:700 9px Tahoma,Arial,sans-serif!i
    }
    var nativeVersionFromUrl="";try{nativeVersionFromUrl=new URLSearchParams(location.search).get("mmp_native_version")||"";}catch(e){}
    var currentNativeVersion=nativeVersionFromUrl||document.querySelector('meta[name="mmp-app-version"]')?.content||"1.0.0";
+   document.querySelectorAll("#site-menu-version").forEach(function(node){node.textContent=currentNativeVersion;});
    var liveUpdateChecking=false,lastLiveCheck=0,liveUpdateInitialCheck=true;
    function hashLiveHtml(value){
     if(window.crypto&&crypto.subtle&&window.TextEncoder){return crypto.subtle.digest("SHA-256",new TextEncoder().encode(value)).then(function(buffer){return Array.from(new Uint8Array(buffer)).map(function(x){return x.toString(16).padStart(2,"0")}).join("");});}
