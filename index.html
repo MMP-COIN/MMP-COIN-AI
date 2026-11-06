@@ -2216,13 +2216,18 @@ function hunterCoinImage(coin){
  const symbol=String(coin?.symbol||"").toUpperCase();
  if(coin?.image&&/^https:\/\//i.test(String(coin.image)))return String(coin.image);
  const matches=cachedCoinsData.filter(c=>String(c.symbol||"").toUpperCase()===symbol&&/^https:\/\//i.test(String(c.image||"")));
+ const named=matches.find(c=>String(c.name||"").toLowerCase()===String(coin?.name||"").toLowerCase());
+ if(named)return named.image;
  if(matches.length===1)return matches[0].image;
- return "https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/"+symbol.toLowerCase()+".png";
+ // آیکون مستقل از صرافی؛ در صورت نبود تصویر اصلی از سرویس آیکون جایگزین استفاده می‌شود.
+ return "https://assets.coincap.io/assets/icons/"+symbol.toLowerCase()+"@2x.png";
 }
 function hunterCoinImageError(img){
  if(!img||!img.dataset)return;
- if(!img.dataset.fallback){img.dataset.fallback="1";img.src="https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/"+String(img.dataset.symbol||"").toLowerCase()+".png";}
- else{img.style.display="none";if(img.nextElementSibling)img.nextElementSibling.style.display="grid";}
+ const symbol=String(img.dataset.symbol||"").toLowerCase(),step=Number(img.dataset.imageFallback||"0");
+ if(step===0){img.dataset.imageFallback="1";img.src="https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/"+symbol+".png";return;}
+ img.style.display="none";
+ if(img.nextElementSibling)img.nextElementSibling.style.display="grid";
 }
 function hunterExchangeLogo(name){
  const key=String(name||"").trim().toLowerCase();
