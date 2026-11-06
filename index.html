@@ -969,6 +969,7 @@ body{background:
   <a href="#hero" onclick="toggleMenu()">⌂ نمای کلی سایت</a>
   <a href="#opportunities" onclick="toggleMenu()">📡 رادار بازار</a>
   <a href="#market-hunter" onclick="toggleMenu()">🎯 شکارچی بازار</a>
+  <a href="#boom-hunter" onclick="toggleMenu()">◉ آزمایشگاه Boom Hunter</a>
   <a href="#ai-section" onclick="toggleMenu()">✧ تحلیلگر هوشمند</a>
   <a href="#chart-section" onclick="toggleMenu()">▥ نمودار بازار</a>
   <a href="#coins-section" onclick="toggleMenu()">◈ فهرست ارزها</a>
@@ -984,6 +985,7 @@ body{background:
   <a class="side-link active" href="#hero"><i>◈</i><span>نمای کلی بازار</span><em>01</em></a>
   <a class="side-link" href="#opportunities"><i>⌖</i><span>رادار صعودی و نزولی</span><em>02</em></a>
   <a class="side-link hunter-nav-link" href="#market-hunter"><i>🎯</i><span>شکارچی بازار</span><em>03</em></a>
+  <a class="side-link" href="#boom-hunter"><i>◉</i><span>آزمایشگاه Boom Hunter</span><em>04</em></a>
   <a class="side-link" href="#ai-section"><i>✧</i><span>تحلیلگر هوشمند AI</span><em>03</em></a>
   <a class="side-link" href="#chart-section"><i>⌁</i><span>نمودار حرفه‌ای</span><em>04</em></a>
   <div class="side-caption">MARKET & PERSONAL</div>
@@ -1052,6 +1054,25 @@ body{background:
  <div class="hunter-feed-head"><b>حرکت‌های شناسایی‌شده</b><span id="hunter-feed-status">در حال آماده‌سازی پایش کندلی…</span></div>
  <div id="hunter-feed" class="hunter-feed"><div class="hunter-empty"><span class="hunter-radar-icon">⌁</span><b>شکارچی آماده است</b><small>به‌محض شناسایی حرکت غیرعادی، نمودار همان ارز همین‌جا نمایش داده می‌شود.</small></div></div>
  <p class="sub hunter-footnote">نمودار از کندل‌های ۵ دقیقه‌ای ساخته می‌شود و در صورت پشتیبانی منبع، کندل جاری با جریان زنده به‌روزرسانی خواهد شد. نمایش حرکت به معنی توصیه قطعی خرید یا فروش نیست.</p>
+</section>
+
+<section class="card mmp-boom-lab" id="boom-hunter">
+ <div class="section-head"><div><div class="section-kicker">MMP · MOMENTUM OSCILLATOR LAB</div><h2>آزمایشگاه Boom Hunter</h2><p class="sub">نسخه آزمایشی مستقل MMP برای بررسی مومنتوم، چرخش احتمالی و فشار حرکت قیمت</p></div><span class="badge">آزمایشی · مستقل</span></div>
+ <div class="boom-toolbar">
+  <label>نماد ارز <input id="boom-symbol" type="text" value="BTC" maxlength="20" autocomplete="off" spellcheck="false" aria-label="نماد ارز"></label>
+  <label>تایم‌فریم <select id="boom-interval" aria-label="تایم فریم"><option value="5m">۵ دقیقه</option><option value="15m">۱۵ دقیقه</option><option value="1h">۱ ساعت</option><option value="4h">۴ ساعت</option></select></label>
+  <button class="btn primary" id="boom-run" type="button">تحلیل اندیکاتور</button>
+ </div>
+ <div id="boom-status" class="boom-status">برای دریافت کندل‌های واقعی Binance، نماد را انتخاب و تحلیل را اجرا کن.</div>
+ <div class="boom-metrics">
+  <div><small>وضعیت مومنتوم</small><b id="boom-signal">در انتظار داده</b></div>
+  <div><small>قدرت نوسانگر</small><b id="boom-osc">—</b></div>
+  <div><small>آخرین قیمت</small><b id="boom-price">—</b></div>
+  <div><small>آخرین سیگنال</small><b id="boom-last">—</b></div>
+ </div>
+ <div class="boom-chart-wrap"><div class="boom-chart-title">نمودار کندلی و نقاط چرخش</div><div id="boom-candles" class="boom-chart"><div class="ai-empty">هنوز داده‌ای دریافت نشده است.</div></div></div>
+ <div class="boom-chart-wrap"><div class="boom-chart-title">نوسانگر مومنتوم MMP</div><div id="boom-oscillator" class="boom-chart boom-osc-chart"><div class="ai-empty">پس از دریافت داده نمایش داده می‌شود.</div></div></div>
+ <p class="boom-disclaimer">این ابزار کپی کد اختصاصی Boom Hunter Pro نیست؛ یک نمونه مستقل و آزمایشی با منطق نوسانگر مومنتوم MMP است. سیگنال‌ها تأییدشده یا سودآور فرض نمی‌شوند و تا پایان بک‌تست نباید مبنای معامله قرار گیرند.</p>
 </section>
 
 <section class="card ai-terminal" id="ai-section">
@@ -2744,6 +2765,51 @@ mmpSendEvent("page_view");
 setInterval(()=>mmpSendEvent("heartbeat"),240000);
 </script>
 <div id="hunter-chart-modal" class="hunter-chart-modal" aria-live="polite"></div>
+
+<script>
+(function(){
+ const $=id=>document.getElementById(id);
+ const fmt=n=>Number(n).toLocaleString("en-US",{maximumFractionDigits:n<1?6:2});
+ const ema=(values,period)=>{const k=2/(period+1),out=[];let prev=values[0];values.forEach((v,i)=>{prev=i===0?v:v*k+prev*(1-k);out.push(prev)});return out;};
+ function drawCandles(rows,signals){
+  const W=900,H=300,L=12,R=12,T=12,B=20,lo=Math.min(...rows.map(x=>x[3])),hi=Math.max(...rows.map(x=>x[2])),pad=(hi-lo)*.08||1,min=lo-pad,max=hi+pad,y=v=>T+(max-v)/(max-min)*(H-T-B),slot=(W-L-R)/rows.length,cw=Math.max(3,Math.min(10,slot*.58));
+  let out='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="نمودار کندلی Boom Hunter MMP">';
+  for(let g=0;g<4;g++){const yy=T+(H-T-B)*g/3;out+='<line x1="'+L+'" y1="'+yy+'" x2="'+(W-R)+'" y2="'+yy+'" stroke="#8795a5" opacity=".15"/>';}
+  rows.forEach((r,i)=>{const x=L+i*slot+slot/2,up=r[4]>=r[1],c=up?"#28d6a0":"#ff6576";out+='<line x1="'+x+'" y1="'+y(r[2])+'" x2="'+x+'" y2="'+y(r[3])+'" stroke="'+c+'" stroke-width="1.4"/><rect x="'+(x-cw/2)+'" y="'+Math.min(y(r[1]),y(r[4]))+'" width="'+cw+'" height="'+Math.max(1,Math.abs(y(r[1])-y(r[4])))+'" rx="1" fill="'+c+'"/>';if(signals[i])out+='<circle cx="'+x+'" cy="'+(signals[i]==="BUY"?y(r[3])+9:y(r[2])-9)+'" r="4" fill="'+(signals[i]==="BUY"?"#f3d17d":"#ff8795")+'" stroke="#101722" stroke-width="1.5"/>';});
+  return out+'</svg>';
+ }
+ function drawOsc(values,signals){
+  const W=900,H=160,L=12,R=12,T=10,B=18,slot=(W-L-R)/values.length,yy=v=>T+(2-v)/4*(H-T-B),mid=yy(0);
+  let out='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="نوسانگر مومنتوم MMP"><rect x="'+L+'" y="'+T+'" width="'+(W-L-R)+'" height="'+(mid-T)+'" fill="#25d695" opacity=".045"/><rect x="'+L+'" y="'+mid+'" width="'+(W-L-R)+'" height="'+(H-B-mid)+'" fill="#ff6576" opacity=".045"/><line x1="'+L+'" y1="'+mid+'" x2="'+(W-R)+'" y2="'+mid+'" stroke="#9aa7b5" stroke-dasharray="4 4" opacity=".5"/>';
+  let points=values.map((v,i)=>(L+i*slot+slot/2)+','+yy(Math.max(-2,Math.min(2,v)))).join(' ');
+  out+='<polyline points="'+points+'" fill="none" stroke="#e5c477" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>';
+  values.forEach((v,i)=>{if(signals[i])out+='<circle cx="'+(L+i*slot+slot/2)+'" cy="'+yy(v)+'" r="4" fill="'+(signals[i]==="BUY"?"#25d695":"#ff6576")+'"/>';});
+  return out+'</svg>';
+ }
+ async function run(){
+  const button=$("boom-run"),status=$("boom-status"),symbol=String($("boom-symbol").value||"BTC").trim().toUpperCase(),interval=$("boom-interval").value;
+  if(!/^[A-Z0-9]{2,20}$/.test(symbol)){status.textContent="نماد ارز معتبر نیست.";status.className="boom-status error";return;}
+  button.disabled=true;status.className="boom-status busy";status.textContent="در حال دریافت کندل‌های واقعی Binance Spot…";
+  try{
+   const pair=symbol+"USDT",raw=await hunterFetchJson("https://api.binance.com/api/v3/klines?symbol="+encodeURIComponent(pair)+"&interval="+encodeURIComponent(interval)+"&limit=160",12000);
+   if(!Array.isArray(raw)||raw.length<70)throw new Error("داده تاریخی کافی برای محاسبه نوسانگر دریافت نشد.");
+   const rows=raw.slice(0,-1).map(k=>[Number(k[0]),Number(k[1]),Number(k[2]),Number(k[3]),Number(k[4]),Number(k[5])]);
+   if(rows.some(r=>r.slice(1,6).some(v=>!Number.isFinite(v))))throw new Error("ساختار کندل‌های دریافتی معتبر نیست.");
+   const closes=rows.map(r=>r[4]),base=ema(closes,34),deviation=closes.map((v,i)=>v-base[i]),osc=[];
+   for(let i=0;i<rows.length;i++){const start=Math.max(0,i-19),sample=deviation.slice(start,i+1),mean=sample.reduce((a,b)=>a+b,0)/sample.length,variance=sample.reduce((a,b)=>a+(b-mean)*(b-mean),0)/sample.length,sd=Math.sqrt(variance)||1;const momentum=i>=3?(closes[i]/closes[i-3]-1)*100:0;osc.push(Math.max(-2,Math.min(2,(deviation[i]/sd)*.72+momentum*1.8)));}
+   const smooth=ema(osc,5),signals=rows.map((r,i)=>i>0&&smooth[i]>0.75&&smooth[i-1]<=0.75?"BUY":i>0&&smooth[i]<-0.75&&smooth[i-1]>=-0.75?"SELL":null);
+   const last=smooth[smooth.length-1],lastSignal=signals.map((v,i)=>v?{v,i}:null).filter(Boolean).slice(-1)[0],direction=last>.35?"فشار صعودی":last<-.35?"فشار نزولی":"خنثی";
+   $("boom-signal").textContent=direction;$("boom-signal").style.color=last>.35?"#35dfa9":last<-.35?"#ff8291":"#f1d596";
+   $("boom-osc").textContent=last.toFixed(2);$("boom-price").textContent=fmt(closes[closes.length-1])+" USDT";$("boom-last").textContent=lastSignal?lastSignal.v+" · "+new Date(rows[lastSignal.i][0]).toLocaleString("fa-IR"):"سیگنال تازه‌ای نیست";
+   $("boom-candles").innerHTML=drawCandles(rows.slice(-90),signals.slice(-90));$("boom-oscillator").innerHTML=drawOsc(smooth.slice(-120),signals.slice(-120));
+   status.className="boom-status";status.textContent=pair+" · "+interval+" · "+rows.length+" کندل بسته‌شده · منبع: Binance Spot · "+new Date().toLocaleTimeString("fa-IR");
+  }catch(error){status.className="boom-status error";status.textContent="دریافت/تحلیل ناموفق: "+(error&&error.message?error.message:"خطای نامشخص");}
+  finally{button.disabled=false;}
+ }
+ const btn=$("boom-run");if(btn)btn.addEventListener("click",run);
+ const symbol=$("boom-symbol");if(symbol)symbol.addEventListener("keydown",e=>{if(e.key==="Enter")run();});
+})();
+</script>
 </body>
 </html>
 
@@ -2821,4 +2887,23 @@ setInterval(()=>mmpSendEvent("heartbeat"),240000);
 .hunter-chart-no-data{padding:45px 10px;text-align:center;color:#d4b66b}
 body.hunter-chart-open{overflow:hidden}
 @media(max-width:560px){.hunter-chart-modal.show{padding:8px}.hunter-chart-dialog{padding:13px;border-radius:15px;max-height:94dvh}.hunter-chart-header h3{font-size:14px}.hunter-chart-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.hunter-chart-canvas{min-height:150px}.hunter-expanded-svg{min-height:180px}}
+</style>
+
+<style>
+/* MMP independent Boom Hunter research lab */
+.mmp-boom-lab{scroll-margin-top:100px;border-color:#806a3d;background:radial-gradient(ellipse at 90% 0,#b58b3920,transparent 38%),linear-gradient(145deg,#151c28,#0b111a)}
+.boom-toolbar{display:grid;grid-template-columns:minmax(0,1fr) minmax(130px,.7fr) auto;gap:10px;align-items:end;margin:14px 0}
+.boom-toolbar label{display:grid;gap:6px;color:#b9c4d0;font-size:11px}
+.boom-toolbar input,.boom-toolbar select{width:100%;min-width:0;background:#090f18;border:1px solid #354255;border-radius:10px;padding:11px;color:#f5dda2;outline:none}
+.boom-status{padding:10px 12px;border:1px solid #303b4b;border-radius:10px;background:#101722;color:#aeb9c8;font-size:11px;line-height:1.8}
+.boom-status.busy{color:#f5d78f}.boom-status.error{color:#ff8795}
+.boom-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:12px 0}
+.boom-metrics>div{padding:11px;border:1px solid #303b4b;border-radius:11px;background:linear-gradient(145deg,#182231,#0d141e);min-width:0}
+.boom-metrics small{display:block;color:#9eacba;font-size:10px}.boom-metrics b{display:block;margin-top:6px;color:#f1d596;font-size:13px;overflow-wrap:anywhere}
+.boom-chart-wrap{padding:12px;margin-top:12px;border:1px solid #303b4b;border-radius:13px;background:#0a111a}
+.boom-chart-title{font-size:12px;color:#e8d3a3;margin-bottom:8px;font-weight:700}
+.boom-chart{min-height:190px;overflow:hidden}.boom-chart svg{display:block;width:100%;height:auto}
+.boom-osc-chart{min-height:130px}
+.boom-disclaimer{font-size:10px;color:#aab5c2;line-height:1.9;margin:12px 2px 0}
+@media(max-width:650px){.boom-toolbar{grid-template-columns:1fr 1fr}.boom-toolbar button{grid-column:1/-1}.boom-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.boom-chart{min-height:150px}}
 </style>
