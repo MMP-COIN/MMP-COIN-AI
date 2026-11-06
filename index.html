@@ -1151,7 +1151,10 @@ body{background:
    <div class="intel-panel-head"><div><small>CANDLE INTELLIGENCE · 15M</small><h3>آزمایشگاه سناریوهای کندلی</h3></div><button class="intel-refresh" id="forecast-run" type="button">تحلیل کندل‌ها</button></div>
    <div class="intel-forecast-summary" id="forecast-summary">پس از دریافت کندل‌های واقعی، دامنه‌های برآوردی ۱، ۳ و ۵ کندل آینده محاسبه می‌شوند.</div>
    <div class="intel-forecast-grid" id="forecast-grid"><div><small>۱ کندل بعد</small><b>—</b><span>—</span></div><div><small>۳ کندل بعد</small><b>—</b><span>—</span></div><div><small>۵ کندل بعد</small><b>—</b><span>—</span></div></div>
-   <div class="intel-foot">این خروجی برآورد آماری دامنه و امتداد روند است، نه احتمال قطعی سود؛ اعتبارسنجی تاریخی به‌تدریج با دفتر سیگنال تکمیل می‌شود.</div>
+   
+   <div class="intel-backtest-bar"><button class="intel-refresh" id="historical-backtest" type="button">اجرای بک‌تست ۲۵۰ کندل</button><span id="backtest-status">آزمون پایه EMA 20/50 با حد ضرر مبتنی بر ATR</span></div>
+   <div class="intel-backtest-results" id="backtest-results"><div>پس از اجرای آزمون، نرخ برد، بازده R، افت سرمایه و معاملات ثبت‌شده نمایش داده می‌شود.</div></div>
+<div class="intel-foot">این خروجی برآورد آماری دامنه و امتداد روند است، نه احتمال قطعی سود؛ اعتبارسنجی تاریخی به‌تدریج با دفتر سیگنال تکمیل می‌شود.</div>
   </article>
   <article class="intel-panel" id="whale-panel">
    <div class="intel-panel-head"><div><small>WHALE WATCH · ON-CHAIN</small><h3>ردیاب نهنگ‌ها و جریان صرافی</h3></div><span class="intel-status-wait">اتصال در انتظار</span></div>
@@ -3122,9 +3125,6 @@ setInterval(()=>mmpSendEvent("heartbeat"),240000);
 .conn-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media(max-width:700px){.connection-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:7px}.conn{padding:10px}.conn-brand-icon,.conn-brand-fallback{width:22px;height:22px}.conn-name{font-size:11px}.conn-meta{font-size:10px}}
 </style>
-</body>
-</html>
-
 <style>
 /* Compact MMP AI analyst */
 .sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
@@ -3306,6 +3306,13 @@ body:before{opacity:.23;background-size:34px 34px}
 @media(max-width:650px){.intel-suite{padding:13px}.intel-suite-head{align-items:flex-start;flex-direction:column}.intel-grid{grid-template-columns:1fr}.intel-panel{padding:13px}.intel-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.journal-form{grid-template-columns:repeat(2,minmax(0,1fr))}.journal-form button{grid-column:1/-1}.journal-stats{grid-template-columns:repeat(3,minmax(0,1fr))}.watchlist-form{display:grid;grid-template-columns:1fr 1fr}.watchlist-form button{grid-column:1/-1}.intel-symbol-row{flex-wrap:wrap}.intel-symbol-row input{flex:1}.hero{padding:18px 15px}.hero-visual{opacity:.28;left:-55px}.hero-refresh-group{right:12px;bottom:12px}.top-actions .pill{display:none}}
 @media(max-width:390px){.journal-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.intel-forecast-grid{gap:5px}.intel-forecast-grid>div{padding:9px 6px}}
 @media(prefers-reduced-motion:reduce){body:after,.hero:before,.hero-coin{animation:none!important;transition:none!important}}
+
+.intel-backtest-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px}.intel-backtest-bar span{font-size:9px;color:#8fa5b7}
+.intel-backtest-results{margin-top:9px;font-size:10px;color:#a8b9c8;line-height:1.8}
+.backtest-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin-bottom:9px}
+.backtest-stats>div{padding:9px;border:1px solid #30475b;border-radius:9px;background:#0b1722}.backtest-stats small{display:block;color:#8ea5b7;font-size:9px}.backtest-stats b{display:block;color:#f0d28e;font-size:13px;margin-top:4px}
+.backtest-trades{max-height:170px;overflow:auto;border:1px solid #2c4155;border-radius:9px;padding:8px}
+@media(max-width:560px){.backtest-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
 
 
@@ -3491,5 +3498,49 @@ body:before{opacity:.23;background-size:34px 34px}
  setInterval(()=>{refreshJournal();checkAlerts();},60000);
  setInterval(()=>{loadDerivatives();loadOrderflow();},180000);
 })();
-</script>
 
+ async function runHistoricalBacktest(){
+  const button=byId("historical-backtest"),status=byId("backtest-status"),out=byId("backtest-results");
+  const symbol=safeSymbol(byId("ai-coin-select")?.value||byId("intel-symbol")?.value||"BTC")||"BTC";
+  if(button){button.disabled=true;button.textContent="در حال آزمون…";}
+  if(status)status.textContent="دریافت تاریخچه و اجرای آزمون بدون نگاه به آینده…";
+  try{
+   const data=await getJson(api()+"/market-candles?symbol="+symbol+"&interval=15m",15000);
+   const rows=(data.candles||[]).filter(x=>Number(x.close)>0);
+   if(rows.length<100)throw new Error("برای آزمون معتبر حداقل ۱۰۰ کندل لازم است.");
+   const close=rows.map(x=>Number(x.close)),high=rows.map(x=>Number(x.high)),low=rows.map(x=>Number(x.low));
+   const ema=(values,p)=>{const k=2/(p+1);let v=values.slice(0,p).reduce((a,b)=>a+b,0)/p;for(let i=p;i<values.length;i++)v=values[i]*k+v*(1-k);return v;};
+   const emaAt=(arr,end,p)=>ema(arr.slice(0,end+1),p);
+   const atrAt=i=>{let sum=0,count=0;for(let j=Math.max(1,i-13);j<=i;j++){sum+=Math.max(high[j]-low[j],Math.abs(high[j]-close[j-1]),Math.abs(low[j]-close[j-1]));count++;}return count?sum/count:0;};
+   const trades=[];let i=55;
+   while(i<rows.length-2){
+    const fastPrev=emaAt(close,i-1,20),slowPrev=emaAt(close,i-1,50),fastNow=emaAt(close,i,20),slowNow=emaAt(close,i,50);
+    const side=fastPrev<=slowPrev&&fastNow>slowNow?"LONG":fastPrev>=slowPrev&&fastNow<slowNow?"SHORT":null;
+    if(!side){i++;continue;}
+    const entry=close[i],atr=atrAt(i);if(!(atr>0)){i++;continue;}
+    const risk=atr*1.2,stop=side==="LONG"?entry-risk:entry+risk,target=side==="LONG"?entry+risk*2:entry-risk*2;
+    let resultR=null,exitIndex=Math.min(rows.length-1,i+24),exitPrice=close[exitIndex],reason="پایان بازه";
+    for(let j=i+1;j<=exitIndex;j++){
+     const stopHit=side==="LONG"?low[j]<=stop:high[j]>=stop;
+     const targetHit=side==="LONG"?high[j]>=target:low[j]<=target;
+     if(stopHit){resultR=-1;exitPrice=stop;exitIndex=j;reason="حد ضرر";break;}
+     if(targetHit){resultR=2;exitPrice=target;exitIndex=j;reason="هدف";break;}
+    }
+    if(resultR===null){const raw=side==="LONG"?(exitPrice-entry)/risk:(entry-exitPrice)/risk;resultR=raw;}
+    const feeR=(entry*.001)/risk;resultR-=feeR;
+    trades.push({side,entry,exitPrice,resultR,reason,entryTime:rows[i].time});
+    i=Math.max(i+1,exitIndex+1);
+   }
+   if(!trades.length)throw new Error("در این بازه هیچ تقاطع معتبر EMA ثبت نشد؛ نماد یا بازه دیگری را امتحان کن.");
+   const wins=trades.filter(t=>t.resultR>0),sum=trades.reduce((a,t)=>a+t.resultR,0),grossWin=wins.reduce((a,t)=>a+t.resultR,0),grossLoss=Math.abs(trades.filter(t=>t.resultR<0).reduce((a,t)=>a+t.resultR,0));
+   let equity=0,peak=0,maxDD=0;for(const t of trades){equity+=t.resultR;peak=Math.max(peak,equity);maxDD=Math.max(maxDD,peak-equity);}
+   const stats=[trades.length,fmt(wins.length/trades.length*100,1)+"٪",fmt(sum/trades.length,2)+"R",fmt(maxDD,2)+"R"];
+   if(out)out.innerHTML='<div class="backtest-stats">'+stats.map((v,j)=>'<div><small>'+["تعداد معاملات","نرخ برد","میانگین بازده خالص","بیشترین افت تجمعی"][j]+'</small><b>'+v+'</b></div>').join("")+'</div><div class="backtest-trades"><b>آخرین معاملات آزمون · '+symbol+'</b><br>'+trades.slice(-8).reverse().map(t=>(t.side==="LONG"?"خرید":"فروش")+" · ورود "+usd(t.entry)+" · خروج "+usd(t.exitPrice)+" · "+fmt(t.resultR,2)+"R · "+t.reason).join("<br>")+'</div><p>سود/زیان تجمعی: '+fmt(sum,2)+'R · ضریب سود: '+(grossLoss?fmt(grossWin/grossLoss,2):"—")+' · کارمزد فرضی رفت‌وبرگشت ۰٫۱٪. در برخورد هم‌زمان حد سود و ضرر، حد ضرر زودتر فرض شده است.</p>';
+   if(status)status.textContent="آزمون پایه EMA 20/50 روی "+rows.length+" کندل ۱۵ دقیقه‌ای تمام شد؛ این نتیجه به معنی عملکرد آینده نیست.";
+  }catch(e){if(status)status.textContent="بک‌تست اجرا نشد: "+(e.message||"خطای داده");}
+  finally{if(button){button.disabled=false;button.textContent="اجرای بک‌تست ۲۵۰ کندل";}}
+ }
+ byId("historical-backtest")?.addEventListener("click",runHistoricalBacktest);
+</script>
+</body>
+</html>
