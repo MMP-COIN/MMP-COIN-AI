@@ -1749,7 +1749,7 @@ async function runAiAnalysis(force=false){
  const id=$("ai-coin-select").value;
  const out=$("advanced-ai-analysis"),btn=$("ai-run-btn");
  if(!id){$("ai-action").textContent="منتظر انتخاب ارز";aiSetStatus("ابتدا یک ارز برای تحلیل انتخاب کنید.");return;}
- const c=cachedCoinsData.find(x=>x.id===id);
+ const c=cachedCoinsData.find(x=>x.id===id)||hunterCoinIndex.get(id);
  if(!c){aiSetStatus("داده قیمت این ارز هنوز بارگذاری نشده است.");return;}
  const cacheKey=id+"|"+$("ai-market-mode").value;
  const cached=aiCache.get(cacheKey);
@@ -1815,7 +1815,7 @@ function saveWatch(a){try{localStorage.setItem(MMP_WATCH_KEY,JSON.stringify([...
 function watchFeedback(message){const f=$("watch-feedback");if(f)f.textContent=message; if(f) setTimeout(()=>{if(f.textContent===message)f.textContent=""},2600)}
 function removeWatch(id){const next=loadWatch().filter(x=>x!==id);saveWatch(next);renderWatch();renderOpportunities();const c=cachedCoinsData.find(x=>x.id===id);watchFeedback((c?c.name:"ارز")+" از دیده‌بان حذف شد.");}
 function renderWatch(){const list=$("watch-list");if(!list)return;const ids=loadWatch();const count=$("watch-count");if(count)count.textContent=ids.length+" دارایی";const items=ids.map(id=>cachedCoinsData.find(x=>x.id===id)).filter(Boolean);list.innerHTML=items.length?items.map(c=>{const change=Number(c.price_change_percentage_24h),positive=change>=0;return '<article class="watch-item"><div class="watch-coin"><img src="'+aiEscape(c.image||"")+'" alt="" loading="lazy"><span><b>'+aiEscape(c.name)+'</b><small>'+c.symbol.toUpperCase()+'</small></span></div><div class="watch-price"><b>'+formatVal(c.current_price)+'</b><small class="'+(positive?"positive":"negative")+'">'+(positive?"+":"")+change.toFixed(2)+'% <span>۲۴ ساعت</span></small></div><div class="watch-actions"><button class="watch-analyze" type="button" data-watch-analyze="'+aiEscape(c.id)+'">تحلیل این ارز</button><button class="watch-remove" type="button" data-watch-remove="'+aiEscape(c.id)+'" aria-label="حذف '+aiEscape(c.name)+'">حذف</button></div></article>'}).join(""):('<div class="watch-empty"><b>دیده‌بان هنوز خالی است</b><span>از فهرست ۱۰۰ ارز، ارز دلخواهت را اضافه کن.</span></div>');}
-function analyzeWatchCoin(id){const coin=cachedCoinsData.find(x=>x.id===id);if(!coin){watchFeedback("داده این ارز در دسترس نیست.");return;}const select=$("ai-coin-select");if(select&&[...select.options].some(o=>o.value===id))select.value=id;$("ai-section")?.scrollIntoView({behavior:"smooth",block:"start"});runAiAnalysis(true);}
+function analyzeWatchCoin(id){const coin=cachedCoinsData.find(x=>x.id===id)||hunterCoinIndex.get(id);if(!coin){watchFeedback("داده این ارز در دسترس نیست.");return;}const select=$("ai-coin-select");if(select){let option=[...select.options].find(o=>o.value===id);if(!option){option=document.createElement("option");option.value=id;option.textContent=coin.name+" ("+String(coin.symbol).toUpperCase()+") · شکارچی بازار";select.appendChild(option);}select.value=id;}$("ai-section")?.scrollIntoView({behavior:"smooth",block:"start"});runAiAnalysis(true);}
 function renderMarketTicker(){const el=$("market-ticker");if(!el||!cachedCoinsData.length)return;const wanted=["bitcoin","ethereum","binancecoin","solana","ripple","layerzero"];const picks=wanted.map(id=>cachedCoinsData.find(c=>c.id===id)).filter(Boolean);el.innerHTML=picks.map(c=>'<div class="ticker-item"><b>'+aiEscape(c.name)+' · '+c.symbol.toUpperCase()+'</b><strong>'+formatVal(c.current_price)+'</strong><small class="'+(c.price_change_percentage_24h>=0?"positive":"negative")+'">'+(c.price_change_percentage_24h>=0?"+":"")+(Number(c.price_change_percentage_24h)||0).toFixed(2)+'% در ۲۴ ساعت</small></div>').join("");}
 let radarFilter="all";
 const fastRadarSignals=new Map();
@@ -1894,7 +1894,7 @@ async function fetchHunterUniverse(){
    const meta=metadataBySymbol.get(symbol);
    const quote=market.quotes.sort((a,b)=>b.volume-a.volume)[0]||{};
    return {
-    id:"hunter:"+symbol,symbol,name:meta?.name||symbol,image:meta?.image||"",
+    id:meta?.id||("hunter:"+symbol),symbol,name:meta?.name||symbol,image:meta?.image||"",
     current_price:quote.price||0,total_volume:market.totalVolume,
     market_cap:meta?.market_cap||null,market_cap_rank:meta?.market_cap_rank||null,
     hunterExchange:[...market.venues].join(", "),hunterPriceExchange:quote.exchange||"",
@@ -1919,7 +1919,7 @@ async function runFastRadarScan(){
  });
  try{
   await Promise.all(workers);
-  const previous=fastRadarSignals;
+  const previous=new Map(fastRadarSignals);
   fastRadarSignals.clear();fresh.forEach((v,k)=>fastRadarSignals.set(k,v));
   const newlyDetected=[];
   fresh.forEach((signal,id)=>{
@@ -2022,11 +2022,10 @@ function hunterTradeUrl(exchange,symbol){
  return "";
 }
 async function loadHunterListings(entries){
- const sets=await getHunterExchangeMarkets();
  entries.forEach(({id,coin})=>{
   const target=document.querySelector('[data-hunter-exchanges="'+id+'"]');if(!target)return;
   const symbol=hunterSafeSymbol(coin.symbol);if(!symbol)return;
-  const listed=[...sets.entries()].filter(([,symbols])=>symbols.has(symbol+"USDT")).map(([name])=>name);
+  const listed=String(coin.hunterExchange||"").split(",").map(x=>x.trim()).filter(Boolean);
   if(listed.length<MIN_TRUSTED_EXCHANGE_LISTINGS){target.innerHTML='<span class="hunter-no-exchange">در صرافی‌های معتبر فهرست نشده · معامله غیرفعال</span>';return;}
   target.innerHTML='<span class="hunter-exchange-label">قابل معامله در:</span>'+listed.map(name=>'<a class="hunter-exchange-link" href="'+hunterTradeUrl(name,symbol)+'" target="_blank" rel="noopener noreferrer" aria-label="معامله '+symbol+' در '+name+'">'+name+' <b>↗</b></a>').join("");
  });
