@@ -951,7 +951,7 @@ body{background:
 <style>
 .boom-coin-select{display:flex;align-items:center;gap:8px;background:#090f18;border:1px solid #354255;border-radius:10px;padding:5px 10px}.boom-coin-select img{width:27px;height:27px;object-fit:contain;border-radius:50%;background:#202a38}.boom-coin-select input{border:0!important;background:transparent!important;padding:7px 2px!important;flex:1}.boom-coin-name{display:block;color:#c6a968;font-size:10px;margin-top:5px}
 .boom-chart-modal{display:none;position:fixed;inset:0;z-index:100000;background:rgba(3,7,12,.97);padding:12px;overflow:auto}.boom-chart-modal.open{display:block}.boom-chart-modal-head{position:sticky;top:0;z-index:3;display:flex;justify-content:space-between;align-items:center;padding:10px 12px;margin:-12px -12px 12px;background:#111a26;border-bottom:1px solid #79633c;color:#f1d596}.boom-chart-modal-head button{border:1px solid #59677a;background:#202b39;color:#fff;border-radius:9px;padding:7px 12px}.boom-chart-modal #boom-hunter-expanded{max-width:1100px;margin:0 auto}.boom-chart-modal #boom-hunter-expanded .boom-chart{min-height:260px}.boom-chart-modal #boom-hunter-expanded .boom-chart svg{width:100%;height:auto}.boom-modal-open{overflow:hidden}
-.boom-coin-picker{position:relative;display:block}.boom-coin-select{position:relative}.boom-coin-menu{max-height:320px;overflow:auto}.boom-coin-option{width:100%;text-align:right}.boom-coin-option img{width:25px;height:25px;object-fit:contain}.boom-coin-picker #boom-add-coin{margin-top:7px;width:100%}
+.boom-coin-picker{position:relative;display:block}.boom-coin-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.boom-coin-actions .btn{flex:1;min-width:120px}.boom-coin-select{position:relative}.boom-coin-menu{max-height:320px;overflow:auto}.boom-coin-option{width:100%;text-align:right}.boom-coin-option img{width:25px;height:25px;object-fit:contain}.boom-coin-picker #boom-add-coin{margin-top:7px;width:100%}
 .boom-coin-menu{position:absolute;z-index:10020;top:calc(100% + 5px);right:0;left:0;max-height: min(52vh,360px);overflow:auto;background:#101925;border:1px solid #927b4c;border-radius:12px;box-shadow:0 14px 36px #000b;padding:5px}.boom-coin-option{display:flex;align-items:center;gap:10px;width:100%;padding:8px;border:0;border-bottom:1px solid #ffffff12;background:transparent;color:#f4f0e6;text-align:right;cursor:pointer}.boom-coin-option:active,.boom-coin-option:hover{background:#c5a45b22}.boom-coin-option img{width:28px;height:28px;flex:0 0 28px;border-radius:50%;object-fit:contain;background:#fff;padding:2px}.boom-coin-option span{display:grid;gap:2px}.boom-coin-option b{font-size:12px}.boom-coin-option small{font-size:10px;color:#c6a968}.boom-coin-no-results{padding:14px;color:#aab5c3;text-align:center;font-size:12px}.boom-chart-modal #boom-hunter-expanded{max-width:1200px}.boom-chart-modal #boom-hunter-expanded .boom-chart{min-height:300px}.boom-chart-modal #boom-hunter-expanded .boom-chart svg{max-height:62vh}</style>
 </head>
 <body class="mmp-app-mode">
@@ -1064,7 +1064,7 @@ body{background:
 <section class="card mmp-boom-lab" id="boom-hunter">
  <div class="section-head"><div><div class="section-kicker">MMP · MOMENTUM OSCILLATOR LAB</div><h2>آزمایشگاه Boom Hunter</h2><p class="sub">بررسی مستقل مومنتوم، چرخش احتمالی قیمت، حجم و جریان خرید و فروش</p></div><span class="badge">تحلیل مستقل</span></div>
  <div class="boom-toolbar">
-  <label class="boom-coin-picker">انتخاب ارز <div class="boom-coin-select"><img id="boom-coin-icon" src="https://assets.coincap.io/assets/icons/btc@2x.png" alt="BTC"><input id="boom-symbol" type="text" value="BTC" list="boom-coin-options" maxlength="20" autocomplete="off" spellcheck="false" aria-label="جستجو و انتخاب ارز"><datalist id="boom-coin-options"></datalist></div><small id="boom-coin-name" class="boom-coin-name">در حال دریافت فهرست بازارهای چند صرافی…</small><div id="boom-coin-menu" class="boom-coin-menu" hidden></div><button type="button" class="btn" id="boom-add-coin">＋ افزودن ارز دلخواه</button></label>
+  <label class="boom-coin-picker">انتخاب ارز <div class="boom-coin-select"><img id="boom-coin-icon" src="https://assets.coincap.io/assets/icons/btc@2x.png" alt="BTC"><input id="boom-symbol" type="text" value="BTC" list="boom-coin-options" maxlength="20" autocomplete="off" spellcheck="false" aria-label="جستجو و انتخاب ارز"><datalist id="boom-coin-options"></datalist></div><small id="boom-coin-name" class="boom-coin-name">در حال دریافت فهرست بازارهای چند صرافی…</small><div class="boom-coin-actions"><button type="button" class="btn" id="boom-show-coins">نمایش فهرست ارزها</button><button type="button" class="btn" id="boom-add-coin">＋ افزودن ارز دلخواه</button></div><div id="boom-coin-menu" class="boom-coin-menu" hidden></div></label>
   <label>تایم‌فریم <select id="boom-interval" aria-label="تایم فریم"><option value="1m">۱ دقیقه</option><option value="5m" selected>۵ دقیقه</option><option value="15m">۱۵ دقیقه</option><option value="1h">۱ ساعت</option></select></label>
   <button class="btn primary" id="boom-run" type="button">تحلیل اندیکاتور</button>
  </div>
@@ -2803,10 +2803,10 @@ setInterval(()=>mmpSendEvent("heartbeat"),240000);
   values.forEach((v,i)=>{if(signals[i])out+='<circle cx="'+(L+i*slot+slot/2)+'" cy="'+yy(v)+'" r="4" fill="'+(signals[i]==="BUY"?"#25d695":"#ff6576")+'"/>';});
   return out+'</svg>';
  }
- let boomLiveSocket=null,boomLiveRows=null,boomLiveInterval=null,boomLivePair=null;
+ let boomLiveSocket=null,boomLiveRows=null,boomLiveInterval=null,boomLivePair=null,boomLiveLastTick=0,boomLiveProvider="";
  function stopBoomLive(){if(boomLiveSocket){try{boomLiveSocket.onclose=null;boomLiveSocket.close();}catch(e){}boomLiveSocket=null;}}
  function renderBoomLiveUpdate(){
-  if(!boomLiveRows||boomLiveRows.length<60)return;
+  if(!boomLiveRows||boomLiveRows.length<25)return;
   const rows=boomLiveRows,closes=rows.map(r=>r[4]),base=ema(closes,34),deviation=closes.map((v,i)=>v-base[i]),osc=[];
   for(let i=0;i<rows.length;i++){const start=Math.max(0,i-19),sample=deviation.slice(start,i+1),mean=sample.reduce((a,b)=>a+b,0)/sample.length,variance=sample.reduce((a,b)=>a+(b-mean)*(b-mean),0)/sample.length,sd=Math.sqrt(variance)||1,momentum=i>=3?(closes[i]/closes[i-3]-1)*100:0;osc.push(Math.max(-2,Math.min(2,(deviation[i]/sd)*.72+momentum*1.8)));}
   const smooth=ema(osc,5),signals=rows.map((r,i)=>i>0&&smooth[i]>.75&&smooth[i-1]<=.75?"BUY":i>0&&smooth[i]<-.75&&smooth[i-1]>=-.75?"SELL":null);
@@ -2821,7 +2821,7 @@ setInterval(()=>mmpSendEvent("heartbeat"),240000);
   $("boom-candles").innerHTML=drawCandles(rows.slice(-90),signals.slice(-90));
   $("boom-flow-chart").innerHTML=drawFlow(rows);$("boom-oscillator").innerHTML=drawOsc(smooth.slice(-120),signals.slice(-120));
   const stamp=new Date().toLocaleTimeString("fa-IR");
-  $("boom-status").textContent=boomLivePair+" · "+boomLiveInterval+" · کندل در حال تشکیل · جریان زنده WebSocket · "+stamp;
+  $("boom-status").textContent=boomLivePair+" · "+boomLiveInterval+" · کندل در حال تشکیل · جریان زنده '+(boomLiveProvider||"WebSocket")+' · "+stamp;
   syncBoomExpanded();
  }
  function startBoomLive(pair,interval){
@@ -2829,11 +2829,11 @@ setInterval(()=>mmpSendEvent("heartbeat"),240000);
   const stream=pair.toLowerCase()+"@kline_"+interval;
   const connectBinance=()=>{
    let ws;try{ws=new WebSocket("wss://stream.binance.com:9443/ws/"+stream);}catch(e){connectOkx();return;}
-   boomLiveSocket=ws;let opened=false;
+   boomLiveSocket=ws;let opened=false;boomLiveProvider="Binance";
    ws.onopen=()=>{opened=true;};
    ws.onmessage=event=>{
     try{const msg=JSON.parse(event.data),k=msg.k;if(!k)return;
-     const t=Number(k.t),row=[t,Number(k.o),Number(k.h),Number(k.l),Number(k.c),Number(k.v),Number(k.q),Number(k.n),Number(k.V),Number(k.Q),Math.max(0,Number(k.q)-Number(k.Q)),0];
+     boomLiveLastTick=Date.now();const t=Number(k.t),row=[t,Number(k.o),Number(k.h),Number(k.l),Number(k.c),Number(k.v),Number(k.q),Number(k.n),Number(k.V),Number(k.Q),Math.max(0,Number(k.q)-Number(k.Q)),0];
      if(!boomLiveRows)return;
      const last=boomLiveRows[boomLiveRows.length-1];
      if(last&&last[0]===t)boomLiveRows[boomLiveRows.length-1]=row;else boomLiveRows.push(row);
@@ -2849,10 +2849,10 @@ setInterval(()=>mmpSendEvent("heartbeat"),240000);
    if(boomLivePair!==pair)return;
    const map={"1m":"1m","5m":"5m","15m":"15m","1h":"1H"};let ws;
    try{ws=new WebSocket("wss://ws.okx.com:8443/ws/v5/business");}catch(e){return;}
-   boomLiveSocket=ws;
+   boomLiveSocket=ws;boomLiveProvider="OKX";
    ws.onopen=()=>ws.send(JSON.stringify({op:"subscribe",args:[{channel:"candle"+map[interval],instId:pair.replace("USDT","-USDT") }]}));
    ws.onmessage=event=>{try{const msg=JSON.parse(event.data),c=msg.data?.[0];if(!c)return;
-    const t=Number(c[0]),row=[t,Number(c[1]),Number(c[2]),Number(c[3]),Number(c[4]),Number(c[5]),Number(c[6]),0,0,0,0,0];
+    boomLiveLastTick=Date.now();const t=Number(c[0]),row=[t,Number(c[1]),Number(c[2]),Number(c[3]),Number(c[4]),Number(c[5]),Number(c[6]),0,0,0,0,0];
     if(!boomLiveRows)return;const last=boomLiveRows[boomLiveRows.length-1];
     if(last&&last[0]===t)boomLiveRows[boomLiveRows.length-1]=row;else boomLiveRows.push(row);
     renderBoomLiveUpdate();
@@ -2900,7 +2900,7 @@ setInterval(()=>mmpSendEvent("heartbeat"),240000);
    $("boom-oscillator").innerHTML=drawOsc(smooth.slice(-120),signals.slice(-120));
    const unusual=flowRatio>=2?" · حجم غیرعادی در آخرین کندل":"";
    status.className="boom-status";status.textContent=pair+" · "+interval+" · "+rows.length+" کندل شامل کندل جاری · منبع: "+provider+" · سبز/قرمز: خرید/فروش تهاجمی · بروزرسانی "+new Date().toLocaleTimeString("fa-IR")+unusual;
-   boomLiveRows=rows;startBoomLive(pair,interval);boomLiveEnabled=true;if(!boomLiveTimer)boomLiveTimer=setInterval(()=>{if(boomLiveEnabled&&!document.hidden&&!button.disabled)run();},15000);
+   boomLiveRows=rows;boomLiveLastTick=0;startBoomLive(pair,interval);boomLiveEnabled=true;if(!boomLiveTimer)boomLiveTimer=setInterval(()=>{if(boomLiveEnabled&&!document.hidden&&!button.disabled&&(!boomLiveLastTick||Date.now()-boomLiveLastTick>20000))run();},25000);
    syncBoomExpanded();
   }catch(error){status.className="boom-status error";status.textContent="دریافت/تحلیل ناموفق: "+(error&&error.message?error.message:"خطای نامشخص");}
   finally{button.disabled=false;}
@@ -2953,26 +2953,19 @@ setInterval(()=>mmpSendEvent("heartbeat"),240000);
   });
  }
  async function loadBoomCoins(){
-  // فهرست از اجتماع بازارهای فعال USDT چند صرافی ساخته می‌شود؛ قطع یک صرافی فهرست را خالی نمی‌کند.
+  // ابتدا فهرست کامل Worker/بازار اصلی، سپس اجتماع مستقیم بازارهای شش صرافی؛ شکست یک API نباید فهرست را خالی کند.
+  try{const universe=await fetchHunterUniverse();(universe||[]).forEach(c=>addBoomCoin(c));}catch(e){console.debug("Boom worker universe unavailable",e?.message||e);}
   try{
    const markets=await getHunterExchangeMarkets(),seen=new Set();
-   for(const [provider,pairs] of markets){
-    for(const pair of pairs||[]){
-     const p=String(pair||"").toUpperCase();
-     if(!p.endsWith("USDT")||p.length<6)continue;
-     const base=p.slice(0,-4);
-     if(!/^[A-Z0-9]{2,24}$/.test(base)||seen.has(base))continue;
-     seen.add(base);addBoomCoin({symbol:base,name:base});
-    }
-   }
+   for(const [provider,pairs] of markets){for(const pair of pairs||[]){const p=String(pair||"").toUpperCase();if(!p.endsWith("USDT")||p.length<6)continue;const base=p.slice(0,-4);if(!/^[A-Z0-9]{2,24}$/.test(base)||seen.has(base))continue;seen.add(base);addBoomCoin({symbol:base,name:base});}}
   }catch(e){console.debug("Boom multi-exchange universe unavailable",e?.message||e);}
-  try{
-   const saved=JSON.parse(localStorage.getItem("mmp_boom_custom_coins")||"[]");
-   saved.forEach(c=>addBoomCoin(c));
-  }catch(e){}
+  try{const saved=JSON.parse(localStorage.getItem("mmp_boom_custom_coins")||"[]");saved.forEach(c=>addBoomCoin(c));}catch(e){}
   renderBoomCoins();if(expandedBoomClone)renderBoomCoins(expandedBoomClone);
+  const label=$("boom-coin-name");if(label)label.textContent=boomCoins.size.toLocaleString("fa-IR")+" نماد در فهرست · جستجو یا افزودن نماد دلخواه";
  }
  setupBoomCoinMenu();
+ const showCoinsButton=$("boom-show-coins");
+ if(showCoinsButton)showCoinsButton.addEventListener("click",()=>{const menu=$("boom-coin-menu");if(!menu)return;const opening=menu.hidden||menu.dataset.open!=="1";if(opening){renderBoomCoins(document,true);menu.hidden=false;menu.dataset.open="1";showCoinsButton.textContent="بستن فهرست ارزها";}else{menu.hidden=true;menu.dataset.open="0";showCoinsButton.textContent="نمایش فهرست ارزها";}});
  const addCustomButton=$("boom-add-coin");
  if(addCustomButton)addCustomButton.addEventListener("click",()=>{
   const symbol=hunterSafeSymbol($("boom-symbol")?.value);
@@ -2983,7 +2976,7 @@ setInterval(()=>mmpSendEvent("heartbeat"),240000);
   try{localStorage.setItem("mmp_boom_custom_coins",JSON.stringify(next));}catch(e){}
   renderBoomCoins();$("boom-status").textContent=symbol+" به فهرست شخصی این دستگاه اضافه شد؛ اعتبار جفت USDT هنگام دریافت کندل بررسی می‌شود.";
  });
- loadBoomCoins();setTimeout(renderBoomCoins,12000);setInterval(renderBoomCoins,60000);
+ loadBoomCoins().then(()=>{setTimeout(()=>{if(!$("boom-candles")?.querySelector("svg"))run();},1200);});setTimeout(renderBoomCoins,12000);setInterval(renderBoomCoins,60000);
  const modal=$("boom-chart-modal"),content=$("boom-chart-modal-content");
  function syncBoomExpanded(){
   if(!expandedBoomClone)return;
