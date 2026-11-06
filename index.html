@@ -2059,9 +2059,9 @@ async function scanFastCoin(coin){
  const baseline=rows.slice(Math.max(0,index-20),index).map(x=>Number(x[5])).filter(x=>x>0);
  if(baseline.length<16)return null;
  const avgVolume=baseline.reduce((a,b)=>a+b,0)/baseline.length,volumeRatio=avgVolume>0?volume/avgVolume:0;
- const change1m=(close/open-1)*100,start3=Number(rows[index-2][1]),start5=Number(rows[index-4][1]);
+ const change1m=(close/open-1)*100,start3=Number(rows[index-2][1]);
  if(!Number.isFinite(start3)||!Number.isFinite(start5)||start3<=0||start5<=0)return null;
- const change3m=(close/start3-1)*100,change5m=(close/start5-1)*100,dailyChange24h=Number(coin.hunterChange24h)||0;
+ const change3m=(close/start3-1)*100,dailyChange24h=Number(coin.hunterChange24h)||0;
  const recent=rows.slice(Math.max(0,index-7),index),priorHigh=Math.max(...recent.map(x=>Number(x[2]))),priorLow=Math.min(...recent.map(x=>Number(x[3])));
  const breakoutUp=close>priorHigh,breakoutDown=close<priorLow;
  const flowNetPct=Number(flow?.netPct3m)||0,flowRatio=Number(flow?.volumeRatio3m)||0,flowNet=Number(flow?.net3m)||0;
@@ -2246,12 +2246,13 @@ async function runFastRadarScan(){
  if(hunterLast)hunterLast.textContent=new Date().toLocaleTimeString("fa-IR");
  try{universe=await fetchHunterUniverse();}catch(error){console.debug("Hunter universe unavailable:",error?.message||error);universe=[];}
  if(!universe.length){fastRadarLastMessage="دریافت فهرست بازارهای اسپات ناموفق بود؛ اتصال صرافی‌ها را بررسی کنید.";if(status)status.textContent=fastRadarLastMessage;if(hunterStatus)hunterStatus.textContent="فهرست بازارها دریافت نشد؛ پایش کندلی انجام نشد.";if(hunterLast)hunterLast.textContent="خطای دریافت داده";fastRadarBusy=false;return;}
- // پایش چرخشی: در هر نوبت ۳۶ بازار بررسی می‌شود تا نتایج تازه‌تر به‌جای انتظار طولانی برای کل فهرست برسند.
+ // در هر نوبت ۶۰ نماد بررسی می‌شود؛ ابتدا هشدارهای تازه، سپس ۲۰ بازار با بیشترین حجم ۲۴ساعته و بعد بقیه فهرست به‌صورت چرخشی.
  const batchSize=Math.min(60,universe.length),batch=[],selectedIds=new Set();
- // هشدارهای اولیه در اولویت بررسی کندلی قرار می‌گیرند؛ ظرفیت باقی‌مانده همچنان چرخشی است.
  [...hunterEarlyAlerts.values()].filter(x=>Date.now()-x.updatedAt<4*60*1000).sort((a,b)=>b.updatedAt-a.updatedAt).slice(0,12).forEach(alert=>{
   const coin=hunterCoinIndex.get(alert.id);if(coin&&!selectedIds.has(coin.id)&&batch.length<Math.min(12,batchSize)){batch.push(coin);selectedIds.add(coin.id);}
  });
+ const volumeRanked=universe.slice().sort((a,b)=>(Number(b.total_volume)||0)-(Number(a.total_volume)||0));
+ volumeRanked.slice(0,Math.min(20,batchSize)).forEach(coin=>{if(!selectedIds.has(coin.id)&&batch.length<batchSize){batch.push(coin);selectedIds.add(coin.id);}});
  let offset=0;while(batch.length<batchSize&&offset<universe.length){const coin=universe[(fastRadarCursor+offset)%universe.length];offset++;if(!selectedIds.has(coin.id)){batch.push(coin);selectedIds.add(coin.id);}}
  fastRadarCursor=(fastRadarCursor+offset)%universe.length;
  const workers=Array.from({length:18},async()=>{
