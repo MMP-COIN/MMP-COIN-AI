@@ -868,7 +868,10 @@ body{background:
 .top{padding:0 24px!important}
 .wrap{margin:0 auto!important;max-width:1580px!important}
 .menu-btn{display:grid!important;place-items:center!important;width:42px;height:42px;padding:0!important;font-size:21px!important}
-#dropdownMenu{display:none!important;position:absolute!important;top:calc(100% + 8px)!important;left:14px!important;right:auto!important;z-index:9999!important}
+#dropdownMenu{display:none!important;position:absolute!important;top:calc(100% + 6px)!important;left:10px!important;right:auto!important;z-index:9999!important;width:min(218px,calc(100vw - 20px))!important;max-height:calc(100dvh - 76px)!important;overflow-y:auto!important;padding:5px!important;border-radius:12px!important;box-shadow:0 14px 34px #000b!important;gap:2px!important}
+#dropdownMenu.show{display:flex!important;flex-direction:column!important}
+#dropdownMenu a{display:flex!important;align-items:center!important;min-height:36px!important;padding:7px 10px!important;font-size:11px!important;line-height:1.45!important;border-radius:8px!important}
+@media(max-width:560px){#dropdownMenu{top:calc(100% + 5px)!important;left:7px!important;width:min(205px,calc(100vw - 14px))!important}#dropdownMenu a{min-height:34px!important;padding:6px 9px!important;font-size:10.5px!important}}
 #dropdownMenu.show{display:flex!important}
 #refresh-all-btn{min-width:112px;display:inline-flex;align-items:center;justify-content:center;gap:6px}
 #refresh-all-btn.is-refreshing{opacity:.7;pointer-events:none}
@@ -932,19 +935,15 @@ body{background:
   <button class="menu-btn" type="button" onclick="toggleMenu()" aria-label="باز کردن منوی اصلی" aria-controls="dropdownMenu" aria-expanded="false"><span aria-hidden="true">☰</span></button>
 </div>
 <div class="dropdown-menu" id="dropdownMenu">
-  <div class="menu-version-row"><span>نسخه فعلی اپ</span><b id="site-menu-version">1.0.0</b></div>
-  <a href="#hero" onclick="toggleMenu()">🏠 نمای کلی اپلیکیشن</a>
-  <a href="#opportunities" onclick="toggleMenu()">📡 رادار صعودی و نزولی</a>
+  <a href="#hero" onclick="toggleMenu()">⌂ نمای کلی سایت</a>
+  <a href="#opportunities" onclick="toggleMenu()">📡 رادار بازار</a>
   <a href="#market-hunter" onclick="toggleMenu()">🎯 شکارچی بازار</a>
-  <a href="#ai-section" onclick="toggleMenu()">🤖 تحلیلگر هوشمند AI</a>
-  <a href="#chart-section" onclick="toggleMenu()">📊 نمودار تریدینگ‌ویو</a>
-  <a href="#coins-section" onclick="toggleMenu()">🪙 بازار رمزارزها</a>
-  <a href="#watchlist" onclick="toggleMenu()">☆ دیده‌بان شخصی</a>
-  <a href="#trading-tools" onclick="toggleMenu()">⌗ ابزارهای معامله‌گری</a>
-  <a href="#market-hours" onclick="toggleMenu()">◷ ساعت بازارهای جهان</a>
-  <a href="#connections" onclick="toggleMenu()">◉ سلامت منابع داده</a>
-  <a href="#contact-us" onclick="toggleMenu()">✉ ارتباط با مدیریت</a>
-  <a href="https://mmp-coin.github.io/admin.html">🔐 پنل مدیریت</a>
+  <a href="#ai-section" onclick="toggleMenu()">✧ تحلیلگر هوشمند</a>
+  <a href="#chart-section" onclick="toggleMenu()">▥ نمودار بازار</a>
+  <a href="#coins-section" onclick="toggleMenu()">◈ فهرست ارزها</a>
+  <a href="#trading-tools" onclick="toggleMenu()">⌗ ابزارهای معامله</a>
+  <a href="#connections" onclick="toggleMenu()">◉ وضعیت اتصال</a>
+  <a href="https://mmp-coin.github.io/admin.html">⚙ پنل مدیریت</a>
 </div>
 </header>
 
