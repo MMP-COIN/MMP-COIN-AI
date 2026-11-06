@@ -466,9 +466,19 @@ async function handle(request,env){
   ]);
   if(primary[1].status!=="fulfilled")return json({error:"دریافت فهرست فعال CoinMarketCap ناموفق بود.",detail:String(primary[1].reason?.message||primary[1].reason).slice(0,180)},502,request);
   const binanceInfo=primary[0].status==="fulfilled"?primary[0].value:{symbols:[]};
-  const cmcRows=[...(Array.isArray(primary[1].value?.data)?primary[1].value.data:[]),...(primary[2].status==="fulfilled"&&Array.isArray(primary[2].value?.data)?primary[2].value.data:[])];
+  let cmcRows=[...(Array.isArray(primary[1].value?.data)?primary[1].value.data:[]),...(primary[2].status==="fulfilled"&&Array.isArray(primary[2].value?.data)?primary[2].value.data:[])];
+  let metadataProvider="CoinMarketCap";
+  if(!cmcRows.length){
+   // اگر کاتالوگ CMC از Worker پاسخ نداد، کاتالوگ عمومی CoinLore به‌عنوان مسیر جایگزین استفاده می‌شود.
+   const fallbackPages=await Promise.allSettled(Array.from({length:10},(_,i)=>timedJson("https://api.coinlore.net/api/tickers/?start="+(i*100)+"&limit=100",15000,60)));
+   cmcRows=fallbackPages.flatMap(result=>result.status==="fulfilled"&&Array.isArray(result.value)?result.value.map(item=>({
+    id:item.id,symbol:item.symbol,name:item.name,cmc_rank:Number(item.rank)||null,metadata_source:"CoinLore",
+    quote:{USD:{price:Number(item.price_usd)||0,market_cap:Number(item.market_cap_usd)||0,percent_change_24h:Number(item.percent_change_24h)||0}}
+   )):[]);
+   metadataProvider="CoinLore fallback";
+  }
   const binanceSymbols=new Set((binanceInfo.symbols||[]).filter(x=>x.status==="TRADING"&&x.isSpotTradingAllowed!==false&&String(x.quoteAsset||"").toUpperCase()==="USDT").map(x=>String(x.baseAsset||"").toUpperCase()).filter(Boolean));
-  if(!cmcRows.length)return json({error:"فهرست بازار خالی است."},502,request);
+  if(!cmcRows.length)return json({error:"فهرست CMC و مسیر جایگزین CoinLore در دسترس نیست.",cmc_error:primary[1].status==="rejected"?String(primary[1].reason?.message||primary[1].reason).slice(0,140):null},502,request);
   const cmcBySymbol=new Map(),cmcDuplicateCount=new Map();
   cmcRows.forEach(item=>{
    const symbol=String(item?.symbol||"").toUpperCase();
@@ -491,7 +501,7 @@ async function handle(request,env){
    ["KuCoin","https://api.kucoin.com/api/v1/market/allTickers",d=>(d.data?.ticker||[]).filter(x=>String(x.symbol).endsWith("-USDT")).map(x=>({symbol:String(x.symbol).replace("-USDT",""),volume:Number(x.volValue)||0,price:Number(x.last)||0,change24h:(Number(x.changeRate)||0)*100}))]
   ];
   const tickerResults=await Promise.allSettled(jobs.map(async([name,url,normalize])=>({name,rows:normalize(await timedJson(url,11000,10))})));
-  const markets=new Map(),sources={BinanceExchangeInfo:{ok:primary[0].status==="fulfilled",status:primary[0].status==="fulfilled"?200:0,error:primary[0].status==="rejected"?String(primary[0].reason?.message||primary[0].reason).slice(0,140):null},CoinMarketCap:{ok:true,status:200,page2:primary[2].status==="fulfilled"}};
+  const markets=new Map(),sources={BinanceExchangeInfo:{ok:primary[0].status==="fulfilled",status:primary[0].status==="fulfilled"?200:0,error:primary[0].status==="rejected"?String(primary[0].reason?.message||primary[0].reason).slice(0,140):null},MetadataCatalog:{ok:true,provider:metadataProvider},CoinMarketCap:{ok:primary[1].status==="fulfilled",status:primary[1].status==="fulfilled"?200:0,page2:primary[2].status==="fulfilled"}};
   tickerResults.forEach((result,i)=>{
    const name=jobs[i][0];
    if(result.status!=="fulfilled"){sources[name]={ok:false,error:String(result.reason?.message||result.reason).slice(0,140)};return;}
@@ -510,7 +520,7 @@ async function handle(request,env){
    for(const quote of quotes)venueVolume[quote.exchange]=Math.max(venueVolume[quote.exchange]||0,Number(quote.volume)||0);
    return {
     id:"cmc:"+String(meta.id),cmcId:Number(meta.id),symbol,name:meta.name||symbol,
-    image:"https://s2.coinmarketcap.com/static/img/coins/"+String(meta.id)+"/64x64.png",
+    image:meta.metadata_source==="CoinLore"?"":"https://s2.coinmarketcap.com/static/img/coins/"+String(meta.id)+"/64x64.png",
     current_price:best.price||Number(cmcQuote.price)||0,total_volume:quotes.reduce((sum,x)=>sum+(Number(x.volume)||0),0),
     market_cap:Number(cmcQuote.market_cap)||null,market_cap_rank:Number(meta.cmc_rank)||null,
     hunterExchange:[...market.venues].join(", "),hunterPriceExchange:best.exchange||"CoinMarketCap",
