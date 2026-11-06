@@ -951,7 +951,7 @@ body{background:
 <style>
 .boom-coin-select{display:flex;align-items:center;gap:8px;background:#090f18;border:1px solid #354255;border-radius:10px;padding:5px 10px}.boom-coin-select img{width:27px;height:27px;object-fit:contain;border-radius:50%;background:#202a38}.boom-coin-select input{border:0!important;background:transparent!important;padding:7px 2px!important;flex:1}.boom-coin-name{display:block;color:#c6a968;font-size:10px;margin-top:5px}
 .boom-chart-modal{display:none;position:fixed;inset:0;z-index:100000;background:rgba(3,7,12,.97);padding:12px;overflow:auto}.boom-chart-modal.open{display:block}.boom-chart-modal-head{position:sticky;top:0;z-index:3;display:flex;justify-content:space-between;align-items:center;padding:10px 12px;margin:-12px -12px 12px;background:#111a26;border-bottom:1px solid #79633c;color:#f1d596}.boom-chart-modal-head button{border:1px solid #59677a;background:#202b39;color:#fff;border-radius:9px;padding:7px 12px}.boom-chart-modal #boom-hunter-expanded{max-width:1100px;margin:0 auto}.boom-chart-modal #boom-hunter-expanded .boom-chart{min-height:260px}.boom-chart-modal #boom-hunter-expanded .boom-chart svg{width:100%;height:auto}.boom-modal-open{overflow:hidden}
-</style>
+.boom-coin-select{position:relative}.boom-coin-menu{position:absolute;z-index:10020;top:calc(100% + 5px);right:0;left:0;max-height: min(52vh,360px);overflow:auto;background:#101925;border:1px solid #927b4c;border-radius:12px;box-shadow:0 14px 36px #000b;padding:5px}.boom-coin-option{display:flex;align-items:center;gap:10px;width:100%;padding:8px;border:0;border-bottom:1px solid #ffffff12;background:transparent;color:#f4f0e6;text-align:right;cursor:pointer}.boom-coin-option:active,.boom-coin-option:hover{background:#c5a45b22}.boom-coin-option img{width:28px;height:28px;flex:0 0 28px;border-radius:50%;object-fit:contain;background:#fff;padding:2px}.boom-coin-option span{display:grid;gap:2px}.boom-coin-option b{font-size:12px}.boom-coin-option small{font-size:10px;color:#c6a968}.boom-coin-no-results{padding:14px;color:#aab5c3;text-align:center;font-size:12px}.boom-chart-modal #boom-hunter-expanded{max-width:1200px}.boom-chart-modal #boom-hunter-expanded .boom-chart{min-height:300px}.boom-chart-modal #boom-hunter-expanded .boom-chart svg{max-height:62vh}</style>
 </head>
 <body class="mmp-app-mode">
 
@@ -1063,7 +1063,7 @@ body{background:
 <section class="card mmp-boom-lab" id="boom-hunter">
  <div class="section-head"><div><div class="section-kicker">MMP · MOMENTUM OSCILLATOR LAB</div><h2>آزمایشگاه Boom Hunter</h2><p class="sub">بررسی مستقل مومنتوم، چرخش احتمالی قیمت، حجم و جریان خرید و فروش</p></div><span class="badge">تحلیل مستقل</span></div>
  <div class="boom-toolbar">
-  <label>انتخاب ارز <div class="boom-coin-select"><img id="boom-coin-icon" src="https://assets.coincap.io/assets/icons/btc@2x.png" alt="BTC"><input id="boom-symbol" type="text" value="BTC" list="boom-coin-options" maxlength="20" autocomplete="off" spellcheck="false" aria-label="جستجو و انتخاب ارز"><datalist id="boom-coin-options"></datalist></div><small id="boom-coin-name" class="boom-coin-name">Bitcoin · BTC</small></label>
+  <label>انتخاب ارز <div class="boom-coin-select"><img id="boom-coin-icon" src="https://assets.coincap.io/assets/icons/btc@2x.png" alt="BTC"><input id="boom-symbol" type="text" value="BTC" list="boom-coin-options" maxlength="20" autocomplete="off" spellcheck="false" aria-label="جستجو و انتخاب ارز"><datalist id="boom-coin-options"></datalist></div><small id="boom-coin-name" class="boom-coin-name">در حال دریافت فهرست ارزها…</small><div id="boom-coin-menu" class="boom-coin-menu" hidden></div></label>
   <label>تایم‌فریم <select id="boom-interval" aria-label="تایم فریم"><option value="1m">۱ دقیقه</option><option value="5m" selected>۵ دقیقه</option><option value="15m">۱۵ دقیقه</option><option value="1h">۱ ساعت</option></select></label>
   <button class="btn primary" id="boom-run" type="button">تحلیل اندیکاتور</button>
  </div>
@@ -2802,7 +2802,7 @@ setInterval(()=>mmpSendEvent("heartbeat"),240000);
     }catch(error){lastError=error;}
    }
    if(!raw)throw lastError||new Error("منابع کندل در دسترس نیستند");
-   const rows=raw.slice(0,-1).map(k=>{
+   const rows=raw.map(k=>{
     const close=Number(k[4]),baseVolume=Number(k[5])||0,quoteVolume=Number(k[7])||baseVolume*close,buyBase=Number(k[9])||0,buyQuote=Number(k[10])||buyBase*close,sellQuote=Math.max(0,quoteVolume-buyQuote);
     return [Number(k[0]),Number(k[1]),Number(k[2]),Number(k[3]),close,baseVolume,quoteVolume,Number(k[8])||0,buyBase,buyQuote,sellQuote,0];
    });
@@ -2826,53 +2826,112 @@ setInterval(()=>mmpSendEvent("heartbeat"),240000);
    $("boom-flow-chart").innerHTML=drawFlow(rows);
    $("boom-oscillator").innerHTML=drawOsc(smooth.slice(-120),signals.slice(-120));
    const unusual=flowRatio>=2?" · حجم غیرعادی در آخرین کندل":"";
-   status.className="boom-status";status.textContent=pair+" · "+interval+" · "+rows.length+" کندل بسته‌شده · منبع: "+provider+" · سبز/قرمز: خرید/فروش تهاجمی · بروزرسانی "+new Date().toLocaleTimeString("fa-IR")+unusual;
+   status.className="boom-status";status.textContent=pair+" · "+interval+" · "+rows.length+" کندل شامل کندل جاری · منبع: "+provider+" · سبز/قرمز: خرید/فروش تهاجمی · بروزرسانی "+new Date().toLocaleTimeString("fa-IR")+unusual;
+   boomLiveEnabled=true;if(!boomLiveTimer)boomLiveTimer=setInterval(()=>{if(boomLiveEnabled&&!document.hidden&&!button.disabled)run();},15000);
+   syncBoomExpanded();
   }catch(error){status.className="boom-status error";status.textContent="دریافت/تحلیل ناموفق: "+(error&&error.message?error.message:"خطای نامشخص");}
   finally{button.disabled=false;}
  }
  const btn=$("boom-run");if(btn)btn.addEventListener("click",run);
  const symbol=$("boom-symbol");if(symbol)symbol.addEventListener("keydown",e=>{if(e.key==="Enter")run();});
  const boomCoins=new Map(),boomMetadata=new Map();
- function addBoomCoin(c){if(!c)return;const k=String(c.symbol||"").toUpperCase();const meta=boomMetadata.get(k)||{};if(k)boomCoins.set(k,{symbol:k,name:c.name&&c.name!==k?c.name:(meta.name||k),image:c.image||meta.image||"https://assets.coincap.io/assets/icons/"+k.toLowerCase()+"@2x.png"});}
- function renderBoomCoins(){
+ let expandedBoomClone=null,boomLiveTimer=null,boomLiveEnabled=false;
+ const boomEsc=value=>String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+ function addBoomCoin(c){
+  if(!c)return;
+  const k=String(c.symbol||"").toUpperCase(),meta=boomMetadata.get(k)||{};
+  if(k)boomCoins.set(k,{symbol:k,name:c.name&&c.name!==k?c.name:(meta.name||k),image:c.image||meta.image||"https://assets.coincap.io/assets/icons/"+k.toLowerCase()+"@2x.png"});
+ }
+ function renderBoomCoins(root=document,showMenu=false){
   (Array.isArray(cachedCoinsData)?cachedCoinsData:[]).forEach(addBoomCoin);
   if(typeof hunterUniverseCache!=="undefined"&&hunterUniverseCache?.coins)hunterUniverseCache.coins.forEach(addBoomCoin);
-  const list=$("boom-coin-options");if(list)list.innerHTML=[...boomCoins.values()].sort((a,b)=>a.name.localeCompare(b.name)).map(c=>'<option value="'+c.symbol+'" label="'+c.name.replace(/"/g,"")+' · '+c.symbol+'"></option>').join("");
-  const selected=boomCoins.get(($("boom-symbol")?.value||"").toUpperCase()),icon=$("boom-coin-icon"),name=$("boom-coin-name");
+  const prefix=root===document?"":"expanded-",get=id=>root.getElementById?root.getElementById(id):root.querySelector("#"+prefix+id);
+  const input=get("boom-symbol"),list=get("boom-coin-options"),menu=get("boom-coin-menu"),icon=get("boom-coin-icon"),name=get("boom-coin-name");
+  const coins=[...boomCoins.values()].sort((a,b)=>a.name.localeCompare(b.name));
+  if(list)list.innerHTML=coins.map(c=>'<option value="'+boomEsc(c.symbol)+'" label="'+boomEsc(c.name)+' · '+boomEsc(c.symbol)+'"></option>').join("");
+  const selected=boomCoins.get(String(input?.value||"").trim().toUpperCase());
   if(selected){if(icon){icon.src=selected.image;icon.style.display="";}if(name)name.textContent=selected.name+" · "+selected.symbol;}
-  else if(name)name.textContent="دارایی Binance · "+($("boom-symbol")?.value||"").toUpperCase();
+  else if(name)name.textContent=input?.value?"نماد واردشده: "+input.value.toUpperCase():"فهرست ارزهای فعال Binance Spot";
+  if(menu&&(showMenu||menu.dataset.open==="1")){
+   const query=String(input?.value||"").trim().toLowerCase();
+   const filtered=query?coins.filter(c=>c.symbol.toLowerCase().includes(query)||c.name.toLowerCase().includes(query)):coins;
+   menu.innerHTML=filtered.slice(0,100).map(c=>'<button type="button" class="boom-coin-option" data-symbol="'+boomEsc(c.symbol)+'"><img src="'+boomEsc(c.image)+'" alt="" loading="lazy"><span><b>'+boomEsc(c.name)+'</b><small>'+boomEsc(c.symbol)+'/USDT</small></span></button>').join("")||'<div class="boom-coin-no-results">ارزی با این نام پیدا نشد.</div>';
+   menu.hidden=false;menu.dataset.open="1";
+  }
+ }
+ function setupBoomCoinMenu(root=document){
+  const prefix=root===document?"":"expanded-",get=id=>root.getElementById?root.getElementById(id):root.querySelector("#"+prefix+id);
+  const input=get("boom-symbol"),menu=get("boom-coin-menu");
+  if(!input||!menu||menu.dataset.bound==="1")return;
+  menu.dataset.bound="1";
+  input.addEventListener("focus",()=>renderBoomCoins(root,true));
+  input.addEventListener("click",()=>renderBoomCoins(root,true));
+  input.addEventListener("input",()=>renderBoomCoins(root,true));
+  input.addEventListener("keydown",e=>{if(e.key==="Escape"){menu.hidden=true;menu.dataset.open="0";}});
+  menu.addEventListener("click",e=>{
+   const option=e.target.closest("[data-symbol]");if(!option)return;
+   input.value=option.dataset.symbol;
+   renderBoomCoins(root,false);menu.hidden=true;menu.dataset.open="0";
+   if(root!==document){const main=document.getElementById("boom-symbol");if(main)main.value=input.value;}
+  });
+  (root===document?document:root).addEventListener("click",e=>{
+   if(e.target===input||menu.contains(e.target))return;
+   menu.hidden=true;menu.dataset.open="0";
+  });
  }
  async function loadBoomCoins(){
-  try{const metaResponse=await fetch("https://min-api.cryptocompare.com/data/all/coinlist?summary=true");if(metaResponse.ok){const metaJson=await metaResponse.json();Object.values(metaJson.Data||{}).forEach(c=>{const sym=String(c.Symbol||"").toUpperCase();if(sym)boomMetadata.set(sym,{name:c.CoinName||c.FullName||sym,image:c.ImageUrl?"https://www.cryptocompare.com"+c.ImageUrl:null});});}}catch(e){}
+  try{
+   const metaResponse=await fetch("https://min-api.cryptocompare.com/data/all/coinlist?summary=true");
+   if(metaResponse.ok){const metaJson=await metaResponse.json();Object.values(metaJson.Data||{}).forEach(c=>{const sym=String(c.Symbol||"").toUpperCase();if(sym)boomMetadata.set(sym,{name:c.CoinName||c.FullName||sym,image:c.ImageUrl?"https://www.cryptocompare.com"+c.ImageUrl:null});});}
+  }catch(e){}
   try{
    let data=null;
-   for(const url of ["https://api.binance.com/api/v3/exchangeInfo","https://data-api.binance.vision/api/v3/exchangeInfo"]){
+   for(const url of ["https://api.binance.com/api/v3/exchangeInfo?permissions=%5B%22SPOT%22%5D","https://data-api.binance.vision/api/v3/exchangeInfo"]){
     try{const res=await fetch(url);if(!res.ok)continue;const x=await res.json();if(Array.isArray(x.symbols)){data=x;break;}}catch(e){}
    }
    if(!data)throw new Error("Binance list unavailable");
    const seen=new Set();
    data.symbols.forEach(x=>{if(x.status==="TRADING"&&x.quoteAsset==="USDT"&&x.isSpotTradingAllowed!==false&&!seen.has(x.baseAsset)){seen.add(x.baseAsset);addBoomCoin({symbol:x.baseAsset,name:x.baseAsset});}});
   }catch(e){}
-  renderBoomCoins();
+  renderBoomCoins();if(expandedBoomClone)renderBoomCoins(expandedBoomClone);
  }
- $("boom-symbol")?.addEventListener("input",renderBoomCoins);
- loadBoomCoins();setTimeout(renderBoomCoins,12000);setInterval(renderBoomCoins,60000);
+ setupBoomCoinMenu();loadBoomCoins();setTimeout(renderBoomCoins,12000);setInterval(renderBoomCoins,60000);
  const modal=$("boom-chart-modal"),content=$("boom-chart-modal-content");
- function closeBoom(){modal?.classList.remove("open");modal?.setAttribute("aria-hidden","true");document.body.classList.remove("boom-modal-open");if(content)content.innerHTML="";}
+ function syncBoomExpanded(){
+  if(!expandedBoomClone)return;
+  expandedBoomClone.querySelectorAll("[id^='expanded-boom-']").forEach(target=>{
+   const source=$(target.id.replace("expanded-",""));if(!source)return;
+   if(target.tagName==="INPUT"||target.tagName==="SELECT")target.value=source.value;
+   else if(target.tagName==="IMG"){target.src=source.src;target.alt=source.alt;}
+   else if(target.tagName==="BUTTON")target.textContent=source.textContent;
+   else if(target.id==="expanded-boom-coin-menu"){if(target.dataset.open!=="1")target.hidden=true;}
+   else target.innerHTML=source.innerHTML;
+  });
+ }
+ function closeBoom(){
+  modal?.classList.remove("open");modal?.setAttribute("aria-hidden","true");
+  document.body.classList.remove("boom-modal-open");if(content)content.innerHTML="";
+  expandedBoomClone=null;
+ }
  function openBoom(){
   if(!modal||!content)return;
   content.innerHTML="";
   const clone=$("boom-hunter").cloneNode(true);clone.id="boom-hunter-expanded";
   clone.querySelectorAll("[id]").forEach(el=>el.id="expanded-"+el.id);
-  content.appendChild(clone);
+  content.appendChild(clone);expandedBoomClone=clone;
   const cs=clone.querySelector("#expanded-boom-symbol"),ci=clone.querySelector("#expanded-boom-interval"),cr=clone.querySelector("#expanded-boom-run");
-  if(cs){cs.value=$("boom-symbol").value;cs.addEventListener("input",()=>{$("boom-symbol").value=cs.value;renderBoomCoins();});}
+  if(cs){cs.value=$("boom-symbol").value;cs.setAttribute("list","expanded-boom-coin-options");}
   if(ci){ci.value=$("boom-interval").value;ci.addEventListener("change",()=>{$("boom-interval").value=ci.value;});}
-  if(cr)cr.addEventListener("click",()=>{$("boom-symbol").value=cs.value;$("boom-interval").value=ci.value;btn.click();setTimeout(()=>{clone.querySelectorAll("[id^='expanded-boom-']").forEach(el=>{const src=$(el.id.replace("expanded-",""));if(src&&el.tagName!=="BUTTON")el.innerHTML=src.innerHTML;});},1800);});
+  setupBoomCoinMenu(clone);renderBoomCoins(clone);
+  if(cr)cr.addEventListener("click",async()=>{
+   $("boom-symbol").value=cs.value;$("boom-interval").value=ci.value;
+   renderBoomCoins();await run();syncBoomExpanded();
+  });
+  syncBoomExpanded();
   modal.classList.add("open");modal.setAttribute("aria-hidden","false");document.body.classList.add("boom-modal-open");
  }
  const candle=$("boom-candles")?.closest(".boom-chart-wrap");
- if(candle){candle.style.cursor="zoom-in";candle.title="برای بازکردن نمودار و ابزارهای کامل لمس کنید";candle.addEventListener("click",openBoom);}
+ if(candle){candle.style.cursor="zoom-in";candle.title="برای مشاهده نمودار بزرگ و کندل‌های زنده لمس کنید";candle.addEventListener("click",openBoom);}
  $("boom-chart-modal-close")?.addEventListener("click",closeBoom);
  modal?.addEventListener("click",e=>{if(e.target===modal)closeBoom();});
  document.addEventListener("keydown",e=>{if(e.key==="Escape")closeBoom();});
