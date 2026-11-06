@@ -3472,9 +3472,9 @@ body:before{opacity:.23;background-size:34px 34px}
   }
   if(changed){writeStore(ALERT_KEY,readStore(ALERT_KEY).map(old=>items.find(a=>a.id===old.id)||old));renderAlerts();}
  }
- byId("derivatives-load")?.addEventListener("click",()=>{loadDerivatives();loadOrderflow();});
+ byId("derivatives-load")?.addEventListener("click",()=>{loadDerivatives();});
  byId("derivatives-refresh")?.addEventListener("click",()=>{loadDerivatives();});
- byId("orderflow-refresh")?.addEventListener("click",loadOrderflow);
+ /* order-flow is loaded through the same-origin Worker endpoint below */
  byId("forecast-run")?.addEventListener("click",loadForecast);
  byId("journal-save")?.addEventListener("click",saveJournal);
  byId("journal-refresh")?.addEventListener("click",refreshJournal);
@@ -3660,7 +3660,7 @@ body:before{opacity:.23;background-size:34px 34px}
    finally{check.disabled=false;}
   });
  };
- bindManual();
+ const modalHost=$("boom-chart-modal-content");if(modalHost&&"MutationObserver" in window)new MutationObserver(()=>{const clone=$("boom-hunter-expanded");if(clone)bindManual(clone);}).observe(modalHost,{childList:true,subtree:true});
  // Keep the TradingView menu centered and icon-rich; update its displayed selected asset.
  const tv=$("tv-symbol");
  if(tv){const picker=tv.closest(".mmp-tv-picker");if(picker){const trigger=picker.querySelector(".mmp-symbol-trigger");const update=()=>{const s=String(tv.value||"BINANCE:BTCUSDT").split(":").pop().replace(/USDT$/,""),c=pool().find(x=>x.symbol===s)||{symbol:s,name:s};if(trigger){const im=trigger.querySelector("img"),sp=trigger.querySelector("span");if(im)im.src=c.image;if(sp)sp.textContent=c.name+" · "+s;}};tv.addEventListener("change",update);update();}}
@@ -3684,6 +3684,7 @@ body:before{opacity:.23;background-size:34px 34px}
  orderButton?.addEventListener("click",loadOrderflowViaWorker);
  derivButton?.addEventListener("click",loadOrderflowViaWorker);
  $("intel-symbol")?.addEventListener("change",loadOrderflowViaWorker);
+ loadOrderflowViaWorker();
  // The original intelligence engine remains authoritative for futures; this adds a working BTC large-transfer feed without inventing exchange labels.
  const whale=$("whale-panel");
  if(whale&&!$("whale-refresh-btn")){
