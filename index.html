@@ -1699,7 +1699,7 @@ async function runAiAnalysis(force=false){
   const timeout=setTimeout(()=>controller.abort(),55000);
   let res;
   try{
-   res=await fetch(AI_ANALYSIS_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({coin_id:c.id,symbol:c.symbol.toUpperCase(),name:c.name,market_mode:selectedMode}),signal:controller.signal});
+   res=await fetch(AI_ANALYSIS_ENDPOINT+"/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({coin_id:c.id,symbol:c.symbol.toUpperCase(),name:c.name,market_mode:selectedMode}),signal:controller.signal});
   }finally{clearTimeout(timeout);}
   const data=await res.json();
   if(!res.ok)throw new Error((data.error||"خطا در سرویس تحلیل")+(data.stage?" | مرحله: "+data.stage:"")+(data.symbol?" | ارز: "+data.symbol:""));
