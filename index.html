@@ -2030,42 +2030,56 @@ async function fetchHunterOrderFlow(symbol){
 async function scanFastCoin(coin){
  const symbol=String(coin?.symbol||"").toUpperCase();
  if(!/^[A-Z0-9]{2,20}$/.test(symbol)||NON_TRADABLE_SYMBOLS.has(symbol))return null;
- const [{rows,provider},flowResult]=await Promise.all([fetchFastCandles(symbol),fetchHunterOrderFlow(symbol).then(flow=>({flow})).catch(error=>({flow:null,error}))]);
- const flow=flowResult.flow;
+ const [candleResult,flowResult]=await Promise.all([
+  fetchFastCandles(symbol,coin).then(value=>({value})).catch(error=>({error})),
+  fetchHunterOrderFlow(symbol).then(flow=>({flow})).catch(error=>({flow:null,error}))
+ ]);
+ if(!candleResult.value)throw candleResult.error||new Error("کندل کوتاه‌مدت در دسترس نیست");
+ const {rows,provider}=candleResult.value,flow=flowResult.flow;
  if(!Array.isArray(rows)||rows.length<25)return null;
  const valid=rows.every(r=>r.length>=6&&r.slice(1,6).every(Number.isFinite)&&Number(r[1])>0&&Number(r[2])>=Number(r[3])&&Number(r[3])>0&&Number(r[4])>0&&Number(r[5])>=0);
  if(!valid)return null;
- const listedVenues=Object.entries(coin.hunterVenueVolume||{}).filter(([,volume])=>Number(volume)>=15000);
- // فیلتر نقدشوندگی متعادل‌تر: بازار واقعی و حداقل یک محل معامله فعال؛ بدون حذف خودکار فرصت‌های صرافی‌محور.
- if(Number(coin.total_volume||0)<50000||listedVenues.length<1)return null;
+ const listedVenues=Object.entries(coin.hunterVenueVolume||{}).filter(([,volume])=>Number(volume)>=5000);
+ // نقدشوندگی پایین حذف مطلق نمی‌شود؛ فقط ریسک آن در امتیاز و کارت مشخص خواهد شد.
+ if(Number(coin.total_volume||0)<20000&&listedVenues.length===0)return null;
  const now=Date.now(),index=rows.length-2,last=rows[index],close=Number(last[4]),open=Number(last[1]),volume=Number(last[5]);
- // فقط کندل بسته‌شده و تازه؛ کندل نیمه‌کاره اجازه تولید سیگنال ندارد.
  const candleAge=now-Number(last[0]);
- if(candleAge<60000||candleAge>3*60*1000||close<=0||open<=0||volume<=0)return null;
- const baseline=rows.slice(index-20,index).map(x=>Number(x[5])).filter(x=>x>0);
+ if(candleAge<0||candleAge>4*60*1000||close<=0||open<=0||volume<=0)return null;
+ const baseline=rows.slice(Math.max(0,index-20),index).map(x=>Number(x[5])).filter(x=>x>0);
  if(baseline.length<16)return null;
  const avgVolume=baseline.reduce((a,b)=>a+b,0)/baseline.length,volumeRatio=avgVolume>0?volume/avgVolume:0;
- const change1m=(close/open-1)*100,start5=Number(rows[index-4][1]);
- if(!Number.isFinite(start5)||start5<=0)return null;
- const change5m=(close/start5-1)*100,dailyChange24h=Number(coin.hunterChange24h)||0,recent=rows.slice(index-7,index);
- const priorHigh=Math.max(...recent.map(x=>Number(x[2]))),priorLow=Math.min(...recent.map(x=>Number(x[3])));
- const breakoutUp=close>priorHigh,breakoutDown=close<priorLow,price=Number(coin.current_price)||close;
- const overextended=Math.abs(change5m)>=1.5||Math.abs(change1m)>=0.8||Math.abs(dailyChange24h)>=18;
- // رادار کوتاه‌مدت: کندل بسته‌شده ۱ دقیقه‌ای با تأیید حرکت ۵ دقیقه‌ای و حجم نسبی.
- const bullMomentum=change1m>=0.08&&change5m>=0.18&&volumeRatio>=1.15&&(breakoutUp||change1m>=0.18);
- const bearMomentum=change1m<=-0.08&&change5m<=-0.18&&volumeRatio>=1.15&&(breakoutDown||change1m<=-0.18);
- const bullDaily=dailyChange24h>=8&&change5m>=-0.15&&volumeRatio>=0.9;
- const bearDaily=dailyChange24h<=-8&&change5m<=0.15&&volumeRatio>=0.9;
- const bullFlow=!!flow&&flow.unusual&&flow.netPct5m>=12&&flow.net5m>=5000&&change5m>=-0.15;
- const bearFlow=!!flow&&flow.unusual&&flow.netPct5m<=-12&&flow.net5m<=-5000&&change5m<=0.15;
- let trend="neutral",score=0;
- if(bullMomentum||bearMomentum||bullFlow||bearFlow||bullDaily||bearDaily){
-  trend=(bullMomentum||bullFlow||bullDaily)?"bull":"bear";
-  const flowStrength=flow?Math.min(20,Math.abs(flow.netPct5m)*.35)+Math.min(15,Math.max(0,flow.volumeRatio5m-1)*5):0;
-  score=Math.min(99,Math.max((bullFlow||bearFlow||bullDaily||bearDaily)?72:0,Math.round(55+Math.min(16,Math.abs(change1m)*30)+Math.min(14,Math.abs(change5m)*8)+Math.min(16,Math.max(0,volumeRatio-1)*8)+(breakoutUp||breakoutDown?8:0)+flowStrength)));
-  if(score<64)return null;
- }
- return {trend,score,change1m,change5m,dailyChange24h,dailyMover:Math.abs(dailyChange24h)>=8,lowLiquidity:Number(coin.total_volume||0)<150000,volumeRatio,breakout:breakoutUp||breakoutDown,overextended,price,provider,flow,flowSignal:bullFlow?"inflow":bearFlow?"outflow":"",updatedAt:now,candleTime:Number(last[0]),rows:rows.map(x=>x.slice(0,6).map(Number))};
+ const change1m=(close/open-1)*100,start3=Number(rows[index-2][1]),start5=Number(rows[index-4][1]);
+ if(!Number.isFinite(start3)||!Number.isFinite(start5)||start3<=0||start5<=0)return null;
+ const change3m=(close/start3-1)*100,change5m=(close/start5-1)*100,dailyChange24h=Number(coin.hunterChange24h)||0;
+ const recent=rows.slice(Math.max(0,index-7),index),priorHigh=Math.max(...recent.map(x=>Number(x[2]))),priorLow=Math.min(...recent.map(x=>Number(x[3])));
+ const breakoutUp=close>priorHigh,breakoutDown=close<priorLow;
+ const flowNetPct=Number(flow?.netPct5m)||0,flowRatio=Number(flow?.volumeRatio5m)||0,flowNet=Number(flow?.net5m)||0;
+ const volumeSpike=volumeRatio>=1.3||flowRatio>=1.45;
+ const buyPressure=!!flow&&flowNetPct>=7&&flowNet>0;
+ const sellPressure=!!flow&&flowNetPct<=-7&&flowNet<0;
+ // شکار زودهنگام: حجم غیرعادی و فشار سفارش، پیش از جهش بزرگ قیمت؛ حرکت قیمت به‌تنهایی کافی نیست.
+ const bullEarly=volumeSpike&&buyPressure&&change5m>=-0.35;
+ const bearEarly=volumeSpike&&sellPressure&&change5m<=0.35;
+ const bullBreakout=breakoutUp&&volumeRatio>=1.2&&change1m>=0.02;
+ const bearBreakout=breakoutDown&&volumeRatio>=1.2&&change1m<=-0.02;
+ const bullImpulse=change1m>=0.12&&change3m>=0.12&&volumeRatio>=1.15;
+ const bearImpulse=change1m<=-0.12&&change3m<=-0.12&&volumeRatio>=1.15;
+ const bullMomentum=bullEarly||bullBreakout||bullImpulse;
+ const bearMomentum=bearEarly||bearBreakout||bearImpulse;
+ if(!bullMomentum&&!bearMomentum)return null;
+ // اگر خرید و فروش هم‌زمان متناقض باشند، تا روشن‌شدن جهت از صدور شکار خودداری می‌شود.
+ if(bullMomentum&&bearMomentum)return null;
+ const trend=bullMomentum?"bull":"bear",pressure=trend==="bull"?Math.max(0,flowNetPct):Math.max(0,-flowNetPct);
+ const liquidity=Number(coin.total_volume)||0,lowLiquidity=liquidity<150000;
+ const score=Math.min(96,Math.round(54+
+  Math.min(18,Math.max(0,volumeRatio-1)*9)+
+  Math.min(15,pressure*.35)+
+  Math.min(10,Math.abs(change1m)*12)+
+  (trend==="bull"?breakoutUp:breakoutDown?8:0)+
+  (listedVenues.length>=2?5:listedVenues.length?2:0)+
+  (lowLiquidity?-8:0)+(flow?4:0)));
+ if(score<58)return null;
+ return {trend,score,change1m,change3m,change5m,dailyChange24h,dailyMover:Math.abs(dailyChange24h)>=8,lowLiquidity,volumeRatio,breakout:breakoutUp||breakoutDown,overextended:Math.abs(change5m)>=1.5||Math.abs(change1m)>=0.8,price:Number(coin.current_price)||close,provider,flow,flowSignal:bullEarly?"inflow":bearEarly?"outflow":"",earlySignal:bullEarly||bearEarly,updatedAt:now,candleTime:Number(last[0]),rows:rows.map(x=>x.slice(0,6).map(Number))};
 }
 async function fetchHunterUniverse(){
  if(Date.now()<hunterUniverseCache.expires&&hunterUniverseCache.coins.length)return hunterUniverseCache.coins;
@@ -2126,10 +2140,10 @@ function ingestHunterEarlyPrice(exchange,baseSymbol,rawPrice){
  for(const [venue,signal] of venueSignals)if(now-signal.updatedAt>30000)venueSignals.delete(venue);
  const corroborating=[...venueSignals.values()].filter(signal=>signal.trend===trend&&now-signal.updatedAt<=30000);
  const prices=corroborating.map(signal=>signal.price),priceSpread=prices.length>1?(Math.max(...prices)/Math.min(...prices)-1)*100:Infinity;
- if(corroborating.length<2||priceSpread>1.5)return;
+ if(corroborating.length<1||(corroborating.length>1&&priceSpread>1.5))return;
  const movement=trigger.move,old=hunterEarlyAlerts.get(base);
  if(!old||old.trend!==trend||now-old.updatedAt>12000||Math.abs(movement)>Math.abs(old.triggerMove||old.move1m||old.move3m||0)+0.12){
-  hunterEarlyAlerts.set(base,{id:coin.id,symbol:base,name:coin.name,trend,move15s:move15,move30s:move30,move1m:move1,move3m:move3,triggerMove:movement,triggerWindow:trigger.window,price,exchange,updatedAt:now});
+  hunterEarlyAlerts.set(base,{id:coin.id,symbol:base,name:coin.name,trend,move15s:move15,move30s:move30,move1m:move1,move3m:move3,triggerMove:movement,triggerWindow:trigger.window,price,exchange,confirmations:corroborating.length,updatedAt:now});
   queueHunterEarlyRender();updateHunterEarlyStatus();
  }
 }
@@ -2253,7 +2267,7 @@ async function runFastRadarScan(){
   renderOpportunities();renderMarketHunter();connectHunterStreams();
   if(!fastRadarSignals.size&&hunterStatus)hunterStatus.textContent="رصد این نوبت کامل شد؛ هنوز حرکت غیرعادی با شرایط سخت‌گیرانه تأیید نشده است.";
   else if(hunterStatus)hunterStatus.textContent=fastRadarSignals.size.toLocaleString("fa-IR")+" شکار فعال · رصد چرخشی بازار ادامه دارد";
-  const displayed=[...fastRadarSignals.entries()].map(([id,signal])=>({coin:hunterCoinIndex.get(id),signal,id})).filter(x=>x.coin&&x.signal.score>=72).sort((a,b)=>b.signal.score-a.signal.score).slice(0,6);
+  const displayed=[...fastRadarSignals.entries()].map(([id,signal])=>({coin:hunterCoinIndex.get(id),signal,id})).filter(x=>x.coin&&x.signal.score>=58).sort((a,b)=>b.signal.score-a.signal.score).slice(0,6);
   displayed.filter(item=>{const old=previous.get(item.id);return !old||old.trend!==item.signal.trend;}).slice(0,3).forEach(item=>notifyHunterOpportunity(item.coin,item.signal));
  }catch(error){fastRadarLastMessage="این نوبت پایش کامل نشد؛ شکارهای قبلی معتبر تا پایان مهلت نمایش حفظ شدند.";if(status)status.textContent=fastRadarLastMessage;if(hunterStatus)hunterStatus.textContent="پایش این نوبت کامل نشد؛ رصد در نوبت بعدی ادامه می‌یابد.";console.warn("Fast radar:",error);}
  finally{fastRadarBusy=false;}
@@ -2390,7 +2404,7 @@ function closeHunterChart(){
 }
 function renderMarketHunter(){
  const feed=$("hunter-feed");if(!feed)return;
- const candidates=[...fastRadarSignals.entries()].map(([id,signal])=>({coin:hunterCoinIndex.get(id)||cachedCoinsData.find(c=>c.id===id),signal,id})).filter(x=>x.coin&&Date.now()-x.signal.updatedAt<8*60*1000&&x.signal.score>=72);
+ const candidates=[...fastRadarSignals.entries()].map(([id,signal])=>({coin:hunterCoinIndex.get(id)||cachedCoinsData.find(c=>c.id===id),signal,id})).filter(x=>x.coin&&Date.now()-x.signal.updatedAt<8*60*1000&&x.signal.score>=58);
  const rank=(a,b)=>b.signal.score-a.signal.score;
  const entries=[...candidates.filter(x=>x.signal.trend==="bull").sort(rank).slice(0,6),...candidates.filter(x=>x.signal.trend==="bear").sort(rank).slice(0,6)];
  const density=entries.length<=2?"wide":entries.length<=6?"medium":"compact";
