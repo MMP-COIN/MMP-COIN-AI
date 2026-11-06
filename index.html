@@ -662,7 +662,6 @@ body:after{content:"";position:fixed;width:42vw;height:42vw;max-width:620px;max-
 .hunter-card-bottom{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:12px}.hunter-warning{font-size:10px;color:#ffbd74;background:#4a2c191a;border:1px solid #9c683c66;border-radius:20px;padding:7px 10px}.hunter-confirm{font-size:10px;color:#75dfbd}.hunter-analyze-btn{border:1px solid #9b8049;border-radius:9px;padding:9px 12px;background:linear-gradient(120deg,#9b7434,#dfc27d);color:#17130b;font-size:11px;font-weight:900;white-space:nowrap}
 .hunter-footnote{font-size:10px;line-height:1.8;margin:13px 0 0}.hunter-nav-link{border-color:#927844!important;background:linear-gradient(90deg,#b58b3c18,transparent)!important}
 @media(max-width:650px){.hunter-overview{gap:7px}.hunter-stat{padding:10px}.hunter-stat b{font-size:18px}.hunter-price-row{grid-template-columns:repeat(2,minmax(0,1fr))}.hunter-card{padding:11px}.hunter-card-bottom{align-items:flex-start;flex-direction:column}.hunter-analyze-btn{width:100%}.hunter-feed-head{align-items:flex-start;flex-direction:column}.hunter-topline{align-items:flex-start}.hunter-live-badge{padding:7px 9px;font-size:10px}}
-</style>
 /* Independent image-based coin picker for the AI analyst */
 .ai-terminal .ai-coin-picker{position:relative;min-width:0}
 .ai-terminal .ai-coin-picker-trigger{width:100%;min-height:46px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 12px;border:1px solid rgba(218,181,104,.38);border-radius:11px;background:rgba(8,15,25,.94);color:var(--text,#f4f0e6);text-align:right;cursor:pointer;font:inherit}
@@ -670,6 +669,7 @@ body:after{content:"";position:fixed;width:42vw;height:42vw;max-width:620px;max-
 .ai-coin-picker-current span,.ai-coin-picker-option span{display:flex;flex-direction:column;min-width:0;gap:2px}.ai-coin-picker-current b,.ai-coin-picker-option b{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ai-coin-picker-current small,.ai-coin-picker-option small{font-size:10px;color:#aab5c5;direction:ltr;text-align:right}.ai-coin-picker-placeholder{font-size:12px;color:#b9c2cf}.ai-coin-picker-chevron{color:#d9b66d;font-size:19px}
 .ai-coin-picker-menu{position:absolute;z-index:1000;top:calc(100% + 7px);right:0;left:0;max-height:340px;padding:9px;border:1px solid rgba(218,181,104,.35);border-radius:13px;background:#0c1420;box-shadow:0 14px 35px rgba(0,0,0,.48)}.ai-coin-picker-menu[hidden]{display:none}.ai-coin-picker-menu input{width:100%;height:38px;margin-bottom:7px;padding:0 10px;border:1px solid rgba(255,255,255,.13);border-radius:8px;background:#111d2b;color:#fff;font:12px Tahoma,Arial}.ai-coin-picker-options{max-height:275px;overflow:auto}.ai-coin-picker-group{padding:8px 5px 5px;color:#d8b66d;font-size:10px;font-weight:700}.ai-coin-picker-option{width:100%;display:flex;align-items:center;gap:9px;padding:7px 8px;border:0;border-radius:8px;background:transparent;color:#f4f0e6;text-align:right;cursor:pointer}.ai-coin-picker-option:hover,.ai-coin-picker-option[aria-selected=true]{background:rgba(218,181,104,.13)}.ai-coin-picker-option[hidden],.ai-coin-picker-group[hidden]{display:none}
 @media(max-width:680px){.ai-terminal .ai-toolbar{grid-template-columns:1fr}.ai-coin-picker-menu{max-height:300px}.ai-coin-picker-options{max-height:235px}}
+</style>
 
 <link href="https://fonts.googleapis.com/css2?family=Estedad:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 
@@ -2719,8 +2719,8 @@ function mmpSendEvent(type){try{fetch(MMP_ANALYTICS_ENDPOINT+"/analytics/event",
 function mmpSendAiResult(analysis,market,mode,coin){try{fetch(MMP_ANALYTICS_ENDPOINT+"/analytics/ai-result",{method:"POST",headers:{"Content-Type":"application/json"},keepalive:true,body:JSON.stringify({analysis:analysis,market:market,market_mode:mode,asset:coin?.name||market?.asset,symbol:coin?.symbol||market?.symbol,app_type:mmpAppType(),visitor_id:mmpVisitorId()})}).catch(()=>{});}catch(e){}}
 mmpSendEvent("page_view");
 setInterval(()=>mmpSendEvent("heartbeat"),240000);
-<div id="hunter-chart-modal" class="hunter-chart-modal" aria-live="polite"></div>
 </script>
+<div id="hunter-chart-modal" class="hunter-chart-modal" aria-live="polite"></div>
 </body>
 </html>
 
