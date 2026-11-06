@@ -1054,10 +1054,10 @@ function clock(){$('clock').textContent=new Date().toLocaleTimeString('fa-IR')}
 setInterval(clock,1000);clock();
 
 
-async function refreshSiteData(){
+async async function refreshSiteData(){
  const button=$("refresh-all-btn");
  if(button){button.classList.add("is-refreshing");button.disabled=true;}
- $("updated").textContent="در حال در حال بروزرسانی داده‌های اپلیکیشن…";
+ $("updated").textContent="در حال بروزرسانی داده‌های اپلیکیشن…";
  try{
   const jobs=[];
   if(typeof refreshAll==="function")jobs.push(refreshAll());
