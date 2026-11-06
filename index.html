@@ -2285,26 +2285,32 @@ async function runFastRadarScan(){
  finally{fastRadarBusy=false;}
 }
 function radarScore(c){
- const fast=fastRadarSignals.get(c.id);
- if(fast&&Date.now()-fast.updatedAt<150000){
-  const baseVolume=Number(c.total_volume),cap=Number(c.market_cap);
-  return {score:fast.score,trend:fast.trend,h1:fast.change1m,h:fast.change5m,d:null,directional:fast.change5m,liquidity:cap>0?baseVolume/cap*100:null,range:null,dataQuality:fast.provider+" · حجم "+fast.volumeRatio.toFixed(1)+" برابر",fast};
+ const fast=fastRadarSignals.get(c.id),now=Date.now();
+ if(fast){
+  if(now-fast.updatedAt>150000)return {score:0,trend:"unknown",h1:null,h:null,d:null,directional:null,liquidity:null,range:null,dataQuality:"سیگنال سریع منقضی شده"};
+  const volume=Number(c.total_volume)||0,cap=Number(c.market_cap)||0,liquidity=cap>0?volume/cap*100:null;
+  const flow=fast.flow,flowPct=Number(flow?.netPct3m),flowRatio=Number(flow?.volumeRatio3m);
+  const flowConfirmed=!!flow&&Number.isFinite(flowPct)&&Number.isFinite(flowRatio)&&flowRatio>=1.3&&((fast.trend==="bull"&&flowPct>=4.5)||(fast.trend==="bear"&&flowPct<=-4.5));
+  const priceConfirmed=fast.trend==="bull"?fast.change3m>=-0.25:fast.change3m<=0.25;
+  const score=flowConfirmed&&priceConfirmed?Math.min(100,Math.max(70,fast.score)):Math.min(79,fast.score);
+  return {score,trend:fast.trend,h1:fast.change1m,h:fast.change3m,d:null,directional:fast.change3m,liquidity,range:null,dataQuality:flowConfirmed?"تأیید جریان خالص پول در ۳ دقیقه · کندل ۱ دقیقه":"شتاب کوتاه‌مدت؛ تأیید جریان پول ناقص",fast};
  }
- const raw1h=c.price_change_percentage_1h_in_currency??c.price_change_percentage_1h;
- const raw24=c.price_change_percentage_24h,raw7=c.price_change_percentage_7d_in_currency;
+ const raw1h=c.price_change_percentage_1h_in_currency??c.price_change_percentage_1h,raw24=c.price_change_percentage_24h,raw7=c.price_change_percentage_7d_in_currency;
  const h1=raw1h==null?null:Number(raw1h),h=raw24==null?null:Number(raw24),d=raw7==null?null:Number(raw7);
- const has1h=h1!=null&&Number.isFinite(h1),has24=h!=null&&Number.isFinite(h),has7=d!=null&&Number.isFinite(d);
- const weights={h1:.65,h24:.25,d7:.10};
- const total=(has1h?weights.h1:0)+(has24?weights.h24:0)+(has7?weights.d7:0);
- const directional=total?((has1h?h1*weights.h1:0)+(has24?h*weights.h24:0)+(has7?d*weights.d7:0))/total:null;
+ const has1h=h1!=null&&Number.isFinite(h1),has24=h!=null&&Number.isFinite(h)&&Math.abs(h)<250,has7=d!=null&&Number.isFinite(d)&&Math.abs(d)<500;
  const v=Number(c.total_volume),m=Number(c.market_cap),hi=Number(c.high_24h),lo=Number(c.low_24h),price=Number(c.current_price);
- const liquidity=m>0&&v>0?Math.max(0,Math.min(100,(v/m)*100*2.5)):null;
- const range=hi>lo&&price>0?(price-lo)/(hi-lo)*100:null;
- const trend=directional==null?"unknown":directional>.15?"bull":directional<-.15?"bear":"neutral";
- // مومنتوم کوتاه‌مدت وزن اصلی را دارد؛ امتیاز شاخص قدرت حرکت است، نه احتمال سود.
- const score=directional==null?0:Math.round(50+Math.min(45,Math.abs(directional)*8));
- const parts=(has1h?1:0)+(has24?1:0)+(has7?1:0);
- return {score,trend,h1:has1h?h1:null,h:has24?h:null,d:has7?d:null,directional,liquidity:liquidity==null?null:v/m*100,range,dataQuality:parts===3?"۱ساعت، ۲۴ساعت و هفتگی":parts===2?"دو بازه معتبر":parts===1?"یک بازه معتبر":"داده تغییرات ناقص"};
+ const liquidity=m>0&&v>0?v/m*100:null,range=hi>lo&&price>0?(price-lo)/(hi-lo)*100:null;
+ if(!has24||!has7||!Number.isFinite(liquidity)||liquidity<=0||range==null||!Number.isFinite(range))
+  return {score:0,trend:"unknown",h1:has1h?h1:null,h:has24?h:null,d:has7?d:null,directional:null,liquidity,range,dataQuality:"داده معتبر و کامل کافی نیست"};
+ const trend=h>0&&d>0?"bull":h<0&&d<0?"bear":"neutral";
+ if(trend==="neutral")return {score:0,trend,h1:has1h?h1:null,h,d,directional:(h+d)/2,liquidity,range,dataQuality:"روند ۲۴ساعته و هفتگی هم‌جهت نیستند"};
+ const sign=trend==="bull"?1:-1,h1Aligned=has1h&&h1*sign>0;
+ const directional=(h*.45+d*.35+(has1h?h1*.20:0))/(has1h?1:.8);
+ if(directional*sign<=0)return {score:0,trend:"neutral",h1:has1h?h1:null,h,d,directional,liquidity,range,dataQuality:"شتاب کوتاه‌مدت خلاف جهت روند است"};
+ const liquidityPoints=Math.max(0,Math.min(8,Math.log10(Math.max(1,liquidity*100))*2));
+ const rangeAligned=trend==="bull"?range>=55:range<=45,magnitude=Math.min(25,Math.abs(directional)*3.5);
+ const score=Math.round(50+magnitude+(h1Aligned?8:0)+liquidityPoints+(rangeAligned?7:-5));
+ return {score:Math.max(0,Math.min(100,score)),trend,h1:has1h?h1:null,h,d,directional,liquidity,range,dataQuality:(h1Aligned?"هم‌جهتی ۱ساعته، ۲۴ساعته و هفتگی":"تأیید ۲۴ساعته و هفتگی")+" · نقدشوندگی و دامنه روز"};
 }
 const hunterExchangeCache={expires:0,sets:null,loading:null};
 function hunterSafeSymbol(value){const symbol=String(value||"").toUpperCase();return /^[A-Z0-9]{2,24}$/.test(symbol)?symbol:"";}
@@ -2481,7 +2487,7 @@ function renderOpportunities(){
   const change=v=>v==null?"ناموجود":(v>0?"+":"")+v.toFixed(2)+"٪";
   const change1h=m.h1==null?"ناموجود":(m.h1>0?"+":"")+m.h1.toFixed(2)+"٪";
 
-  return '<article class="radar-item '+(up?"radar-item-bullish":down?"radar-item-bearish":"radar-item-neutral")+'"><div class="radar-asset"><img src="'+aiEscape(c.image||"")+'" alt="" loading="lazy"><span><b>'+aiEscape(c.name)+'</b><small>'+aiEscape(String(c.symbol).toUpperCase())+'</small><strong class="radar-direction-label">'+direction+'</strong></span></div><div class="radar-score"><b>'+m.score.toLocaleString("fa-IR")+'</b><small>قدرت روند</small></div><div class="radar-stats">'+(m.fast?'<span>تغییر ۱دقیقه<b class="'+(m.fast.change1m>=0?"positive":"negative")+'">'+change(m.fast.change1m)+'</b></span><span>تغییر ۵دقیقه<b class="'+(m.fast.change5m>=0?"positive":"negative")+'">'+change(m.fast.change5m)+'</b></span><span>حجم نسبی<b>'+m.fast.volumeRatio.toFixed(1)+'×</b></span>':'<span>تغییر ۱ساعته<b>'+change1h+'</b></span><span>تغییر ۲۴ساعته<b>'+change(m.h)+'</b></span><span>نقدشوندگی نسبی<b>'+(m.liquidity==null?"ناموجود":m.liquidity.toFixed(2)+"٪")+'</b></span>')+'</div><div class="radar-action"><span class="radar-trend">'+(m.fast?(m.fast.overextended?"حرکت سریع؛ ورود دیرهنگام پرریسک":"شتاب لحظه‌ای · "+(m.fast.breakout?"شکست محدوده":"در حال شکل‌گیری")):(m.dataQuality||""))+'</span></div></article>';
+  return '<article class="radar-item '+(up?"radar-item-bullish":down?"radar-item-bearish":"radar-item-neutral")+'"><div class="radar-asset"><img src="'+aiEscape(c.image||"")+'" alt="" loading="lazy"><span><b>'+aiEscape(c.name)+'</b><small>'+aiEscape(String(c.symbol).toUpperCase())+'</small><strong class="radar-direction-label">'+direction+'</strong></span></div><div class="radar-score"><b>'+m.score.toLocaleString("fa-IR")+'</b><small>قدرت روند</small></div><div class="radar-stats">'+(m.fast?'<span>تغییر ۱دقیقه<b class="'+(m.fast.change1m>=0?"positive":"negative")+'">'+change(m.fast.change1m)+'</b></span><span>تغییر ۳دقیقه<b class="'+(m.fast.change3m>=0?"positive":"negative")+'">'+change(m.fast.change3m)+'</b></span><span>حجم نسبی<b>'+m.fast.volumeRatio.toFixed(1)+'×</b></span>':'<span>تغییر ۱ساعته<b>'+change1h+'</b></span><span>تغییر ۲۴ساعته<b>'+change(m.h)+'</b></span><span>نقدشوندگی نسبی<b>'+(m.liquidity==null?"ناموجود":m.liquidity.toFixed(2)+"٪")+'</b></span>')+'</div><div class="radar-action"><span class="radar-trend">'+(m.fast?(m.fast.overextended?"حرکت سریع؛ ورود دیرهنگام پرریسک":"شتاب لحظه‌ای · "+(m.fast.breakout?"شکست محدوده":"در حال شکل‌گیری")):(m.dataQuality||""))+'</span></div></article>';
  };
  const list=(title,items,lower,cls)=>'<section class="radar-side '+cls+'"><div class="section-head radar-group-head"><div><b class="radar-large-heading">'+title+'</b></div><span class="badge">'+items.length.toLocaleString("fa-IR")+' ارز</span></div><div class="radar-list">'+items.slice(0,4).map(card).join("")+'</div>'+(items.length>4?'<details class="radar-more"><summary><span class="radar-toggle-copy"><b>'+items.length.toLocaleString("fa-IR")+' ارز</b></span><span class="radar-expand-action" aria-hidden="true"></span></summary><div class="radar-list">'+items.slice(4).map(card).join("")+'</div></details>':"")+(lower.length?'<details class="radar-more radar-below-threshold"><summary><span class="radar-toggle-copy"><b>'+lower.length.toLocaleString("fa-IR")+' ارز</b></span><span class="radar-expand-action" aria-hidden="true"></span></summary><div class="radar-list">'+lower.map(card).join("")+'</div></details>':"")+'</section>';
  el.innerHTML=list("فرصت‌های صعودی",bullish,bullish70,"bull")+list("فرصت‌های نزولی",bearish,bearish70,"bear");
