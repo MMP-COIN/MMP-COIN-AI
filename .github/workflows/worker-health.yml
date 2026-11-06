@@ -87,6 +87,17 @@ jobs:
             exit 1
           fi
 
+      - name: Check expanded multi-exchange hunter universe
+        env:
+          WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 1 --retry-delay 2 --max-time 55 "$WORKER_URL/hunter-universe" -o /tmp/hunter-universe.json
+          jq -e '.universe_mode == "multi_exchange_usdt" and (.assets | type == "array" and length > 100)' /tmp/hunter-universe.json >/dev/null
+          count=$(jq '.assets | length' /tmp/hunter-universe.json)
+          venues=$(jq -r '[.assets[].hunterExchange | split(", ")[]] | unique | join(", ")' /tmp/hunter-universe.json)
+          echo "- Hunter universe: $count assets across $venues" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Check market data proxy
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
