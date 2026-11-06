@@ -1627,6 +1627,25 @@ function renderCoinsTables(data) {
 }
 
 
+function handleAiCoinIconError(img){
+ const symbol=String(img?.dataset?.symbol||"").toLowerCase();
+ if(!symbol)return;
+ const step=Number(img.dataset.fallbackStep||0);
+ const fallbacks=[
+  "https://assets.coincap.io/assets/icons/"+symbol+"@2x.png",
+  "https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/"+symbol+".png",
+  "https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/128/color/"+symbol+".png"
+ ];
+ if(step<fallbacks.length){
+  img.dataset.fallbackStep=String(step+1);
+  if(img.src!==fallbacks[step]){img.src=fallbacks[step];return;}
+ }
+ const fallback=document.createElement("span");
+ fallback.className="ai-coin-icon-fallback";
+ fallback.textContent=String(img.dataset.symbol||"").toUpperCase();
+ img.replaceWith(fallback);
+}
+
 function syncAiCoinOptions(data=[]) {
  const selectAi=$("ai-coin-select"),optionsBox=$("ai-coin-picker-options");
  if(!selectAi||!optionsBox)return;
@@ -1643,7 +1662,7 @@ function syncAiCoinOptions(data=[]) {
  }).slice(0,100);
  const optionHtml=c=>{
   const symbol=String(c.symbol||"").toUpperCase(),image=/^https:\/\//i.test(String(c.image||""))?String(c.image):"https://assets.coincap.io/assets/icons/"+symbol.toLowerCase()+"@2x.png";
-  return '<button type="button" class="ai-coin-picker-option" role="option" aria-selected="'+(c.id===currentAiVal?'true':'false')+'" data-ai-coin-id="'+aiEscape(c.id)+'" data-search="'+aiEscape((c.name||"")+" "+symbol).toLowerCase()+'"><img src="'+aiEscape(image)+'" data-symbol="'+aiEscape(symbol)+'" alt="'+aiEscape(symbol)+'" loading="lazy" onerror="if(this.dataset.fallback!==\'1\'){this.dataset.fallback=\'1\';this.src=\'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/\'+this.dataset.symbol.toLowerCase()+\'.png\';}else{this.outerHTML=\'<span class=\\\'ai-coin-icon-fallback\\\'>\'+this.dataset.symbol+\'</span>\';}"><span><b>'+aiEscape(c.name||symbol)+'</b><small>'+aiEscape(symbol)+'</small></span></button>';
+  return '<button type="button" class="ai-coin-picker-option" role="option" aria-selected="'+(c.id===currentAiVal?'true':'false')+'" data-ai-coin-id="'+aiEscape(c.id)+'" data-search="'+aiEscape((c.name||"")+" "+symbol).toLowerCase()+'"><img src="'+aiEscape(image)+'" data-symbol="'+aiEscape(symbol)+'" alt="'+aiEscape(symbol)+'" loading="lazy" data-fallback-step="0" decoding="async" onerror="handleAiCoinIconError(this)"><span><b>'+aiEscape(c.name||symbol)+'</b><small>'+aiEscape(symbol)+'</small></span></button>';
  };
  let html=available.length?'<div class="ai-coin-picker-group">۱۰۰ ارز اولویت‌دار بر اساس ارزش بازار · '+available.length+' ارز</div>'+available.map(optionHtml).join(""):"";
  optionsBox.innerHTML=html||'<div class="ai-empty">فهرست ارزها هنوز دریافت نشده است.</div>';
@@ -1659,7 +1678,7 @@ function updateAiCoinPickerCurrent(){
  const coin=(Array.isArray(cachedCoinsData)?cachedCoinsData:[]).find(c=>c.id===selected.value);
  if(!coin){current.textContent=selected.textContent;return;}
  const symbol=String(coin.symbol||"").toUpperCase(),image=/^https:\/\//i.test(String(coin.image||""))?String(coin.image):"https://assets.coincap.io/assets/icons/"+symbol.toLowerCase()+"@2x.png";
- current.innerHTML='<img src="'+aiEscape(image)+'" data-symbol="'+aiEscape(symbol)+'" alt="'+aiEscape(symbol)+'" onerror="if(this.dataset.fallback!==\'1\'){this.dataset.fallback=\'1\';this.src=\'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/\'+this.dataset.symbol.toLowerCase()+\'.png\';}else{this.outerHTML=\'<span class=\\\'ai-coin-icon-fallback\\\'>\'+this.dataset.symbol+\'</span>\';}"><span><b>'+aiEscape(coin.name||symbol)+'</b><small>'+aiEscape(symbol)+'</small></span>';
+ current.innerHTML='<img src="'+aiEscape(image)+'" data-symbol="'+aiEscape(symbol)+'" alt="'+aiEscape(symbol)+'" data-fallback-step="0" decoding="async" onerror="handleAiCoinIconError(this)"><span><b>'+aiEscape(coin.name||symbol)+'</b><small>'+aiEscape(symbol)+'</small></span>';
 }
 function closeAiCoinPicker(){
  const menu=$("ai-coin-picker-menu"),trigger=$("ai-coin-picker-trigger");
