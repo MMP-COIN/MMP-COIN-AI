@@ -1805,14 +1805,7 @@ function renderOpportunities(){
  const neutral=scored.filter(x=>x.metrics.trend==="neutral").sort((a,b)=>b.metrics.score-a.metrics.score);
  const unknown=scored.filter(x=>x.metrics.trend==="unknown");
  const updated=$("radar-updated");
- if(updated)updated.textContent="غربالگری خودکار "+cachedCoinsData.length+" ارز · "+bullish.length+" صعودی · "+bearish.length+" نزولی";
- const radarSelect=$("radar-coin-select");
- if(radarSelect){
-  const previous=radarSelect.value;
-  radarSelect.innerHTML='<option value="">انتخاب ارز برای تحلیل…</option>'+cachedCoinsData.map(c=>'<option value="'+aiEscape(c.id)+'">'+aiEscape(c.name)+' ('+aiEscape(String(c.symbol).toUpperCase())+')</option>').join("");
-  if(previous)radarSelect.value=previous;
- }
- const chartSelect=$("tv-symbol");
+ if(updated)updated.textContent="غربالگری خودکار "+cachedCoinsData.length+" ارز · "+bullish.length+" صعودی · "+bearish.length+" نزولی"; const chartSelect=$("tv-symbol");
  if(chartSelect){
   const previous=chartSelect.value||"BINANCE:BTCUSDT";
   const options=['<option value="BINANCE:BTCUSDT">Bitcoin (BTC)</option>'];
@@ -1944,6 +1937,10 @@ html.mmp-native-app .native-section-label{display:flex;align-items:center;gap:8p
 html.mmp-native-app .native-section-label:after{content:"";height:1px;flex:1;background:linear-gradient(90deg,#40576a,transparent)}
 html.mmp-native-app .footer{padding-bottom:12px}
 @media(min-width:901px){html.mmp-native-app .wrap{max-width:760px;margin:auto}}
+
+html.mmp-native-app .native-refresh-btn{width:auto!important;min-width:82px!important;height:38px!important;padding:0 8px!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:5px!important;font-size:18px!important}
+html.mmp-native-app .native-refresh-label{font:700 9px Tahoma,Arial,sans-serif!important;color:#f5dda2!important;white-space:nowrap!important}
+@media(max-width:390px){html.mmp-native-app .native-refresh-btn{min-width:72px!important;height:32px!important;padding:0 5px!important}html.mmp-native-app .native-refresh-label{font-size:8px!important}}
 </style>
 <script>
 (function(){
