@@ -12,7 +12,7 @@ function extractAIJson(value){
 }
 async function runAIWithFallback(env,prompt){
  const messages=[
-  {role:"system",content:"Return one valid JSON object only. Never give guaranteed financial advice."},
+  {role:"system",content:"Return one valid JSON object only. Never give guaranteed financial advice. Never describe any token as safe, scam-free, verified investment, or guaranteed. Exchange listing and market-cap rank do not prove contract safety. If smart-contract audit, ownership controls, liquidity-lock, holder concentration, and exploit-risk data are not supplied, explicitly state that contract-level safety is unverified; distinguish market liquidity checks from security checks. Do not invent security audits or claim scam detection."},
   {role:"user",content:prompt}
  ];
  const failures=[];
@@ -207,49 +207,6 @@ async function candles(symbol,interval,env,marketType="spot"){
   const normalized=rows.map(x=>[Number(x[0]),x[1],x[2],x[3],x[4],x[5],x[6]||"0","0","0","0"]).sort((a,b)=>a[0]-b[0]);
   const result=analyzeKlines(normalized);result.data_provider="Bitget Spot";return result;
  }catch(e){bitgetError=e;}
- const pairInfo=splitQuotePair(symbol);
- if(pairInfo){
-  try{
-   const kucoinInterval={"15m":"15min","1h":"1hour","4h":"4hour","1d":"1day"}[interval];
-   const url="https://api.kucoin.com/api/v1/market/candles?symbol="+encodeURIComponent(pairInfo.base+"-"+pairInfo.quote)+"&type="+kucoinInterval;
-   const r=await fetch(url,{headers});
-   if(!r.ok)throw new Error("KuCoin Spot HTTP "+r.status);
-   const payload=await r.json(),rows=payload?.code==="200000"?payload.data:null;
-   if(!validRows(rows))throw new Error(payload?.msg||"insufficient KuCoin spot candle history");
-   const normalized=rows.map(x=>[Number(x[0])*1000,x[1],x[3],x[4],x[2],x[5]||"0","0","0","0","0"]).sort((a,b)=>a[0]-b[0]);
-   const result=analyzeKlines(normalized);result.data_provider="KuCoin Spot (fallback)";return result;
-  }catch(e){lastError=new Error((lastError?.message||"Binance unavailable")+"; "+e.message);}
-  try{
-   const gateInterval={"15m":"15m","1h":"1h","4h":"4h","1d":"1d"}[interval];
-   const gatePair=pairInfo.base+"_"+pairInfo.quote;
-   const url="https://api.gateio.ws/api/v4/spot/candlesticks?currency_pair="+encodeURIComponent(gatePair)+"&interval="+gateInterval+"&limit=250";
-   const r=await fetch(url,{headers});
-   if(!r.ok)throw new Error("Gate.io Spot HTTP "+r.status);
-   const rows=await r.json();
-   if(!validRows(rows))throw new Error("insufficient Gate.io spot candle history");
-   const normalized=rows.map(x=>[Number(x[0])<1e12?Number(x[0])*1000:Number(x[0]),x[5],x[3],x[4],x[2],x[6]||"0","0","0","0","0"]).sort((a,b)=>a[0]-b[0]);
-   const result=analyzeKlines(normalized);result.data_provider="Gate.io Spot (fallback)";return result;
-  }catch(e){lastError=new Error((lastError?.message||"Binance unavailable")+"; "+e.message);}
- }
- const whitebitPair=splitQuotePair(symbol);
- if(whitebitPair){
-  let whitebitError=null;
-  const market=whitebitPair.base+"_"+whitebitPair.quote;
-  const whitebitInterval={"15m":"15m","1h":"1h","4h":"4h","1d":"1d"}[interval];
-  for(const host of ["https://whitebit.com","https://whitebit.eu","https://whitebit.tr","https://whitebit.ge"]){
-   try{
-    const url=host+"/api/v1/public/kline?market="+encodeURIComponent(market)+"&interval="+whitebitInterval+"&limit=250";
-    const r=await fetch(url,{headers});
-    if(!r.ok)throw new Error("WhiteBIT HTTP "+r.status);
-    const payload=await r.json(),rows=payload?.success===true?payload.result:null;
-    if(!validRows(rows))throw new Error(payload?.message||"insufficient WhiteBIT candle history");
-    const normalized=rows.map(x=>[Number(x[0])*1000,x[1],x[3],x[4],x[2],x[5]||"0","0","0","0","0"]).sort((a,b)=>a[0]-b[0]);
-    const result=analyzeKlines(normalized);result.data_provider="WhiteBIT Spot";return result;
-   }catch(e){whitebitError=e;}
-  }
-  lastError=new Error((lastError?.message||"Earlier spot sources unavailable")+"; "+(whitebitError?.message||"WhiteBIT unavailable"));
- }
-
  for(const host of ["https://api.bybit.eu","https://api.bytick.eu","https://api.bybit.com","https://api.bytick.com"]){
   try{
    const url=host+"/v5/market/kline?category=spot&symbol="+encodeURIComponent(symbol)+"&interval="+bybitInterval+"&limit=250";
