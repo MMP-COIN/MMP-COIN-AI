@@ -2080,8 +2080,8 @@ async function fetchHunterUniverse(){
   };
  }).filter(c=>c.current_price>0).sort((a,b)=>b.total_volume-a.total_volume||Number(a.market_cap_rank||999999)-Number(b.market_cap_rank||999999));
  if(!allUniverse.length)throw new Error("No live prices for eligible Binance/CoinMarketCap assets");
- // پایش چرخشی حداکثر ۱۶۰ دارایی مشترک؛ فهرست کامل مشترک برای جست‌وجو و جریان هشدار حفظ می‌شود.
- const universe=allUniverse.slice(0,160);
+ // همه دارایی‌های مشترک Binance Spot و CoinMarketCap وارد صف پایش چرخشی می‌شوند؛ هر نوبت ۳۶ نماد بررسی می‌شود.
+ const universe=allUniverse;
  hunterStreamMarkets=allUniverse;
  hunterCoinIndex.clear();hunterSymbolIndex.clear();allUniverse.forEach(c=>{hunterCoinIndex.set(c.id,c);hunterSymbolIndex.set(String(c.symbol||"").toUpperCase(),c);});
  connectHunterEarlyStream();connectHunterEarlyExchangeStreams();
