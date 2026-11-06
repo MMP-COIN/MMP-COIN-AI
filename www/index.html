@@ -1501,8 +1501,8 @@ setInterval(refreshAll, 60000);
  }
  const btn=$("boom-run");if(btn)btn.addEventListener("click",run);
  const symbol=$("boom-symbol");if(symbol)symbol.addEventListener("keydown",e=>{if(e.key==="Enter")run();});
- const boomCoins=new Map();
- function addBoomCoin(c){if(!c)return;const k=String(c.symbol||"").toUpperCase();if(k)boomCoins.set(k,{symbol:k,name:c.name||k,image:c.image||"https://assets.coincap.io/assets/icons/"+k.toLowerCase()+"@2x.png"});}
+ const boomCoins=new Map(),boomMetadata=new Map();
+ function addBoomCoin(c){if(!c)return;const k=String(c.symbol||"").toUpperCase();const meta=boomMetadata.get(k)||{};if(k)boomCoins.set(k,{symbol:k,name:c.name&&c.name!==k?c.name:(meta.name||k),image:c.image||meta.image||"https://assets.coincap.io/assets/icons/"+k.toLowerCase()+"@2x.png"});}
  function renderBoomCoins(){
   (Array.isArray(cachedCoinsData)?cachedCoinsData:[]).forEach(addBoomCoin);
   if(typeof hunterUniverseCache!=="undefined"&&hunterUniverseCache?.coins)hunterUniverseCache.coins.forEach(addBoomCoin);
@@ -1512,6 +1512,7 @@ setInterval(refreshAll, 60000);
   else if(name)name.textContent="دارایی Binance · "+($("boom-symbol")?.value||"").toUpperCase();
  }
  async function loadBoomCoins(){
+  try{const metaResponse=await fetch("https://min-api.cryptocompare.com/data/all/coinlist?summary=true");if(metaResponse.ok){const metaJson=await metaResponse.json();Object.values(metaJson.Data||{}).forEach(c=>{const sym=String(c.Symbol||"").toUpperCase();if(sym)boomMetadata.set(sym,{name:c.CoinName||c.FullName||sym,image:c.ImageUrl?"https://www.cryptocompare.com"+c.ImageUrl:null});});}}catch(e){}
   try{
    let data=null;
    for(const url of ["https://api.binance.com/api/v3/exchangeInfo","https://data-api.binance.vision/api/v3/exchangeInfo"]){
