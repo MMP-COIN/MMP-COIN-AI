@@ -1927,7 +1927,7 @@ function renderHunterEarlyAlerts(){
  const now=Date.now(),items=[...hunterEarlyAlerts.values()].filter(x=>now-x.updatedAt<4*60*1000).sort((a,b)=>b.updatedAt-a.updatedAt||Math.max(Math.abs(b.move1m||0),Math.abs(b.move3m||0))-Math.max(Math.abs(a.move1m||0),Math.abs(a.move3m||0))).slice(0,8);
  for(const [symbol,item] of hunterEarlyAlerts)if(now-item.updatedAt>=4*60*1000)hunterEarlyAlerts.delete(symbol);
  if(!items.length){feed.innerHTML='<div class="hunter-early-empty">فعلاً جهش یا ریزش سریعِ عبورکرده از آستانه هشدار دیده نشده؛ رصد جریان قیمت ادامه دارد.</div>';return;}
- feed.innerHTML=items.map(x=>'<div class="hunter-early-item '+(x.trend==="bull"?"up":"down")+'"><span><b>'+aiEscape(x.name)+' ('+aiEscape(x.symbol)+')</b><small>قیمت '+hunterPrice(x.price)+' · '+aiEscape(x.exchange||"منبع زنده")+' · '+new Date(x.updatedAt).toLocaleTimeString("fa-IR")+'</small></span><strong class="'+(x.trend==="bull"?"positive":"negative")+'">'+(x.move1m!=null?(x.move1m>0?"+":"")+x.move1m.toFixed(2)+"٪ / ۱د":(x.move3m>0?"+":"")+x.move3m.toFixed(2)+"٪ / ۳د")+'</strong></div>').join("");
+ feed.innerHTML=items.map(x=>{const m=x.triggerMove??(x.move15s!=null&&Math.abs(x.move15s)>=0.28?x.move15s:x.move30s!=null&&Math.abs(x.move30s)>=0.42?x.move30s:x.move1m!=null?x.move1m:x.move3m),label=x.triggerWindow|| (m===x.move15s?"۱۵ث":m===x.move30s?"۳۰ث":m===x.move1m?"۱د":"۳د");return '<div class="hunter-early-item '+(x.trend==="bull"?"up":"down")+'"><span><b>'+aiEscape(x.name)+' ('+aiEscape(x.symbol)+')</b><small>قیمت '+hunterPrice(x.price)+' · '+aiEscape(x.exchange||"منبع زنده")+' · هشدار '+label+' · '+new Date(x.updatedAt).toLocaleTimeString("fa-IR")+'</small></span><strong class="'+(x.trend==="bull"?"positive":"negative")+'">'+(m>0?"+":"")+Number(m||0).toFixed(2)+"٪ / "+label+'</strong></div>';}).join("");
 }
 function queueHunterEarlyRender(){
  if(hunterEarlyRenderTimer)return;
@@ -1945,15 +1945,19 @@ function ingestHunterEarlyPrice(exchange,baseSymbol,rawPrice){
  let history=hunterPriceHistory.get(historyKey);if(!history){history=[];hunterPriceHistory.set(historyKey,history);}
  const last=history[history.length-1];if(last&&now-last.t<650)return;
  history.push({t:now,p:price});while(history.length&&now-history[0].t>240000)history.shift();
+ const prior15=[...history].reverse().find(x=>now-x.t>=12000&&now-x.t<=20000);
+ const prior30=[...history].reverse().find(x=>now-x.t>=25000&&now-x.t<=38000);
  const prior1=[...history].reverse().find(x=>now-x.t>=55000&&now-x.t<=95000);
  const prior3=[...history].reverse().find(x=>now-x.t>=165000&&now-x.t<=215000);
+ const samples15=history.filter(x=>now-x.t<=20000).length;
+ const move15=prior15&&samples15>=6?(price/prior15.p-1)*100:null,move30=prior30?(price/prior30.p-1)*100:null;
  const move1=prior1?(price/prior1.p-1)*100:null,move3=prior3?(price/prior3.p-1)*100:null;
- const up1=move1!=null&&move1>=0.65,down1=move1!=null&&move1<=-0.65,up3=move3!=null&&move3>=1.0,down3=move3!=null&&move3<=-1.0;
- const trend=up1||up3?"bull":down1||down3?"bear":null;
+ const trigger=move15!=null&&Math.abs(move15)>=0.28?{move:move15,window:"۱۵ث"}:move30!=null&&Math.abs(move30)>=0.42?{move:move30,window:"۳۰ث"}:move1!=null&&Math.abs(move1)>=0.65?{move:move1,window:"۱د"}:move3!=null&&Math.abs(move3)>=1.0?{move:move3,window:"۳د"}:null;
+ const trend=trigger?(trigger.move>0?"bull":"bear"):null;
  if(!trend)return;
- const movement=move1!=null&&Math.abs(move1)>=0.65?move1:move3,old=hunterEarlyAlerts.get(base);
- if(!old||old.trend!==trend||now-old.updatedAt>12000||Math.abs(movement)>Math.abs(old.move1m||old.move3m||0)+0.12){
-  hunterEarlyAlerts.set(base,{id:coin.id,symbol:base,name:coin.name,trend,move1m:move1,move3m:move3,price,exchange,updatedAt:now});
+ const movement=trigger.move,old=hunterEarlyAlerts.get(base);
+ if(!old||old.trend!==trend||now-old.updatedAt>12000||Math.abs(movement)>Math.abs(old.triggerMove||old.move1m||old.move3m||0)+0.12){
+  hunterEarlyAlerts.set(base,{id:coin.id,symbol:base,name:coin.name,trend,move15s:move15,move30s:move30,move1m:move1,move3m:move3,triggerMove:movement,triggerWindow:trigger.window,price,exchange,updatedAt:now});
   queueHunterEarlyRender();updateHunterEarlyStatus();
  }
 }
