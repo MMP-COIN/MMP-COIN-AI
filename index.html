@@ -686,6 +686,8 @@ body:after{content:"";position:fixed;width:42vw;height:42vw;max-width:620px;max-
 .boom-toolbar{grid-template-columns:minmax(0,1.35fr) minmax(120px,.7fr) auto;align-items:stretch}
 .boom-coin-picker{min-width:0}.boom-coin-select{display:flex;align-items:center;gap:8px}.boom-coin-select>img{width:30px;height:30px;flex:0 0 30px;border-radius:50%;background:#fff;padding:2px}.boom-coin-select input{flex:1;min-width:0}.boom-coin-actions{display:grid;grid-template-columns:1fr 1fr}.boom-coin-actions .btn{min-width:0;white-space:normal;line-height:1.5}.boom-coin-menu{max-height:55vh;overscroll-behavior:contain}.boom-coin-option{min-height:46px}
 @media(max-width:650px){.boom-toolbar{grid-template-columns:minmax(0,1fr);gap:9px}.boom-toolbar>label,.boom-toolbar>.btn{width:100%}.boom-coin-actions{grid-template-columns:1fr 1fr}.boom-coin-actions .btn{font-size:10px;padding:9px 6px}.boom-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.boom-flow-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.boom-chart-wrap{overflow:hidden}.boom-chart{min-height:230px}}
+
+.boom-custom-coin-panel{position:relative;margin-top:9px;padding:12px;border:1px solid #9b814c;border-radius:12px;background:#101925;box-shadow:0 8px 24px #0006}.boom-custom-coin-panel[hidden]{display:none}.boom-custom-title{font-weight:800;color:#f2d58d;margin-bottom:8px}.boom-custom-coin-panel input{width:100%;padding:11px;border-radius:9px;border:1px solid #48566b;background:#080e17;color:#fff;font-size:15px;direction:ltr;text-align:left}.boom-custom-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}.boom-custom-coin-panel small{display:block;color:#b8c3d0;margin-top:8px;line-height:1.7}
 </style>
 
 <link href="https://fonts.googleapis.com/css2?family=Estedad:wght@500;600;700;800;900&display=swap" rel="stylesheet">
@@ -1069,7 +1071,7 @@ body{background:
 <section class="card mmp-boom-lab" id="boom-hunter">
  <div class="section-head"><div><div class="section-kicker">MMP · MOMENTUM OSCILLATOR LAB</div><h2>آزمایشگاه Boom Hunter</h2><p class="sub">بررسی مستقل مومنتوم، چرخش احتمالی قیمت، حجم و جریان خرید و فروش</p></div><span class="badge">تحلیل مستقل</span></div>
  <div class="boom-toolbar">
-  <label class="boom-coin-picker">انتخاب ارز <div class="boom-coin-select"><img id="boom-coin-icon" src="https://assets.coincap.io/assets/icons/btc@2x.png" alt="BTC"><input id="boom-symbol" type="text" value="BTC" list="boom-coin-options" maxlength="20" autocomplete="off" spellcheck="false" aria-label="جستجو و انتخاب ارز"><datalist id="boom-coin-options"></datalist></div><small id="boom-coin-name" class="boom-coin-name">در حال دریافت فهرست بازارهای چند صرافی…</small><div class="boom-coin-actions"><button type="button" class="btn" id="boom-show-coins">نمایش فهرست ارزها</button><button type="button" class="btn" id="boom-add-coin">＋ افزودن ارز دلخواه</button></div><div id="boom-coin-menu" class="boom-coin-menu" hidden></div></label>
+  <label class="boom-coin-picker">انتخاب ارز <div class="boom-coin-select"><img id="boom-coin-icon" src="https://assets.coincap.io/assets/icons/btc@2x.png" alt="BTC"><input id="boom-symbol" type="text" value="BTC" list="boom-coin-options" maxlength="20" autocomplete="off" spellcheck="false" aria-label="جستجو و انتخاب ارز"><datalist id="boom-coin-options"></datalist></div><small id="boom-coin-name" class="boom-coin-name">در حال دریافت فهرست بازارهای چند صرافی…</small><div class="boom-coin-actions"><button type="button" class="btn" id="boom-show-coins">نمایش فهرست ارزها</button><button type="button" class="btn" id="boom-add-coin">＋ افزودن ارز دلخواه</button></div><div id="boom-coin-menu" class="boom-coin-menu" hidden></div><div id="boom-custom-coin-panel" class="boom-custom-coin-panel" hidden><div class="boom-custom-title">افزودن ارز به فهرست</div><input id="boom-custom-coin-input" type="text" maxlength="20" placeholder="نماد ارز؛ مثلاً SOL یا XRP" autocomplete="off" spellcheck="false"><div class="boom-custom-actions"><button type="button" class="btn primary" id="boom-custom-coin-check">بررسی و افزودن</button><button type="button" class="btn" id="boom-custom-coin-cancel">انصراف</button></div><small id="boom-custom-coin-result">نماد را وارد کن تا وجود جفت معاملاتی USDT بررسی شود.</small></div></label>
   <label>تایم‌فریم <select id="boom-interval" aria-label="تایم فریم"><option value="1m">۱ دقیقه</option><option value="5m" selected>۵ دقیقه</option><option value="15m">۱۵ دقیقه</option><option value="1h">۱ ساعت</option></select></label>
   <button class="btn primary" id="boom-run" type="button">تحلیل اندیکاتور</button>
  </div>
@@ -2972,19 +2974,30 @@ setInterval(()=>mmpSendEvent("heartbeat"),240000);
  const showCoinsButton=$("boom-show-coins");
  if(showCoinsButton)showCoinsButton.addEventListener("click",()=>{const menu=$("boom-coin-menu");if(!menu)return;const opening=menu.hidden||menu.dataset.open!=="1";if(opening){renderBoomCoins(document,true);menu.hidden=false;menu.dataset.open="1";showCoinsButton.textContent="بستن فهرست ارزها";}else{menu.hidden=true;menu.dataset.open="0";showCoinsButton.textContent="نمایش فهرست ارزها";}});
  const addCustomButton=$("boom-add-coin");
- if(addCustomButton)addCustomButton.addEventListener("click",async()=>{
-  const symbol=hunterSafeSymbol($("boom-symbol")?.value);
-  if(!symbol){$("boom-status").textContent="ابتدا نماد معتبر را وارد کن.";return;}
-  addCustomButton.disabled=true;addCustomButton.textContent="در حال بررسی بازار…";
-  try{const markets=await getHunterExchangeMarkets(),pair=symbol+"USDT",supported=[...markets.entries()].filter(([,pairs])=>pairs?.has(pair)).map(([exchange])=>exchange);
-   if(markets.size&&!supported.length){$("boom-status").textContent=symbol+"USDT در بازار اسپات صرافی‌های بررسی‌شده پیدا نشد؛ نماد اضافه نشد.";return;}
+ const customPanel=$("boom-custom-coin-panel"),customInput=$("boom-custom-coin-input"),customCheck=$("boom-custom-coin-check"),customResult=$("boom-custom-coin-result");
+ if(addCustomButton)addCustomButton.addEventListener("click",()=>{
+  if(!customPanel)return;
+  customPanel.hidden=false;customInput.value="";customResult.textContent="نماد را وارد کن تا وجود جفت معاملاتی USDT بررسی شود.";customInput.focus();
+ });
+ $("boom-custom-coin-cancel")?.addEventListener("click",()=>{customPanel.hidden=true;});
+ customInput?.addEventListener("keydown",e=>{if(e.key==="Enter")customCheck?.click();if(e.key==="Escape")customPanel.hidden=true;});
+ if(customCheck)customCheck.addEventListener("click",async()=>{
+  const symbol=hunterSafeSymbol(customInput?.value);
+  if(!symbol){customResult.textContent="نماد معتبر وارد کن؛ فقط حروف و اعداد انگلیسی.";return;}
+  customCheck.disabled=true;customCheck.textContent="در حال بررسی…";customResult.textContent="در حال بررسی جفت "+symbol+"/USDT در بازار صرافی‌ها…";
+  try{
+   const markets=await getHunterExchangeMarkets(),pair=symbol+"USDT",supported=[...markets.entries()].filter(([,pairs])=>pairs?.has(pair)).map(([exchange])=>exchange);
+   if(markets.size&&!supported.length){customResult.textContent="جفت "+pair+" در بازارهای اسپات بررسی‌شده پیدا نشد؛ نماد اضافه نشد.";return;}
    addBoomCoin({symbol,name:symbol});
-  let saved=[];try{saved=JSON.parse(localStorage.getItem("mmp_boom_custom_coins")||"[]");}catch(e){}
-  const next=[...new Map([...saved,{symbol,name:symbol}].map(c=>[String(c.symbol).toUpperCase(),c])).values()];
-  try{localStorage.setItem("mmp_boom_custom_coins",JSON.stringify(next));}catch(e){}
-  renderBoomCoins();$("boom-symbol").value=symbol;renderBoomCoins();$("boom-status").textContent=symbol+" به فهرست اضافه شد؛ دریافت کندل واقعی آغاز شد.";$("boom-run")?.click();
-  }catch(error){$("boom-status").textContent="افزودن ارز انجام نشد: "+(error?.message||"خطای دریافت بازار");}
-  finally{addCustomButton.disabled=false;addCustomButton.textContent="＋ افزودن ارز دلخواه";}
+   let saved=[];try{saved=JSON.parse(localStorage.getItem("mmp_boom_custom_coins")||"[]");}catch(e){}
+   const next=[...new Map([...saved,{symbol,name:symbol}].map(c=>[String(c.symbol).toUpperCase(),c])).values()];
+   try{localStorage.setItem("mmp_boom_custom_coins",JSON.stringify(next));}catch(e){}
+   renderBoomCoins();$("boom-symbol").value=symbol;renderBoomCoins();
+   customResult.textContent="✓ "+pair+" معتبر است"+(supported.length?" · "+supported.join("، "):"")+"؛ دریافت کندل آغاز شد.";
+   $("boom-status").textContent="ارز "+symbol+" اضافه شد؛ نمودار در حال دریافت کندل واقعی است.";
+   $("boom-run")?.click();setTimeout(()=>{customPanel.hidden=true;},1800);
+  }catch(error){customResult.textContent="بررسی انجام نشد: "+(error?.message||"خطای اتصال؛ دوباره تلاش کن.");}
+  finally{customCheck.disabled=false;customCheck.textContent="بررسی و افزودن";}
  });
  loadBoomCoins().then(()=>{setTimeout(()=>{if(!$("boom-candles")?.querySelector("svg"))run();},1200);});setTimeout(renderBoomCoins,12000);setInterval(renderBoomCoins,60000);
  const modal=$("boom-chart-modal"),content=$("boom-chart-modal-content");
