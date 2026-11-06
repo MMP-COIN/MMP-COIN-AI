@@ -111,6 +111,11 @@ jobs:
             echo "- Binance ticker proxy: responding"
             echo "- Bitget direct API: checked separately with browser CORS"
           } >> "$GITHUB_STEP_SUMMARY"
+          coincap_status=$(curl --silent --show-error --max-time 25 -o /tmp/coincap.json -w "%{http_code}" "$WORKER_URL/market-proxy?source=coincap-top&offset=0")
+          echo "CoinCap fallback proxy HTTP $coincap_status"
+          if [ "$coincap_status" != "200" ]; then jq -r '.detail // .error // .' /tmp/coincap.json; exit 1; fi
+          jq -e '.data | type == "array" and length >= 100 and (.[0].priceUsd | tonumber > 0)' /tmp/coincap.json >/dev/null
+          echo "- CoinCap fallback proxy: responding with ranked assets and live USD prices" >> "$GITHUB_STEP_SUMMARY"
  
       - name: Smoke-test live spot candlestick endpoint
         env:
