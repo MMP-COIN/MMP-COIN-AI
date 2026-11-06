@@ -2057,7 +2057,7 @@ async function fetchHunterUniverse(){
    current_price:quote.price||Number(meta.quote?.USD?.price)||0,total_volume:market.totalVolume,
    market_cap:Number(meta.quote?.USD?.market_cap)||null,market_cap_rank:Number(meta.cmc_rank)||null,
    hunterExchange:[...market.venues].join(", "),hunterPriceExchange:quote.exchange||"CoinMarketCap",
-   hunterChange24h:quote.change24h??Number(meta.quote?.USD?.percent_change_24h)||0,
+   hunterChange24h:(quote.change24h??Number(meta.quote?.USD?.percent_change_24h))||0,
    hunterVenueVolume:Object.fromEntries([...market.venues].map(venue=>[venue,Math.max(0,...market.quotes.filter(q=>q.exchange===venue).map(q=>Number(q.volume)||0))]))
   };
  }).filter(c=>c.current_price>0).sort((a,b)=>b.total_volume-a.total_volume||Number(a.market_cap_rank||999999)-Number(b.market_cap_rank||999999));
