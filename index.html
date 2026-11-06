@@ -1088,7 +1088,7 @@ body{background:
  <div class="section-head"><div><div class="section-kicker">MMP AI · MARKET INTELLIGENCE</div><h2>تحلیلگر هوشمند چندلایه بازار</h2></div><span class="badge">تحلیل داده‌محور</span></div>
  <p class="sub ai-intro">یک ارز را انتخاب کن تا روند، سطوح کلیدی و سناریوهای احتمالی بازار بررسی شود؛ تصمیم نهایی با خودت است.</p>
  <div class="ai-toolbar">
-  <div class="ai-coin-picker" id="ai-coin-picker"><select id="ai-coin-select" class="sr-only" aria-label="انتخاب ارز برای تحلیل"><option value="">انتخاب ارز…</option></select><button type="button" class="ai-coin-picker-trigger" id="ai-coin-picker-trigger" aria-expanded="false" aria-controls="ai-coin-picker-menu"><span class="ai-coin-picker-current" id="ai-coin-picker-current"><span class="ai-coin-picker-placeholder">انتخاب ارز دیجیتال برای تحلیل</span></span><span class="ai-coin-picker-chevron">⌄</span></button><div class="ai-coin-picker-menu" id="ai-coin-picker-menu" hidden><input id="ai-coin-picker-search" type="search" placeholder="جست‌وجوی نام یا نماد ارز…" autocomplete="off"><div class="ai-coin-picker-options" id="ai-coin-picker-options"><div class="ai-empty">در انتظار دریافت فهرست ارزها…</div></div></div></div>
+  <div class="ai-coin-picker" id="ai-coin-picker"><select id="ai-coin-select" class="sr-only" aria-label="انتخاب ارز برای تحلیل"><option value="">انتخاب ارز…</option></select><button type="button" class="ai-coin-picker-trigger" id="ai-coin-picker-trigger" aria-expanded="false" aria-controls="ai-coin-picker-menu"><span class="ai-coin-picker-current" id="ai-coin-picker-current"><span class="ai-coin-picker-placeholder">انتخاب ارز دیجیتال برای تحلیل</span></span><span class="ai-coin-picker-chevron">⌄</span></button><div class="ai-coin-picker-menu" id="ai-coin-picker-menu" hidden><input id="ai-coin-picker-search" type="search" placeholder="جست‌وجوی نام یا نماد ارز…" autocomplete="off"><div class="ai-coin-picker-options" id="ai-coin-picker-options"><div class="ai-empty">در انتظار دریافت فهرست ارزها…</div></div><div class="ai-coin-picker-manual"><input id="ai-manual-coin" maxlength="20" placeholder="نماد دلخواه؛ مثل SOL"><button type="button" id="ai-manual-coin-add">＋ افزودن دستی</button></div></div></div>
   <select id="ai-market-mode" class="dropdown-select-box" aria-label="نوع بازار"><option value="both">اسپات + فیوچرز</option><option value="spot">فقط اسپات</option><option value="futures">فقط فیوچرز</option></select>
   <button class="btn primary" id="ai-run-btn" type="button" onclick="runAiAnalysis(true)">دریافت تحلیل جدید</button>
  </div>
@@ -1787,6 +1787,14 @@ function setupAiCoinPicker(){
  const picker=$("ai-coin-picker"),trigger=$("ai-coin-picker-trigger"),menu=$("ai-coin-picker-menu"),search=$("ai-coin-picker-search"),options=$("ai-coin-picker-options"),select=$("ai-coin-select");
  if(!picker||picker.dataset.ready)return;
  picker.dataset.ready="1";
+ const manualInput=$("ai-manual-coin"),manualButton=$("ai-manual-coin-add");
+ if(manualButton&&manualInput)manualButton.addEventListener("click",()=>{
+  const symbol=String(manualInput.value||"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,20);
+  if(!/^[A-Z0-9]{2,20}$/.test(symbol)){manualInput.focus();return;}
+  try{const saved=JSON.parse(localStorage.getItem("mmp_manual_coin_symbols_v1")||"[]");if(!saved.includes(symbol))saved.push(symbol);localStorage.setItem("mmp_manual_coin_symbols_v1",JSON.stringify(saved.slice(-250)));}catch(e){}
+  syncAiCoinOptions([...(cachedCoinsData||[]),...(typeof hunterUniverseCache!=="undefined"?hunterUniverseCache.coins||[]:[]),{id:"manual:"+symbol,symbol,name:symbol,image:"https://assets.coincap.io/assets/icons/"+symbol.toLowerCase()+"@2x.png"}]);
+  select.value="manual:"+symbol;select.dispatchEvent(new Event("change",{bubbles:true}));updateAiCoinPickerCurrent();manualInput.value="";closeAiCoinPicker();
+ });
  trigger.addEventListener("click",()=>{
   const opening=menu.hidden;menu.hidden=!opening;trigger.setAttribute("aria-expanded",String(opening));
   if(opening){search.value="";options.querySelectorAll("[data-ai-coin-id]").forEach(el=>el.hidden=false);search.focus();}
@@ -3567,5 +3575,6 @@ body:before{opacity:.23;background-size:34px 34px}
 <script id="mmp-global-coin-icon-fallback">
 (()=>{document.addEventListener("error",event=>{const img=event.target;if(!(img instanceof HTMLImageElement)||img.hasAttribute("onerror"))return;const symbol=img.dataset.symbol||img.alt||img.closest("[data-symbol]")?.dataset.symbol||img.closest(".coin-identity")?.querySelector(".coin-symbol")?.textContent||"COIN";const span=document.createElement("span");span.className="coin-icon-fallback";span.textContent=String(symbol).trim().slice(0,4).toUpperCase();img.replaceWith(span);},true);})();
 </script>
+<style id="mmp-ai-manual-picker-style">.ai-coin-picker-manual{display:flex;gap:7px;padding-top:8px;margin-top:7px;border-top:1px solid #ffffff18}.ai-coin-picker-manual input{flex:1;min-width:0;height:35px!important;margin:0!important}.ai-coin-picker-manual button{flex:none;border:1px solid #947542;border-radius:8px;background:#47391f;color:#f7dfa0;padding:5px 9px;font-size:10px;cursor:pointer}</style>
 </body>
 </html>
