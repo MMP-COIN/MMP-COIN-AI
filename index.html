@@ -1877,11 +1877,12 @@ async function runAiAnalysis(force=false){
   const selectedMode=$("ai-market-mode").value;
     const controller=new AbortController();
   const timeout=setTimeout(()=>controller.abort(),55000);
-  let res;
+  let res,data;
   try{
    res=await fetch(AI_ANALYSIS_ENDPOINT+"/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({coin_id:c.id,symbol:c.symbol.toUpperCase(),name:c.name,market_mode:selectedMode}),signal:controller.signal});
+   // Keep the timeout active until the complete response body has been read.
+   data=await res.json();
   }finally{clearTimeout(timeout);}
-  const data=await res.json();
   if(!res.ok)throw new Error((data.error||"خطا در سرویس تحلیل")+(data.stage?" | مرحله: "+data.stage:"")+(data.symbol?" | ارز: "+data.symbol:""));
   if(!data.analysis)throw new Error("پاسخ تحلیل معتبر نیست.");
   mmpSendAiResult(data.analysis,data.market||{},selectedMode,c);
