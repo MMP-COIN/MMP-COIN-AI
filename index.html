@@ -1863,7 +1863,8 @@ async function scanFastCoin(coin){
  const valid=rows.every(r=>r.length>=6&&r.slice(1,6).every(Number.isFinite)&&Number(r[1])>0&&Number(r[2])>=Number(r[3])&&Number(r[3])>0&&Number(r[4])>0&&Number(r[5])>=0);
  if(!valid)return null;
  const listedVenues=Object.entries(coin.hunterVenueVolume||{}).filter(([,volume])=>Number(volume)>=50000);
- if(Number(coin.total_volume||0)<500000||listedVenues.length<2)return null;
+ // فیلتر نقدشوندگی متعادل‌تر: بازار واقعی و حداقل یک محل معامله فعال؛ بدون حذف خودکار فرصت‌های صرافی‌محور.
+ if(Number(coin.total_volume||0)<150000||listedVenues.length<1)return null;
  const now=Date.now(),index=rows.length-2,last=rows[index],close=Number(last[4]),open=Number(last[1]),volume=Number(last[5]);
  // فقط کندل بسته‌شده و تازه؛ کندل نیمه‌کاره اجازه تولید سیگنال ندارد.
  const candleAge=now-Number(last[0]);
@@ -1878,13 +1879,13 @@ async function scanFastCoin(coin){
  const breakoutUp=close>priorHigh,breakoutDown=close<priorLow,price=Number(coin.current_price)||close;
  const overextended=Math.abs(change15m)>=2.5||Math.abs(change5m)>=1.8;
  // شروط سخت: هم‌جهتی ۵ و ۱۵ دقیقه، حجم غیرعادی و شکست محدوده یا شتاب قوی‌تر.
- const bullMomentum=change5m>=0.35&&change15m>=0.55&&volumeRatio>=1.7&&(breakoutUp||change5m>=0.75);
- const bearMomentum=change5m<=-0.35&&change15m<=-0.55&&volumeRatio>=1.7&&(breakoutDown||change5m<=-0.75);
+ const bullMomentum=change5m>=0.25&&change15m>=0.35&&volumeRatio>=1.25&&(breakoutUp||change5m>=0.55);
+ const bearMomentum=change5m<=-0.25&&change15m<=-0.35&&volumeRatio>=1.25&&(breakoutDown||change5m<=-0.55);
  let trend="neutral",score=0;
  if(bullMomentum||bearMomentum){
   trend=bullMomentum?"bull":"bear";
   score=Math.min(99,Math.round(55+Math.min(16,Math.abs(change5m)*14)+Math.min(14,Math.abs(change15m)*7)+Math.min(16,Math.max(0,volumeRatio-1)*8)+(breakoutUp||breakoutDown?8:0)));
-  if(score<72)return null;
+  if(score<64)return null;
  }
  return {trend,score,change5m,change15m,volumeRatio,breakout:breakoutUp||breakoutDown,overextended,price,provider,updatedAt:now,candleTime:Number(last[0]),rows:rows.map(x=>x.slice(0,6).map(Number))};
 }
@@ -2076,7 +2077,6 @@ async function runFastRadarScan(){
  });
  let offset=0;while(batch.length<batchSize&&offset<universe.length){const coin=universe[(fastRadarCursor+offset)%universe.length];offset++;if(!selectedIds.has(coin.id)){batch.push(coin);selectedIds.add(coin.id);}}
  fastRadarCursor=(fastRadarCursor+offset)%universe.length;
- fastRadarCursor=(fastRadarCursor+batchSize)%universe.length;
  const workers=Array.from({length:12},async()=>{
   while(cursor<batch.length){
    const coin=batch[cursor++];
