@@ -1178,7 +1178,7 @@ body{background:
 <p class="sub" style="margin-top:12px">ساعت‌ها بر اساس منطقه زمانی هر بازار و تغییر ساعت تابستانی محاسبه می‌شوند. تعطیلات رسمی و تغییرات اضطراری ممکن است وضعیت را تغییر دهند؛ این نمایش راهنمای زمان‌بندی است، نه تأییدیه رسمی بورس.</p>
 </section>
 <div class="connection-grid" id="connections"></div>
- <div class="connection-more"><button class="connection-more-btn" id="connections-toggle" type="button" aria-expanded="false" aria-controls="connections-extra">نمایش ۲ منبع دیگر <span class="chevron" aria-hidden="true">⌄</span></button><div class="connection-grid connection-extra" id="connections-extra"></div></div>
+ <div class="connection-more"><button class="connection-more-btn" id="connections-toggle" type="button" aria-expanded="false" aria-controls="connections-extra">نمایش ۴ منبع دیگر <span class="chevron" aria-hidden="true">⌄</span></button><div class="connection-grid connection-extra" id="connections-extra"></div></div>
 </section>
 
 <!-- فقط لیست ارزهای دیجیتال -->
@@ -1796,7 +1796,7 @@ function setupConnectionsToggle(){
   const expanded=button.getAttribute("aria-expanded")==="true";
   button.setAttribute("aria-expanded",String(!expanded));
   extra.classList.toggle("show",!expanded);
-  button.innerHTML=(!expanded?"بستن منابع دیگر":"نمایش ۲ منبع دیگر")+' <span class="chevron" aria-hidden="true">⌄</span>';
+  button.innerHTML=(!expanded?"بستن منابع دیگر":"نمایش ۴ منبع دیگر")+' <span class="chevron" aria-hidden="true">⌄</span>';
  });
 }
 async function checkConnections(){
@@ -1807,7 +1807,7 @@ async function checkConnections(){
   if(!response.ok)throw new Error("HTTP "+response.status);
   const payload=await response.json();
   if(!Array.isArray(payload?.checks))throw new Error("پاسخ بررسی اتصال کامل نیست");
-  const expected=["binance spot","bybit spot","okx spot","nobitex","wallex","bitget spot"];
+  const expected=["binance spot","bybit spot","okx spot","bitget spot","gate.io spot","kucoin spot","nobitex","wallex"];
   const checks=new Map(payload.checks.map(c=>[String(c?.name||"").trim().toLowerCase(),c]));
   const bitgetCheck=checks.get("bitget spot");
   if(bitgetCheck?.status==="down"){
@@ -1832,7 +1832,11 @@ async function checkConnections(){
    const latency=c.ping===null||c.ping===undefined?"—":c.ping+" ms";
    const detail=c.error?'<small class="conn-purpose">'+aiEscape(c.error)+'</small>':'<small class="conn-purpose">'+aiEscape(c.purpose||"وضعیت اتصال صرافی")+'</small>';
    const lamp=c.status==="ok"?"ok":c.status==="slow"?"slow":"down";
-   return '<div class="conn"><div class="conn-top"><span class="conn-name">'+aiEscape(c.name)+'</span><span class="lamp '+lamp+'"></span></div><div class="conn-meta"><span>'+label+'</span><b dir="ltr">'+latency+'</b></div>'+detail+'</div>';
+   const key=String(c.name||"").toLowerCase();
+   const brands={"binance spot":["binance","https://cdn.simpleicons.org/binance/F0B90B"],"bybit spot":["bybit","https://cdn.simpleicons.org/bybit/F7A600"],"okx spot":["okx","https://cdn.simpleicons.org/okx/FFFFFF"],"bitget spot":["bitget","https://cdn.simpleicons.org/bitget/00D6A3"],"gate.io spot":["gateio","https://cdn.simpleicons.org/gateio/FFFFFF"],"kucoin spot":["kucoin","https://cdn.simpleicons.org/kucoin/23AF91"],"nobitex":["ن","https://www.google.com/s2/favicons?domain=nobitex.ir&sz=64"],"wallex":["W","https://www.google.com/s2/favicons?domain=wallex.ir&sz=64"]};
+   const brand=brands[key]||["↗",""];
+   const icon=brand[1]?'<img class="conn-brand-icon" src="'+brand[1]+'" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement(\'span\'),{className:\'conn-brand-fallback\',textContent:\''+brand[0]+'\'}))">':'<span class="conn-brand-fallback">'+brand[0]+'</span>';
+   return '<div class="conn"><div class="conn-top"><span class="conn-brand">'+icon+'<span class="conn-name">'+aiEscape(c.name)+'</span></span><span class="lamp '+lamp+'"></span></div><div class="conn-meta"><span>'+label+'</span><b dir="ltr">'+latency+'</b></div>'+detail+'</div>';
   };
   $("connections").innerHTML=ordered.slice(0,4).map(makeCard).join("");
   $("connections-extra").innerHTML=ordered.slice(4).map(makeCard).join("");
@@ -3052,6 +3056,14 @@ setInterval(()=>mmpSendEvent("heartbeat"),240000);
  document.addEventListener("keydown",e=>{if(e.key==="Escape")closeBoom();});
 })();
 </script>
+
+<style id="mmp-exchange-health-icons-20261106">
+.conn-brand{display:flex;align-items:center;gap:9px;min-width:0}
+.conn-brand-icon{width:25px;height:25px;object-fit:contain;flex:none;border-radius:7px}
+.conn-brand-fallback{width:25px;height:25px;display:grid;place-items:center;flex:none;border:1px solid #b8955466;border-radius:7px;color:#f2d28d;font-size:12px;font-weight:900;background:#201d17}
+.conn-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media(max-width:700px){.connection-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:7px}.conn{padding:10px}.conn-brand-icon,.conn-brand-fallback{width:22px;height:22px}.conn-name{font-size:11px}.conn-meta{font-size:10px}}
+</style>
 </body>
 </html>
 
