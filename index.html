@@ -1132,6 +1132,10 @@ body{background:
    </div>
    <div class="intel-foot" id="derivatives-status">برای دریافت داده زنده، نماد را بررسی کن.</div>
    <div class="intel-mini-row"><span>نقشه لیکوییدیشن</span><b id="liquidation-status">نیازمند API CoinGlass</b></div>
+   <div class="liquidation-map-wrap">
+    <div class="liquidation-map-toolbar"><span id="liquidation-status-detail">Binance · BTCUSDT · بازه یک‌روزه</span><button class="intel-refresh" id="liquidation-refresh" type="button">↻ دریافت نقشه</button></div>
+    <div class="liquidation-map" id="liquidation-map"><div class="intel-foot">نمایش نقشه واقعی پس از اتصال کلید CoinGlass</div></div>
+   </div>
   </article>
   <article class="intel-panel" id="orderflow-panel">
    <div class="intel-panel-head"><div><small>ORDER FLOW · LIQUIDITY</small><h3>جریان سفارش و نقدشوندگی</h3></div><button class="intel-refresh" id="orderflow-refresh" type="button">↻ تازه‌سازی</button></div>
@@ -3700,6 +3704,29 @@ body:before{opacity:.23;background-size:34px 34px}
  derivButton?.addEventListener("click",loadOrderflowViaWorker);
  $("intel-symbol")?.addEventListener("change",loadOrderflowViaWorker);
  loadOrderflowViaWorker();loadDerivativesViaWorker();
+
+ // CoinGlass liquidation map: render only verified upstream values.
+ async function loadLiquidationMap(){
+  const symbol=safe($("intel-symbol")?.value||"BTC")||"BTC",box=$("liquidation-map"),status=$("liquidation-status"),detail=$("liquidation-status-detail"),button=$("liquidation-refresh");
+  if(button){button.disabled=true;button.textContent="در حال دریافت…";}
+  if(status)status.textContent="در حال اتصال";
+  if(detail)detail.textContent=symbol+"USDT · Binance · ۱ روز";
+  if(box)box.innerHTML='<div class="intel-foot">در حال دریافت نقشه واقعی لیکوییدیشن…</div>';
+  try{
+   const d=await get(api()+"/market-liquidation-map?symbol="+encodeURIComponent(symbol)+"&exchange=Binance&range=1d",15000);
+   if(!Array.isArray(d.levels)||!d.levels.length)throw new Error(d.error||"برای این نماد داده‌ای دریافت نشد.");
+   const max=Math.max(...d.levels.map(x=>Number(x.liquidation_usd)||0),1);
+   if(box)box.innerHTML=d.levels.map(x=>'<div class="liquidation-level"><span dir="ltr">'+usd(x.price)+'</span><i><b style="width:'+Math.max(2,Number(x.liquidation_usd)/max*100)+'%"></b></i><strong>'+usd(x.liquidation_usd)+'</strong></div>').join("");
+   if(status)status.textContent="متصل · "+fmt(d.count,0)+" سطح";
+   if(detail)detail.textContent="منبع: CoinGlass API V4 · "+new Date(d.checked_at).toLocaleTimeString("fa-IR");
+  }catch(e){
+   if(status)status.textContent="نیازمند دسترسی API";
+   if(box)box.innerHTML='<div class="intel-foot">'+esc(e.message||"اتصال CoinGlass ناموفق بود")+'</div>';
+   if(detail)detail.textContent="کلید API و پلن Professional یا Enterprise لازم است.";
+  }finally{if(button){button.disabled=false;button.textContent="↻ دریافت نقشه";}}
+ }
+ $("liquidation-refresh")?.addEventListener("click",loadLiquidationMap);
+ loadLiquidationMap();
  // The original intelligence engine remains authoritative for futures; this adds a working BTC large-transfer feed without inventing exchange labels.
  const whale=$("whale-panel");
  if(whale&&!$("whale-refresh-btn")){
@@ -3707,7 +3734,7 @@ body:before{opacity:.23;background-size:34px 34px}
   const button=document.createElement("button");button.type="button";button.id="whale-refresh-btn";button.className="intel-refresh whale-refresh";button.textContent="↻ دریافت انتقال‌های بزرگ BTC";head?.appendChild(button);
   const result=document.createElement("div");result.id="whale-transfer-list";result.className="whale-transfers";state?.after(result);
   const note=document.createElement("div");note.className="intel-foot";note.textContent="دامنه داده: تراکنش‌های بزرگِ در انتظار تأیید شبکه بیت‌کوین از mempool.space. این منبع آدرس صرافی‌ها را برچسب‌گذاری نمی‌کند؛ بنابراین ورودی/خروجی صرافی گزارش نمی‌شود.";result.after(note);
-  const load=async()=>{button.disabled=true;button.textContent="در حال دریافت…";result.textContent="در حال دریافت تراکنش‌های بزرگ شبکه بیت‌کوین…";try{const d=await get(api()+"/whale-watch",12000);result.innerHTML=d.transfers?.length?d.transfers.map(x=>'<div class="whale-transfer"><span><b>'+fmt(x.value_btc,3)+' BTC</b><br><a href="https://mempool.space/tx/'+encodeURIComponent(x.txid)+'" target="_blank" rel="noopener">'+esc(x.txid.slice(0,14))+'…'+esc(x.txid.slice(-8))+'</a></span><span>کارمزد '+fmt(x.fee_rate,1)+' sat/vB</span></div>').join(""):'<div class="intel-foot">در حال حاضر تراکنش معلق بالاتر از ۱۰ BTC پیدا نشد.</div>';if(state){state.querySelector("b").textContent="پایش انتقال‌های بزرگ بیت‌کوین";state.querySelector("p").textContent="تراکنش‌های معلق با ارزش حداقل ۱۰ BTC از شبکه عمومی mempool دریافت می‌شوند؛ این داده برچسب مالک کیف‌پول ندارد.";}}catch(e){result.textContent="ردیابی فعلاً در دسترس نیست: "+(e.message||"خطای دریافت");}finally{button.disabled=false;button.textContent="↻ دریافت انتقال‌های بزرگ BTC";}};
+  const load=async()=>{button.disabled=true;button.textContent="در حال دریافت…";result.textContent="در حال دریافت تراکنش‌های بزرگ شبکه بیت‌کوین…";try{const d=await get(api()+"/whale-watch",12000);result.innerHTML=d.transfers?.length?d.transfers.map(x=>'<div class="whale-transfer"><span><b>'+fmt(x.value_btc,3)+' BTC</b><br><a href="https://mempool.space/tx/'+encodeURIComponent(x.txid)+'" target="_blank" rel="noopener">'+esc(x.txid.slice(0,14))+'…'+esc(x.txid.slice(-8))+'</a></span><span>کارمزد '+fmt(x.fee_rate,1)+' sat/vB</span></div>').join(""):'<div class="intel-foot">دریافت شبکه موفق بود؛ از '+fmt(d.scanned_count||0,0)+' تراکنش بررسی‌شده، موردی با ارزش حداقل ۱۰ BTC پیدا نشد.</div>';if(state){state.querySelector("b").textContent="پایش انتقال‌های بزرگ بیت‌کوین";state.querySelector("p").textContent="تراکنش‌های معلق با ارزش حداقل ۱۰ BTC از شبکه عمومی mempool دریافت می‌شوند؛ این داده برچسب مالک کیف‌پول ندارد.";}}catch(e){result.textContent="ردیابی فعلاً در دسترس نیست: "+(e.message||"خطای دریافت");}finally{button.disabled=false;button.textContent="↻ دریافت انتقال‌های بزرگ BTC";}};
   button.addEventListener("click",load);load();setInterval(()=>{if(!document.hidden)load();},180000);
  }
 })();
@@ -3764,6 +3791,18 @@ body:before{opacity:.23;background-size:34px 34px}
  #connections .conn{padding:8px!important;min-height:84px!important}
  .wrap{padding-bottom:4px!important}
 }
+</style>
+
+<style id="mmp-liquidation-map-ui-20261107">
+.liquidation-map-wrap{margin-top:8px;padding:9px;border:1px solid #354456;border-radius:10px;background:#0d151f}
+.liquidation-map-toolbar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px}
+#liquidation-status-detail{font-size:9px;color:#9eacba;line-height:1.6}
+.liquidation-map{display:grid;gap:5px;max-height:230px;overflow:auto}
+.liquidation-level{display:grid;grid-template-columns:85px minmax(50px,1fr) 88px;gap:7px;align-items:center;font-size:9px}
+.liquidation-level i{height:7px;display:block;border-radius:9px;background:#202c38;overflow:hidden}
+.liquidation-level i b{height:100%;display:block;border-radius:9px;background:linear-gradient(90deg,#d9b66d,#e96d78)}
+.liquidation-level strong{text-align:left;color:#e5c987;font-size:9px}
+@media(max-width:560px){.liquidation-level{grid-template-columns:72px minmax(40px,1fr) 74px}.liquidation-map-wrap{padding:7px}}
 </style>
 </body>
 </html>
