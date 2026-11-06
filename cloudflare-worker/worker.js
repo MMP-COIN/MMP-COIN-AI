@@ -447,6 +447,79 @@ async function handle(request,env){
   if(origin&&!ALLOWED_ORIGINS.has(origin))return new Response(null,{status:403,headers:{"Vary":"Origin"}});
   return new Response(null,{status:204,headers:{...corsHeaders(request),"X-Content-Type-Options":"nosniff","Referrer-Policy":"no-referrer"}});
  }
+ if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-universe"){
+  const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-universe");
+  const limited=rateLimitReply(limitResult,request);if(limited)return limited;
+  const timedJson=async(url,timeout=12000,cacheTtl=30)=>{
+   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeout);
+   try{
+    const response=await fetch(url,{headers:{"Accept":"application/json","User-Agent":"MMP-COIN-AI/1.0","Accept-Language":"en-US,en;q=0.9"},signal:controller.signal,cf:{cacheTtl,cacheEverything:true}});
+    if(!response.ok)throw new Error("HTTP "+response.status);
+    return await response.json();
+   }finally{clearTimeout(timer);}
+  };
+  const cmcUrl=start=>"https://pro-api.coinmarketcap.com/public-api/v3/cryptocurrency/listings/latest?start="+start+"&limit=5000&convert=USD";
+  const primary=await Promise.allSettled([
+   timedJson("https://api.binance.com/api/v3/exchangeInfo?permissions=%5B%22SPOT%22%5D",12000,300),
+   timedJson(cmcUrl(1),18000,60),
+   timedJson(cmcUrl(5001),18000,60)
+  ]);
+  if(primary[0].status!=="fulfilled")return json({error:"دریافت فهرست Binance ناموفق بود.",detail:String(primary[0].reason?.message||primary[0].reason).slice(0,180)},502,request);
+  if(primary[1].status!=="fulfilled")return json({error:"دریافت فهرست فعال CoinMarketCap ناموفق بود.",detail:String(primary[1].reason?.message||primary[1].reason).slice(0,180)},502,request);
+  const binanceInfo=primary[0].value,cmcRows=[...(Array.isArray(primary[1].value?.data)?primary[1].value.data:[]),...(primary[2].status==="fulfilled"&&Array.isArray(primary[2].value?.data)?primary[2].value.data:[])];
+  const binanceSymbols=new Set((binanceInfo.symbols||[]).filter(x=>x.status==="TRADING"&&x.isSpotTradingAllowed!==false&&String(x.quoteAsset||"").toUpperCase()==="USDT").map(x=>String(x.baseAsset||"").toUpperCase()).filter(Boolean));
+  if(!binanceSymbols.size||!cmcRows.length)return json({error:"فهرست مشترک بازار خالی است."},502,request);
+  const cmcBySymbol=new Map(),cmcDuplicateCount=new Map();
+  cmcRows.forEach(item=>{
+   const symbol=String(item?.symbol||"").toUpperCase();
+   if(!symbol)return;
+   cmcDuplicateCount.set(symbol,(cmcDuplicateCount.get(symbol)||0)+1);
+   const old=cmcBySymbol.get(symbol),rank=Number(item.cmc_rank)||999999,oldRank=Number(old?.cmc_rank)||999999;
+   // نمادهای تکراری را حذف کامل نمی‌کنیم؛ رکورد دارای رتبه معتبرتر CMC انتخاب می‌شود.
+   if(!old||rank<oldRank)cmcBySymbol.set(symbol,item);
+  });
+  const excluded=new Set(["UP","DOWN","BULL","BEAR","3L","3S"]);
+  const eligible=[...binanceSymbols].filter(symbol=>cmcBySymbol.has(symbol)&&!excluded.has(symbol)&&!/(UP|DOWN|BULL|BEAR|3L|3S)$/.test(symbol));
+  if(!eligible.length)return json({error:"هیچ نماد مشترک Binance و CoinMarketCap پیدا نشد."},502,request);
+  const jobs=[
+   ["Binance","https://api.binance.com/api/v3/ticker/24hr",d=>(Array.isArray(d)?d:[]).filter(x=>String(x.symbol).endsWith("USDT")).map(x=>({symbol:String(x.symbol).slice(0,-4),volume:Number(x.quoteVolume)||0,price:Number(x.lastPrice)||0,change24h:Number(x.priceChangePercent)||0}))],
+   ["Bybit","https://api.bybit.com/v5/market/tickers?category=spot",d=>(d.result?.list||[]).filter(x=>String(x.symbol).endsWith("USDT")).map(x=>({symbol:String(x.symbol).slice(0,-4),volume:Number(x.turnover24h)||0,price:Number(x.lastPrice)||0,change24h:(Number(x.price24hPcnt)||0)*100}))],
+   ["OKX","https://www.okx.com/api/v5/market/tickers?instType=SPOT",d=>(d.data||[]).filter(x=>String(x.instId).endsWith("-USDT")).map(x=>({symbol:String(x.instId).replace("-USDT",""),volume:Number(x.volCcy24h)||0,price:Number(x.last)||0,change24h:Number(x.open24h)>0?(Number(x.last)/Number(x.open24h)-1)*100:0}))],
+   ["Bitget","https://api.bitget.com/api/v2/spot/market/tickers",d=>(d.data||[]).filter(x=>String(x.symbol).endsWith("USDT")).map(x=>({symbol:String(x.symbol).slice(0,-4),volume:Number(x.usdtVolume||x.quoteVolume)||0,price:Number(x.lastPr)||0,change24h:(Number(x.change24h)||0)*100}))],
+   ["Gate","https://api.gateio.ws/api/v4/spot/tickers",d=>(Array.isArray(d)?d:[]).filter(x=>String(x.currency_pair).endsWith("_USDT")).map(x=>({symbol:String(x.currency_pair).replace("_USDT",""),volume:Number(x.quote_volume)||0,price:Number(x.last)||0,change24h:Number(x.change_percentage)||0}))],
+   ["KuCoin","https://api.kucoin.com/api/v1/market/allTickers",d=>(d.data?.ticker||[]).filter(x=>String(x.symbol).endsWith("-USDT")).map(x=>({symbol:String(x.symbol).replace("-USDT",""),volume:Number(x.volValue)||0,price:Number(x.last)||0,change24h:(Number(x.changeRate)||0)*100}))
+  ];
+  const tickerResults=await Promise.allSettled(jobs.map(async([name,url,normalize])=>({name,rows:normalize(await timedJson(url,11000,10))})));
+  const markets=new Map(),sources={BinanceExchangeInfo:{ok:true,status:200},CoinMarketCap:{ok:true,status:200,page2:primary[2].status==="fulfilled"}};
+  tickerResults.forEach((result,i)=>{
+   const name=jobs[i][0];
+   if(result.status!=="fulfilled"){sources[name]={ok:false,error:String(result.reason?.message||result.reason).slice(0,140)};return;}
+   sources[name]={ok:true,status:200};
+   result.value.rows.forEach(row=>{
+    if(!eligible.includes(row.symbol)||!(row.price>0)||!(row.volume>=0))return;
+    let item=markets.get(row.symbol);if(!item){item={venues:new Set(["Binance"]),quotes:[]};markets.set(row.symbol,item);}
+    item.venues.add(name);item.quotes.push({...row,exchange:name});
+   });
+  });
+  const assets=eligible.map(symbol=>{
+   const meta=cmcBySymbol.get(symbol),market=markets.get(symbol)||{venues:new Set(["Binance"]),quotes:[]};
+   const quotes=market.quotes.slice().sort((a,b)=>b.volume-a.volume),best=quotes.find(x=>x.price>0)||{};
+   const cmcQuote=Array.isArray(meta.quote)?(meta.quote.find(q=>String(q.symbol||"").toUpperCase()==="USD")||{}):(meta.quote?.USD||meta.quote||{});
+   const venueVolume={};
+   for(const quote of quotes)venueVolume[quote.exchange]=Math.max(venueVolume[quote.exchange]||0,Number(quote.volume)||0);
+   return {
+    id:"cmc:"+String(meta.id),cmcId:Number(meta.id),symbol,name:meta.name||symbol,
+    image:"https://s2.coinmarketcap.com/static/img/coins/"+String(meta.id)+"/64x64.png",
+    current_price:best.price||Number(cmcQuote.price)||0,total_volume:quotes.reduce((sum,x)=>sum+(Number(x.volume)||0),0),
+    market_cap:Number(cmcQuote.market_cap)||null,market_cap_rank:Number(meta.cmc_rank)||null,
+    hunterExchange:[...market.venues].join(", "),hunterPriceExchange:best.exchange||"CoinMarketCap",
+    hunterChange24h:Number.isFinite(best.change24h)?best.change24h:Number(cmcQuote.percent_change_24h)||0,
+    hunterVenueVolume:venueVolume,cmcDuplicateCount:cmcDuplicateCount.get(symbol)||1
+   };
+  }).filter(x=>x.current_price>0).sort((a,b)=>Math.abs(Number(b.hunterChange24h)||0)-Math.abs(Number(a.hunterChange24h)||0)||b.total_volume-a.total_volume||Number(a.market_cap_rank||999999)-Number(b.market_cap_rank||999999));
+  if(!assets.length)return json({error:"داده زنده برای نمادهای مشترک دریافت نشد."},502,request);
+  return json({checked_at:new Date().toISOString(),count:assets.length,binance_spot_symbols:binanceSymbols.size,cmc_listings:cmcRows.length,assets,sources},200,request,{"X-MMP-Data-Source":"Binance Spot + CoinMarketCap"});
+ }
  if(request.method==="GET"&&new URL(request.url).pathname==="/support-check"){
   const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"support-check");
   const limited=rateLimitReply(limitResult,request);if(limited)return limited;
