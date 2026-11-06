@@ -1382,11 +1382,11 @@ async function enrichWithBinance(coins){
    if(ticker&&Number.isFinite(price)&&price>0){
     return {...c,current_price:price,price_change_percentage_24h:Number.isFinite(change)?change:c.price_change_percentage_24h,price_source:priceSource,price_updated_at:new Date(Number(ticker.closeTime)||Date.now()).toISOString()};
    }
-   return {...c,price_source:'CoinGecko',price_updated_at:c.last_updated||null};
+   return {...c,price_source:c.price_source||'CoinGecko',price_updated_at:c.last_updated||null};
   });
  }catch(e){
   console.warn('Binance and Bitget live quotes unavailable; using CoinGecko fallback:',e);
-  return coins.map(c=>({...c,price_source:'CoinGecko'}));
+  return coins.map(c=>({...c,price_source:c.price_source||'CoinGecko'}));
  }
 }
 
@@ -1423,6 +1423,25 @@ async function fetchTetherRate(){
   return {price:(a.price+b.price)/2,sources:valid.map(x=>x.source),warning:""};
  }
 
+function normalizeCoinCapAssets(payload){
+ const rows=Array.isArray(payload?.data)?payload.data:[];
+ const stamp=Number(payload?.timestamp)||Date.now();
+ const updated=new Date(stamp).toISOString();
+ return rows.map(item=>({
+  id:String(item?.id||""),
+  symbol:String(item?.symbol||""),
+  name:String(item?.name||item?.symbol||""),
+  image:"https://assets.coincap.io/assets/icons/"+String(item?.symbol||"").toLowerCase()+"@2x.png",
+  current_price:Number(item?.priceUsd),
+  market_cap:Number(item?.marketCapUsd),
+  market_cap_rank:Number(item?.rank),
+  total_volume:Number(item?.volumeUsd24Hr),
+  price_change_percentage_24h:Number(item?.changePercent24Hr),
+  last_updated:updated,
+  price_source:"CoinCap"
+ })).filter(item=>item.id&&item.symbol&&Number.isFinite(item.current_price)&&item.current_price>0);
+}
+
 let refreshInFlight=false;
 async function refreshAll(){
  if(refreshInFlight)return;
@@ -1453,12 +1472,15 @@ async function refreshAll(){
     fetch(AI_ANALYSIS_ENDPOINT+'/market-proxy?source=coingecko-extra&ids='+encodeURIComponent(EXTRA_COIN_IDS.join(',')),{cache:'no-store',signal:marketController.signal})
    ]);
   }finally{clearTimeout(marketTimer);}
-  let topData;
+  let topData,marketMetadataSource="CoinGecko";
   if(topRes.ok) topData=await topRes.json();
   else {
-    const directTop=await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=false&price_change_percentage=1h%2C24h%2C7d',{cache:'no-store'});
-    if(!directTop.ok) throw new Error('CoinGecko top-100 HTTP '+directTop.status);
-    topData=await directTop.json();
+    // CoinGecko may rate-limit the shared Worker IP. Switch to a genuinely separate provider.
+    const fallback=await fetch(AI_ANALYSIS_ENDPOINT+"/market-proxy?source=coincap-top&offset=0",{cache:"no-store"});
+    if(!fallback.ok)throw new Error("CoinGecko محدود شده و CoinCap نیز پاسخ نداد · HTTP "+fallback.status);
+    topData=normalizeCoinCapAssets(await fallback.json());
+    marketMetadataSource="CoinCap";
+    if(!topData.length)throw new Error("CoinCap فهرست معتبر دارایی‌ها را برنگرداند");
   }
   let extraData = [];
   if(extraRes.ok) {
@@ -1509,9 +1531,13 @@ async function refreshAll(){
   };
   let verifiedCoins=await verifyCoinBatch(candidateCoins);
   if(verifiedCoins.length<100){
-   const pageTwoResponse=await fetch(AI_ANALYSIS_ENDPOINT+"/market-proxy?source=coingecko-top&page=2",{cache:"no-store"});
+   const pageTwoUrl=marketMetadataSource==="CoinCap"
+    ?AI_ANALYSIS_ENDPOINT+"/market-proxy?source=coincap-top&offset=250"
+    :AI_ANALYSIS_ENDPOINT+"/market-proxy?source=coingecko-top&page=2";
+   const pageTwoResponse=await fetch(pageTwoUrl,{cache:"no-store"});
    if(pageTwoResponse.ok){
-    const pageTwo=await pageTwoResponse.json();
+    const pageTwoPayload=await pageTwoResponse.json();
+    const pageTwo=marketMetadataSource==="CoinCap"?normalizeCoinCapAssets(pageTwoPayload):pageTwoPayload;
     if(Array.isArray(pageTwo)){
      const knownIds=new Set(candidateCoins.map(c=>c.id));
      const knownSymbols=new Set(candidateCoins.map(c=>String(c.symbol||"").toUpperCase()));
@@ -1527,7 +1553,7 @@ async function refreshAll(){
   exchangeSupportBySymbol=supportBySymbol;
   data.forEach(coin=>{coin.exchange_support=supportBySymbol[String(coin.symbol||"").toUpperCase()]||null;});
   exchangeAuditAt=Date.now();
-   coinGeckoConnectionStatus="ok";renderCoinGeckoConnection();
+   coinGeckoConnectionStatus=marketMetadataSource==="CoinGecko"?"ok":"down";renderCoinGeckoConnection();
   data = await enrichWithBinance(data);
   cachedCoinsData = data;
   
@@ -1580,7 +1606,7 @@ function renderCoinsTables(data) {
   const priceText=Number.isFinite(price)&&price>0?money(price,price<1?6:2)+" USDT":"داده در دسترس نیست";
   const tomanText=currentTetherPrice>0&&Number.isFinite(price)&&price>0?toman(price*currentTetherPrice)+" تومان":"نرخ تبدیل در دسترس نیست";
   const source=aiEscape(c.price_source||"CoinGecko");
-  const sourceLabel=source==="CoinGecko"?"مرجع دلاری CoinGecko":"قیمت بازار اسپات";
+  const sourceLabel=source==="CoinGecko"?"مرجع دلاری CoinGecko":source==="CoinCap"?"مرجع دلاری CoinCap":"قیمت بازار اسپات";
   const updatedAt=c.price_updated_at||c.last_updated;
   const updatedText=updatedAt&&!Number.isNaN(Date.parse(updatedAt))?new Date(updatedAt).toLocaleTimeString("fa-IR"):"زمان بروزرسانی نامشخص";
   const spot=c.exchange_support?.spot;
