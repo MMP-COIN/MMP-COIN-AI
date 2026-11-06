@@ -600,32 +600,25 @@ async function handle(request,env){
    const good=results.filter(x=>x.status!=="down").sort((a,b)=>a.ping-b.ping);
    return good[0]||results[results.length-1]||{status:"down",ping:null,error:"no Wallex endpoint responded"};
   };
-  const [binance,bybit,okx,nobitex,wallex,bitget]=await Promise.all([
+  const [binance,bybit,okx,nobitex,wallex,bitget,gate,kucoin]=await Promise.all([
    probeAny(["https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://api.binance.us/api/v3/ticker/price?symbol=BTCUSDT","https://api1.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://api2.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://api3.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://data-api.binance.vision/api/v3/ticker/price?symbol=BTCUSDT"],d=>Number(d?.price)>0),
-   probeAny([
-    "https://api.bybit.eu/v5/market/tickers?category=spot&symbol=BTCUSDT",
-    "https://api.bytick.eu/v5/market/tickers?category=spot&symbol=BTCUSDT",
-    "https://api.bybit.com/v5/market/tickers?category=spot&symbol=BTCUSDT",
-    "https://api.bytick.com/v5/market/tickers?category=spot&symbol=BTCUSDT"
-   ],d=>d?.retCode===0&&Number(d?.result?.list?.[0]?.lastPrice)>0),
+   probeAny(["https://api.bybit.eu/v5/market/tickers?category=spot&symbol=BTCUSDT","https://api.bytick.eu/v5/market/tickers?category=spot&symbol=BTCUSDT","https://api.bybit.com/v5/market/tickers?category=spot&symbol=BTCUSDT","https://api.bytick.com/v5/market/tickers?category=spot&symbol=BTCUSDT"],d=>d?.retCode===0&&Number(d?.result?.list?.[0]?.lastPrice)>0),
    probeAny(["https://www.okx.com/api/v5/market/ticker?instId=BTC-USDT","https://us.okx.com/api/v5/market/ticker?instId=BTC-USDT","https://openapi.okx.com/api/v5/market/ticker?instId=BTC-USDT"],d=>d?.code==="0"&&Number(d?.data?.[0]?.last)>0),
    timeoutFetch("https://apiv2.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls",d=>d?.status==="ok"&&Number(d?.stats?.["usdt-rls"]?.latest)>0,5500),
-   probeAny(["https://api.wallex.ir/v1/markets","https://api.wallex.ir/hector/web/v1/markets","https://api.wallex.ir/v1/otc/markets"],d=>{
-    if(d?.success!==true)return false;
-    const raw=d?.result?.symbols??d?.result?.markets;
-    if(Array.isArray(raw))return raw.length>0;
-    if(raw&&typeof raw==="object")return Object.keys(raw).length>0;
-    return false;
-   },12000,{"Origin":"https://wallex.ir","Referer":"https://wallex.ir/"}),
+   probeAny(["https://api.wallex.ir/v1/markets","https://api.wallex.ir/hector/web/v1/markets","https://api.wallex.ir/v1/otc/markets"],d=>{if(d?.success!==true)return false;const raw=d?.result?.symbols??d?.result?.markets;if(Array.isArray(raw))return raw.length>0;if(raw&&typeof raw==="object")return Object.keys(raw).length>0;return false;},12000,{"Origin":"https://wallex.ir","Referer":"https://wallex.ir/"}),
    timeoutFetch("https://api.bitget.com/api/v3/market/tickers?category=SPOT&symbol=BTCUSDT",d=>d?.code==="00000"&&Number(d?.data?.[0]?.lastPrice)>0,7000),
+   timeoutFetch("https://api.gateio.ws/api/v4/spot/tickers?currency_pair=BTC_USDT",d=>Array.isArray(d)&&Number(d?.[0]?.last)>0,7000),
+   timeoutFetch("https://api.kucoin.com/api/v1/market/orderbook/level1?symbol=BTC-USDT",d=>d?.code==="200000"&&Number(d?.data?.price)>0,7000)
   ]);
   const checks=[
-   {name:"Binance Spot",purpose:"قیمت و معاملات اسپات",...binance},
-   {name:"Bybit Spot",purpose:"قیمت و معاملات اسپات",...bybit},
-   {name:"OKX Spot",purpose:"قیمت و معاملات اسپات",...okx},
+   {name:"Binance Spot",purpose:"قیمت، حجم و کندل اسپات",...binance},
+   {name:"Bybit Spot",purpose:"قیمت، حجم و کندل اسپات",...bybit},
+   {name:"OKX Spot",purpose:"قیمت، حجم و کندل اسپات",...okx},
+   {name:"Bitget Spot",purpose:"قیمت، حجم و کندل اسپات",...bitget},
+   {name:"Gate.io Spot",purpose:"قیمت، حجم و کندل اسپات",...gate},
+   {name:"KuCoin Spot",purpose:"قیمت، حجم و کندل اسپات",...kucoin},
    {name:"Nobitex",purpose:"نرخ تتر به تومان",...nobitex},
-   {name:"Wallex",purpose:"نرخ تتر به تومان",...wallex},
-   {name:"Bitget Spot",purpose:"قیمت و معاملات اسپات",...bitget},
+   {name:"Wallex",purpose:"نرخ تتر به تومان",...wallex}
   ];
   return json({checked_at:new Date().toISOString(),checks},200,request);
  }
