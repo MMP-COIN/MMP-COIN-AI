@@ -2967,14 +2967,19 @@ setInterval(()=>mmpSendEvent("heartbeat"),240000);
  const showCoinsButton=$("boom-show-coins");
  if(showCoinsButton)showCoinsButton.addEventListener("click",()=>{const menu=$("boom-coin-menu");if(!menu)return;const opening=menu.hidden||menu.dataset.open!=="1";if(opening){renderBoomCoins(document,true);menu.hidden=false;menu.dataset.open="1";showCoinsButton.textContent="بستن فهرست ارزها";}else{menu.hidden=true;menu.dataset.open="0";showCoinsButton.textContent="نمایش فهرست ارزها";}});
  const addCustomButton=$("boom-add-coin");
- if(addCustomButton)addCustomButton.addEventListener("click",()=>{
+ if(addCustomButton)addCustomButton.addEventListener("click",async()=>{
   const symbol=hunterSafeSymbol($("boom-symbol")?.value);
   if(!symbol){$("boom-status").textContent="ابتدا نماد معتبر را وارد کن.";return;}
-  addBoomCoin({symbol,name:symbol});
+  addCustomButton.disabled=true;addCustomButton.textContent="در حال بررسی بازار…";
+  try{const markets=await getHunterExchangeMarkets(),pair=symbol+"USDT",supported=[...markets.entries()].filter(([,pairs])=>pairs?.has(pair)).map(([exchange])=>exchange);
+   if(markets.size&&!supported.length){$("boom-status").textContent=symbol+"USDT در بازار اسپات صرافی‌های بررسی‌شده پیدا نشد؛ نماد اضافه نشد.";return;}
+   addBoomCoin({symbol,name:symbol});
   let saved=[];try{saved=JSON.parse(localStorage.getItem("mmp_boom_custom_coins")||"[]");}catch(e){}
   const next=[...new Map([...saved,{symbol,name:symbol}].map(c=>[String(c.symbol).toUpperCase(),c])).values()];
   try{localStorage.setItem("mmp_boom_custom_coins",JSON.stringify(next));}catch(e){}
-  renderBoomCoins();$("boom-status").textContent=symbol+" به فهرست شخصی این دستگاه اضافه شد؛ اعتبار جفت USDT هنگام دریافت کندل بررسی می‌شود.";
+  renderBoomCoins();$("boom-symbol").value=symbol;renderBoomCoins();$("boom-status").textContent=symbol+" به فهرست اضافه شد؛ دریافت کندل واقعی آغاز شد.";$("boom-run")?.click();
+  }catch(error){$("boom-status").textContent="افزودن ارز انجام نشد: "+(error?.message||"خطای دریافت بازار");}
+  finally{addCustomButton.disabled=false;addCustomButton.textContent="＋ افزودن ارز دلخواه";}
  });
  loadBoomCoins().then(()=>{setTimeout(()=>{if(!$("boom-candles")?.querySelector("svg"))run();},1200);});setTimeout(renderBoomCoins,12000);setInterval(renderBoomCoins,60000);
  const modal=$("boom-chart-modal"),content=$("boom-chart-modal-content");
