@@ -1060,7 +1060,7 @@ body{background:
  <div class="section-head"><div><div class="section-kicker">MMP · MOMENTUM OSCILLATOR LAB</div><h2>آزمایشگاه Boom Hunter</h2><p class="sub">نسخه آزمایشی مستقل MMP برای بررسی مومنتوم، چرخش احتمالی و فشار حرکت قیمت</p></div><span class="badge">آزمایشی · مستقل</span></div>
  <div class="boom-toolbar">
   <label>نماد ارز <input id="boom-symbol" type="text" value="BTC" maxlength="20" autocomplete="off" spellcheck="false" aria-label="نماد ارز"></label>
-  <label>تایم‌فریم <select id="boom-interval" aria-label="تایم فریم"><option value="5m">۵ دقیقه</option><option value="15m">۱۵ دقیقه</option><option value="1h">۱ ساعت</option><option value="4h">۴ ساعت</option></select></label>
+  <label>تایم‌فریم <select id="boom-interval" aria-label="تایم فریم"><option value="1m">۱ دقیقه</option><option value="5m" selected>۵ دقیقه</option><option value="15m">۱۵ دقیقه</option><option value="1h">۱ ساعت</option></select></label>
   <button class="btn primary" id="boom-run" type="button">تحلیل اندیکاتور</button>
  </div>
  <div id="boom-status" class="boom-status">برای دریافت کندل‌های واقعی Binance، نماد را انتخاب و تحلیل را اجرا کن.</div>
@@ -1070,7 +1070,14 @@ body{background:
   <div><small>آخرین قیمت</small><b id="boom-price">—</b></div>
   <div><small>آخرین سیگنال</small><b id="boom-last">—</b></div>
  </div>
- <div class="boom-chart-wrap"><div class="boom-chart-title">نمودار کندلی و نقاط چرخش</div><div id="boom-candles" class="boom-chart"><div class="ai-empty">هنوز داده‌ای دریافت نشده است.</div></div></div>
+ <div class="boom-chart-wrap"><div class="boom-chart-title">نمودار کندلی حرفه‌ای · حجم معاملات و نقاط چرخش</div><div id="boom-candles" class="boom-chart"><div class="ai-empty">هنوز داده‌ای دریافت نشده است.</div></div></div>
+ <div class="boom-chart-wrap"><div class="boom-chart-title">جریان خرید و فروش تهاجمی · بر حسب USDT</div><div id="boom-flow-chart" class="boom-chart boom-flow-chart"><div class="ai-empty">پس از دریافت داده نمایش داده می‌شود.</div></div></div>
+ <div class="boom-flow-metrics" id="boom-flow-metrics">
+  <div><small>خرید تهاجمی · ۵ کندل اخیر</small><b id="boom-buy-flow">—</b></div>
+  <div><small>فروش تهاجمی · ۵ کندل اخیر</small><b id="boom-sell-flow">—</b></div>
+  <div><small>خالص جریان خرید / فروش</small><b id="boom-net-flow">—</b></div>
+  <div><small>حجم آخرین کندل</small><b id="boom-volume-ratio">—</b></div>
+ </div>
  <div class="boom-chart-wrap"><div class="boom-chart-title">نوسانگر مومنتوم MMP</div><div id="boom-oscillator" class="boom-chart boom-osc-chart"><div class="ai-empty">پس از دریافت داده نمایش داده می‌شود.</div></div></div>
  <p class="boom-disclaimer">این ابزار کپی کد اختصاصی Boom Hunter Pro نیست؛ یک نمونه مستقل و آزمایشی با منطق نوسانگر مومنتوم MMP است. سیگنال‌ها تأییدشده یا سودآور فرض نمی‌شوند و تا پایان بک‌تست نباید مبنای معامله قرار گیرند.</p>
 </section>
@@ -1873,11 +1880,16 @@ function renderAiReport(r,c,market={}){
  const referencePrice=aiNum(r.market?.price_usd??c?.current_price);
  $("ai-live-price").innerHTML=referencePrice==null?"—":'<span class="ai-reference-usdt">$ '+money(referencePrice,referencePrice<1?6:2)+' USDT</span>'+(currentTetherPrice>0?'<span class="ai-reference-irt">'+toman(referencePrice*currentTetherPrice)+' تومان</span>':"");
  const tfNames={"15m":"۱۵ دقیقه","1h":"۱ ساعت","4h":"۴ ساعت","1d":"روزانه"};
- $("ai-timeframes").innerHTML=Object.entries(market.timeframes||{}).map(([tf,v])=>{
+ const timeframeData=market.timeframes&&typeof market.timeframes==="object"?market.timeframes:{};
+ const timeframeOrder=["15m","1h","4h","1d"];
+ $("ai-timeframes").innerHTML=timeframeOrder.map(tf=>{
+  const v=timeframeData[tf];
+  if(!v||typeof v!=="object")return '<div class="tf-card tf-card-unavailable"><strong>'+tfNames[tf]+'</strong><div class="tf-trend" style="color:var(--muted)">داده دریافت نشد</div><small>این بازه در پاسخ سرویس تحلیل موجود نبود.</small></div>';
   const trend=v.ema_trend==="bullish"?"صعودی":v.ema_trend==="bearish"?"نزولی":"خنثی / متناقض";
   const color=v.ema_trend==="bullish"?"var(--green)":v.ema_trend==="bearish"?"var(--red)":"var(--yellow)";
-  return '<div class="tf-card"><strong>'+tfNames[tf]+'</strong><div class="tf-trend" style="color:'+color+'">'+trend+'</div><small>RSI: '+aiEscape(v.rsi==null?"—":Number(v.rsi).toFixed(1))+'<br>حمایت: '+aiEscape(aiPrice(v.support))+'<br>مقاومت: '+aiEscape(aiPrice(v.resistance))+'</small></div>';
- }).join("")||'<div class="ai-empty" style="grid-column:1/-1">اطلاعات تایم‌فریم‌ها در پاسخ موجود نیست.</div>';
+  const rsi=aiNum(v.rsi);
+  return '<div class="tf-card"><strong>'+tfNames[tf]+'</strong><div class="tf-trend" style="color:'+color+'">'+trend+'</div><small>RSI: '+aiEscape(rsi==null?"—":rsi.toFixed(1))+'<br>حمایت: '+aiEscape(aiPrice(v.support))+'<br>مقاومت: '+aiEscape(aiPrice(v.resistance))+'</small></div>';
+ }).join("");
  const lv=r.levels||{};
  const fmt=(v)=>{if(v==null)return "—";if(typeof v==="object")return (v.low!=null?aiPrice(v.low):"—")+" تا "+(v.high!=null?aiPrice(v.high):"—");return aiPrice(v);};
  const active=r.plan_status==="active_signal";
@@ -2768,13 +2780,40 @@ setInterval(()=>mmpSendEvent("heartbeat"),240000);
 (function(){
  const $=id=>document.getElementById(id);
  const fmt=n=>Number(n).toLocaleString("en-US",{maximumFractionDigits:n<1?6:2});
+ const money=n=>Number(n||0).toLocaleString("en-US",{maximumFractionDigits:2});
  const ema=(values,period)=>{const k=2/(period+1),out=[];let prev=values[0];values.forEach((v,i)=>{prev=i===0?v:v*k+prev*(1-k);out.push(prev)});return out;};
  function drawCandles(rows,signals){
-  const W=900,H=300,L=12,R=12,T=12,B=20,lo=Math.min(...rows.map(x=>x[3])),hi=Math.max(...rows.map(x=>x[2])),pad=(hi-lo)*.08||1,min=lo-pad,max=hi+pad,y=v=>T+(max-v)/(max-min)*(H-T-B),slot=(W-L-R)/rows.length,cw=Math.max(3,Math.min(10,slot*.58));
-  let out='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="نمودار کندلی Boom Hunter MMP">';
-  for(let g=0;g<4;g++){const yy=T+(H-T-B)*g/3;out+='<line x1="'+L+'" y1="'+yy+'" x2="'+(W-R)+'" y2="'+yy+'" stroke="#8795a5" opacity=".15"/>';}
-  rows.forEach((r,i)=>{const x=L+i*slot+slot/2,up=r[4]>=r[1],c=up?"#28d6a0":"#ff6576";out+='<line x1="'+x+'" y1="'+y(r[2])+'" x2="'+x+'" y2="'+y(r[3])+'" stroke="'+c+'" stroke-width="1.4"/><rect x="'+(x-cw/2)+'" y="'+Math.min(y(r[1]),y(r[4]))+'" width="'+cw+'" height="'+Math.max(1,Math.abs(y(r[1])-y(r[4])))+'" rx="1" fill="'+c+'"/>';if(signals[i])out+='<circle cx="'+x+'" cy="'+(signals[i]==="BUY"?y(r[3])+9:y(r[2])-9)+'" r="4" fill="'+(signals[i]==="BUY"?"#f3d17d":"#ff8795")+'" stroke="#101722" stroke-width="1.5"/>';});
-  return out+'</svg>';
+  const W=960,H=370,L=18,R=18,T=18,priceBottom=258,volTop=294,volBottom=344;
+  if(!rows.length)return '<div class="ai-empty">داده کندلی موجود نیست.</div>';
+  const lo=Math.min(...rows.map(x=>x[3])),hi=Math.max(...rows.map(x=>x[2])),pad=(hi-lo)*.08||Math.max(1,hi*.002),min=lo-pad,max=hi+pad;
+  const y=v=>T+(max-v)/(max-min)*(priceBottom-T),slot=(W-L-R)/rows.length,cw=Math.max(3,Math.min(10,slot*.62));
+  const maxVol=Math.max(1,...rows.map(x=>Number(x[6])||0));
+  let out='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="نمودار کندلی با حجم معاملات MMP" preserveAspectRatio="xMidYMid meet">';
+  for(let g=0;g<5;g++){const yy=T+(priceBottom-T)*g/4;out+='<line x1="'+L+'" y1="'+yy+'" x2="'+(W-R)+'" y2="'+yy+'" stroke="#8795a5" opacity=".16"/>';}
+  out+='<text x="'+L+'" y="'+(volTop-9)+'" fill="#9aa7b5" font-size="11">حجم معاملات USDT</text>';
+  rows.forEach((r,i)=>{
+   const x=L+i*slot+slot/2,up=r[4]>=r[1],c=up?"#28d6a0":"#ff6576",bodyY=Math.min(y(r[1]),y(r[4])),bodyH=Math.max(2,Math.abs(y(r[1])-y(r[4])));
+   const volume=Number(r[6])||0,ratio=Number(r[11])||0,vh=volume/maxVol*(volBottom-volTop-4),flow=Number(r[9])-Number(r[10]),vc=flow>=0?"#28d6a0":"#ff6576";
+   out+='<line x1="'+x+'" y1="'+y(r[2])+'" x2="'+x+'" y2="'+y(r[3])+'" stroke="'+c+'" stroke-width="1.6"/><rect x="'+(x-cw/2)+'" y="'+bodyY+'" width="'+cw+'" height="'+bodyH+'" rx="1.5" fill="'+c+'"/>';
+   out+='<rect x="'+(x-cw/2)+'" y="'+(volBottom-vh)+'" width="'+cw+'" height="'+Math.max(1,vh)+'" rx="1" fill="'+(ratio>=2?"#f0c96d":vc)+'" opacity="'+(ratio>=2?".98":".62")+'"><title>حجم '+money(volume)+' USDT · '+ratio.toFixed(1)+' برابر میانگین</title></rect>';
+   if(ratio>=2)out+='<circle cx="'+x+'" cy="'+(volTop-1)+'" r="3" fill="#f0c96d"/>';
+   if(signals[i])out+='<circle cx="'+x+'" cy="'+(signals[i]==="BUY"?y(r[3])+9:y(r[2])-9)+'" r="4.2" fill="'+(signals[i]==="BUY"?"#f3d17d":"#ff8795")+'" stroke="#101722" stroke-width="1.5"><title>'+signals[i]+'</title></circle>';
+  });
+  out+='<line x1="'+L+'" y1="'+(volTop-3)+'" x2="'+(W-R)+'" y2="'+(volTop-3)+'" stroke="#8795a5" opacity=".28"/><text x="'+(W-R)+'" y="'+(H-5)+'" text-anchor="end" fill="#9aa7b5" font-size="10">زرد: حجم غیرعادی · سبز/قرمز: خالص خرید/فروش</text></svg>';
+  return out;
+ }
+ function drawFlow(rows){
+  const data=rows.slice(-70),W=960,H=190,L=18,R=18,T=20,B=28;
+  if(!data.length)return '<div class="ai-empty">داده جریان سفارش موجود نیست.</div>';
+  const slot=(W-L-R)/data.length,max=Math.max(1,...data.flatMap(r=>[Number(r[9])||0,Number(r[10])||0])),base=H-B,scale=(H-T-B)/max,cw=Math.max(2,Math.min(8,slot*.34));
+  let out='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="حجم خرید و فروش تهاجمی بر حسب تتر" preserveAspectRatio="xMidYMid meet"><line x1="'+L+'" y1="'+base+'" x2="'+(W-R)+'" y2="'+base+'" stroke="#8795a5" opacity=".35"/>';
+  out+='<text x="'+L+'" y="12" fill="#35dfa9" font-size="11">خرید تهاجمی</text><text x="'+(W-R)+'" y="12" text-anchor="end" fill="#ff788b" font-size="11">فروش تهاجمی</text>';
+  data.forEach((r,i)=>{
+   const x=L+i*slot+slot/2,buy=Number(r[9])||0,sell=Number(r[10])||0,bh=buy*scale,sh=sell*scale;
+   out+='<rect x="'+(x-cw-1)+'" y="'+(base-bh)+'" width="'+cw+'" height="'+Math.max(1,bh)+'" rx="1.5" fill="#28d6a0" opacity=".9"><title>خرید تهاجمی '+money(buy)+' USDT</title></rect><rect x="'+(x+1)+'" y="'+(base-sh)+'" width="'+cw+'" height="'+Math.max(1,sh)+'" rx="1.5" fill="#ff6576" opacity=".9"><title>فروش تهاجمی '+money(sell)+' USDT</title></rect>';
+  });
+  out+='<text x="'+L+'" y="'+(H-5)+'" fill="#9aa7b5" font-size="10">هر جفت ستون: خرید سبز / فروش قرمز · آخرین '+data.length+' کندل</text></svg>';
+  return out;
  }
  function drawOsc(values,signals){
   const W=900,H=160,L=12,R=12,T=10,B=18,slot=(W-L-R)/values.length,yy=v=>T+(2-v)/4*(H-T-B),mid=yy(0);
@@ -2787,20 +2826,42 @@ setInterval(()=>mmpSendEvent("heartbeat"),240000);
  async function run(){
   const button=$("boom-run"),status=$("boom-status"),symbol=String($("boom-symbol").value||"BTC").trim().toUpperCase(),interval=$("boom-interval").value;
   if(!/^[A-Z0-9]{2,20}$/.test(symbol)){status.textContent="نماد ارز معتبر نیست.";status.className="boom-status error";return;}
-  button.disabled=true;status.className="boom-status busy";status.textContent="در حال دریافت کندل‌های واقعی Binance Spot…";
+  button.disabled=true;status.className="boom-status busy";status.textContent="در حال دریافت کندل‌های واقعی و جریان خرید/فروش…";
   try{
-   const pair=symbol+"USDT",raw=await hunterFetchJson("https://api.binance.com/api/v3/klines?symbol="+encodeURIComponent(pair)+"&interval="+encodeURIComponent(interval)+"&limit=160",12000);
-   if(!Array.isArray(raw)||raw.length<70)throw new Error("داده تاریخی کافی برای محاسبه نوسانگر دریافت نشد.");
-   const rows=raw.slice(0,-1).map(k=>[Number(k[0]),Number(k[1]),Number(k[2]),Number(k[3]),Number(k[4]),Number(k[5])]);
-   if(rows.some(r=>r.slice(1,6).some(v=>!Number.isFinite(v))))throw new Error("ساختار کندل‌های دریافتی معتبر نیست.");
+   const pair=symbol+"USDT";let raw=null,lastError=null,provider="Binance Spot";
+   for(const base of ["https://api.binance.com","https://data-api.binance.vision"]){
+    try{
+     const payload=await hunterFetchJson(base+"/api/v3/klines?symbol="+encodeURIComponent(pair)+"&interval="+encodeURIComponent(interval)+"&limit=180",12000);
+     if(!Array.isArray(payload)||payload.length<70)throw new Error("داده تاریخی کافی دریافت نشد");
+     raw=payload;provider=base.includes("vision")?"Binance Market Data":"Binance Spot";break;
+    }catch(error){lastError=error;}
+   }
+   if(!raw)throw lastError||new Error("منابع کندل در دسترس نیستند");
+   const rows=raw.slice(0,-1).map(k=>{
+    const close=Number(k[4]),baseVolume=Number(k[5])||0,quoteVolume=Number(k[7])||baseVolume*close,buyBase=Number(k[9])||0,buyQuote=Number(k[10])||buyBase*close,sellQuote=Math.max(0,quoteVolume-buyQuote);
+    return [Number(k[0]),Number(k[1]),Number(k[2]),Number(k[3]),close,baseVolume,quoteVolume,Number(k[8])||0,buyBase,buyQuote,sellQuote,0];
+   });
+   if(rows.length<60||rows.some(r=>r.slice(0,11).some(v=>!Number.isFinite(v))||r[1]<=0||r[2]<r[3]||r[3]<=0||r[4]<=0))throw new Error("ساختار کندل‌های دریافتی معتبر نیست.");
+   rows.forEach((r,i)=>{
+    const previous=rows.slice(Math.max(0,i-20),i).map(x=>x[6]).filter(v=>v>0),avg=previous.length?previous.reduce((a,b)=>a+b,0)/previous.length:0;
+    r[11]=avg>0?r[6]/avg:0;
+   });
    const closes=rows.map(r=>r[4]),base=ema(closes,34),deviation=closes.map((v,i)=>v-base[i]),osc=[];
    for(let i=0;i<rows.length;i++){const start=Math.max(0,i-19),sample=deviation.slice(start,i+1),mean=sample.reduce((a,b)=>a+b,0)/sample.length,variance=sample.reduce((a,b)=>a+(b-mean)*(b-mean),0)/sample.length,sd=Math.sqrt(variance)||1;const momentum=i>=3?(closes[i]/closes[i-3]-1)*100:0;osc.push(Math.max(-2,Math.min(2,(deviation[i]/sd)*.72+momentum*1.8)));}
-   const smooth=ema(osc,5),signals=rows.map((r,i)=>i>0&&smooth[i]>0.75&&smooth[i-1]<=0.75?"BUY":i>0&&smooth[i]<-0.75&&smooth[i-1]>=-0.75?"SELL":null);
+   const smooth=ema(osc,5),signals=rows.map((r,i)=>i>0&&smooth[i]>.75&&smooth[i-1]<=.75?"BUY":i>0&&smooth[i]<-.75&&smooth[i-1]>=-.75?"SELL":null);
    const last=smooth[smooth.length-1],lastSignal=signals.map((v,i)=>v?{v,i}:null).filter(Boolean).slice(-1)[0],direction=last>.35?"فشار صعودی":last<-.35?"فشار نزولی":"خنثی";
+   const closed=rows.slice(-5),sum=key=>closed.reduce((a,r)=>a+(Number(r[key])||0),0),buy=sum(9),sell=sum(10),net=buy-sell,latest=rows[rows.length-1],flowRatio=Number(latest[11])||0;
    $("boom-signal").textContent=direction;$("boom-signal").style.color=last>.35?"#35dfa9":last<-.35?"#ff8291":"#f1d596";
    $("boom-osc").textContent=last.toFixed(2);$("boom-price").textContent=fmt(closes[closes.length-1])+" USDT";$("boom-last").textContent=lastSignal?lastSignal.v+" · "+new Date(rows[lastSignal.i][0]).toLocaleString("fa-IR"):"سیگنال تازه‌ای نیست";
-   $("boom-candles").innerHTML=drawCandles(rows.slice(-90),signals.slice(-90));$("boom-oscillator").innerHTML=drawOsc(smooth.slice(-120),signals.slice(-120));
-   status.className="boom-status";status.textContent=pair+" · "+interval+" · "+rows.length+" کندل بسته‌شده · منبع: Binance Spot · "+new Date().toLocaleTimeString("fa-IR");
+   $("boom-buy-flow").textContent=money(buy)+" USDT";$("boom-buy-flow").className="positive";
+   $("boom-sell-flow").textContent=money(sell)+" USDT";$("boom-sell-flow").className="negative";
+   $("boom-net-flow").textContent=(net>=0?"+":"−")+money(Math.abs(net))+" USDT";$("boom-net-flow").className=net>=0?"positive":"negative";
+   $("boom-volume-ratio").textContent=money(latest[6])+" USDT · "+flowRatio.toFixed(1)+"×";
+   $("boom-candles").innerHTML=drawCandles(rows.slice(-90),signals.slice(-90));
+   $("boom-flow-chart").innerHTML=drawFlow(rows);
+   $("boom-oscillator").innerHTML=drawOsc(smooth.slice(-120),signals.slice(-120));
+   const unusual=flowRatio>=2?" · حجم غیرعادی در آخرین کندل":"";
+   status.className="boom-status";status.textContent=pair+" · "+interval+" · "+rows.length+" کندل بسته‌شده · منبع: "+provider+" · سبز/قرمز: خرید/فروش تهاجمی · بروزرسانی "+new Date().toLocaleTimeString("fa-IR")+unusual;
   }catch(error){status.className="boom-status error";status.textContent="دریافت/تحلیل ناموفق: "+(error&&error.message?error.message:"خطای نامشخص");}
   finally{button.disabled=false;}
  }
@@ -2901,7 +2962,13 @@ body.hunter-chart-open{overflow:hidden}
 .boom-chart-wrap{padding:12px;margin-top:12px;border:1px solid #303b4b;border-radius:13px;background:#0a111a}
 .boom-chart-title{font-size:12px;color:#e8d3a3;margin-bottom:8px;font-weight:700}
 .boom-chart{min-height:190px;overflow:hidden}.boom-chart svg{display:block;width:100%;height:auto}
+.boom-flow-chart{min-height:150px}
+.boom-flow-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:10px 0}
+.boom-flow-metrics>div{min-width:0;padding:10px;border:1px solid #303b4b;border-radius:10px;background:linear-gradient(145deg,#172330,#0b121b)}
+.boom-flow-metrics small{display:block;color:#9eacba;font-size:10px;line-height:1.7}
+.boom-flow-metrics b{display:block;margin-top:5px;color:#f1d596;font-size:12px;overflow-wrap:anywhere;direction:ltr;text-align:right}
+.boom-flow-metrics b.positive{color:#35dfa9}.boom-flow-metrics b.negative{color:#ff8795}
 .boom-osc-chart{min-height:130px}
 .boom-disclaimer{font-size:10px;color:#aab5c2;line-height:1.9;margin:12px 2px 0}
-@media(max-width:650px){.boom-toolbar{grid-template-columns:1fr 1fr}.boom-toolbar button{grid-column:1/-1}.boom-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.boom-chart{min-height:150px}}
+@media(max-width:650px){.boom-toolbar{grid-template-columns:1fr 1fr}.boom-toolbar button{grid-column:1/-1}.boom-metrics,.boom-flow-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.boom-chart{min-height:150px}}
 </style>
