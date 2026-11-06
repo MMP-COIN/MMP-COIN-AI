@@ -2869,17 +2869,17 @@ setInterval(()=>mmpSendEvent("heartbeat"),240000);
    const pair=symbol+"USDT";let rows=null,lastError=null,provider="";
    const intervalMap={"1m":"1","5m":"5","15m":"15","1h":"60"};
    const attempts=[
-    ["Binance Spot",async()=>{let e;for(const base of ["https://api.binance.com","https://data-api.binance.vision"]){try{return await hunterFetchJson(base+"/api/v3/klines?symbol="+encodeURIComponent(pair)+"&interval="+encodeURIComponent(interval)+"&limit=180",12000);}catch(x){e=x;}}throw e||new Error("Binance unavailable");}],
+    ["Binance Spot",async()=>{let e;for(const base of ["https://api.binance.com","https://data-api.binance.vision"]){try{const raw=await hunterFetchJson(base+"/api/v3/klines?symbol="+encodeURIComponent(pair)+"&interval="+encodeURIComponent(interval)+"&limit=180",12000);return raw.map(k=>[k[0],k[1],k[2],k[3],k[4],k[5],k[7],k[8],k[9],k[10]]);}catch(x){e=x;}}throw e||new Error("Binance unavailable");}],
     ["OKX Spot",async()=>{const x=await hunterFetchJson("https://www.okx.com/api/v5/market/history-candles?instId="+encodeURIComponent(symbol+"-USDT")+"&bar="+encodeURIComponent(interval==="1h"?"1H":interval)+"&limit=180",12000);if(x.code!=="0")throw new Error("OKX "+x.code);return (x.data||[]).reverse().map(k=>[k[0],k[1],k[2],k[3],k[4],k[5],k[7]||k[6],0,0,0]);}],
     ["Bybit Spot",async()=>{const x=await hunterFetchJson("https://api.bybit.com/v5/market/kline?category=spot&symbol="+encodeURIComponent(pair)+"&interval="+intervalMap[interval]+"&limit=180",12000);if(x.retCode!==0)throw new Error("Bybit "+x.retCode);return (x.result?.list||[]).reverse().map(k=>[k[0],k[1],k[2],k[3],k[4],k[5],k[6],0,0,0]);}]
    ];
    for(const [name,load] of attempts){try{
-    const payload=await load();if(!Array.isArray(payload)||payload.length<60)throw new Error("کندل تاریخی کافی نیست");
+    const payload=await load();if(!Array.isArray(payload)||payload.length<25)throw new Error("حداقل ۲۵ کندل تاریخی معتبر لازم است");
     rows=payload.map(k=>{const close=Number(k[4]),baseVolume=Number(k[5])||0,quoteVolume=Number(k[6])||baseVolume*close,buyBase=Number(k[8])||0,buyQuote=Number(k[9])||0;return [Number(k[0]),Number(k[1]),Number(k[2]),Number(k[3]),close,baseVolume,quoteVolume,Number(k[7])||0,buyBase,buyQuote,Math.max(0,quoteVolume-buyQuote),0];});
     provider=name;break;
    }catch(error){lastError=error;}}
    if(!rows)throw lastError||new Error("Binance، OKX و Bybit هیچ کندل معتبری ندادند");
-   if(rows.length<60||rows.some(r=>r.slice(0,11).some(v=>!Number.isFinite(v))||r[1]<=0||r[2]<r[3]||r[3]<=0||r[4]<=0))throw new Error("ساختار کندل‌های دریافتی معتبر نیست.");
+   if(rows.length<25||rows.some(r=>r.slice(0,11).some(v=>!Number.isFinite(v))||r[1]<=0||r[2]<r[3]||r[3]<=0||r[4]<=0))throw new Error("ساختار کندل‌های دریافتی معتبر نیست.");
    rows.forEach((r,i)=>{
     const previous=rows.slice(Math.max(0,i-20),i).map(x=>x[6]).filter(v=>v>0),avg=previous.length?previous.reduce((a,b)=>a+b,0)/previous.length:0;
     r[11]=avg>0?r[6]/avg:0;
