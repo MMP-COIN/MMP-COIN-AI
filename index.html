@@ -3062,7 +3062,7 @@ setInterval(()=>mmpSendEvent("heartbeat"),240000);
    addBoomCoin({symbol,name:symbol});
    let saved=[];try{saved=JSON.parse(localStorage.getItem("mmp_boom_custom_coins")||"[]");}catch(e){}
    const next=[...new Map([...saved,{symbol,name:symbol}].map(c=>[String(c.symbol).toUpperCase(),c])).values()];
-   try{localStorage.setItem("mmp_boom_custom_coins",JSON.stringify(next));}catch(e){}
+   try{localStorage.setItem("mmp_boom_custom_coins",JSON.stringify(next));const shared=JSON.parse(localStorage.getItem("mmp_manual_coin_symbols_v1")||"[]");if(!shared.includes(symbol))shared.push(symbol);localStorage.setItem("mmp_manual_coin_symbols_v1",JSON.stringify(shared.slice(-250)));}catch(e){}
    renderBoomCoins();$("boom-symbol").value=symbol;renderBoomCoins();
    customResult.textContent="✓ "+pair+" معتبر است"+(supported.length?" · "+supported.join("، "):"")+"؛ دریافت کندل آغاز شد.";
    $("boom-status").textContent="ارز "+symbol+" اضافه شد؛ نمودار در حال دریافت کندل واقعی است.";
