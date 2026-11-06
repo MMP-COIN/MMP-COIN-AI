@@ -2251,6 +2251,31 @@ function hunterMiniCandles(rows,trend){
  const last=data[data.length-1],x=W-8,yy=y(Number(last[4])),arrow=trend==="bull"?"M132 18 L143 7 M136 7 H143 V14":"M132 36 L143 47 M136 47 H143 V40";
  svg+='<path d="'+arrow+'" fill="none" stroke="'+(trend==="bull"?"#6affc8":"#ff8395")+'" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="'+x+'" cy="'+yy+'" r="3" fill="'+(trend==="bull"?"#6affc8":"#ff8395")+'"/><circle cx="'+x+'" cy="'+yy+'" r="6" fill="none" stroke="'+(trend==="bull"?"#6affc8":"#ff8395")+'" opacity=".45"/>';return svg+'</svg>';
 }
+function hunterExpandedCandles(rows,trend){
+ const data=(rows||[]).filter(c=>Array.isArray(c)&&c.length>=5&&[1,2,3,4].every(i=>Number.isFinite(Number(c[i])))).slice(-30);
+ if(data.length<2)return '<div class="hunter-chart-no-data">داده کندلی کافی برای نمایش نمودار وجود ندارد.</div>';
+ const W=760,H=300,L=54,R=18,T=20,B=34,hi=Math.max(...data.map(c=>Number(c[2]))),lo=Math.min(...data.map(c=>Number(c[3]))),span=Math.max(hi-lo,Math.abs(hi)*.00001,1e-12),y=v=>T+(hi-Number(v))/span*(H-T-B),slot=(W-L-R)/data.length,cw=Math.max(5,Math.min(15,slot*.58));
+ let svg='<svg class="hunter-expanded-svg" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="نمودار بزرگ کندل‌های پنج دقیقه‌ای" preserveAspectRatio="xMidYMid meet">';
+ for(let g=0;g<5;g++){const yy=T+g*(H-T-B)/4,val=hi-g*span/4;svg+='<line x1="'+L+'" y1="'+yy+'" x2="'+(W-R)+'" y2="'+yy+'" stroke="#8290a0" stroke-opacity=".18" stroke-dasharray="4 5"/><text x="'+(L-9)+'" y="'+(yy+4)+'" text-anchor="end" fill="#aab5c2" font-size="11">'+hunterPrice(val)+'</text>';}
+ data.forEach((c,i)=>{const x=L+i*slot+slot/2,o=Number(c[1]),cl=Number(c[4]),up=cl>=o,col=up?"#35e5ad":"#ff647d",top=Math.min(y(o),y(cl)),body=Math.max(2,Math.abs(y(o)-y(cl)));svg+='<line x1="'+x+'" y1="'+y(c[2])+'" x2="'+x+'" y2="'+y(c[3])+'" stroke="'+col+'" stroke-width="2" stroke-linecap="round"/><rect x="'+(x-cw/2)+'" y="'+top+'" width="'+cw+'" height="'+body+'" rx="2" fill="'+col+'"/>'+(i%Math.max(1,Math.ceil(data.length/6))===0?'<text x="'+x+'" y="'+(H-9)+'" text-anchor="middle" fill="#9aa7b5" font-size="10">'+new Date(Number(c[0])).toLocaleTimeString("fa-IR",{hour:"2-digit",minute:"2-digit"})+'</text>':'');});
+ const first=Number(data[0][4]),last=Number(data[data.length-1][4]),change=first?(last/first-1)*100:0,color=trend==="bull"?"#35e5ad":"#ff647d",lastY=y(last);
+ svg+='<line x1="'+L+'" y1="'+lastY+'" x2="'+(W-R)+'" y2="'+lastY+'" stroke="'+color+'" stroke-width="1.5" stroke-dasharray="5 4" opacity=".8"/><circle cx="'+(W-R)+'" cy="'+lastY+'" r="4" fill="'+color+'"/></svg>';
+ return svg;
+}
+function openHunterChart(id){
+ const signal=fastRadarSignals.get(id),coin=hunterCoinIndex.get(id)||cachedCoinsData.find(c=>c.id===id);
+ if(!signal||!coin)return;
+ const rows=(signal.rows||[]).slice(-30),symbol=String(coin.symbol||"").toUpperCase(),up=signal.trend==="bull",trend=up?"روند صعودی":"روند نزولی",change=rows.length>1&&Number(rows[0][1])?(Number(rows[rows.length-1][4])/Number(rows[0][1])-1)*100:signal.change15m;
+ const modal=document.getElementById("hunter-chart-modal");
+ if(!modal)return;
+ modal.innerHTML='<div class="hunter-chart-backdrop" data-hunter-chart-close="1"></div><section class="hunter-chart-dialog '+(up?"up":"down")+'" role="dialog" aria-modal="true" aria-labelledby="hunter-chart-title"><header class="hunter-chart-header"><div><small>نمودار زنده شکار · تایم‌فریم ۵ دقیقه</small><h3 id="hunter-chart-title">'+aiEscape(coin.name)+' ('+aiEscape(symbol)+'/USDT)</h3></div><button type="button" class="hunter-chart-close" data-hunter-chart-close="1" aria-label="بستن نمودار">×</button></header><div class="hunter-chart-trend"><b>'+trend+'</b><span>قدرت حرکت '+Number(signal.score||0).toLocaleString("fa-IR")+' از ۱۰۰</span><strong>'+((Number(change)>=0?"+":"")+Number(change||0).toFixed(2))+'٪</strong></div><div class="hunter-chart-canvas">'+hunterExpandedCandles(rows,signal.trend)+'</div><div class="hunter-chart-stats"><div><small>آخرین قیمت</small><b>'+hunterPrice(signal.price)+'</b></div><div><small>بالاترین کندل</small><b>'+hunterPrice(Math.max(...rows.map(c=>Number(c[2])||0)))+'</b></div><div><small>پایین‌ترین کندل</small><b>'+hunterPrice(Math.min(...rows.map(c=>Number(c[3])||0)))+'</b></div><div><small>حجم نسبی</small><b>'+Number(signal.volumeRatio||0).toFixed(1)+'×</b></div></div><p class="hunter-chart-foot">نمایش بر پایه کندل‌های ثبت‌شده در شکارچی بازار؛ جهت رنگ‌ها، وضعیت حرکت را نشان می‌دهد.</p></section>';
+ modal.classList.add("show");document.body.classList.add("hunter-chart-open");
+ const close=modal.querySelector(".hunter-chart-close");if(close)close.focus();
+}
+function closeHunterChart(){
+ const modal=document.getElementById("hunter-chart-modal");if(!modal)return;
+ modal.classList.remove("show");document.body.classList.remove("hunter-chart-open");
+}
 function renderMarketHunter(){
  const feed=$("hunter-feed");if(!feed)return;
  const candidates=[...fastRadarSignals.entries()].map(([id,signal])=>({coin:hunterCoinIndex.get(id)||cachedCoinsData.find(c=>c.id===id),signal,id})).filter(x=>x.coin&&Date.now()-x.signal.updatedAt<8*60*1000&&x.signal.score>=72);
@@ -2265,11 +2290,17 @@ function renderMarketHunter(){
  if(!entries.length){feed.innerHTML='<div class="hunter-empty"><span class="hunter-radar-icon">⌁</span><b>در حال رصد بازار</b><small>بازارهای اسپات Binance، Bybit، OKX، Bitget، Gate و KuCoin از نظر جهش و ریزش غیرعادی قیمت و حجم بررسی می‌شوند.</small></div>';return;}
  feed.innerHTML=entries.map(({coin:c,signal:m,id})=>{
   const up=m.trend==="bull",direction=up?"جهش صعودی":"ریزش نزولی",cls=up?"up":"down",mainSymbols=new Set(cachedCoinsData.map(x=>String(x.symbol||"").toUpperCase())),isMain100=mainSymbols.has(String(c.symbol||"").toUpperCase()),originTag=isMain100?"":'<small class="hunter-origin-tag" title="این ارز خارج از فهرست اصلی ۱۰۰ ارز است">🎯 شکار</small>',risk=m.overextended?'<span class="hunter-warning">حرکت کش‌آمده · ورود دیرهنگام پرریسک</span>':'<span class="hunter-confirm">'+(m.breakout?"شکست محدوده تأیید شد":"شتاب حرکت در حال شکل‌گیری")+'</span>';
-  return '<article class="hunter-card '+cls+' hunter-density-'+density+'" data-hunter-card="'+aiEscape(id)+'"><div class="hunter-card-head"><div class="hunter-coin"><div class="hunter-coin-emblem"><img src="'+aiEscape(hunterCoinImage(c))+'" data-symbol="'+aiEscape(String(c.symbol).toUpperCase())+'" alt="'+aiEscape(String(c.symbol).toUpperCase())+'" loading="lazy" onerror="hunterCoinImageError(this)"><i style="display:none">'+aiEscape(String(c.symbol).slice(0,1).toUpperCase())+'</i></div><span><b>'+aiEscape(c.name)+' <small>('+aiEscape(String(c.symbol).toUpperCase())+')</small>'+originTag+'</b><em>'+direction+'</em><small class="hunter-symbol-tag">نماد معاملاتی: '+aiEscape(String(c.symbol).toUpperCase())+'/USDT</small></span></div><div class="hunter-mini-move" data-hunter-mini="'+aiEscape(id)+'"><span>'+(up?'پرواز قیمت ↑':'سقوط قیمت ↓')+'</span>'+hunterMiniCandles(m.rows,m.trend)+'</div><div class="hunter-score"><b>'+m.score.toLocaleString("fa-IR")+'</b><small>قدرت حرکت</small></div></div><div class="hunter-exchanges" data-hunter-exchanges="'+aiEscape(id)+'"><span class="hunter-exchange-label">در حال بررسی بازارهای قابل معامله…</span></div><div class="hunter-price-row"><span>قیمت مرجع <b class="hunter-live-price">'+hunterPrice(m.price)+'</b></span><span>حجم نسبی <b>'+m.volumeRatio.toFixed(1)+'×</b></span><span>تغییر ۵ دقیقه <b class="'+cls+'">'+(m.change5m>0?"+":"")+m.change5m.toFixed(2)+'٪</b></span><span>تغییر ۱۵ دقیقه <b class="'+cls+'">'+(m.change15m>0?"+":"")+m.change15m.toFixed(2)+'٪</b></span></div><div class="hunter-card-bottom">'+risk+'</div></article>';
+  return '<article class="hunter-card '+cls+' hunter-density-'+density+'" data-hunter-card="'+aiEscape(id)+'"><div class="hunter-card-head"><div class="hunter-coin"><div class="hunter-coin-emblem"><img src="'+aiEscape(hunterCoinImage(c))+'" data-symbol="'+aiEscape(String(c.symbol).toUpperCase())+'" alt="'+aiEscape(String(c.symbol).toUpperCase())+'" loading="lazy" onerror="hunterCoinImageError(this)"><i style="display:none">'+aiEscape(String(c.symbol).slice(0,1).toUpperCase())+'</i></div><span><b>'+aiEscape(c.name)+' <small>('+aiEscape(String(c.symbol).toUpperCase())+')</small>'+originTag+'</b><em>'+direction+'</em><small class="hunter-symbol-tag">نماد معاملاتی: '+aiEscape(String(c.symbol).toUpperCase())+'/USDT</small></span></div><button type="button" class="hunter-mini-move hunter-chart-trigger" data-hunter-mini="'+aiEscape(id)+'" data-hunter-chart="'+aiEscape(id)+'" aria-label="نمایش نمودار بزرگ '+aiEscape(String(c.symbol).toUpperCase())+'"><span>'+(up?'پرواز قیمت ↑':'سقوط قیمت ↓')+'</span>'+hunterMiniCandles(m.rows,m.trend)+'</button><div class="hunter-score"><b>'+m.score.toLocaleString("fa-IR")+'</b><small>قدرت حرکت</small></div></div><div class="hunter-exchanges" data-hunter-exchanges="'+aiEscape(id)+'"><span class="hunter-exchange-label">در حال بررسی بازارهای قابل معامله…</span></div><div class="hunter-price-row"><span>قیمت مرجع <b class="hunter-live-price">'+hunterPrice(m.price)+'</b></span><span>حجم نسبی <b>'+m.volumeRatio.toFixed(1)+'×</b></span><span>تغییر ۵ دقیقه <b class="'+cls+'">'+(m.change5m>0?"+":"")+m.change5m.toFixed(2)+'٪</b></span><span>تغییر ۱۵ دقیقه <b class="'+cls+'">'+(m.change15m>0?"+":"")+m.change15m.toFixed(2)+'٪</b></span></div><div class="hunter-card-bottom">'+risk+'</div></article>';
  }).join("");
  loadHunterListings(entries.map(({coin,id})=>({coin,id}))).catch(error=>console.debug("Hunter exchange listing check:",error));
 }
 
+document.addEventListener("click",function(event){
+ const trigger=event.target.closest("[data-hunter-chart]");
+ if(trigger){event.preventDefault();event.stopPropagation();openHunterChart(trigger.getAttribute("data-hunter-chart"));return;}
+ if(event.target.closest("[data-hunter-chart-close]"))closeHunterChart();
+});
+document.addEventListener("keydown",function(event){if(event.key==="Escape")closeHunterChart();});
 function connectHunterStreams(){
  const entries=[...fastRadarSignals.entries()].filter(([,m])=>m.provider.includes("Binance")).sort((a,b)=>b[1].score-a[1].score).slice(0,12),wanted=new Set(entries.map(([id])=>id));
  for(const [id,ws] of hunterSockets){if(!wanted.has(id)){try{ws.close();}catch(e){}hunterSockets.delete(id);}}
@@ -2617,6 +2648,7 @@ function mmpSendEvent(type){try{fetch(MMP_ANALYTICS_ENDPOINT+"/analytics/event",
 function mmpSendAiResult(analysis,market,mode,coin){try{fetch(MMP_ANALYTICS_ENDPOINT+"/analytics/ai-result",{method:"POST",headers:{"Content-Type":"application/json"},keepalive:true,body:JSON.stringify({analysis:analysis,market:market,market_mode:mode,asset:coin?.name||market?.asset,symbol:coin?.symbol||market?.symbol,app_type:mmpAppType(),visitor_id:mmpVisitorId()})}).catch(()=>{});}catch(e){}}
 mmpSendEvent("page_view");
 setInterval(()=>mmpSendEvent("heartbeat"),240000);
+<div id="hunter-chart-modal" class="hunter-chart-modal" aria-live="polite"></div>
 </script>
 </body>
 </html>
@@ -2669,4 +2701,30 @@ setInterval(()=>mmpSendEvent("heartbeat"),240000);
 .hunter-density-compact .hunter-card-head{display:grid;grid-template-columns:minmax(0,1fr) 104px auto;gap:7px}.hunter-density-medium .hunter-card-head{display:grid;grid-template-columns:minmax(0,1fr) 124px auto;gap:8px}
 .hunter-density-compact .hunter-mini-svg{height:48px}.hunter-density-medium .hunter-mini-svg{height:52px}
 @media(max-width:560px){.hunter-density-compact .hunter-card-head{grid-template-columns:minmax(0,1fr) 88px auto;gap:4px}.hunter-density-compact .hunter-mini-move{width:88px;min-width:82px}.hunter-density-compact .hunter-mini-svg{height:44px}}
+
+/* Expand hunter mini-candles on tap; coin logos remain non-interactive */
+.hunter-chart-trigger{border:0;padding:0;background:transparent;color:inherit;font:inherit;cursor:zoom-in;touch-action:manipulation}
+.hunter-chart-trigger:focus-visible{outline:2px solid #d9b96d;outline-offset:3px;border-radius:9px}
+.hunter-chart-modal{display:none;position:fixed;inset:0;z-index:100000}
+.hunter-chart-modal.show{display:grid;place-items:center;padding:16px}
+.hunter-chart-backdrop{position:absolute;inset:0;background:#03070cdd;backdrop-filter:blur(9px)}
+.hunter-chart-dialog{position:relative;width:min(900px,100%);max-height:92dvh;overflow:auto;border:1px solid #a98c50;border-radius:20px;padding:18px;background:radial-gradient(ellipse at 15% 0%,#17b88a18,transparent 38%),linear-gradient(145deg,#121d28,#080e16);box-shadow:0 25px 90px #000c}
+.hunter-chart-dialog.down{background:radial-gradient(ellipse at 15% 0%,#f04f681b,transparent 38%),linear-gradient(145deg,#21151e,#080e16)}
+.hunter-chart-header{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.hunter-chart-header small,.hunter-chart-foot{color:#aeb9c5;font-size:11px}
+.hunter-chart-header h3{margin:5px 0;color:#f4d995;font-size:17px}
+.hunter-chart-close{width:38px;height:38px;border:1px solid #b99b5c77;border-radius:12px;background:#d6b76b18;color:#f3d68f;font-size:27px;line-height:1;cursor:pointer}
+.hunter-chart-trend{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:14px 0;padding:11px 13px;border:1px solid #a88b503b;border-radius:12px;background:#ffffff08}
+.hunter-chart-trend b{color:#35e5ad}.hunter-chart-dialog.down .hunter-chart-trend b{color:#ff647d}
+.hunter-chart-trend span{color:#c0cad4;font-size:11px}.hunter-chart-trend strong{margin-inline-start:auto;color:#35e5ad;font-size:16px}.hunter-chart-dialog.down .hunter-chart-trend strong{color:#ff8395}
+.hunter-chart-canvas{width:100%;min-height:190px;padding:8px 0}
+.hunter-expanded-svg{display:block;width:100%;height:auto;max-height:390px;overflow:visible}
+.hunter-chart-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:8px}
+.hunter-chart-stats>div{min-width:0;padding:10px;border:1px solid #ffffff18;border-radius:11px;background:#ffffff08}
+.hunter-chart-stats small{display:block;color:#9eacba;font-size:10px}
+.hunter-chart-stats b{display:block;margin-top:5px;color:#f2d68f;font-size:12px;overflow-wrap:anywhere}
+.hunter-chart-foot{margin:12px 0 0;line-height:1.8}
+.hunter-chart-no-data{padding:45px 10px;text-align:center;color:#d4b66b}
+body.hunter-chart-open{overflow:hidden}
+@media(max-width:560px){.hunter-chart-modal.show{padding:8px}.hunter-chart-dialog{padding:13px;border-radius:15px;max-height:94dvh}.hunter-chart-header h3{font-size:14px}.hunter-chart-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.hunter-chart-canvas{min-height:150px}.hunter-expanded-svg{min-height:180px}}
 </style>
