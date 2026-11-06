@@ -1889,13 +1889,16 @@ html.mmp-native-app .mmp-mobile-dock a{display:flex;flex-direction:column;align-
 html.mmp-native-app .mmp-mobile-dock a i{font-style:normal;font-size:19px;line-height:1.1}
 html.mmp-native-app .mmp-mobile-dock a.dock-ai i{background:linear-gradient(145deg,#f1d48f,#a77a38);color:#16130d;width:36px;height:31px;display:grid;place-items:center;border-radius:11px}
 html.mmp-native-app .mmp-mobile-dock a.native-active{color:#f5d991;background:linear-gradient(145deg,#3b301d,#1c2430);border:1px solid #9e804a;box-shadow:0 0 18px #d7b46a30}
-html.mmp-native-app .native-update-banner{position:fixed;z-index:1200;left:14px;right:14px;top:calc(70px + env(safe-area-inset-top));display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 13px;border:1px solid #b8914d;border-radius:15px;background:linear-gradient(120deg,#172638,#121923);box-shadow:0 12px 35px #000b;color:#f4e1b5;font-size:11px}
-html.mmp-native-app .native-update-copy{display:flex;flex-direction:column;gap:4px;min-width:0;line-height:1.6}
-html.mmp-native-app .native-update-copy strong{font-size:12px;color:#ffe4a7}
-html.mmp-native-app .native-update-copy small{font-size:10px;color:#b9c5d0}
-html.mmp-native-app .native-update-actions{display:flex;align-items:center;gap:6px;flex:none}
-html.mmp-native-app .native-update-banner button{border:0;cursor:pointer;font:700 10px var(--font-fa);padding:9px 10px;border-radius:10px;background:linear-gradient(145deg,#f1d48f,#a77a38);color:#15120b}
-html.mmp-native-app .native-update-banner .native-update-close{padding:7px 9px;background:#26394a;border:1px solid #53677a;color:#d9e4ed;font-size:13px}
+html.mmp-native-app .native-update-banner{position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;padding:22px;background:rgba(3,6,12,.94);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+html.mmp-native-app .native-update-panel{width:min(100%,440px);padding:25px 21px;border:1px solid #c6a35d;border-radius:22px;background:radial-gradient(ellipse at 50% 0,#49391d66,transparent 60%),linear-gradient(145deg,#192638,#0d1420);box-shadow:0 24px 80px #000;color:#f4e1b5;text-align:center}
+html.mmp-native-app .native-update-icon{width:58px;height:58px;margin:0 auto 15px;display:grid;place-items:center;border:1px solid #d7b46a88;border-radius:18px;background:#d7b46a18;color:#f5dda2;font-size:28px}
+html.mmp-native-app .native-update-copy{display:flex;flex-direction:column;gap:9px;min-width:0;line-height:1.8}
+html.mmp-native-app .native-update-copy strong{font-size:18px;color:#ffe4a7}
+html.mmp-native-app .native-update-copy small{font-size:12px;color:#b9c5d0}
+html.mmp-native-app .native-update-note{margin:13px 0 18px;color:#c1cad5;font-size:12px;line-height:2}
+html.mmp-native-app .native-update-actions{display:grid;grid-template-columns:1fr;gap:9px}
+html.mmp-native-app .native-update-banner button{width:100%;min-height:46px;border:0;cursor:pointer;font:800 12px var(--font-fa);padding:12px 14px;border-radius:12px;background:linear-gradient(145deg,#f1d48f,#a77a38);color:#15120b}
+html.mmp-native-app .native-update-banner button.native-update-retry{background:#1c2b3d;border:1px solid #52677b;color:#e4edf5}
 html.mmp-native-app #chart-container,html.mmp-native-app #tradingview_widget{height:420px;min-height:420px}
 html.mmp-native-app .connection-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 html.mmp-native-app .ai-toolbar{grid-template-columns:1fr 1fr}
@@ -1964,28 +1967,31 @@ html.mmp-native-app .native-refresh-label{font:700 9px Tahoma,Arial,sans-serif!i
    }
    function openNativeApk(url,sizeBytes){
     if(!/^https:\/\/github\.com\/MMP-COIN\/MMP-COIN-AI\/releases\/download\//.test(url)){showNativeUpdateMessage("پیوند بروزرسانی معتبر نیست.");return;}
-    var sizeMb=sizeBytes>0?(sizeBytes/1048576).toFixed(1):"نامشخص";
-    var warning=sizeBytes>=15*1048576?"\nحجم فایل زیاد است؛ برای دانلود از اینترنت پایدار یا Wi-Fi استفاده کنید.":"\nپیشنهاد: دانلود را با اتصال اینترنت پایدار انجام دهید.";
-    if(!window.confirm("دانلود نسخه جدید MMP COIN AI؟\nحجم فایل: "+sizeMb+" مگابایت"+warning+"\nپس از دانلود، نصب را تأیید کنید تا نسخه فعلی به‌روزرسانی شود."))return;
+    var target="https://mmp-coin.github.io/#app-download";
     var browser=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.Browser;
-    if(browser&&typeof browser.open==="function"){browser.open({url:url}).catch(function(){window.open(url,"_blank");});}
-    else{window.open(url,"_blank");}
-    showNativeUpdateMessage("دانلود APK آغاز شد؛ پس از پایان دانلود، نصب را تأیید کنید. نسخه قبلی را حذف نکنید.");
+    if(browser&&typeof browser.open==="function"){browser.open({url:target}).catch(function(){window.open(target,"_blank");});}
+    else{window.open(target,"_blank");}
+    showNativeUpdateMessage("صفحه دانلود سایت باز شد؛ نسخه جدید را نصب کنید و نسخه قبلی را حذف نکنید.");
    }
    function showNativeUpdateBanner(version,url,sizeBytes){
     var existing=document.querySelector(".native-update-banner");if(existing)existing.remove();
     var banner=document.createElement("div");banner.className="native-update-banner";
+    var panel=document.createElement("section");panel.className="native-update-panel";panel.setAttribute("role","alertdialog");panel.setAttribute("aria-modal","true");panel.setAttribute("aria-labelledby","native-update-title");
+    var icon=document.createElement("div");icon.className="native-update-icon";icon.textContent="↻";
     var copy=document.createElement("div");copy.className="native-update-copy";
-    var title=document.createElement("strong");title.textContent="نسخه جدید MMP COIN AI موجود است";
+    var title=document.createElement("strong");title.id="native-update-title";title.textContent="به‌روزرسانی ضروری MMP COIN AI";
     var sizeText=sizeBytes>0?(sizeBytes/1048576).toFixed(1)+" مگابایت":"حجم نامشخص";
-    var detail=document.createElement("small");detail.textContent="نسخه فعلی "+currentNativeVersion+" ← نسخه جدید "+version+" · "+sizeText;
+    var detail=document.createElement("small");detail.textContent="نسخه نصب‌شده "+currentNativeVersion+" · نسخه جدید "+version+" · "+sizeText;
     copy.appendChild(title);copy.appendChild(detail);
+    var note=document.createElement("p");note.className="native-update-note";note.textContent="برای ادامه استفاده، نسخه جدید را از سایت رسمی دانلود و روی همین نسخه نصب کنید. نیازی به حذف اپ فعلی نیست.";
     var actions=document.createElement("div");actions.className="native-update-actions";
-    var download=document.createElement("button");download.type="button";download.textContent="دانلود و بروزرسانی";
+    var download=document.createElement("button");download.type="button";download.textContent="رفتن به سایت و دانلود نسخه جدید";
     download.addEventListener("click",function(){openNativeApk(url,sizeBytes);});
-    var close=document.createElement("button");close.type="button";close.className="native-update-close";close.setAttribute("aria-label","بستن");close.textContent="×";
-    close.addEventListener("click",function(){banner.remove();});
-    actions.appendChild(download);actions.appendChild(close);banner.appendChild(copy);banner.appendChild(actions);document.body.appendChild(banner);
+    var retry=document.createElement("button");retry.type="button";retry.className="native-update-retry";retry.textContent="بررسی دوباره نسخه";
+    retry.addEventListener("click",function(){checkNativeApkUpdate(true);});
+    actions.appendChild(download);actions.appendChild(retry);
+    panel.appendChild(icon);panel.appendChild(copy);panel.appendChild(note);panel.appendChild(actions);banner.appendChild(panel);document.body.appendChild(banner);
+    document.body.style.overflow="hidden";
    }
    var nativeVersionFromUrl="";try{nativeVersionFromUrl=new URLSearchParams(location.search).get("mmp_native_version")||"";}catch(e){}
    var currentNativeVersion=nativeVersionFromUrl||document.querySelector('meta[name="mmp-app-version"]')?.content||"1.0.0";
