@@ -1596,20 +1596,32 @@ function renderCoinsTables(data) {
  if(count)count.textContent=data.slice(5).length+" ارز دیگر · برای مشاهده باز کنید";
 }
 
+function syncAiCoinOptions(extraCoins=[]) {
+  const selectAi=$("ai-coin-select");
+  if(!selectAi)return;
+  const currentAiVal=selectAi.value;
+  const byId=new Map();
+  [...(Array.isArray(cachedCoinsData)?cachedCoinsData:[]),...(Array.isArray(extraCoins)?extraCoins:[])].forEach(c=>{
+    if(!c?.id||!c?.symbol)return;
+    const symbol=String(c.symbol).toUpperCase();
+    if(NON_TRADABLE_COIN_IDS.has(c.id)||NON_TRADABLE_SYMBOLS.has(symbol)||byId.has(c.id))return;
+    byId.set(c.id,c);
+  });
+  const available=[...byId.values()];
+  const primaryCoins=available.filter(c=>PRIMARY_ANALYSIS_ORDER.has(String(c.symbol||"").toUpperCase()));
+  const otherCoins=available.filter(c=>!PRIMARY_ANALYSIS_ORDER.has(String(c.symbol||"").toUpperCase()));
+  const optionHtml=c=>'<option value="'+aiEscape(c.id)+'">'+aiEscape(c.name||c.symbol)+' ('+aiEscape(String(c.symbol).toUpperCase())+')</option>';
+  let aiHtml='<option value="">انتخاب ارز دیجیتال...</option><optgroup label="'+primaryCoins.length+' ارز اصلی · تحلیل در اولویت">';
+  aiHtml+=primaryCoins.map(optionHtml).join("");
+  aiHtml+='</optgroup><optgroup label="سایر ارزهای قابل تحلیل ('+otherCoins.length+')">';
+  aiHtml+=otherCoins.map(optionHtml).join("");
+  aiHtml+='</optgroup>';
+  selectAi.innerHTML=aiHtml;
+  if(currentAiVal&&[...selectAi.options].some(o=>o.value===currentAiVal))selectAi.value=currentAiVal;
+}
 function updateDropdowns(data) {
-  // بروزرسانی منوی کشویی هوش مصنوعی
-  let selectAi = $('ai-coin-select');
-  let currentAiVal = selectAi.value;
-  const primaryCoins=data.filter(c=>PRIMARY_ANALYSIS_ORDER.has(String(c.symbol||"").toUpperCase()));
-  const otherCoins=data.filter(c=>!PRIMARY_ANALYSIS_ORDER.has(String(c.symbol||"").toUpperCase()));
-  const optionHtml=c=>`<option value="${c.id}">${c.name} (${c.symbol.toUpperCase()})</option>`;
-  let aiHtml = '<option value="">انتخاب ارز دیجیتال...</option><optgroup label="'+primaryCoins.length+' ارز اصلی · تحلیل در اولویت">';
-  aiHtml += primaryCoins.map(optionHtml).join("");
-  aiHtml += '</optgroup><optgroup label="سایر ارزهای تأییدشده ('+(data.length-primaryCoins.length)+')">';
-  aiHtml += otherCoins.map(optionHtml).join("");
-  aiHtml += '</optgroup>';
-  selectAi.innerHTML = aiHtml;
-  if(currentAiVal) selectAi.value = currentAiVal;
+  // منوی تحلیل از فهرست اصلی و در صورت نیاز از بازارهای معتبر شکارچی نیز تغذیه می‌شود.
+  syncAiCoinOptions(data);
 
   // بروزرسانی منوی کشویی بالای چارت تریدینگ‌ویو با ۵۰ ارز اصلی و ارزهای منتخب بازار
   let tvSelect = $('tv-symbol');
@@ -1945,6 +1957,8 @@ async function fetchHunterUniverse(){
  const universe=allUniverse.slice(0,160);
  hunterStreamMarkets=allUniverse;
  hunterCoinIndex.clear();hunterSymbolIndex.clear();allUniverse.forEach(c=>{hunterCoinIndex.set(c.id,c);hunterSymbolIndex.set(String(c.symbol||"").toUpperCase(),c);});
+ // اگر فهرست اصلی بازار به هر دلیل دیر برسد، انتخاب‌گر تحلیل از بازار زنده شکارچی خالی نمی‌ماند.
+ syncAiCoinOptions(allUniverse);
  connectHunterEarlyStream();connectHunterEarlyExchangeStreams();
  hunterUniverseCache={expires:Date.now()+60000,coins:universe};return universe;
 }
