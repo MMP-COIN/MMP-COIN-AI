@@ -1131,11 +1131,6 @@ body{background:
     <div><small>نرخ تأمین مالی</small><b>—</b><em>Funding Rate</em></div><div><small>موجودی قرارداد باز</small><b>—</b><em>Open Interest</em></div><div><small>نسبت معامله‌گران خرید/فروش</small><b>—</b><em>Long / Short</em></div><div><small>قیمت نشانگر</small><b>—</b><em>Mark Price</em></div>
    </div>
    <div class="intel-foot" id="derivatives-status">برای دریافت داده زنده، نماد را بررسی کن.</div>
-   <div class="intel-mini-row"><span>نقشه لیکوییدیشن</span><b id="liquidation-status">نیازمند API CoinGlass</b></div>
-   <div class="liquidation-map-wrap">
-    <div class="liquidation-map-toolbar"><span id="liquidation-status-detail">Binance · BTCUSDT · بازه یک‌روزه</span><button class="intel-refresh" id="liquidation-refresh" type="button">↻ دریافت نقشه</button></div>
-    <div class="liquidation-map" id="liquidation-map"><div class="intel-foot">نمایش نقشه واقعی پس از اتصال کلید CoinGlass</div></div>
-   </div>
   </article>
   <article class="intel-panel" id="orderflow-panel">
    <div class="intel-panel-head"><div><small>ORDER FLOW · LIQUIDITY</small><h3>جریان سفارش و نقدشوندگی</h3></div><button class="intel-refresh" id="orderflow-refresh" type="button">↻ تازه‌سازی</button></div>
@@ -1155,9 +1150,8 @@ body{background:
 <div class="intel-foot">این خروجی برآورد آماری دامنه و امتداد روند است، نه احتمال قطعی سود؛ اعتبارسنجی تاریخی به‌تدریج با دفتر سیگنال تکمیل می‌شود.</div>
   </article>
   <article class="intel-panel" id="whale-panel">
-   <div class="intel-panel-head"><div><small>WHALE WATCH · ON-CHAIN</small><h3>ردیاب نهنگ‌ها و جریان صرافی</h3></div><span class="intel-status-wait">اتصال در انتظار</span></div>
-   <div class="whale-state"><div class="whale-orbit">◎</div><div><b>منبع زنجیره‌ای هنوز متصل نیست</b><p>برای نمایش ورود و خروج کیف‌پول‌های بزرگ، ذخایر صرافی و انتقال استیبل‌کوین‌ها باید API معتبر Glassnode یا CryptoQuant متصل شود. تا آن زمان هیچ جریان ساختگی نمایش داده نمی‌شود.</p></div></div>
-   <div class="whale-links"><a href="https://glassnode.com/" target="_blank" rel="noopener">Glassnode</a><a href="https://cryptoquant.com/" target="_blank" rel="noopener">CryptoQuant</a><a href="https://www.coinglass.com/" target="_blank" rel="noopener">CoinGlass</a></div>
+   <div class="intel-panel-head"><div><small>BITCOIN · PUBLIC MEMPOOL</small><h3>پایش انتقال‌های بزرگ بیت‌کوین</h3></div><span class="intel-status-live">منبع عمومی</span></div>
+   <div class="whale-state"><div class="whale-orbit">◎</div><div><b>پایش تراکنش‌های بزرگ شبکه بیت‌کوین</b><p>فقط تراکنش‌های تأییدنشده عمومی با ارزش بالا نمایش داده می‌شوند؛ شناسایی مالک کیف‌پول و ورودی/خروجی صرافی در این منبع ممکن نیست.</p></div></div>
   </article>
  </div>
 </section>
@@ -3705,28 +3699,6 @@ body:before{opacity:.23;background-size:34px 34px}
  $("intel-symbol")?.addEventListener("change",loadOrderflowViaWorker);
  loadOrderflowViaWorker();loadDerivativesViaWorker();
 
- // CoinGlass liquidation map: render only verified upstream values.
- async function loadLiquidationMap(){
-  const symbol=safe($("intel-symbol")?.value||"BTC")||"BTC",box=$("liquidation-map"),status=$("liquidation-status"),detail=$("liquidation-status-detail"),button=$("liquidation-refresh");
-  if(button){button.disabled=true;button.textContent="در حال دریافت…";}
-  if(status)status.textContent="در حال اتصال";
-  if(detail)detail.textContent=symbol+"USDT · Binance · ۱ روز";
-  if(box)box.innerHTML='<div class="intel-foot">در حال دریافت نقشه واقعی لیکوییدیشن…</div>';
-  try{
-   const d=await get(api()+"/market-liquidation-map?symbol="+encodeURIComponent(symbol)+"&exchange=Binance&range=1d",15000);
-   if(!Array.isArray(d.levels)||!d.levels.length)throw new Error(d.error||"برای این نماد داده‌ای دریافت نشد.");
-   const max=Math.max(...d.levels.map(x=>Number(x.liquidation_usd)||0),1);
-   if(box)box.innerHTML=d.levels.map(x=>'<div class="liquidation-level"><span dir="ltr">'+usd(x.price)+'</span><i><b style="width:'+Math.max(2,Number(x.liquidation_usd)/max*100)+'%"></b></i><strong>'+usd(x.liquidation_usd)+'</strong></div>').join("");
-   if(status)status.textContent="متصل · "+fmt(d.count,0)+" سطح";
-   if(detail)detail.textContent="منبع: CoinGlass API V4 · "+new Date(d.checked_at).toLocaleTimeString("fa-IR");
-  }catch(e){
-   if(status)status.textContent="نیازمند دسترسی API";
-   if(box)box.innerHTML='<div class="intel-foot">'+esc(e.message||"اتصال CoinGlass ناموفق بود")+'</div>';
-   if(detail)detail.textContent="کلید API و پلن Professional یا Enterprise لازم است.";
-  }finally{if(button){button.disabled=false;button.textContent="↻ دریافت نقشه";}}
- }
- $("liquidation-refresh")?.addEventListener("click",loadLiquidationMap);
- loadLiquidationMap();
  // The original intelligence engine remains authoritative for futures; this adds a working BTC large-transfer feed without inventing exchange labels.
  const whale=$("whale-panel");
  if(whale&&!$("whale-refresh-btn")){
@@ -3793,17 +3765,6 @@ body:before{opacity:.23;background-size:34px 34px}
 }
 </style>
 
-<style id="mmp-liquidation-map-ui-20261107">
-.liquidation-map-wrap{margin-top:8px;padding:9px;border:1px solid #354456;border-radius:10px;background:#0d151f}
-.liquidation-map-toolbar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px}
-#liquidation-status-detail{font-size:9px;color:#9eacba;line-height:1.6}
-.liquidation-map{display:grid;gap:5px;max-height:230px;overflow:auto}
-.liquidation-level{display:grid;grid-template-columns:85px minmax(50px,1fr) 88px;gap:7px;align-items:center;font-size:9px}
-.liquidation-level i{height:7px;display:block;border-radius:9px;background:#202c38;overflow:hidden}
-.liquidation-level i b{height:100%;display:block;border-radius:9px;background:linear-gradient(90deg,#d9b66d,#e96d78)}
-.liquidation-level strong{text-align:left;color:#e5c987;font-size:9px}
-@media(max-width:560px){.liquidation-level{grid-template-columns:72px minmax(40px,1fr) 74px}.liquidation-map-wrap{padding:7px}}
-</style>
 <style id="mmp-chart-compact-tuning-20261107">
 .chart-box-wrapper{padding:12px!important;margin-bottom:12px!important}
 #chart-container{height:480px!important;min-height:480px!important}
