@@ -641,7 +641,7 @@ body:after{content:"";position:fixed;width:42vw;height:42vw;max-width:620px;max-
 .hunter-live-badge{display:flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid #1c8e6b66;border-radius:30px;background:#0c352a66;color:#62e4b6;font-size:11px;white-space:nowrap}.hunter-live-badge i,.hunter-stream-state i{width:7px;height:7px;border-radius:50%;background:#31e0a8;box-shadow:0 0 12px #31e0a8;display:inline-block;animation:hunterPulse 1.5s infinite}
 @keyframes hunterPulse{50%{opacity:.35;box-shadow:0 0 3px #31e0a8}}
 .hunter-overview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:18px 0 20px}.hunter-stat{padding:12px 14px;border:1px solid #ffffff12;border-radius:13px;background:linear-gradient(130deg,#1a2230,#10151e)}.hunter-stat small{display:block;color:#9da9b8;font-size:11px}.hunter-stat b{display:block;color:#f1d18a;font-size:21px;margin-top:5px;font-variant-numeric:tabular-nums}
-.hunter-feed-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:4px 0 12px}.hunter-feed-head>b{color:#f1d18a;font-size:14px}.hunter-feed-head>span{font-size:10px;color:#8794a5}
+.hunter-early-panel{margin:4px 0 18px;padding:13px;border:1px solid #8f743d66;border-radius:15px;background:linear-gradient(135deg,#1a1b20,#10151d)}.hunter-early-head{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:9px}.hunter-early-head b{font-size:13px;color:#f0d28f}.hunter-early-head span{font-size:10px;color:#9ca8b7}.hunter-early-feed{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.hunter-early-item{min-width:0;padding:9px 10px;border-radius:11px;background:#ffffff08;border:1px solid #ffffff12;display:flex;justify-content:space-between;align-items:center;gap:8px}.hunter-early-item b{font-size:12px;color:#e8edf5}.hunter-early-item small{display:block;color:#94a0af;font-size:10px;margin-top:3px}.hunter-early-item.up{border-right:2px solid #2bd4a0}.hunter-early-item.down{border-right:2px solid #ff6477}.hunter-early-item strong{font-size:12px;white-space:nowrap;font-variant-numeric:tabular-nums}.hunter-early-empty{grid-column:1/-1;color:#98a4b3;font-size:11px;line-height:1.8;padding:9px 4px}.hunter-feed-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:4px 0 12px}.hunter-feed-head>b{color:#f1d18a;font-size:14px}.hunter-feed-head>span{font-size:10px;color:#8794a5}
 .hunter-feed{display:grid;gap:14px}.hunter-empty{min-height:170px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;border:1px dashed #4a5260;border-radius:15px;background:radial-gradient(ellipse at center,#1c2935,#11151d 70%);text-align:center;padding:20px}.hunter-empty>b{color:#e9d09a;font-size:15px}.hunter-empty small{color:#9ca7b5;font-size:11px;line-height:1.8;max-width:440px}.hunter-radar-icon{display:grid;place-items:center;width:45px;height:45px;border-radius:50%;font-size:26px;color:#e7ca86;border:1px solid #a88b4a;background:#c9a65a16;box-shadow:0 0 24px #d4b46a22}
 .hunter-card{padding:15px;border:1px solid #3c4856;border-radius:16px;background:linear-gradient(145deg,#161d28,#0d121a);box-shadow:0 10px 28px #0004;min-width:0}.hunter-card.up{border-right:3px solid #2bd4a0}.hunter-card.down{border-right:3px solid #ff6477}
 .hunter-card-head{display:flex;align-items:center;justify-content:space-between;gap:10px}.hunter-coin{display:flex;align-items:center;gap:10px;min-width:0}.hunter-coin img{width:39px;height:39px;border-radius:50%;background:#fff;padding:3px;object-fit:contain}.hunter-coin span{display:grid;gap:4px;min-width:0}.hunter-coin b{color:#f0f3f8;font-size:14px}.hunter-coin b small{color:#9eabba;font-size:11px}.hunter-coin em{font-style:normal;font-size:11px;font-weight:800;color:#36d9aa}.hunter-card.down .hunter-coin em{color:#ff7888}.hunter-score{text-align:center;min-width:57px;padding:5px 9px;border-radius:10px;background:#d7b66b13;border:1px solid #b18f4c44}.hunter-score b{display:block;color:#f2d18c;font-size:20px}.hunter-score small{font-size:9px;color:#a8afbb}
@@ -1009,6 +1009,7 @@ body{background:
 <section class="card market-hunter" id="market-hunter">
  <div class="hunter-topline"><div><div class="section-kicker">MMP · LIVE MOMENTUM HUNTER</div><h2>شکارچی بازار</h2><p class="sub">شناسایی جهش و ریزش ناگهانی در میان ارزهای فهرست بازار؛ بدون افزودن آن‌ها به فهرست اصلی</p></div><div class="hunter-live-badge"><i></i><span>پایش زنده</span></div></div>
  <div class="hunter-overview"><div class="hunter-stat"><small>فرصت‌های صعودی</small><b id="hunter-bull-count">۰</b></div><div class="hunter-stat"><small>حرکت‌های نزولی</small><b id="hunter-bear-count">۰</b></div><div class="hunter-stat"><small>آخرین پایش</small><b id="hunter-last-scan">در انتظار داده</b></div></div>
+ <div class="hunter-early-panel"><div class="hunter-early-head"><b>رادار هشدار اولیه</b><span id="hunter-early-status">در انتظار اتصال جریان سریع قیمت</span></div><div id="hunter-early-feed" class="hunter-early-feed"><div class="hunter-early-empty">حرکت‌های سریع قیمت پیش از تأیید کندلی، اینجا به‌صورت هشدار اولیه نمایش داده می‌شوند.</div></div></div>
  <div class="hunter-feed-head"><b>حرکت‌های شناسایی‌شده</b><span id="hunter-feed-status">در حال آماده‌سازی پایش کندلی…</span></div>
  <div id="hunter-feed" class="hunter-feed"><div class="hunter-empty"><span class="hunter-radar-icon">⌁</span><b>شکارچی آماده است</b><small>به‌محض شناسایی حرکت غیرعادی، نمودار همان ارز همین‌جا نمایش داده می‌شود.</small></div></div>
  <p class="sub hunter-footnote">نمودار از کندل‌های ۵ دقیقه‌ای ساخته می‌شود و در صورت پشتیبانی منبع، کندل جاری با جریان زنده به‌روزرسانی خواهد شد. نمایش حرکت به معنی توصیه قطعی خرید یا فروش نیست.</p>
@@ -1821,6 +1822,9 @@ function renderMarketTicker(){const el=$("market-ticker");if(!el||!cachedCoinsDa
 let radarFilter="all";
 const fastRadarSignals=new Map();
 const hunterCoinIndex=new Map();
+const hunterEarlyAlerts=new Map(),hunterPriceHistory=new Map(),hunterSymbolIndex=new Map();
+let hunterEarlySocket=null,hunterEarlyRetryTimer=null,hunterEarlyRenderTimer=null;
+
 let hunterUniverseCache={expires:0,coins:[]};
 let hunterMetadataCache={expires:0,coins:[]};
 let fastRadarBusy=false,fastRadarLastRun=0,fastRadarLastMessage="در انتظار اولین پایش سریع",fastRadarCursor=0;
@@ -1908,8 +1912,59 @@ async function fetchHunterUniverse(){
     hunterChange24h:quote.change24h||0
    };
   }).sort((a,b)=>b.total_volume-a.total_volume).slice(0,160);
- hunterCoinIndex.clear();universe.forEach(c=>hunterCoinIndex.set(c.id,c));
+ hunterCoinIndex.clear();hunterSymbolIndex.clear();universe.forEach(c=>{hunterCoinIndex.set(c.id,c);hunterSymbolIndex.set(String(c.symbol||"").toUpperCase(),c);});
+ connectHunterEarlyStream();
  hunterUniverseCache={expires:Date.now()+60000,coins:universe};return universe;
+}
+function renderHunterEarlyAlerts(){
+ const feed=$("hunter-early-feed");if(!feed)return;
+ const now=Date.now(),items=[...hunterEarlyAlerts.values()].filter(x=>now-x.updatedAt<4*60*1000).sort((a,b)=>b.updatedAt-a.updatedAt||Math.max(Math.abs(b.move1m||0),Math.abs(b.move3m||0))-Math.max(Math.abs(a.move1m||0),Math.abs(a.move3m||0))).slice(0,8);
+ for(const [symbol,item] of hunterEarlyAlerts)if(now-item.updatedAt>=4*60*1000)hunterEarlyAlerts.delete(symbol);
+ if(!items.length){feed.innerHTML='<div class="hunter-early-empty">فعلاً جهش یا ریزش سریعِ عبورکرده از آستانه هشدار دیده نشده؛ رصد جریان قیمت ادامه دارد.</div>';return;}
+ feed.innerHTML=items.map(x=>'<div class="hunter-early-item '+(x.trend==="bull"?"up":"down")+'"><span><b>'+aiEscape(x.name)+' ('+aiEscape(x.symbol)+')</b><small>قیمت '+hunterPrice(x.price)+' · '+new Date(x.updatedAt).toLocaleTimeString("fa-IR")+'</small></span><strong class="'+(x.trend==="bull"?"positive":"negative")+'">'+(x.move1m!=null?(x.move1m>0?"+":"")+x.move1m.toFixed(2)+"٪ / ۱د":(x.move3m>0?"+":"")+x.move3m.toFixed(2)+"٪ / ۳د")+'</strong></div>').join("");
+}
+function queueHunterEarlyRender(){
+ if(hunterEarlyRenderTimer)return;
+ hunterEarlyRenderTimer=setTimeout(()=>{hunterEarlyRenderTimer=null;renderHunterEarlyAlerts();},1500);
+}
+function connectHunterEarlyStream(){
+ if(typeof WebSocket==="undefined"||hunterEarlySocket&&[WebSocket.OPEN,WebSocket.CONNECTING].includes(hunterEarlySocket.readyState))return;
+ if(hunterEarlyRetryTimer){clearTimeout(hunterEarlyRetryTimer);hunterEarlyRetryTimer=null;}
+ try{
+  const ws=new WebSocket("wss://stream.binance.com:9443/ws/!ticker@arr");hunterEarlySocket=ws;
+  ws.onopen=()=>{if(hunterEarlySocket===ws){const status=$("hunter-early-status");if(status)status.textContent="جریان سریع Binance متصل · هشدار مقدماتی";}};
+  ws.onmessage=event=>{
+   if(hunterEarlySocket!==ws)return;
+   try{
+    const payload=JSON.parse(event.data),tickers=Array.isArray(payload)?payload:(payload.data||[]);
+    const now=Date.now();
+    tickers.forEach(t=>{
+     const symbol=String(t.s||"");if(!symbol.endsWith("USDT"))return;
+     const base=symbol.slice(0,-4),coin=hunterSymbolIndex.get(base);if(!coin)return;
+     const price=Number(t.c);if(!Number.isFinite(price)||price<=0)return;
+     let history=hunterPriceHistory.get(base);if(!history){history=[];hunterPriceHistory.set(base,history);}
+     const last=history[history.length-1];if(last&&now-last.t<700)return;
+     history.push({t:now,p:price});while(history.length&&now-history[0].t>240000)history.shift();
+     const prior1=[...history].reverse().find(x=>now-x.t>=55000&&now-x.t<=95000);
+     const prior3=[...history].reverse().find(x=>now-x.t>=165000&&now-x.t<=215000);
+     const move1=prior1?(price/prior1.p-1)*100:null,move3=prior3?(price/prior3.p-1)*100:null;
+     const up1=move1!=null&&move1>=0.65,down1=move1!=null&&move1<=-0.65,up3=move3!=null&&move3>=1.0,down3=move3!=null&&move3<=-1.0;
+     const trend=up1||up3?"bull":down1||down3?"bear":null;
+     if(trend){
+      const movement=move1!=null&&Math.abs(move1)>=0.65?move1:move3;
+      const old=hunterEarlyAlerts.get(base);
+      if(!old||old.trend!==trend||now-old.updatedAt>12000||Math.abs(movement)>Math.abs(old.move1m||old.move3m||0)+0.12){
+       hunterEarlyAlerts.set(base,{id:coin.id,symbol:base,name:coin.name,trend,move1m:move1,move3m:move3,price,updatedAt:now});
+       queueHunterEarlyRender();
+       const status=$("hunter-early-status");if(status)status.textContent="جریان سریع متصل · "+hunterEarlyAlerts.size.toLocaleString("fa-IR")+" هشدار مقدماتی";
+      }
+     }
+    });
+   }catch(error){console.debug("Hunter early ticker parse:",error);}
+  };
+  ws.onerror=()=>{try{ws.close();}catch(error){}};
+  ws.onclose=()=>{if(hunterEarlySocket===ws){hunterEarlySocket=null;const status=$("hunter-early-status");if(status)status.textContent="جریان سریع موقتاً قطع است؛ تلاش برای اتصال مجدد";hunterEarlyRetryTimer=setTimeout(connectHunterEarlyStream,5000);}};
+ }catch(error){console.debug("Hunter early stream unavailable:",error);const status=$("hunter-early-status");if(status)status.textContent="جریان سریع در دسترس نیست؛ پایش کندلی ادامه دارد";hunterEarlyRetryTimer=setTimeout(connectHunterEarlyStream,10000);}
 }
 async function runFastRadarScan(){
  if(fastRadarBusy||Date.now()-fastRadarLastRun<45000)return;
@@ -1922,8 +1977,13 @@ async function runFastRadarScan(){
  try{universe=await fetchHunterUniverse();}catch(error){console.debug("Hunter universe unavailable:",error?.message||error);universe=[];}
  if(!universe.length){fastRadarLastMessage="دریافت فهرست بازارهای اسپات ناموفق بود؛ اتصال صرافی‌ها را بررسی کنید.";if(status)status.textContent=fastRadarLastMessage;if(hunterStatus)hunterStatus.textContent="فهرست بازارها دریافت نشد؛ پایش کندلی انجام نشد.";if(hunterLast)hunterLast.textContent="خطای دریافت داده";fastRadarBusy=false;return;}
  // پایش چرخشی: در هر نوبت ۳۶ بازار بررسی می‌شود تا نتایج تازه‌تر به‌جای انتظار طولانی برای کل فهرست برسند.
- const batchSize=Math.min(36,universe.length),batch=[];
- for(let i=0;i<batchSize;i++)batch.push(universe[(fastRadarCursor+i)%universe.length]);
+ const batchSize=Math.min(36,universe.length),batch=[],selectedIds=new Set();
+ // هشدارهای اولیه در اولویت بررسی کندلی قرار می‌گیرند؛ ظرفیت باقی‌مانده همچنان چرخشی است.
+ [...hunterEarlyAlerts.values()].filter(x=>Date.now()-x.updatedAt<4*60*1000).sort((a,b)=>b.updatedAt-a.updatedAt).slice(0,12).forEach(alert=>{
+  const coin=universe.find(c=>c.id===alert.id);if(coin&&!selectedIds.has(coin.id)&&batch.length<Math.min(12,batchSize)){batch.push(coin);selectedIds.add(coin.id);}
+ });
+ let offset=0;while(batch.length<batchSize&&offset<universe.length){const coin=universe[(fastRadarCursor+offset)%universe.length];offset++;if(!selectedIds.has(coin.id)){batch.push(coin);selectedIds.add(coin.id);}}
+ fastRadarCursor=(fastRadarCursor+offset)%universe.length;
  fastRadarCursor=(fastRadarCursor+batchSize)%universe.length;
  const workers=Array.from({length:12},async()=>{
   while(cursor<batch.length){
