@@ -959,9 +959,11 @@ body{background:
  </div>
  <div class="ai-status" id="ai-status">ارز را انتخاب کن و تحلیل را اجرا کن.</div>
  <div class="ai-confidence-box"><div class="ai-confidence-head"><span>قدرت هم‌جهتی شواهد؛ نه احتمال قطعی سود</span><b id="ai-confidence-label">—</b></div><div class="ai-confidence-track"><div class="ai-confidence-fill" id="ai-confidence-fill"></div></div></div>
- <div class="ai-details" id="ai-details">
+ <div class="signal ai-report ai-report-clean" id="advanced-ai-analysis"><div class="ai-empty"><div class="symbol">◈</div><b>آماده تحلیل بازار</b><p>گزارش شامل جهت احتمالی، دلیل‌های اصلی، محدوده‌های مهم و شرایط بی‌اعتبارشدن سناریو خواهد بود.</p></div></div>
+ <div class="ai-timeframe-panel" id="ai-details">
   <div class="ai-details-content">
-   <div class="section-kicker" style="margin:0 0 9px">جزئیات فنی و تایم‌فریم‌ها · ۱۵ دقیقه · ۱ ساعت · ۴ ساعت · روزانه</div>
+   <h3 class="ai-timeframe-title">جزئیات فنی و تایم‌فریم‌ها</h3>
+   <p class="sub ai-timeframe-subtitle">بررسی هم‌زمان روند در بازه‌های ۱۵ دقیقه، ۱ ساعت، ۴ ساعت و روزانه</p>
    <div class="tf-grid" id="ai-timeframes"><div class="ai-empty" style="grid-column:1/-1">پس از اجرای تحلیل، وضعیت چهار بازه زمانی اینجا نمایش داده می‌شود.</div></div>
   </div>
  </div>
@@ -2122,4 +2124,13 @@ setInterval(()=>mmpSendEvent("heartbeat"),240000);
 }
 @media(max-width:420px){.ai-terminal .ai-toolbar{grid-template-columns:1fr}.ai-terminal .ai-toolbar button{grid-column:auto}}
 
+</style>
+
+<style>
+/* Always-visible timeframe panel inside the selected asset analysis */
+.ai-terminal .ai-timeframe-panel{display:block!important;visibility:visible!important;height:auto!important;max-height:none!important;overflow:visible!important;margin:12px 0 0;padding:14px;border:1px solid #354253;border-radius:13px;background:linear-gradient(145deg,#111a25,#0c121b)}
+.ai-terminal .ai-timeframe-title{display:block;margin:0 0 5px;color:var(--gold2);font-size:14px}
+.ai-terminal .ai-timeframe-subtitle{margin:0 0 12px;font-size:11px}
+.ai-terminal .ai-timeframe-panel .tf-grid{display:grid}
+@media(max-width:760px){.ai-terminal .ai-timeframe-panel .tf-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
