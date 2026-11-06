@@ -872,6 +872,7 @@ body{background:
   <a href="#market-hours" onclick="toggleMenu()">◷ ساعت بازارهای جهان</a>
   <a href="#connections" onclick="toggleMenu()">◉ سلامت منابع داده</a>
   <a href="#contact-us" onclick="toggleMenu()">✉ ارتباط با مدیریت</a>
+  <a href="https://mmp-coin.github.io/admin.html">🔐 پنل مدیریت</a>
 </div>
 </header>
 
@@ -889,6 +890,7 @@ body{background:
   <a class="side-link" href="#trading-tools"><i>⌗</i><span>ابزارهای معامله‌گری</span><em>07</em></a>
   <a class="side-link" href="#market-hours"><i>◷</i><span>ساعت بازارهای جهان</span><em>08</em></a>
   <a class="side-link" href="#connections"><i>◉</i><span>سلامت منابع داده</span><em>09</em></a>
+  <a class="side-link" href="https://mmp-coin.github.io/admin.html"><i>⚙</i><span>پنل مدیریت</span><em>10</em></a>
   <div class="side-footer"><span class="live-dot"></span><span>اتصال زنده بازار</span><small>DATA STREAM ACTIVE</small></div>
 </aside>
 <!-- منوی پایین حذف شد؛ منوی اصلی در سربرگ قرار دارد. -->
@@ -1666,6 +1668,7 @@ async function runAiAnalysis(force=false){
   const data=await res.json();
   if(!res.ok)throw new Error((data.error||"خطا در سرویس تحلیل")+(data.stage?" | مرحله: "+data.stage:"")+(data.symbol?" | ارز: "+data.symbol:""));
   if(!data.analysis)throw new Error("پاسخ تحلیل معتبر نیست.");
+  mmpSendAiResult(data.analysis,data.market||{},selectedMode,c);
   if(token!==aiRequestToken)return;
   const reportTime=Date.now();
   aiCache.set(cacheKey,{analysis:data.analysis,market:data.market||{},time:reportTime});
@@ -1674,6 +1677,7 @@ async function runAiAnalysis(force=false){
   saveJournal({name:c.name,symbol:c.symbol.toUpperCase(),action:data.analysis.action||"WAIT",confidence:data.analysis.confidence??"—",time:reportTime});
   aiSetStatus("تحلیل کامل شد · گزارش و داده‌های مرجع ذخیره شد.");
  }catch(e){
+  mmpSendEvent("ai_failure");
   if(token===aiRequestToken){
    $("ai-action").textContent="تحلیل ناموفق";
    aiSetStatus("خطا در دریافت تحلیل: "+(e.name==="AbortError"?"زمان پاسخ سرویس بیش از حد طول کشید":e.message));
@@ -1739,6 +1743,7 @@ async function runRadarDeepScan(){
    const response=await fetch(AI_ANALYSIS_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({coin_id:c.id,symbol:String(c.symbol).toUpperCase(),name:c.name,market_mode:trend==="bear"?"both":"spot",analysis_mode:"radar"})});
    const data=await response.json();
    if(!response.ok||!data?.analysis)throw new Error(data?.error||"پاسخ تحلیل معتبر نیست");
+   mmpSendAiResult(data.analysis,data.market||{},trend==="bear"?"both":"spot",item.coin);
    const a=data.analysis,levels=a.levels||{},action=String(a.action||"WAIT").toUpperCase();
    const expected=trend==="bull"?"BUY":"SELL";
    const active=action===expected&&a.plan_status==="active_signal"&&levels.entry_zone!=null&&levels.stop_loss!=null&&levels.tp1!=null;
@@ -1913,7 +1918,7 @@ html.mmp-native-app .native-refresh-label{font:700 9px Tahoma,Arial,sans-serif!i
   document.addEventListener("DOMContentLoaded",function(){
    if(document.querySelector(".native-appbar"))return;
    var header=document.createElement("header");header.className="native-appbar";
-   header.innerHTML='<div class="native-brand"><div class="native-mark"><img src="assets/mmp-coin-ai-icon.svg" alt="MMP COIN AI"></div><div><b>MMP COIN AI</b><small>SMART MARKET TERMINAL</small></div></div><div class="native-appbar-actions"><div class="native-currency-switch" role="group" aria-label="واحد نمایش قیمت"><button type="button" id="native-currency-irt" class="active" aria-pressed="true" onclick="setCurrency(\'IRT\')">تومان</button><button type="button" id="native-currency-usdt" aria-pressed="false" onclick="setCurrency(\'USDT\')">تتر</button></div><button type="button" class="native-update-check-btn" id="native-update-check-btn" aria-label="بررسی نسخه جدید" title="بررسی نسخه جدید">⇧</button><button type="button" class="native-refresh-btn" id="native-refresh-btn" aria-label="بروزرسانی بازار" title="برای تازه‌سازی قیمت‌ها و وضعیت اتصال منابع داده بزنید">⚙<span class="native-refresh-label">بروزرسانی</span></button><button type="button" class="native-menu-toggle" id="native-menu-toggle" aria-label="منوی اپلیکیشن" aria-expanded="false">☰</button></div><nav class="native-app-menu" id="native-app-menu" aria-label="منوی اپلیکیشن"><a href="#hero">⌂ نمای کلی بازار</a><a href="#opportunities">◈ رادار صعودی و نزولی</a><a href="#ai-section">✧ تحلیلگر هوشمند AI</a><a href="#chart-section">▥ نمودار تریدینگ‌ویو</a><a href="#coins-section">◉ بازار رمزارزها</a><a href="#watchlist">☆ دیده‌بان شخصی</a><a href="#trading-tools">⌗ ابزارهای معامله‌گری</a><a href="#market-hours">◷ ساعت بازارهای جهان</a><a href="#connections">◉ سلامت منابع داده</a><a href="#contact-us">✉ ارتباط با مدیریت</a><button type="button" id="native-share-app">↗ ارسال اپلیکیشن برای دوستان</button></nav>';
+   header.innerHTML='<div class="native-brand"><div class="native-mark"><img src="assets/mmp-coin-ai-icon.svg" alt="MMP COIN AI"></div><div><b>MMP COIN AI</b><small>SMART MARKET TERMINAL</small></div></div><div class="native-appbar-actions"><div class="native-currency-switch" role="group" aria-label="واحد نمایش قیمت"><button type="button" id="native-currency-irt" class="active" aria-pressed="true" onclick="setCurrency(\'IRT\')">تومان</button><button type="button" id="native-currency-usdt" aria-pressed="false" onclick="setCurrency(\'USDT\')">تتر</button></div><button type="button" class="native-update-check-btn" id="native-update-check-btn" aria-label="بررسی نسخه جدید" title="بررسی نسخه جدید">⇧</button><button type="button" class="native-refresh-btn" id="native-refresh-btn" aria-label="بروزرسانی بازار" title="برای تازه‌سازی قیمت‌ها و وضعیت اتصال منابع داده بزنید">⚙<span class="native-refresh-label">بروزرسانی</span></button><button type="button" class="native-menu-toggle" id="native-menu-toggle" aria-label="منوی اپلیکیشن" aria-expanded="false">☰</button></div><nav class="native-app-menu" id="native-app-menu" aria-label="منوی اپلیکیشن"><a href="#hero">⌂ نمای کلی بازار</a><a href="#opportunities">◈ رادار صعودی و نزولی</a><a href="#ai-section">✧ تحلیلگر هوشمند AI</a><a href="#chart-section">▥ نمودار تریدینگ‌ویو</a><a href="#coins-section">◉ بازار رمزارزها</a><a href="#watchlist">☆ دیده‌بان شخصی</a><a href="#trading-tools">⌗ ابزارهای معامله‌گری</a><a href="#market-hours">◷ ساعت بازارهای جهان</a><a href="#connections">◉ سلامت منابع داده</a><a href="#contact-us">✉ ارتباط با مدیریت</a><a href="https://mmp-coin.github.io/admin.html">⚙ پنل مدیریت</a><button type="button" id="native-share-app">↗ ارسال اپلیکیشن برای دوستان</button></nav>';
    document.body.insertBefore(header,document.body.firstChild);
    var menuToggle=header.querySelector("#native-menu-toggle"),appMenu=header.querySelector("#native-app-menu");
    if(menuToggle&&appMenu){
@@ -2067,6 +2072,15 @@ html.mmp-native-app .native-refresh-label{font:700 9px Tahoma,Arial,sans-serif!i
 
 
 
+<script>
+const MMP_ANALYTICS_ENDPOINT="https://mmp-coin-ai-admin.mehrdadmohammadi1988.workers.dev";
+function mmpVisitorId(){const key="mmp_analytics_visitor_v1";try{let v=localStorage.getItem(key);if(!v){v=(crypto.randomUUID?crypto.randomUUID():("v"+Date.now().toString(36)+Math.random().toString(36).slice(2)));localStorage.setItem(key,v);}return v;}catch(e){return "session-"+Date.now().toString(36)+Math.random().toString(36).slice(2);}}
+function mmpAppType(){return (location.protocol==="capacitor:"||(window.Capacitor&&(window.Capacitor.isNativePlatform?.()||window.Capacitor.getPlatform?.()==="android")))?"android-app":"web";}
+function mmpSendEvent(type){try{fetch(MMP_ANALYTICS_ENDPOINT+"/analytics/event",{method:"POST",headers:{"Content-Type":"application/json"},keepalive:true,body:JSON.stringify({event_type:type,path:location.pathname,app_type:mmpAppType(),visitor_id:mmpVisitorId()})}).catch(()=>{});}catch(e){}}
+function mmpSendAiResult(analysis,market,mode,coin){try{fetch(MMP_ANALYTICS_ENDPOINT+"/analytics/ai-result",{method:"POST",headers:{"Content-Type":"application/json"},keepalive:true,body:JSON.stringify({analysis:analysis,market:market,market_mode:mode,asset:coin?.name||market?.asset,symbol:coin?.symbol||market?.symbol,app_type:mmpAppType(),visitor_id:mmpVisitorId()})}).catch(()=>{});}catch(e){}}
+mmpSendEvent("page_view");
+setInterval(()=>mmpSendEvent("heartbeat"),240000);
+</script>
 </body>
 </html>
 
