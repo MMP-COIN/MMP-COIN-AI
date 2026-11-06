@@ -5,6 +5,18 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#08090d">
 <meta name="mmp-app-version" content="1.0.0">
+<!-- Native app: bypass stale WebView HTML cache on every cold launch without requiring an APK rebuild. -->
+<script>
+(function(){
+ try{
+  var params=new URLSearchParams(window.location.search);
+  if(params.has('mmp_native_version')&&!params.has('mmp_live_refresh')){
+   params.set('mmp_live_refresh',String(Date.now()));
+   window.location.replace(window.location.pathname+'?'+params.toString()+window.location.hash);
+  }
+ }catch(e){}
+})();
+</script>
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="icon" type="image/svg+xml" href="assets/mmp-coin-ai-icon.svg?v=20261106">
