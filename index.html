@@ -1730,18 +1730,21 @@ function analyzeWatchCoin(id){const coin=cachedCoinsData.find(x=>x.id===id);if(!
 function renderMarketTicker(){const el=$("market-ticker");if(!el||!cachedCoinsData.length)return;const wanted=["bitcoin","ethereum","binancecoin","solana","ripple","layerzero"];const picks=wanted.map(id=>cachedCoinsData.find(c=>c.id===id)).filter(Boolean);el.innerHTML=picks.map(c=>'<div class="ticker-item"><b>'+aiEscape(c.name)+' · '+c.symbol.toUpperCase()+'</b><strong>'+formatVal(c.current_price)+'</strong><small class="'+(c.price_change_percentage_24h>=0?"positive":"negative")+'">'+(c.price_change_percentage_24h>=0?"+":"")+(Number(c.price_change_percentage_24h)||0).toFixed(2)+'% در ۲۴ ساعت</small></div>').join("");}
 let radarFilter="all";
 function radarScore(c){
+ const raw1h=c.price_change_percentage_1h_in_currency??c.price_change_percentage_1h;
  const raw24=c.price_change_percentage_24h,raw7=c.price_change_percentage_7d_in_currency;
- const h=raw24==null?null:Number(raw24),d=raw7==null?null:Number(raw7);
- const has24=h!=null&&Number.isFinite(h),has7=d!=null&&Number.isFinite(d);
- const parts=(has24?1:0)+(has7?1:0);
- const directional=parts?((has24?h*.4:0)+(has7?d*.6:0))/((has24?.4:0)+(has7?.6:0)):null;
- const v=Number(c.total_volume),m=Number(c.market_cap),hi=Number(c.high_24h),lo=Number(c.low_24h),p=Number(c.current_price);
+ const h1=raw1h==null?null:Number(raw1h),h=raw24==null?null:Number(raw24),d=raw7==null?null:Number(raw7);
+ const has1h=h1!=null&&Number.isFinite(h1),has24=h!=null&&Number.isFinite(h),has7=d!=null&&Number.isFinite(d);
+ const weights={h1:.65,h24:.25,d7:.10};
+ const total=(has1h?weights.h1:0)+(has24?weights.h24:0)+(has7?weights.d7:0);
+ const directional=total?((has1h?h1*weights.h1:0)+(has24?h*weights.h24:0)+(has7?d*weights.d7:0))/total:null;
+ const v=Number(c.total_volume),m=Number(c.market_cap),hi=Number(c.high_24h),lo=Number(c.low_24h),price=Number(c.current_price);
  const liquidity=m>0&&v>0?Math.max(0,Math.min(100,(v/m)*100*2.5)):null;
- const range=hi>lo&&p>0?(p-lo)/(hi-lo)*100:null;
+ const range=hi>lo&&price>0?(price-lo)/(hi-lo)*100:null;
  const trend=directional==null?"unknown":directional>.15?"bull":directional<-.15?"bear":"neutral";
- // امتیاز غربالگری: تغییر ترکیبی حدود ۲٫۵٪ امتیاز ۷۰ و حدود ۳٫۷۵٪ امتیاز ۸۰ می‌سازد؛ این امتیاز یک شاخص نسبی است، نه احتمال سود.
+ // مومنتوم کوتاه‌مدت وزن اصلی را دارد؛ امتیاز شاخص قدرت حرکت است، نه احتمال سود.
  const score=directional==null?0:Math.round(50+Math.min(45,Math.abs(directional)*8));
- return {score,trend,h:has24?h:null,d:has7?d:null,directional,liquidity:liquidity==null?null:v/m*100,range,dataQuality:parts===2?"دو بازه معتبر":parts===1?"یک بازه معتبر":"داده تغییرات ناقص"};
+ const parts=(has1h?1:0)+(has24?1:0)+(has7?1:0);
+ return {score,trend,h1:has1h?h1:null,h:has24?h:null,d:has7?d:null,directional,liquidity:liquidity==null?null:v/m*100,range,dataQuality:parts===3?"۱ساعت، ۲۴ساعت و هفتگی":parts===2?"دو بازه معتبر":parts===1?"یک بازه معتبر":"داده تغییرات ناقص"};
 }
 let radarDeepScanBusy=false;
 let radarAutoScanAt=0;
@@ -1809,8 +1812,9 @@ function renderOpportunities(){
   const c=x.coin,m=x.metrics,up=m.trend==="bull",down=m.trend==="bear";
   const direction=up?"تمایل صعودی":down?"تمایل نزولی":m.trend==="neutral"?"خنثی / در انتظار":"داده ناکافی";
   const change=v=>v==null?"ناموجود":(v>0?"+":"")+v.toFixed(2)+"٪";
+  const change1h=m.h1==null?"ناموجود":(m.h1>0?"+":"")+m.h1.toFixed(2)+"٪";
   const watch='<button class="watch-btn" type="button" data-watch-add="'+aiEscape(c.id)+'">افزودن به دیده‌بان</button>';
-  return '<article class="radar-item '+(up?"radar-item-bullish":down?"radar-item-bearish":"radar-item-neutral")+'"><div class="radar-asset"><img src="'+aiEscape(c.image||"")+'" alt="" loading="lazy"><span><b>'+aiEscape(c.name)+'</b><small>'+aiEscape(String(c.symbol).toUpperCase())+'</small><strong class="radar-direction-label">'+direction+'</strong></span></div><div class="radar-score"><b>'+m.score.toLocaleString("fa-IR")+'</b><small>قدرت روند</small></div><div class="radar-stats"><span>تغییر ۲۴ساعته<b>'+change(m.h)+'</b></span><span>تغییر هفتگی<b>'+change(m.d)+'</b></span><span>نقدشوندگی نسبی<b>'+(m.liquidity==null?"ناموجود":m.liquidity.toFixed(2)+"٪")+'</b></span></div><div class="radar-action"><span class="radar-trend">'+(m.dataQuality||"")+'</span>'+watch+'</div></article>';
+  return '<article class="radar-item '+(up?"radar-item-bullish":down?"radar-item-bearish":"radar-item-neutral")+'"><div class="radar-asset"><img src="'+aiEscape(c.image||"")+'" alt="" loading="lazy"><span><b>'+aiEscape(c.name)+'</b><small>'+aiEscape(String(c.symbol).toUpperCase())+'</small><strong class="radar-direction-label">'+direction+'</strong></span></div><div class="radar-score"><b>'+m.score.toLocaleString("fa-IR")+'</b><small>قدرت روند</small></div><div class="radar-stats"><span>تغییر ۱ساعته<b>'+change1h+'</b></span><span>تغییر ۲۴ساعته<b>'+change(m.h)+'</b></span><span>نقدشوندگی نسبی<b>'+(m.liquidity==null?"ناموجود":m.liquidity.toFixed(2)+"٪")+'</b></span></div><div class="radar-action"><span class="radar-trend">'+(m.dataQuality||"")+'</span>'+watch+'</div></article>';
  };
  const list=(title,items,lower,cls)=>'<section class="radar-side '+cls+'"><div class="section-head radar-group-head"><div><b class="radar-large-heading">'+title+'</b></div><span class="badge">'+items.length.toLocaleString("fa-IR")+' ارز</span></div><div class="radar-list">'+items.slice(0,4).map(card).join("")+'</div>'+(items.length>4?'<details class="radar-more"><summary><span class="radar-toggle-copy"><b>'+items.length.toLocaleString("fa-IR")+' ارز</b></span><span class="radar-expand-action" aria-hidden="true"></span></summary><div class="radar-list">'+items.slice(4).map(card).join("")+'</div></details>':"")+(lower.length?'<details class="radar-more radar-below-threshold"><summary><span class="radar-toggle-copy"><b>'+lower.length.toLocaleString("fa-IR")+' ارز</b></span><span class="radar-expand-action" aria-hidden="true"></span></summary><div class="radar-list">'+lower.map(card).join("")+'</div></details>':"")+'</section>';
  el.innerHTML=list("فرصت‌های صعودی",bullish,bullish70,"bull")+list("فرصت‌های نزولی",bearish,bearish70,"bear");
