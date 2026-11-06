@@ -1833,7 +1833,10 @@ async function fetchFastCandles(symbol){
   ["Bitget Spot",async()=>{const d=await hunterFetchJson("https://api.bitget.com/api/v3/market/candles?category=SPOT&symbol="+encodeURIComponent(pair)+"&interval=5m&limit=30");if(!["00000","0"].includes(String(d.code))||!Array.isArray(d.data)||d.data.length<25)throw new Error(d.msg||"Bitget candles unavailable");return d.data.map(x=>[Number(x[0]),Number(x[1]),Number(x[2]),Number(x[3]),Number(x[4]),Number(x[5]||0)]).sort((a,b)=>a[0]-b[0]);}]
  ];
  let errors=[];
- for(const [provider,load] of attempts){try{const rows=await load();if(rows.every(r=>r.slice(1,5).every(Number.isFinite)))return {rows,provider};}catch(error){errors.push(provider+": "+(error?.message||"unavailable"));}}
+ // اولویت منبع کندل بین صرافی‌های معتبر چرخشی است تا همیشه فقط Binance بررسی نشود.
+ const rotation=Math.floor(Date.now()/60000)%attempts.length;
+ const ordered=attempts.slice(rotation).concat(attempts.slice(0,rotation));
+ for(const [provider,load] of ordered){try{const rows=await load();if(rows.length>=25&&rows.every(r=>r.slice(1,6).every(Number.isFinite)))return {rows,provider};}catch(error){errors.push(provider+": "+(error?.message||"unavailable"));}}
  throw new Error(errors.join(" · "));
 }
 async function scanFastCoin(coin){
@@ -2099,7 +2102,7 @@ function openHunterChart(id){
  const onKey=event=>{if(event.key==="Escape"){close();document.removeEventListener("keydown",onKey);}};document.addEventListener("keydown",onKey);
 }
 document.addEventListener("click",event=>{const card=event.target.closest("[data-hunter-card]");if(!card||event.target.closest("a,button"))return;openHunterChart(card.getAttribute("data-hunter-card"));});
-document.addEventListener("keydown",event=>{const card=event.target.closest?.("[data-hunter-card]");if(card&&(event.key==="Enter"||event.key===" ")){event.preventDefault();openHunterChart(card.getAttribute("data-hunter-card"));}});
+document.addEventListener("keydown",event=>{if(event.target.closest?.("a,button,input,select,textarea"))return;const card=event.target.closest?.("[data-hunter-card]");if(card&&(event.key==="Enter"||event.key===" ")){event.preventDefault();openHunterChart(card.getAttribute("data-hunter-card"));}});
 function connectHunterStreams(){
  const entries=[...fastRadarSignals.entries()].filter(([,m])=>m.provider.includes("Binance")).sort((a,b)=>b[1].score-a[1].score).slice(0,12),wanted=new Set(entries.map(([id])=>id));
  for(const [id,ws] of hunterSockets){if(!wanted.has(id)){try{ws.close();}catch(e){}hunterSockets.delete(id);}}
