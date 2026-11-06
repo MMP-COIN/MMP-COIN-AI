@@ -508,7 +508,7 @@ async function handle(request,env){
    sources[name]={ok:true,status:200};
    result.value.rows.forEach(row=>{
     if(!eligible.includes(row.symbol)||!(row.price>0)||!(row.volume>=0))return;
-    let item=markets.get(row.symbol);if(!item){item={venues:new Set(["Binance"]),quotes:[]};markets.set(row.symbol,item);}
+    let item=markets.get(row.symbol);if(!item){item={venues:new Set(),quotes:[]};markets.set(row.symbol,item);}
     item.venues.add(name);item.quotes.push({...row,exchange:name});
    });
   });
@@ -528,8 +528,9 @@ async function handle(request,env){
     hunterVenueVolume:venueVolume,cmcDuplicateCount:cmcDuplicateCount.get(symbol)||1
    };
   }).filter(x=>x.current_price>0).sort((a,b)=>Math.abs(Number(b.hunterChange24h)||0)-Math.abs(Number(a.hunterChange24h)||0)||b.total_volume-a.total_volume||Number(a.market_cap_rank||999999)-Number(b.market_cap_rank||999999));
-  if(!assets.length)return json({error:"داده زنده برای نمادهای مشترک دریافت نشد."},502,request);
-  return json({checked_at:new Date().toISOString(),count:assets.length,binance_spot_symbols:binanceSymbols.size,cmc_listings:cmcRows.length,assets,sources},200,request,{"X-MMP-Data-Source":"Binance Spot + CoinMarketCap"});
+  if(!assets.length)return json({error:"داده زنده برای نمادهای مشترک صرافی‌ها دریافت نشد."},502,request);
+  const rankedAssets=assets.sort((a,b)=>b.total_volume-a.total_volume||Number(a.market_cap_rank||999999)-Number(b.market_cap_rank||999999)).slice(0,1200);
+  return json({checked_at:new Date().toISOString(),count:rankedAssets.length,binance_spot_symbols:binanceSymbols.size,cmc_listings:cmcRows.length,universe_mode:"multi_exchange_usdt",metadata_provider:metadataProvider,assets:rankedAssets,sources},200,request,{"X-MMP-Data-Source":"Binance, Bybit, OKX, Bitget, Gate, KuCoin + "+metadataProvider});
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/support-check"){
   const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"support-check");
