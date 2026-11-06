@@ -1818,10 +1818,15 @@ function updateDropdowns(data) {
   let tvSelect = $('tv-symbol');
   let currentTvVal = tvSelect.value;
   let tvHtml = '';
-  data.forEach(c => {
-    let sym = c.symbol.toUpperCase();
-    tvHtml += `<option value="BINANCE:${sym}USDT">${c.name} (${sym})</option>`;
+  const tvCoins=[...(Array.isArray(data)?data:[]),...(typeof hunterUniverseCache!=="undefined"?(hunterUniverseCache.coins||[]):[])];
+  const tvSeen=new Set();
+  tvCoins.forEach(c => {
+    const sym=String(c.symbol||"").toUpperCase();
+    if(!sym||tvSeen.has(sym))return;
+    tvSeen.add(sym);
+    tvHtml += `<option value="BINANCE:${sym}USDT">${c.name||sym} (${sym})</option>`;
   });
+  try{JSON.parse(localStorage.getItem("mmp_manual_coin_symbols_v1")||"[]").forEach(sym=>{sym=String(sym||"").toUpperCase();if(/^[A-Z0-9]{2,20}$/.test(sym)&&!tvSeen.has(sym)){tvSeen.add(sym);tvHtml+=`<option value="BINANCE:${sym}USDT">${sym} (${sym})</option>`;}})}catch(e){}
   tvHtml += `<option value="FX_IDC:XAUUSD">Gold / USD</option>`;
   tvSelect.innerHTML = tvHtml;
   if(currentTvVal) tvSelect.value = currentTvVal;
