@@ -1290,7 +1290,7 @@ const NON_TRADABLE_SYMBOLS = new Set([
 
 // سیاست سخت‌گیرانه اعتبار بازار: فقط بازارهای اسپات چهار صرافی اصلی در فهرست مجاز هستند.
 const TRUSTED_SPOT_EXCHANGES = ["binance","bybit","okx","bitget"];
-const MIN_TRUSTED_EXCHANGE_LISTINGS = 2;
+const MIN_TRUSTED_EXCHANGE_LISTINGS = 1;
 const MIN_COIN_MARKET_CAP_USD = 10000000;
 const MIN_COIN_VOLUME_24H_USD = 2000000;
 const MAX_COIN_MARKET_CAP_RANK = 500;
@@ -1302,8 +1302,8 @@ function trustedSpotProviders(support){
  }))];
 }
 function passesMarketQualityFilter(coin){
- const cap=Number(coin?.market_cap),volume=Number(coin?.total_volume),rank=Number(coin?.market_cap_rank);
- return Number.isFinite(cap)&&cap>=MIN_COIN_MARKET_CAP_USD&&Number.isFinite(volume)&&volume>=MIN_COIN_VOLUME_24H_USD&&Number.isFinite(rank)&&rank>0&&rank<=MAX_COIN_MARKET_CAP_RANK;
+ // معیار پذیرش، حضور در بازار اسپات یکی از صرافی‌های معتبر است؛ رتبه/حجم/ارزش بازار فیلتر حذف نیست.
+ return !!coin;
 }
 
 
@@ -1468,7 +1468,7 @@ async function refreshAll(){
     payload.assets.forEach(item=>{
      const providers=trustedSpotProviders(item);
      const spot={...(item.spot||{}),providers,confirmed:providers.length>=MIN_TRUSTED_EXCHANGE_LISTINGS};
-     supportBySymbol[String(item.symbol||"").toUpperCase()]={...item,spot,trust:{exchangeCount:providers.length,exchanges:providers,marketQuality:"CoinGecko market-cap and volume thresholds"}};
+     supportBySymbol[String(item.symbol||"").toUpperCase()]={...item,spot,trust:{exchangeCount:providers.length,exchanges:providers,marketQuality:"trusted spot exchange listing"}};
     });
     Object.assign(supportSources,payload.sources||{});
    }
@@ -1874,7 +1874,7 @@ async function fetchHunterUniverse(){
  const settled=await Promise.all(jobs.map(async fn=>{try{return await fn();}catch(error){console.debug("Hunter trusted exchange:",error?.message||error);return []}}));
  const venuesBySymbol=new Map();
  settled.forEach(markets=>markets.forEach(x=>{
-  if(!/^[A-Z0-9]{2,20}$/.test(x.symbol)||NON_TRADABLE_SYMBOLS.has(x.symbol)||/(UP|DOWN|BULL|BEAR|3L|3S)$/.test(x.symbol)||x.volume<500000)return;
+  if(!/^[A-Z0-9]{2,20}$/.test(x.symbol)||NON_TRADABLE_SYMBOLS.has(x.symbol)||/(UP|DOWN|BULL|BEAR|3L|3S)$/.test(x.symbol))return;
   if(!venuesBySymbol.has(x.symbol))venuesBySymbol.set(x.symbol,{venues:new Set(),totalVolume:0});
   const entry=venuesBySymbol.get(x.symbol);entry.venues.add(x.exchange);entry.totalVolume+=x.volume;
  }));
@@ -1887,12 +1887,12 @@ async function fetchHunterUniverse(){
  const metadataBySymbol=new Map(),duplicateSymbols=new Set();
  metadata.forEach(c=>{const symbol=String(c.symbol||"").toUpperCase();if(!symbol)return;if(metadataBySymbol.has(symbol))duplicateSymbols.add(symbol);else metadataBySymbol.set(symbol,c);});
  duplicateSymbols.forEach(symbol=>metadataBySymbol.delete(symbol));
- const selected=[...venuesBySymbol.entries()].filter(([symbol,market])=>market.venues.size>=2&&market.totalVolume>=MIN_COIN_VOLUME_24H_USD&&!duplicateSymbols.has(symbol))
+ const selected=[...venuesBySymbol.entries()].filter(([symbol,market])=>market.venues.size>=1&&!duplicateSymbols.has(symbol))
   .map(([symbol,market])=>({symbol,market,coin:metadataBySymbol.get(symbol)}))
-  .filter(x=>x.coin&&passesMarketQualityFilter(x.coin)).sort((a,b)=>b.market.totalVolume-a.market.totalVolume);
+  .filter(x=>x.coin).sort((a,b)=>b.market.totalVolume-a.market.totalVolume);
  const dynamic=selected.map(({market,coin})=>({...coin,id:coin.id,symbol:coin.symbol,name:coin.name,image:coin.image,current_price:Number(coin.current_price)||0,total_volume:coin.total_volume,market_cap:coin.market_cap,market_cap_rank:coin.market_cap_rank,hunterExchange:[...market.venues].join(", ")}));
  const merged=new Map(cachedCoinsData.map(c=>[c.id,c]));dynamic.forEach(c=>merged.set(c.id,c));
- const universe=[...merged.values()].filter(c=>passesMarketQualityFilter(c));
+ const universe=[...merged.values()];
  hunterCoinIndex.clear();universe.forEach(c=>hunterCoinIndex.set(c.id,c));
  hunterUniverseCache={expires:Date.now()+60000,coins:universe};return universe;
 }
@@ -2012,7 +2012,7 @@ async function loadHunterListings(entries){
   const target=document.querySelector('[data-hunter-exchanges="'+id+'"]');if(!target)return;
   const symbol=hunterSafeSymbol(coin.symbol);if(!symbol)return;
   const listed=[...sets.entries()].filter(([,symbols])=>symbols.has(symbol+"USDT")).map(([name])=>name);
-  if(listed.length<MIN_TRUSTED_EXCHANGE_LISTINGS){target.innerHTML='<span class="hunter-no-exchange">کمتر از دو صرافی معتبر · نمایش معامله غیرفعال</span>';return;}
+  if(listed.length<MIN_TRUSTED_EXCHANGE_LISTINGS){target.innerHTML='<span class="hunter-no-exchange">در صرافی‌های معتبر فهرست نشده · معامله غیرفعال</span>';return;}
   target.innerHTML='<span class="hunter-exchange-label">قابل معامله در:</span>'+listed.map(name=>'<a class="hunter-exchange-link" href="'+hunterTradeUrl(name,symbol)+'" target="_blank" rel="noopener noreferrer" aria-label="معامله '+symbol+' در '+name+'">'+name+' <b>↗</b></a>').join("");
  });
 }
