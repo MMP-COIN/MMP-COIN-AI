@@ -1732,8 +1732,9 @@ async function runRadarDeepScan(){
  const status=$("radar-deep-status"),results=$("radar-deep-results");
  if(radarDeepScanBusy||aiBusy||!cachedCoinsData.length)return;
  const scored=cachedCoinsData.map(coin=>({coin,metrics:radarScore(coin)}));
- const bullish=scored.filter(x=>x.metrics.trend==="bull"&&x.metrics.score>=70).sort((a,b)=>b.metrics.score-a.metrics.score).slice(0,1);
- const bearish=scored.filter(x=>x.metrics.trend==="bear"&&x.metrics.score>=70).sort((a,b)=>b.metrics.score-a.metrics.score).slice(0,1);
+ const rankRadar=(a,b)=>(b.metrics.score-a.metrics.score)||(Math.abs(b.metrics.directional??0)-Math.abs(a.metrics.directional??0));
+ const bullish=scored.filter(x=>x.metrics.trend==="bull"&&x.metrics.score>=70).sort(rankRadar).slice(0,3);
+ const bearish=scored.filter(x=>x.metrics.trend==="bear"&&x.metrics.score>=70).sort(rankRadar).slice(0,3);
  const candidates=[...bullish.map(x=>({...x,expectedTrend:"bull"})),...bearish.map(x=>({...x,expectedTrend:"bear"}))];
  if(!candidates.length){if(status)status.textContent="در داده معتبر فعلی ارزی با قدرت روند ۷۰ یا بالاتر شناسایی نشد.";if(results)results.innerHTML="";return;}
  radarDeepScanBusy=true;
@@ -1769,12 +1770,13 @@ function renderOpportunities(){
  if(!el)return;
  if(!cachedCoinsData.length){el.innerHTML='<div class="ai-empty">داده بازار هنوز دریافت نشده است.</div>';return;}
  const scored=cachedCoinsData.map(c=>({coin:c,metrics:radarScore(c)}));
- const bullish=scored.filter(x=>x.metrics.trend==="bull"&&x.metrics.score>=80).sort((a,b)=>(b.metrics.score-a.metrics.score)||(b.metrics.directional??0)-(a.metrics.directional??0));
- const bearish=scored.filter(x=>x.metrics.trend==="bear"&&x.metrics.score>=80).sort((a,b)=>(b.metrics.score-a.metrics.score)||(a.metrics.directional??0)-(b.metrics.directional??0));
- const bullish70=scored.filter(x=>x.metrics.trend==="bull"&&x.metrics.score>=70&&x.metrics.score<80).sort((a,b)=>b.metrics.score-a.metrics.score);
- const bearish70=scored.filter(x=>x.metrics.trend==="bear"&&x.metrics.score>=70&&x.metrics.score<80).sort((a,b)=>b.metrics.score-a.metrics.score);
+ const rankRadar=(a,b)=>(b.metrics.score-a.metrics.score)||(Math.abs(b.metrics.directional??0)-Math.abs(a.metrics.directional??0));
+ const bullish=scored.filter(x=>x.metrics.trend==="bull"&&x.metrics.score>=80).sort(rankRadar);
+ const bearish=scored.filter(x=>x.metrics.trend==="bear"&&x.metrics.score>=80).sort(rankRadar);
+ const bullish70=scored.filter(x=>x.metrics.trend==="bull"&&x.metrics.score>=70&&x.metrics.score<80).sort(rankRadar);
+ const bearish70=scored.filter(x=>x.metrics.trend==="bear"&&x.metrics.score>=70&&x.metrics.score<80).sort(rankRadar);
  const updated=$("radar-updated");
- if(updated)updated.textContent="غربالگری خودکار "+cachedCoinsData.length+" ارز · "+bullish.length+" صعودی · "+bearish.length+" نزولی"; const chartSelect=$("tv-symbol");
+ if(updated)updated.textContent="غربالگری خودکار "+cachedCoinsData.length+" ارز · صعودی: "+bullish.length+" قوی + "+bullish70.length+" در انتظار · نزولی: "+bearish.length+" قوی + "+bearish70.length+" در انتظار · "+new Date().toLocaleTimeString("fa-IR"); const chartSelect=$("tv-symbol");
  if(chartSelect){
   const previous=chartSelect.value||"BINANCE:BTCUSDT";
   const options=['<option value="BINANCE:BTCUSDT">Bitcoin (BTC)</option>'];
