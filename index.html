@@ -614,6 +614,7 @@ body:after{content:"";position:fixed;width:42vw;height:42vw;max-width:620px;max-
 .hunter-score{min-width:56px}
 .hunter-card-bottom{gap:10px}
 .hunter-exchanges{margin-top:10px}
+@media(max-width:560px){.hunter-early-feed{grid-template-columns:1fr}}
 @keyframes hunterPulse{from{opacity:.35;transform:scale(.85)}to{opacity:1;transform:scale(1.1)}}
 @media(max-width:560px){.hunter-card-head{grid-template-columns:minmax(0,1fr) 112px auto;gap:5px}.hunter-mini-move{width:112px;min-width:90px}.hunter-mini-svg{height:46px}.hunter-mini-move>span{font-size:8px}.hunter-score{min-width:48px}}
 @media(prefers-reduced-motion:reduce){.hunter-card.up,.hunter-card.down{animation:none}}
@@ -1823,7 +1824,7 @@ let radarFilter="all";
 const fastRadarSignals=new Map();
 const hunterCoinIndex=new Map();
 const hunterEarlyAlerts=new Map(),hunterPriceHistory=new Map(),hunterSymbolIndex=new Map();
-let hunterEarlySocket=null,hunterEarlyRetryTimer=null,hunterEarlyRenderTimer=null;
+let hunterEarlySocket=null,hunterEarlyRetryTimer=null,hunterEarlyRenderTimer=null,hunterEarlyExpiryTimer=null;
 
 let hunterUniverseCache={expires:0,coins:[]};
 let hunterMetadataCache={expires:0,coins:[]};
@@ -1900,7 +1901,7 @@ async function fetchHunterUniverse(){
  metadata.forEach(c=>{const symbol=String(c.symbol||"").toUpperCase();if(!symbol)return;if(metadataBySymbol.has(symbol))duplicateSymbols.add(symbol);else metadataBySymbol.set(symbol,c);});
  duplicateSymbols.forEach(symbol=>metadataBySymbol.delete(symbol));
  // شکارچی مستقل از فهرست اصلی ۱۰۰ ارز است؛ هر بازار اسپات USDT در حداقل یک صرافی مجاز وارد پایش می‌شود.
- const universe=[...marketsBySymbol.entries()].filter(([symbol,market])=>market.venues.size>=1)
+ const allUniverse=[...marketsBySymbol.entries()].filter(([symbol,market])=>market.venues.size>=1)
   .map(([symbol,market])=>{
    const meta=metadataBySymbol.get(symbol);
    const quote=market.quotes.sort((a,b)=>b.volume-a.volume)[0]||{};
@@ -1911,8 +1912,10 @@ async function fetchHunterUniverse(){
     hunterExchange:[...market.venues].join(", "),hunterPriceExchange:quote.exchange||"",
     hunterChange24h:quote.change24h||0
    };
-  }).sort((a,b)=>b.total_volume-a.total_volume).slice(0,160);
- hunterCoinIndex.clear();hunterSymbolIndex.clear();universe.forEach(c=>{hunterCoinIndex.set(c.id,c);hunterSymbolIndex.set(String(c.symbol||"").toUpperCase(),c);});
+  }).sort((a,b)=>b.total_volume-a.total_volume);
+ // فهرست کامل بازارهای اسپات USDT برای هشدار سریع؛ ۱۶۰ بازار پرحجم همچنان نوبتی کندل‌خوانی می‌شوند.
+ const universe=allUniverse.slice(0,160);
+ hunterCoinIndex.clear();hunterSymbolIndex.clear();allUniverse.forEach(c=>{hunterCoinIndex.set(c.id,c);hunterSymbolIndex.set(String(c.symbol||"").toUpperCase(),c);});
  connectHunterEarlyStream();
  hunterUniverseCache={expires:Date.now()+60000,coins:universe};return universe;
 }
@@ -1928,6 +1931,7 @@ function queueHunterEarlyRender(){
  hunterEarlyRenderTimer=setTimeout(()=>{hunterEarlyRenderTimer=null;renderHunterEarlyAlerts();},1500);
 }
 function connectHunterEarlyStream(){
+ if(!hunterEarlyExpiryTimer)hunterEarlyExpiryTimer=setInterval(renderHunterEarlyAlerts,15000);
  if(typeof WebSocket==="undefined"||hunterEarlySocket&&[WebSocket.OPEN,WebSocket.CONNECTING].includes(hunterEarlySocket.readyState))return;
  if(hunterEarlyRetryTimer){clearTimeout(hunterEarlyRetryTimer);hunterEarlyRetryTimer=null;}
  try{
@@ -1980,7 +1984,7 @@ async function runFastRadarScan(){
  const batchSize=Math.min(36,universe.length),batch=[],selectedIds=new Set();
  // هشدارهای اولیه در اولویت بررسی کندلی قرار می‌گیرند؛ ظرفیت باقی‌مانده همچنان چرخشی است.
  [...hunterEarlyAlerts.values()].filter(x=>Date.now()-x.updatedAt<4*60*1000).sort((a,b)=>b.updatedAt-a.updatedAt).slice(0,12).forEach(alert=>{
-  const coin=universe.find(c=>c.id===alert.id);if(coin&&!selectedIds.has(coin.id)&&batch.length<Math.min(12,batchSize)){batch.push(coin);selectedIds.add(coin.id);}
+  const coin=hunterCoinIndex.get(alert.id);if(coin&&!selectedIds.has(coin.id)&&batch.length<Math.min(12,batchSize)){batch.push(coin);selectedIds.add(coin.id);}
  });
  let offset=0;while(batch.length<batchSize&&offset<universe.length){const coin=universe[(fastRadarCursor+offset)%universe.length];offset++;if(!selectedIds.has(coin.id)){batch.push(coin);selectedIds.add(coin.id);}}
  fastRadarCursor=(fastRadarCursor+offset)%universe.length;
