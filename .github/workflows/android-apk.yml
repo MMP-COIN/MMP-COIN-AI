@@ -4,13 +4,12 @@ on:
   push:
     branches: ["main"]
     paths:
+      # Build an APK only for native shell/dependency changes or the Android launcher icon.
+      # Website UI, analysis logic, coin images and manifest updates deploy through GitHub Pages.
       - "package.json"
-      - "index.html"
+      - "package-lock.json"
       - "capacitor.config.json"
-      - "www/**"
-      - "assets/**"
-      - "manifest.webmanifest"
-      - ".github/workflows/android-apk.yml"
+      - "assets/mmp-coin-ai-icon.svg"
   workflow_dispatch:
 
 permissions:
