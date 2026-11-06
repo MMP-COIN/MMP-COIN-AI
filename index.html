@@ -1993,7 +1993,7 @@ let hunterStreamMarkets=[];
 let hunterUniverseCache={expires:0,coins:[]};
 let hunterMetadataCache={expires:0,coins:[]};
 let fastRadarBusy=false,fastRadarLastRun=0,fastRadarLastMessage="در انتظار اولین پایش سریع",fastRadarCursor=0;
-async function fetchFastCandles(symbol){
+async function fetchFastCandles(symbol,coin){
  const pair=String(symbol||"").toUpperCase()+"USDT";
  const attempts=[
   ["Binance Spot",async()=>{let last;for(const base of ["https://api.binance.com","https://data-api.binance.vision"]){try{const d=await hunterFetchJson(base+"/api/v3/klines?symbol="+encodeURIComponent(pair)+"&interval=1m&limit=30");if(!Array.isArray(d)||d.length<25)throw new Error("کمبود کندل");return d.map(x=>x.slice(0,6).map(Number));}catch(e){last=e;}}throw last||new Error("Binance unavailable");}],
@@ -2005,8 +2005,11 @@ async function fetchFastCandles(symbol){
  ];
  let errors=[];
  // اولویت منبع کندل بین صرافی‌های معتبر چرخشی است تا همیشه فقط Binance بررسی نشود.
- const rotation=Math.floor(Date.now()/60000)%attempts.length;
- const ordered=attempts.slice(rotation).concat(attempts.slice(0,rotation));
+ const preferred=Object.entries(coin?.hunterVenueVolume||{}).filter(([,volume])=>Number(volume)>=15000).sort((a,b)=>Number(b[1])-Number(a[1])).map(([name])=>name);
+ const byName=new Map(attempts);const preferredAttempts=preferred.map(name=>[name,byName.get(name)]).filter(x=>x[1]);
+ const fallback=attempts.filter(([name])=>!preferred.includes(name));
+ const rotation=Math.floor(Date.now()/60000)%Math.max(1,fallback.length);
+ const ordered=preferredAttempts.concat(fallback.slice(rotation),fallback.slice(0,rotation));
  for(const [provider,load] of ordered){try{const rows=await load();if(rows.length>=25&&rows.every(r=>r.slice(1,6).every(Number.isFinite)))return {rows,provider};}catch(error){errors.push(provider+": "+(error?.message||"unavailable"));}}
  throw new Error(errors.join(" · "));
 }
@@ -2031,9 +2034,9 @@ async function scanFastCoin(coin){
  if(!Array.isArray(rows)||rows.length<25)return null;
  const valid=rows.every(r=>r.length>=6&&r.slice(1,6).every(Number.isFinite)&&Number(r[1])>0&&Number(r[2])>=Number(r[3])&&Number(r[3])>0&&Number(r[4])>0&&Number(r[5])>=0);
  if(!valid)return null;
- const listedVenues=Object.entries(coin.hunterVenueVolume||{}).filter(([,volume])=>Number(volume)>=50000);
+ const listedVenues=Object.entries(coin.hunterVenueVolume||{}).filter(([,volume])=>Number(volume)>=15000);
  // فیلتر نقدشوندگی متعادل‌تر: بازار واقعی و حداقل یک محل معامله فعال؛ بدون حذف خودکار فرصت‌های صرافی‌محور.
- if(Number(coin.total_volume||0)<150000||listedVenues.length<1)return null;
+ if(Number(coin.total_volume||0)<50000||listedVenues.length<1)return null;
  const now=Date.now(),index=rows.length-2,last=rows[index],close=Number(last[4]),open=Number(last[1]),volume=Number(last[5]);
  // فقط کندل بسته‌شده و تازه؛ کندل نیمه‌کاره اجازه تولید سیگنال ندارد.
  const candleAge=now-Number(last[0]);
@@ -2043,86 +2046,44 @@ async function scanFastCoin(coin){
  const avgVolume=baseline.reduce((a,b)=>a+b,0)/baseline.length,volumeRatio=avgVolume>0?volume/avgVolume:0;
  const change1m=(close/open-1)*100,start5=Number(rows[index-4][1]);
  if(!Number.isFinite(start5)||start5<=0)return null;
- const change5m=(close/start5-1)*100,recent=rows.slice(index-7,index);
+ const change5m=(close/start5-1)*100,dailyChange24h=Number(coin.hunterChange24h)||0,recent=rows.slice(index-7,index);
  const priorHigh=Math.max(...recent.map(x=>Number(x[2]))),priorLow=Math.min(...recent.map(x=>Number(x[3])));
  const breakoutUp=close>priorHigh,breakoutDown=close<priorLow,price=Number(coin.current_price)||close;
- const overextended=Math.abs(change5m)>=1.5||Math.abs(change1m)>=0.8;
+ const overextended=Math.abs(change5m)>=1.5||Math.abs(change1m)>=0.8||Math.abs(dailyChange24h)>=18;
  // رادار کوتاه‌مدت: کندل بسته‌شده ۱ دقیقه‌ای با تأیید حرکت ۵ دقیقه‌ای و حجم نسبی.
  const bullMomentum=change1m>=0.08&&change5m>=0.18&&volumeRatio>=1.15&&(breakoutUp||change1m>=0.18);
  const bearMomentum=change1m<=-0.08&&change5m<=-0.18&&volumeRatio>=1.15&&(breakoutDown||change1m<=-0.18);
+ const bullDaily=dailyChange24h>=8&&change5m>=-0.15&&volumeRatio>=0.9;
+ const bearDaily=dailyChange24h<=-8&&change5m<=0.15&&volumeRatio>=0.9;
  const bullFlow=!!flow&&flow.unusual&&flow.netPct5m>=12&&flow.net5m>=5000&&change5m>=-0.15;
  const bearFlow=!!flow&&flow.unusual&&flow.netPct5m<=-12&&flow.net5m<=-5000&&change5m<=0.15;
  let trend="neutral",score=0;
- if(bullMomentum||bearMomentum||bullFlow||bearFlow){
-  trend=(bullMomentum||bullFlow)?"bull":"bear";
+ if(bullMomentum||bearMomentum||bullFlow||bearFlow||bullDaily||bearDaily){
+  trend=(bullMomentum||bullFlow||bullDaily)?"bull":"bear";
   const flowStrength=flow?Math.min(20,Math.abs(flow.netPct5m)*.35)+Math.min(15,Math.max(0,flow.volumeRatio5m-1)*5):0;
-  score=Math.min(99,Math.max((bullFlow||bearFlow)?72:0,Math.round(55+Math.min(16,Math.abs(change1m)*30)+Math.min(14,Math.abs(change5m)*8)+Math.min(16,Math.max(0,volumeRatio-1)*8)+(breakoutUp||breakoutDown?8:0)+flowStrength)));
+  score=Math.min(99,Math.max((bullFlow||bearFlow||bullDaily||bearDaily)?72:0,Math.round(55+Math.min(16,Math.abs(change1m)*30)+Math.min(14,Math.abs(change5m)*8)+Math.min(16,Math.max(0,volumeRatio-1)*8)+(breakoutUp||breakoutDown?8:0)+flowStrength)));
   if(score<64)return null;
  }
- return {trend,score,change1m,change5m,volumeRatio,breakout:breakoutUp||breakoutDown,overextended,price,provider,flow,flowSignal:bullFlow?"inflow":bearFlow?"outflow":"",updatedAt:now,candleTime:Number(last[0]),rows:rows.map(x=>x.slice(0,6).map(Number))};
+ return {trend,score,change1m,change5m,dailyChange24h,dailyMover:Math.abs(dailyChange24h)>=8,lowLiquidity:Number(coin.total_volume||0)<150000,volumeRatio,breakout:breakoutUp||breakoutDown,overextended,price,provider,flow,flowSignal:bullFlow?"inflow":bearFlow?"outflow":"",updatedAt:now,candleTime:Number(last[0]),rows:rows.map(x=>x.slice(0,6).map(Number))};
 }
 async function fetchHunterUniverse(){
  if(Date.now()<hunterUniverseCache.expires&&hunterUniverseCache.coins.length)return hunterUniverseCache.coins;
- // شرط ورود به شکارچی: نماد باید هم در Binance Spot/USDT فعال باشد و هم در فهرست فعال CoinMarketCap.
- const required=await Promise.all([
-  hunterFetchJson("https://api.binance.com/api/v3/exchangeInfo?permissions=%5B%22SPOT%22%5D",9000),
-  hunterFetchJson("https://pro-api.coinmarketcap.com/public-api/v3/cryptocurrency/listings/latest?start=1&limit=5000&convert=USD",12000)
- ]);
- const binanceInfo=required[0],cmcPayload=required[1];
- const binanceSpotSymbols=new Set((binanceInfo.symbols||[])
-  .filter(x=>x.status==="TRADING"&&x.isSpotTradingAllowed!==false&&String(x.quoteAsset||"").toUpperCase()==="USDT")
-  .map(x=>String(x.baseAsset||"").toUpperCase()).filter(Boolean));
- if(!binanceSpotSymbols.size)throw new Error("Binance Spot listing is empty");
- const cmcRows=Array.isArray(cmcPayload?.data)?cmcPayload.data:[];
- if(!cmcRows.length)throw new Error("CoinMarketCap active listings are empty");
- const cmcBySymbol=new Map(),cmcDuplicates=new Set();
- cmcRows.forEach(item=>{
-  const symbol=String(item?.symbol||"").toUpperCase();
-  if(!symbol)return;
-  if(cmcBySymbol.has(symbol))cmcDuplicates.add(symbol);
-  else cmcBySymbol.set(symbol,item);
- });
- cmcDuplicates.forEach(symbol=>cmcBySymbol.delete(symbol));
- const eligibleSymbols=new Set([...binanceSpotSymbols].filter(symbol=>cmcBySymbol.has(symbol)&&!NON_TRADABLE_SYMBOLS.has(symbol)&&!/(UP|DOWN|BULL|BEAR|3L|3S)$/.test(symbol)));
- if(!eligibleSymbols.size)throw new Error("No Binance/CoinMarketCap intersection found");
- const jobs=[
-  async()=>{const d=await hunterFetchJson("https://api.binance.com/api/v3/ticker/24hr",9000);return (Array.isArray(d)?d:[]).filter(x=>String(x.symbol).endsWith("USDT")).map(x=>({symbol:String(x.symbol).slice(0,-4),volume:Number(x.quoteVolume)||0,price:Number(x.lastPrice)||0,change24h:Number(x.priceChangePercent)||0,exchange:"Binance"}));},
-  async()=>{const d=await hunterFetchJson("https://api.bybit.com/v5/market/tickers?category=spot");return (d.result?.list||[]).filter(x=>String(x.symbol).endsWith("USDT")).map(x=>({symbol:String(x.symbol).slice(0,-4),volume:Number(x.turnover24h)||0,price:Number(x.lastPrice)||0,change24h:Number(x.price24hPcnt)*100||0,exchange:"Bybit"}));},
-  async()=>{const d=await hunterFetchJson("https://www.okx.com/api/v5/market/tickers?instType=SPOT");return (d.data||[]).filter(x=>String(x.instId).endsWith("-USDT")).map(x=>({symbol:String(x.instId).replace("-USDT",""),volume:Number(x.volCcy24h)||(Number(x.vol24h)||0)*(Number(x.last)||0),price:Number(x.last)||0,change24h:Number(x.open24h)>0?(Number(x.last)/Number(x.open24h)-1)*100:0,exchange:"OKX"}));},
-  async()=>{const d=await hunterFetchJson("https://api.bitget.com/api/v2/spot/market/tickers");return (d.data||[]).filter(x=>String(x.symbol).endsWith("USDT")).map(x=>({symbol:String(x.symbol).slice(0,-4),volume:Number(x.usdtVolume||x.quoteVolume)||0,price:Number(x.lastPr)||0,change24h:Number(x.change24h)*100||0,exchange:"Bitget"}));},
-  async()=>{const d=await hunterFetchJson("https://api.gateio.ws/api/v4/spot/tickers");return (Array.isArray(d)?d:[]).filter(x=>String(x.currency_pair).endsWith("_USDT")).map(x=>({symbol:String(x.currency_pair).replace("_USDT",""),volume:Number(x.quote_volume)||0,price:Number(x.last)||0,change24h:Number(x.change_percentage)||0,exchange:"Gate"}));},
-  async()=>{const d=await hunterFetchJson("https://api.kucoin.com/api/v1/market/allTickers");return (d.data?.ticker||[]).filter(x=>String(x.symbol).endsWith("-USDT")).map(x=>({symbol:String(x.symbol).replace("-USDT",""),volume:Number(x.volValue)||0,price:Number(x.last)||0,change24h:Number(x.changeRate)*100||0,exchange:"KuCoin"}));}
- ];
- const settled=await Promise.all(jobs.map(async fn=>{try{return await fn();}catch(error){console.debug("Hunter exchange quote:",error?.message||error);return [];}}));
- const marketsBySymbol=new Map();
- settled.forEach(markets=>markets.forEach(x=>{
-  if(!eligibleSymbols.has(x.symbol))return;
-  if(!marketsBySymbol.has(x.symbol))marketsBySymbol.set(x.symbol,{venues:new Set(["Binance"]),totalVolume:0,quotes:[]});
-  const entry=marketsBySymbol.get(x.symbol);entry.venues.add(x.exchange);entry.totalVolume+=x.volume;
-  if(x.price>0)entry.quotes.push({exchange:x.exchange,price:x.price,volume:x.volume,change24h:x.change24h});
- }));
- const allUniverse=[...eligibleSymbols].map(symbol=>{
-  const meta=cmcBySymbol.get(symbol),market=marketsBySymbol.get(symbol)||{venues:new Set(["Binance"]),totalVolume:0,quotes:[]};
-  const quote=market.quotes.sort((a,b)=>b.volume-a.volume)[0]||{};
-  const usdQuote=Array.isArray(meta.quote)?(meta.quote.find(q=>String(q.symbol||"").toUpperCase()==="USD")||{}):(meta.quote?.USD||meta.quote||{});
-  return {
-   id:"cmc:"+String(meta.id),cmcId:Number(meta.id),symbol,name:meta.name||symbol,
-   image:"https://s2.coinmarketcap.com/static/img/coins/"+String(meta.id)+"/64x64.png",
-   current_price:quote.price||Number(usdQuote.price)||0,total_volume:market.totalVolume,
-   market_cap:Number(usdQuote.market_cap)||null,market_cap_rank:Number(meta.cmc_rank)||null,
-   hunterExchange:[...market.venues].join(", "),hunterPriceExchange:quote.exchange||"CoinMarketCap",
-   hunterChange24h:(quote.change24h??Number(usdQuote.percent_change_24h))||0,
-   hunterVenueVolume:Object.fromEntries([...market.venues].map(venue=>[venue,Math.max(0,...market.quotes.filter(q=>q.exchange===venue).map(q=>Number(q.volume)||0))]))
-  };
- }).filter(c=>c.current_price>0).sort((a,b)=>b.total_volume-a.total_volume||Number(a.market_cap_rank||999999)-Number(b.market_cap_rank||999999));
- if(!allUniverse.length)throw new Error("No live prices for eligible Binance/CoinMarketCap assets");
- // همه دارایی‌های مشترک Binance Spot و CoinMarketCap وارد صف پایش چرخشی می‌شوند؛ هر نوبت ۳۶ نماد بررسی می‌شود.
- const universe=allUniverse;
+ // دریافت متمرکز فهرست مشترک Binance و CoinMarketCap از Worker
+ const payload=await hunterFetchJson(AI_ANALYSIS_ENDPOINT+"/hunter-universe",20000);
+ if(!Array.isArray(payload.assets)||!payload.assets.length)throw new Error(payload.detail||payload.error||"فهرست مشترک Binance و CoinMarketCap دریافت نشد");
+ const allUniverse=payload.assets.map(c=>({
+  id:String(c.id||("cmc:"+c.cmcId)),cmcId:Number(c.cmcId)||null,symbol:String(c.symbol||"").toUpperCase(),name:c.name||c.symbol,
+  image:c.image||"",current_price:Number(c.current_price)||0,total_volume:Number(c.total_volume)||0,market_cap:Number(c.market_cap)||null,
+  market_cap_rank:Number(c.market_cap_rank)||null,hunterExchange:c.hunterExchange||"Binance",hunterPriceExchange:c.hunterPriceExchange||"CoinMarketCap",
+  hunterChange24h:Number(c.hunterChange24h)||0,hunterVenueVolume:c.hunterVenueVolume||{},cmcDuplicateCount:Number(c.cmcDuplicateCount)||1
+ })).filter(c=>c.symbol&&c.current_price>0&&/^[A-Z0-9]{2,20}$/.test(c.symbol));
+ if(!allUniverse.length)throw new Error("هیچ دارایی مشترک با قیمت معتبر دریافت نشد");
  hunterStreamMarkets=allUniverse;
- hunterCoinIndex.clear();hunterSymbolIndex.clear();allUniverse.forEach(c=>{hunterCoinIndex.set(c.id,c);hunterSymbolIndex.set(String(c.symbol||"").toUpperCase(),c);});
+ hunterCoinIndex.clear();hunterSymbolIndex.clear();
+ allUniverse.forEach(c=>{hunterCoinIndex.set(c.id,c);hunterSymbolIndex.set(c.symbol,c);});
+ hunterUniverseCache={expires:Date.now()+60000,coins:allUniverse,sources:payload.sources||{},checkedAt:payload.checked_at||new Date().toISOString()};
  connectHunterEarlyStream();connectHunterEarlyExchangeStreams();
- hunterUniverseCache={expires:Date.now()+60000,coins:universe};
- return universe;
+ return allUniverse;
 }
 function renderHunterEarlyAlerts(){
  const feed=$("hunter-early-feed");if(!feed)return;
@@ -2145,7 +2106,7 @@ function ingestHunterEarlyPrice(exchange,baseSymbol,rawPrice){
  if(!coin||!Number.isFinite(price)||price<=0)return;
  const now=Date.now(),historyKey=exchange+":"+base;
  const listedVenues=Object.entries(coin.hunterVenueVolume||{}).filter(([,volume])=>Number(volume)>=50000);
- if(Number(coin.total_volume||0)<500000||listedVenues.length<2)return;
+ if(Number(coin.total_volume||0)<150000||listedVenues.length<1)return;
  let history=hunterPriceHistory.get(historyKey);if(!history){history=[];hunterPriceHistory.set(historyKey,history);}
  const last=history[history.length-1];if(last&&now-last.t<650)return;
  history.push({t:now,p:price});while(history.length&&now-history[0].t>240000)history.shift();
@@ -2260,14 +2221,14 @@ async function runFastRadarScan(){
  try{universe=await fetchHunterUniverse();}catch(error){console.debug("Hunter universe unavailable:",error?.message||error);universe=[];}
  if(!universe.length){fastRadarLastMessage="دریافت فهرست بازارهای اسپات ناموفق بود؛ اتصال صرافی‌ها را بررسی کنید.";if(status)status.textContent=fastRadarLastMessage;if(hunterStatus)hunterStatus.textContent="فهرست بازارها دریافت نشد؛ پایش کندلی انجام نشد.";if(hunterLast)hunterLast.textContent="خطای دریافت داده";fastRadarBusy=false;return;}
  // پایش چرخشی: در هر نوبت ۳۶ بازار بررسی می‌شود تا نتایج تازه‌تر به‌جای انتظار طولانی برای کل فهرست برسند.
- const batchSize=Math.min(36,universe.length),batch=[],selectedIds=new Set();
+ const batchSize=Math.min(60,universe.length),batch=[],selectedIds=new Set();
  // هشدارهای اولیه در اولویت بررسی کندلی قرار می‌گیرند؛ ظرفیت باقی‌مانده همچنان چرخشی است.
  [...hunterEarlyAlerts.values()].filter(x=>Date.now()-x.updatedAt<4*60*1000).sort((a,b)=>b.updatedAt-a.updatedAt).slice(0,12).forEach(alert=>{
   const coin=hunterCoinIndex.get(alert.id);if(coin&&!selectedIds.has(coin.id)&&batch.length<Math.min(12,batchSize)){batch.push(coin);selectedIds.add(coin.id);}
  });
  let offset=0;while(batch.length<batchSize&&offset<universe.length){const coin=universe[(fastRadarCursor+offset)%universe.length];offset++;if(!selectedIds.has(coin.id)){batch.push(coin);selectedIds.add(coin.id);}}
  fastRadarCursor=(fastRadarCursor+offset)%universe.length;
- const workers=Array.from({length:12},async()=>{
+ const workers=Array.from({length:18},async()=>{
   while(cursor<batch.length){
    const coin=batch[cursor++];
    try{const signal=await scanFastCoin(coin);scanned.set(coin.id,signal&&signal.trend!=="neutral"?signal:null);}
