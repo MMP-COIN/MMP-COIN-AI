@@ -553,22 +553,26 @@ async function handle(request,env){
   const get=async(u,ms=7500)=>{const c=new AbortController(),t=setTimeout(()=>c.abort(),ms);try{const r=await fetch(u,{signal:c.signal,headers:{"Accept":"application/json"}});if(!r.ok)throw new Error("HTTP "+r.status);return await r.json();}finally{clearTimeout(t);}};
   const hosts=["https://fapi.binance.com","https://fapi1.binance.com"];
   const binance=await Promise.allSettled(hosts.map(async host=>{
-   const [p,o,l]=await Promise.all([get(host+"/fapi/v1/premiumIndex?symbol="+symbol),get(host+"/fapi/v1/openInterest?symbol="+symbol),get(host+"/futures/data/globalLongShortAccountRatio?symbol="+symbol+"&period=5m&limit=1")]);
+   const results=await Promise.allSettled([get(host+"/fapi/v1/premiumIndex?symbol="+symbol),get(host+"/fapi/v1/openInterest?symbol="+symbol),get(host+"/futures/data/globalLongShortAccountRatio?symbol="+symbol+"&period=5m&limit=1")]);
+   const p=results[0].status==="fulfilled"?results[0].value:null,o=results[1].status==="fulfilled"?results[1].value:null,l=results[2].status==="fulfilled"?results[2].value:null;
+   if(!p&&!o&&!l)throw new Error("Binance Futures metrics unavailable");
    return {premium:p,oi:o,ratio:Array.isArray(l)?l[0]:null,source:"Binance USDⓈ-M Futures"};
   }));
   let data=binance.find(x=>x.status==="fulfilled")?.value||null;
   if(!data){
    for(const host of ["https://api.bybit.eu","https://api.bytick.eu","https://api.bybit.com","https://api.bytick.com"]){
     try{
-     const [t,r]=await Promise.all([get(host+"/v5/market/tickers?category=linear&symbol="+symbol),get(host+"/v5/market/account-ratio?category=linear&symbol="+symbol+"&period=5min&limit=1")]);
+     const results=await Promise.allSettled([get(host+"/v5/market/tickers?category=linear&symbol="+symbol),get(host+"/v5/market/account-ratio?category=linear&symbol="+symbol+"&period=5min&limit=1")]);
+     const t=results[0].status==="fulfilled"?results[0].value:null,r=results[1].status==="fulfilled"?results[1].value:null;
      const ticker=t?.retCode===0?t.result?.list?.[0]:null,ratio=r?.retCode===0?r.result?.list?.[0]:null;
-     if(ticker){data={premium:{lastFundingRate:ticker.fundingRate,markPrice:ticker.markPrice},oi:{openInterest:ticker.openInterest},ratio:ratio?{longShortRatio:Number(ratio.buyRatio)/Math.max(Number(ratio.sellRatio),1e-9)}:null,source:"Bybit Linear"};break;}
+     if(ticker||ratio){data={premium:ticker?{lastFundingRate:ticker.fundingRate,markPrice:ticker.markPrice}:null,oi:ticker?{openInterest:ticker.openInterest}:null,ratio:ratio?{longShortRatio:Number(ratio.buyRatio)/Math.max(Number(ratio.sellRatio),1e-9)}:null,source:"Bybit Linear"};break;}
     }catch{}
    }
   }
   if(!data){
    try{
-    const [p,o]=await Promise.all([get("https://www.okx.com/api/v5/public/funding-rate?instId="+instId),get("https://www.okx.com/api/v5/public/open-interest?instType=SWAP&instId="+instId)]);
+    const results=await Promise.allSettled([get("https://www.okx.com/api/v5/public/funding-rate?instId="+instId),get("https://www.okx.com/api/v5/public/open-interest?instType=SWAP&instId="+instId)]);
+    const p=results[0].status==="fulfilled"?results[0].value:null,o=results[1].status==="fulfilled"?results[1].value:null;
     const premium=p?.code==="0"?p.data?.[0]:null,oi=o?.code==="0"?o.data?.[0]:null;
     if(premium||oi)data={premium:premium?{lastFundingRate:premium.fundingRate,markPrice:null}:null,oi:oi?{openInterest:oi.oiCcy||oi.oi}:null,ratio:null,source:"OKX Swap"};
    }catch{}
