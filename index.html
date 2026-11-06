@@ -1757,25 +1757,13 @@ function handleAiCoinIconError(img){
 }
 
 function syncAiCoinOptions(data=[]) {
- const selectAi=$("ai-coin-select"),optionsBox=$("ai-coin-picker-options");
- if(!selectAi||!optionsBox)return;
- const currentAiVal=selectAi.value,byId=new Map();
- (Array.isArray(data)?data:[]).forEach(c=>{
-  if(!c?.id||!c?.symbol)return;
-  const symbol=String(c.symbol).toUpperCase();
-  if(NON_TRADABLE_COIN_IDS.has(c.id)||NON_TRADABLE_SYMBOLS.has(symbol)||byId.has(c.id))return;
-  byId.set(c.id,c);
- });
- const available=[...byId.values()].sort((a,b)=>{
-  const rankA=Number(a.market_cap_rank)||999999,rankB=Number(b.market_cap_rank)||999999;
-  return rankA-rankB||(Number(b.market_cap)||0)-(Number(a.market_cap)||0);
- }).slice(0,100);
- const optionHtml=c=>{
-  const symbol=String(c.symbol||"").toUpperCase(),image=/^https:\/\//i.test(String(c.image||""))?String(c.image):"https://assets.coincap.io/assets/icons/"+symbol.toLowerCase()+"@2x.png";
-  return '<button type="button" class="ai-coin-picker-option" role="option" aria-selected="'+(c.id===currentAiVal?'true':'false')+'" data-ai-coin-id="'+aiEscape(c.id)+'" data-search="'+aiEscape((c.name||"")+" "+symbol).toLowerCase()+'"><img src="'+aiEscape(image)+'" data-symbol="'+aiEscape(symbol)+'" alt="'+aiEscape(symbol)+'" loading="lazy" data-fallback-step="0" decoding="async" onerror="handleAiCoinIconError(this)"><span><b>'+aiEscape(c.name||symbol)+'</b><small>'+aiEscape(symbol)+'</small></span></button>';
- };
- let html=available.length?'<div class="ai-coin-picker-group">۱۰۰ ارز اولویت‌دار بر اساس ارزش بازار · '+available.length+' ارز</div>'+available.map(optionHtml).join(""):"";
- optionsBox.innerHTML=html||'<div class="ai-empty">فهرست ارزها هنوز دریافت نشده است.</div>';
+ const selectAi=$("ai-coin-select"),optionsBox=$("ai-coin-picker-options");if(!selectAi||!optionsBox)return;
+ const currentAiVal=selectAi.value,byId=new Map(),source=[...(Array.isArray(data)?data:[]),...(Array.isArray(cachedCoinsData)?cachedCoinsData:[]),...(typeof hunterUniverseCache!=="undefined"&&Array.isArray(hunterUniverseCache.coins)?hunterUniverseCache.coins:[])];
+ source.forEach(c=>{if(!c?.id||!c?.symbol)return;const symbol=String(c.symbol).toUpperCase();if(NON_TRADABLE_COIN_IDS.has(c.id)||NON_TRADABLE_SYMBOLS.has(symbol)||byId.has(c.id))return;byId.set(c.id,c);});
+ try{JSON.parse(localStorage.getItem("mmp_manual_coin_symbols_v1")||"[]").forEach(symbol=>{const s=String(symbol||"").toUpperCase();if(/^[A-Z0-9]{2,20}$/.test(s)&&!NON_TRADABLE_SYMBOLS.has(s)&&![...byId.values()].some(c=>String(c.symbol).toUpperCase()===s))byId.set("manual:"+s,{id:"manual:"+s,symbol:s,name:s,image:"https://assets.coincap.io/assets/icons/"+s.toLowerCase()+"@2x.png",market_cap_rank:999999});});}catch(e){}
+ const available=[...byId.values()].sort((x,y)=>(Number(x.market_cap_rank)||999999)-(Number(y.market_cap_rank)||999999)||(Number(y.market_cap)||0)-(Number(x.market_cap)||0));
+ const optionHtml=c=>{const symbol=String(c.symbol||"").toUpperCase(),image=/^https:\/\//i.test(String(c.image||""))?String(c.image):"https://assets.coincap.io/assets/icons/"+symbol.toLowerCase()+"@2x.png";return '<button type="button" class="ai-coin-picker-option" role="option" aria-selected="'+(c.id===currentAiVal?'true':'false')+'" data-ai-coin-id="'+aiEscape(c.id)+'" data-search="'+aiEscape((c.name||"")+" "+symbol).toLowerCase()+'"><img src="'+aiEscape(image)+'" data-symbol="'+aiEscape(symbol)+'" alt="'+aiEscape(symbol)+'" loading="lazy" data-fallback-step="0" decoding="async" onerror="handleAiCoinIconError(this)"><span><b>'+aiEscape(c.name||symbol)+'</b><small>'+aiEscape(symbol)+'</small></span></button>';};
+ optionsBox.innerHTML=(available.length?'<div class="ai-coin-picker-group">فهرست کامل نمادهای قابل انتخاب · '+available.length+' ارز</div>'+available.map(optionHtml).join(""):"")||'<div class="ai-empty">فهرست ارزها هنوز دریافت نشده است.</div>';
  selectAi.innerHTML='<option value="">انتخاب ارز…</option>'+available.map(c=>'<option value="'+aiEscape(c.id)+'">'+aiEscape(c.name||c.symbol)+' ('+aiEscape(String(c.symbol).toUpperCase())+')</option>').join("");
  if(currentAiVal&&[...selectAi.options].some(o=>o.value===currentAiVal))selectAi.value=currentAiVal;else selectAi.value="";
  updateAiCoinPickerCurrent();
@@ -1785,7 +1773,7 @@ function updateAiCoinPickerCurrent(){
  if(!select||!current)return;
  const selected=select.options[select.selectedIndex];
  if(!selected||!selected.value){current.innerHTML='<span class="ai-coin-picker-placeholder">انتخاب ارز دیجیتال برای تحلیل</span>';return;}
- const coin=(Array.isArray(cachedCoinsData)?cachedCoinsData:[]).find(c=>c.id===selected.value);
+ const coin=(Array.isArray(cachedCoinsData)?cachedCoinsData:[]).find(c=>c.id===selected.value)||(typeof hunterCoinIndex!=="undefined"?hunterCoinIndex.get(selected.value):null)||({id:selected.value,symbol:selected.value.startsWith("manual:")?selected.value.slice(7):selected.textContent.replace(/^.*\(([^)]+)\).*$/,"$1"),name:selected.textContent,image:""});
  if(!coin){current.textContent=selected.textContent;return;}
  const symbol=String(coin.symbol||"").toUpperCase(),image=/^https:\/\//i.test(String(coin.image||""))?String(coin.image):"https://assets.coincap.io/assets/icons/"+symbol.toLowerCase()+"@2x.png";
  current.innerHTML='<img src="'+aiEscape(image)+'" data-symbol="'+aiEscape(symbol)+'" alt="'+aiEscape(symbol)+'" data-fallback-step="0" decoding="async" onerror="handleAiCoinIconError(this)"><span><b>'+aiEscape(coin.name||symbol)+'</b><small>'+aiEscape(symbol)+'</small></span>';
@@ -1902,9 +1890,9 @@ async function checkConnections(){
    const icon=brand[1]?'<img class="conn-brand-icon" src="'+brand[1]+'" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement(\'span\'),{className:\'conn-brand-fallback\',textContent:\''+brand[0]+'\'}))">':'<span class="conn-brand-fallback">'+brand[0]+'</span>';
    return '<div class="conn"><div class="conn-top"><span class="conn-brand">'+icon+'<span class="conn-name">'+aiEscape(c.name)+'</span></span><span class="lamp '+lamp+'"></span></div><div class="conn-meta"><span>'+label+'</span><b dir="ltr">'+latency+'</b></div>'+detail+'</div>';
   };
-  $("connections").innerHTML=ordered.slice(0,4).map(makeCard).join("");
-  $("connections-extra").innerHTML=ordered.slice(4).map(makeCard).join("");
-  renderCoinGeckoConnection();setupConnectionsToggle();
+  $("connections").innerHTML=ordered.map(makeCard).join("");
+  $("connections-extra").innerHTML="";
+  const toggle=$("connections-toggle");if(toggle)toggle.hidden=true;
   const summary=$("conn-summary");
   if(summary)summary.textContent=ordered.filter(x=>x.status!=="down").length+" از "+expected.length+" منبع پاسخ‌گو";
   return ordered;
@@ -1912,7 +1900,7 @@ async function checkConnections(){
   const message=error.name==="AbortError"?"مهلت بررسی اتصال تمام شد":"سرویس بررسی اتصال پاسخ نداد";
   $("connections").innerHTML='<div class="conn"><div class="conn-name">'+message+'</div><small class="conn-purpose">چند لحظه دیگر دوباره تلاش کنید</small></div>';
   $("connections-extra").innerHTML="";
-  renderCoinGeckoConnection();setupConnectionsToggle();
+  const toggle=$("connections-toggle");if(toggle)toggle.hidden=true;
   const summary=$("conn-summary");if(summary)summary.textContent="وضعیت اتصال نامشخص";
   return [];
  }finally{clearTimeout(timer);}
@@ -1996,8 +1984,8 @@ async function runAiAnalysis(force=false){
  const id=$("ai-coin-select").value;
  const out=$("advanced-ai-analysis"),btn=$("ai-run-btn");
  if(!id){$("ai-action").textContent="منتظر انتخاب ارز";aiSetStatus("ابتدا یک ارز برای تحلیل انتخاب کنید.");return;}
- const c=cachedCoinsData.find(x=>x.id===id);
- if(!c){aiSetStatus("داده قیمت این ارز هنوز بارگذاری نشده است.");return;}
+ const c=cachedCoinsData.find(x=>x.id===id)||(typeof hunterCoinIndex!=="undefined"?hunterCoinIndex.get(id):null)||(id.startsWith("manual:")?{id,symbol:id.slice(7),name:id.slice(7),current_price:0}:null);
+ if(!c){aiSetStatus("نماد انتخاب‌شده در فهرست بازار موجود نیست.");return;}
  const cacheKey=id+"|"+$("ai-market-mode").value;
  const cached=aiCache.get(cacheKey);
  if(!force&&cached&&Date.now()-cached.time<180000){
@@ -2557,7 +2545,7 @@ function renderOpportunities(){
 
   return '<article class="radar-item '+(up?"radar-item-bullish":down?"radar-item-bearish":"radar-item-neutral")+'"><div class="radar-asset"><img src="'+aiEscape(c.image||"")+'" alt="" loading="lazy"><span><b>'+aiEscape(c.name)+'</b><small>'+aiEscape(String(c.symbol).toUpperCase())+'</small><strong class="radar-direction-label">'+direction+'</strong></span></div><div class="radar-score"><b>'+m.score.toLocaleString("fa-IR")+'</b><small>قدرت روند</small></div><div class="radar-stats">'+(m.fast?'<span>تغییر ۱دقیقه<b class="'+(m.fast.change1m>=0?"positive":"negative")+'">'+change(m.fast.change1m)+'</b></span><span>تغییر ۳دقیقه<b class="'+(m.fast.change3m>=0?"positive":"negative")+'">'+change(m.fast.change3m)+'</b></span><span>حجم نسبی<b>'+m.fast.volumeRatio.toFixed(1)+'×</b></span>':'<span>تغییر ۱ساعته<b>'+change1h+'</b></span><span>تغییر ۲۴ساعته<b>'+change(m.h)+'</b></span><span>نقدشوندگی نسبی<b>'+(m.liquidity==null?"ناموجود":m.liquidity.toFixed(2)+"٪")+'</b></span>')+'</div><div class="radar-action"><span class="radar-trend">'+(m.fast?(m.fast.overextended?"حرکت سریع؛ ورود دیرهنگام پرریسک":"شتاب لحظه‌ای · "+(m.fast.breakout?"شکست محدوده":"در حال شکل‌گیری")):(m.dataQuality||""))+'</span></div></article>';
  };
- const list=(title,items,lower,cls)=>'<section class="radar-side '+cls+'"><div class="section-head radar-group-head"><div><b class="radar-large-heading">'+title+'</b></div><span class="badge">'+items.length.toLocaleString("fa-IR")+' ارز</span></div><div class="radar-list">'+items.slice(0,4).map(card).join("")+'</div>'+(items.length>4?'<details class="radar-more"><summary><span class="radar-toggle-copy"><b>'+items.length.toLocaleString("fa-IR")+' ارز</b></span><span class="radar-expand-action" aria-hidden="true"></span></summary><div class="radar-list">'+items.slice(4).map(card).join("")+'</div></details>':"")+(lower.length?'<details class="radar-more radar-below-threshold"><summary><span class="radar-toggle-copy"><b>'+lower.length.toLocaleString("fa-IR")+' ارز</b></span><span class="radar-expand-action" aria-hidden="true"></span></summary><div class="radar-list">'+lower.map(card).join("")+'</div></details>':"")+'</section>';
+ const list=(title,items,lower,cls)=>'<section class="radar-side '+cls+'"><div class="section-head radar-group-head"><div><b class="radar-large-heading">'+title+'</b></div><span class="badge">'+items.length.toLocaleString("fa-IR")+' ارز</span></div><div class="radar-list">'+items.slice(0,6).map(card).join("")+'</div>'+(items.length>6?'<details class="radar-more"><summary><span class="radar-toggle-copy"><b>'+items.length.toLocaleString("fa-IR")+' ارز</b></span><span class="radar-expand-action" aria-hidden="true"></span></summary><div class="radar-list">'+items.slice(6).map(card).join("")+'</div></details>':"")+(lower.length?'<details class="radar-more radar-below-threshold"><summary><span class="radar-toggle-copy"><b>'+lower.length.toLocaleString("fa-IR")+' ارز</b></span><span class="radar-expand-action" aria-hidden="true"></span></summary><div class="radar-list">'+lower.map(card).join("")+'</div></details>':"")+'</section>';
  el.innerHTML=list("فرصت‌های صعودی",bullish,bullish70,"bull")+list("فرصت‌های نزولی",bearish,bearish70,"bear");
  // AI radar scan is manual to prevent background requests exhausting the analysis quota.
 }
@@ -2571,7 +2559,7 @@ $("risk-calc")?.addEventListener("click",calcRisk);
 setupAiCoinPicker();renderMarketHours();setInterval(renderMarketHours,15000);
 
 refreshAll();
- checkConnections();setInterval(checkConnections,300000);
+ checkConnections();setInterval(()=>{if(document.visibilityState!=="hidden")checkConnections();},60000);window.addEventListener("online",()=>checkConnections());document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")checkConnections();});
 initTradingView("BINANCE:BTCUSDT");
 setInterval(refreshAll, 60000);
 setTimeout(()=>runFastRadarScan(),12000);
@@ -3544,6 +3532,35 @@ body:before{opacity:.23;background-size:34px 34px}
   finally{if(button){button.disabled=false;button.textContent="اجرای بک‌تست ۲۵۰ کندل";}}
  }
  byId("historical-backtest")?.addEventListener("click",runHistoricalBacktest);
+</script>
+<style id="mmp-coin-selector-and-radar-polish">
+.mmp-symbol-picker{position:relative;display:flex;align-items:center;gap:6px;min-width:0;width:100%}.mmp-symbol-picker>input{flex:1;min-width:0}.mmp-symbol-trigger{width:34px;height:36px;flex:none;display:grid;place-items:center;border:1px solid #435c70;border-radius:9px;background:#102030;color:#f1d38e;cursor:pointer;padding:3px}.mmp-symbol-trigger img{width:25px;height:25px;object-fit:contain;border-radius:50%;background:#fff}.mmp-symbol-add{width:34px;height:36px;flex:none;border:1px solid #947542;border-radius:9px;background:linear-gradient(145deg,#5a4728,#1a2631);color:#f8dfa0;font-size:20px;cursor:pointer}
+.mmp-symbol-menu{position:absolute;z-index:12000;top:calc(100% + 6px);right:0;left:0;min-width:240px;max-height:330px;padding:8px;border:1px solid #8d7447;border-radius:12px;background:#0b1521;box-shadow:0 18px 45px #000d}.mmp-symbol-menu[hidden]{display:none}.mmp-symbol-menu input{width:100%;height:36px;padding:7px 10px;margin-bottom:7px;border:1px solid #3b5367;border-radius:8px;background:#101f2e;color:#fff}.mmp-symbol-options{max-height:225px;overflow:auto}.mmp-symbol-option{width:100%;display:flex;align-items:center;gap:9px;padding:7px;border:0;border-bottom:1px solid #ffffff12;background:transparent;color:#e8edf2;text-align:right;cursor:pointer}.mmp-symbol-option:hover{background:#d7b46a1b}.mmp-symbol-option img{width:27px;height:27px;flex:none;border-radius:50%;object-fit:contain;background:#fff}.mmp-symbol-option span{display:grid;gap:2px}.mmp-symbol-option b{font-size:11px}.mmp-symbol-option small{font-size:9px;color:#a6b6c5;direction:ltr;text-align:right}.mmp-symbol-manual{display:flex;gap:6px;padding-top:7px;border-top:1px solid #ffffff18;margin-top:6px}.mmp-symbol-manual input{margin:0;min-width:0}.mmp-symbol-manual button{white-space:nowrap;border:1px solid #947542;border-radius:8px;background:#47391f;color:#f7dfa0;padding:5px 8px;font-size:10px}
+.mmp-tv-picker{position:relative;min-width:180px}.mmp-tv-picker>.mmp-symbol-trigger{width:100%;height:39px;display:flex;justify-content:flex-start;gap:8px;padding:5px 9px;color:#eee}.mmp-tv-picker>.mmp-symbol-trigger span{flex:1;text-align:right;font-size:11px}.mmp-tv-picker .mmp-symbol-menu{width:min(310px,85vw);right:auto;left:0}#tv-symbol.mmp-native-select-hidden{position:absolute!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important}
+#connections{grid-template-columns:repeat(4,minmax(0,1fr))}#connections .conn{min-height:104px}#connections .conn-brand-icon{width:29px;height:29px;object-fit:contain;border-radius:8px;background:#fff;padding:4px;flex:none}#connections .conn-brand-fallback{width:29px;height:29px;display:grid;place-items:center;border-radius:8px;background:linear-gradient(145deg,#e5c67e,#8a6734);color:#111;font-weight:900;flex:none}#connections .conn-brand{display:flex;align-items:center;gap:8px;min-width:0}#connections .conn-name{font-size:11px;white-space:normal}#connections .conn-meta{display:flex;justify-content:space-between;gap:8px;margin-top:9px;font-size:10px}#connections .conn-purpose{display:block;font-size:9px;margin-top:6px;color:#90a4b6;line-height:1.5}.connection-more{display:none!important}#connections-toggle{display:none!important}
+.radar-side{padding:9px!important}.radar-side .section-head{margin-bottom:7px!important}.radar-list{gap:6px!important}.radar-group .radar-item,.radar-side .radar-item{min-height:0!important;padding:8px 9px!important;gap:7px!important;border-radius:10px!important}.radar-item .radar-asset img{width:25px;height:25px;flex-basis:25px}.radar-item .radar-asset b{font-size:11px}.radar-item .radar-score{padding:3px 6px}.radar-item .radar-score b{font-size:16px!important}.radar-item .radar-stats{gap:4px}.radar-item .radar-stats b{font-size:10px}.radar-more>summary{min-height:40px!important;padding:8px 10px!important;font-size:10px!important}.radar-below-threshold{margin-top:6px}
+@media(max-width:900px){#connections{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:560px){#connections{gap:7px}#connections .conn{padding:9px;min-height:98px}.mmp-symbol-menu{max-height:290px}.mmp-symbol-options{max-height:185px}.radar-item .radar-stats span{font-size:8px}}
+</style>
+<script id="mmp-unified-coin-selectors">
+(()=>{
+ "use strict";
+ const $=id=>document.getElementById(id),KEY="mmp_manual_coin_symbols_v1";
+ const safe=s=>String(s||"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,20),esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+ const icon=c=>/^https:\/\//i.test(String(c?.image||""))?c.image:"https://assets.coincap.io/assets/icons/"+String(c?.symbol||"").toLowerCase()+"@2x.png";
+ function pool(){const m=new Map(),add=c=>{const s=safe(c?.symbol);if(s)m.set(s,{...(m.get(s)||{}),...c,symbol:s,name:c?.name||s,image:c?.image||icon({symbol:s})});};try{cachedCoinsData?.forEach(add)}catch(e){}try{hunterUniverseCache?.coins?.forEach(add)}catch(e){}try{hunterCoinIndex?.forEach(add)}catch(e){}try{JSON.parse(localStorage.getItem(KEY)||"[]").forEach(symbol=>add({symbol,name:symbol,manual:true}))}catch(e){}return [...m.values()].sort((a,b)=>(Number(a.market_cap_rank)||999999)-(Number(b.market_cap_rank)||999999)||a.name.localeCompare(b.name));}
+ function save(s){s=safe(s);if(!/^[A-Z0-9]{2,20}$/.test(s))return false;try{const a=JSON.parse(localStorage.getItem(KEY)||"[]");if(!a.includes(s))a.push(s);localStorage.setItem(KEY,JSON.stringify(a.slice(-250)))}catch(e){}return true;}
+ function build(w,input,kind){const menu=document.createElement("div");menu.className="mmp-symbol-menu";menu.hidden=true;menu.innerHTML='<input type="search" placeholder="جستجوی نام یا نماد ارز…"><div class="mmp-symbol-options"></div><div class="mmp-symbol-manual"><input maxlength="20" placeholder="نماد دلخواه؛ مثل SOL"><button type="button">＋ افزودن</button></div>';w.appendChild(menu);const search=menu.querySelector('input[type="search"]'),list=menu.querySelector(".mmp-symbol-options"),manual=menu.querySelector(".mmp-symbol-manual input");
+ const render=()=>{const q=search.value.trim().toLowerCase(),items=pool().filter(c=>(c.symbol+" "+c.name).toLowerCase().includes(q)).slice(0,500);list.innerHTML=items.map(c=>'<button type="button" class="mmp-symbol-option" data-symbol="'+esc(c.symbol)+'"><img src="'+esc(icon(c))+'" alt="" loading="lazy" onerror="this.style.visibility=\'hidden\'"><span><b>'+esc(c.name)+'</b><small>'+esc(c.symbol)+'/USDT</small></span></button>').join("")||'<div class="muted" style="padding:12px">نمادی پیدا نشد؛ آن را دستی اضافه کن.</div>';};
+ const choose=s=>{s=safe(s);if(!s)return;if(kind==="tv"){const v="BINANCE:"+s+"USDT";if(![...input.options].some(o=>o.value===v))input.add(new Option(s+" ("+s+")",v));input.value=v;input.dispatchEvent(new Event("change",{bubbles:true}));}else{input.value=s;input.dispatchEvent(new Event("change",{bubbles:true}));const im=w.querySelector(".mmp-symbol-trigger img");if(im)im.src=icon(pool().find(c=>c.symbol===s)||{symbol:s});}menu.hidden=true;};
+ search.addEventListener("input",render);list.addEventListener("click",e=>{const b=e.target.closest("[data-symbol]");if(b)choose(b.dataset.symbol);});menu.querySelector("button").addEventListener("click",()=>{const s=safe(manual.value);if(!save(s)){manual.focus();return;}render();choose(s);manual.value="";});
+ w.querySelector(".mmp-symbol-trigger").addEventListener("click",()=>{menu.hidden=!menu.hidden;if(!menu.hidden){search.value="";render();search.focus();}});w.querySelector(".mmp-symbol-add").addEventListener("click",()=>{menu.hidden=false;manual.focus();render();});document.addEventListener("click",e=>{if(!w.contains(e.target))menu.hidden=true;});
+ input.addEventListener("change",()=>{const s=kind==="tv"?String(input.value||"").split(":").pop().replace(/USDT$/,""):safe(input.value),im=w.querySelector(".mmp-symbol-trigger img");if(im)im.src=icon(pool().find(c=>c.symbol===s)||{symbol:s||"btc"});});return {menu,render};}
+ function attachInput(id){const input=$(id);if(!input||input.dataset.mmpPicker)return;input.dataset.mmpPicker="1";const w=document.createElement("div");w.className="mmp-symbol-picker";input.parentNode.insertBefore(w,input);w.appendChild(input);const t=document.createElement("button");t.type="button";t.className="mmp-symbol-trigger";t.title="انتخاب از فهرست کامل ارزها";t.innerHTML='<img src="'+icon({symbol:input.value||"BTC"})+'" alt="">';w.appendChild(t);const a=document.createElement("button");a.type="button";a.className="mmp-symbol-add";a.textContent="＋";a.title="افزودن نماد دلخواه";a.setAttribute("aria-label",a.title);w.appendChild(a);build(w,input,"text");}
+ function attachTv(){const s=$("tv-symbol");if(!s||s.dataset.mmpPicker)return;s.dataset.mmpPicker="1";s.classList.add("mmp-native-select-hidden");const w=document.createElement("div");w.className="mmp-tv-picker";s.parentNode.insertBefore(w,s);w.appendChild(s);const t=document.createElement("button");t.type="button";t.className="mmp-symbol-trigger";t.innerHTML='<img src="'+icon({symbol:"BTC"})+'" alt=""><span>Bitcoin · BTC</span><b>⌄</b>';w.appendChild(t);const a=document.createElement("button");a.type="button";a.className="mmp-symbol-add";a.textContent="＋";a.title="افزودن نماد به نمودار";w.appendChild(a);const p=build(w,s,"tv"),update=()=>{const sym=String(s.value||"").split(":").pop().replace(/USDT$/,""),c=pool().find(x=>x.symbol===sym)||{symbol:sym};t.querySelector("img").src=icon(c);t.querySelector("span").textContent=(c.name||sym)+" · "+sym;};s.addEventListener("change",update);a.addEventListener("click",()=>{p.menu.hidden=false;p.menu.querySelector(".mmp-symbol-manual input").focus();p.render();});new MutationObserver(update).observe(s,{childList:true});update();}
+ function refreshAi(){const s=$("ai-coin-select");if(!s||typeof syncAiCoinOptions!=="function")return;const old=s.value,all=pool(),manual=all.filter(c=>c.manual).map(c=>({id:"manual:"+c.symbol,symbol:c.symbol,name:c.name,image:c.image}));syncAiCoinOptions([...(typeof cachedCoinsData!=="undefined"?cachedCoinsData:[]),...(typeof hunterUniverseCache!=="undefined"?hunterUniverseCache.coins||[]:[]),...manual]);if(old&&[...s.options].some(o=>o.value===old))s.value=old;}
+ function init(){["intel-symbol","journal-symbol","alert-symbol"].forEach(attachInput);attachTv();refreshAi();setInterval(refreshAi,30000);}
+ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init,{once:true});else init();
+})();
 </script>
 </body>
 </html>
