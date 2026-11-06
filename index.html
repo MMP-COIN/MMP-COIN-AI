@@ -1031,7 +1031,7 @@ body{background:
 <section class="terminal-grid" id="opportunities">
 <section class="card radar-card"><div class="section-head"><div><div class="section-kicker">MMP MARKET SCANNER</div><h2>رادار هوشمند بازار</h2><p class="sub">خلاصه وضعیت بازار و پیشنهاد ورود و خروج بر پایه داده‌های زنده</p></div><button class="radar-refresh-btn" id="radar-refresh-btn" type="button" aria-label="بروزرسانی رادار و داده‌های بازار" title="بروزرسانی رادار و داده‌های بازار"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.2v2.1M12 18.7v2.1M3.2 12h2.1m13.4 0h2.1M5.8 5.8l1.5 1.5m9.4 9.4 1.5 1.5m0-12.4-1.5 1.5m-9.4 9.4-1.5 1.5"/><circle cx="12" cy="12" r="6.1"/><path d="M12 8.7v3.6l2.3 1.4"/></svg><span>بروزرسانی</span></button></div><div class="radar-live-note"><span class="radar-live-dot"></span><span>شکار حرکت‌های سریع با کندل ۱ دقیقه‌ای و تأیید ۵ دقیقه‌ای</span><span id="radar-updated" class="sub">در انتظار داده بازار…</span></div>
 <div id="opportunity-list" class="radar-groups"><div class="ai-empty">پس از دریافت قیمت‌ها، رادار بازار را بررسی می‌کند.</div></div>
-<div class="radar-ai-title">پیشنهاد هوش مصنوعی</div><button class="btn primary" id="radar-deep-scan" type="button">بررسی پیشنهادها با هوش مصنوعی</button><div id="radar-deep-status" class="sub radar-ai-status" aria-live="polite">در انتظار تحلیل داده‌های بازار…</div><div id="radar-deep-results" class="radar-deep-results" aria-live="polite"></div>
+<p class="sub radar-footnote">رادار فقط داده‌های زنده و شاخص‌های فنی بازار را پایش می‌کند؛ تحلیل هوش مصنوعی فقط با درخواست کاربر در بخش تحلیلگر اجرا می‌شود.</p>
 <p class="sub radar-footnote">پیشنهادها بر اساس داده‌های واقعی بازار تهیه می‌شوند و تضمین سود نیستند. در نبود داده معتبر، پیشنهادی صادر نمی‌شود.</p></section></section>
 
 <section class="card market-hunter" id="market-hunter">
@@ -2207,45 +2207,6 @@ function radarScore(c){
  const score=directional==null?0:Math.round(50+Math.min(45,Math.abs(directional)*8));
  const parts=(has1h?1:0)+(has24?1:0)+(has7?1:0);
  return {score,trend,h1:has1h?h1:null,h:has24?h:null,d:has7?d:null,directional,liquidity:liquidity==null?null:v/m*100,range,dataQuality:parts===3?"۱ساعت، ۲۴ساعت و هفتگی":parts===2?"دو بازه معتبر":parts===1?"یک بازه معتبر":"داده تغییرات ناقص"};
-}
-let radarDeepScanBusy=false;
-let radarAutoScanAt=0;
-async function runRadarDeepScan(){
- const status=$("radar-deep-status"),results=$("radar-deep-results");
- if(radarDeepScanBusy||aiBusy||!cachedCoinsData.length)return;
- const scored=cachedCoinsData.map(coin=>({coin,metrics:radarScore(coin)}));
- const rankRadar=(a,b)=>(b.metrics.score-a.metrics.score)||(Math.abs(b.metrics.directional??0)-Math.abs(a.metrics.directional??0));
- const bullish=scored.filter(x=>x.metrics.trend==="bull"&&x.metrics.score>=70).sort(rankRadar).slice(0,3);
- const bearish=scored.filter(x=>x.metrics.trend==="bear"&&x.metrics.score>=70).sort(rankRadar).slice(0,3);
- const candidates=[...bullish.map(x=>({...x,expectedTrend:"bull"})),...bearish.map(x=>({...x,expectedTrend:"bear"}))];
- if(!candidates.length){if(status)status.textContent="در داده معتبر فعلی ارزی با قدرت روند ۷۰ یا بالاتر شناسایی نشد.";if(results)results.innerHTML="";return;}
- radarDeepScanBusy=true;
- if(status)status.textContent="هوش مصنوعی در حال بررسی "+candidates.length+" نامزد برتر از میان "+cachedCoinsData.length+" ارز…";
- if(results)results.innerHTML="";
- try{
-  for(const item of candidates){
-   const c=item.coin,trend=item.expectedTrend;
-   const response=await fetch(AI_ANALYSIS_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({coin_id:c.id,symbol:String(c.symbol).toUpperCase(),name:c.name,market_mode:trend==="bear"?"both":"spot",analysis_mode:"radar"})});
-   const data=await response.json();
-   if(!response.ok||!data?.analysis)throw new Error(data?.error||"پاسخ تحلیل معتبر نیست");
-   mmpSendAiResult(data.analysis,data.market||{},trend==="bear"?"both":"spot",item.coin);
-   const a=data.analysis,levels=a.levels||{},action=String(a.action||"WAIT").toUpperCase();
-   const expected=trend==="bull"?"BUY":"SELL";
-   const active=action===expected&&a.plan_status==="active_signal"&&levels.entry_zone!=null&&levels.stop_loss!=null&&levels.tp1!=null;
-   const fmt=v=>{if(v==null)return "—";if(typeof v==="object")return (v.low??"—")+" تا "+(v.high??"—");return Number(v).toLocaleString("en-US",{maximumFractionDigits:8});};
-   const label=trend==="bull"?"بررسی سناریوی صعودی":"بررسی سناریوی نزولی";
-   const direction=trend==="bull"?"تمایل صعودی":"تمایل نزولی";
-   const plan=active?'<div class="radar-ai-levels"><span>ورود <b>'+aiEscape(fmt(levels.entry_zone))+'</b></span><span>حد ضرر <b>'+aiEscape(fmt(levels.stop_loss))+'</b></span><span>هدف خروج <b>'+aiEscape(fmt(levels.tp1))+'</b></span></div>':'<p class="radar-ai-no-signal">جهت بررسی شده، اما شرایط ورود کامل نیست؛ این مورد فقط در فهرست تحت‌نظر قرار می‌گیرد.</p>';
-   const reasons=Array.isArray(a.reasons)?a.reasons.slice(0,3).join(" · "):"";
-   const why=reasons||a.risk_level||"بررسی بر پایه داده‌های بازار";
-   const html='<article class="radar-ai-card"><div class="radar-ai-card-head"><b>'+label+'</b><span>'+aiEscape(c.name)+' ('+aiEscape(String(c.symbol).toUpperCase())+')</span></div><div class="radar-ai-direction '+(active?(trend==="bull"?"positive":"negative"):"")+'">'+direction+' · '+(active?"سناریوی ورود تأیید شد":"نیازمند تأیید بیشتر")+' · امتیاز '+item.metrics.score+'/100</div>'+plan+'<small>'+aiEscape(why)+'</small><small>اعتماد مدل: '+aiEscape(a.confidence??"نامشخص")+' · ریسک: '+aiEscape(a.risk_level||"نامشخص")+'</small></article>';
-   if(results)results.insertAdjacentHTML("beforeend",html);
-  }
-  if(status)status.textContent="تحلیل نامزدهای برتر از میان "+cachedCoinsData.length+" ارز انجام شد · "+new Date().toLocaleTimeString("fa-IR");
- }catch(error){
-  if(status)status.textContent="تحلیل عمیق کامل نشد؛ رتبه‌بندی اولیه حفظ شده است. علت احتمالی: محدودیت یا خطای سرویس تحلیل.";
-  console.warn("Radar AI suggestions unavailable:",error);
- }finally{radarDeepScanBusy=false;}
 }
 const hunterExchangeCache={expires:0,sets:null,loading:null};
 function hunterSafeSymbol(value){const symbol=String(value||"").toUpperCase();return /^[A-Z0-9]{2,24}$/.test(symbol)?symbol:"";}
