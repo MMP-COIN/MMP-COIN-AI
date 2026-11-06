@@ -464,11 +464,11 @@ async function handle(request,env){
    timedJson(cmcUrl(1),18000,60),
    timedJson(cmcUrl(5001),18000,60)
   ]);
-  if(primary[0].status!=="fulfilled")return json({error:"دریافت فهرست Binance ناموفق بود.",detail:String(primary[0].reason?.message||primary[0].reason).slice(0,180)},502,request);
   if(primary[1].status!=="fulfilled")return json({error:"دریافت فهرست فعال CoinMarketCap ناموفق بود.",detail:String(primary[1].reason?.message||primary[1].reason).slice(0,180)},502,request);
-  const binanceInfo=primary[0].value,cmcRows=[...(Array.isArray(primary[1].value?.data)?primary[1].value.data:[]),...(primary[2].status==="fulfilled"&&Array.isArray(primary[2].value?.data)?primary[2].value.data:[])];
+  const binanceInfo=primary[0].status==="fulfilled"?primary[0].value:{symbols:[]};
+  const cmcRows=[...(Array.isArray(primary[1].value?.data)?primary[1].value.data:[]),...(primary[2].status==="fulfilled"&&Array.isArray(primary[2].value?.data)?primary[2].value.data:[])];
   const binanceSymbols=new Set((binanceInfo.symbols||[]).filter(x=>x.status==="TRADING"&&x.isSpotTradingAllowed!==false&&String(x.quoteAsset||"").toUpperCase()==="USDT").map(x=>String(x.baseAsset||"").toUpperCase()).filter(Boolean));
-  if(!binanceSymbols.size||!cmcRows.length)return json({error:"فهرست مشترک بازار خالی است."},502,request);
+  if(!cmcRows.length)return json({error:"فهرست بازار خالی است."},502,request);
   const cmcBySymbol=new Map(),cmcDuplicateCount=new Map();
   cmcRows.forEach(item=>{
    const symbol=String(item?.symbol||"").toUpperCase();
@@ -479,8 +479,9 @@ async function handle(request,env){
    if(!old||rank<oldRank)cmcBySymbol.set(symbol,item);
   });
   const excluded=new Set(["UP","DOWN","BULL","BEAR","3L","3S"]);
-  const eligible=[...binanceSymbols].filter(symbol=>cmcBySymbol.has(symbol)&&!excluded.has(symbol)&&!/(UP|DOWN|BULL|BEAR|3L|3S)$/.test(symbol));
-  if(!eligible.length)return json({error:"هیچ نماد مشترک Binance و CoinMarketCap پیدا نشد."},502,request);
+  // یونیورس چندصرافی: نمادها فقط به Binance محدود نیستند؛ فهرست CMC با بازارهای واقعی USDT در شش صرافی تطبیق داده می‌شود.
+  const eligible=[...cmcBySymbol.keys()].filter(symbol=>!/^[0-9]+$/.test(symbol)&&!excluded.has(symbol)&&!/(UP|DOWN|BULL|BEAR|3L|3S)$/.test(symbol));
+  if(!eligible.length)return json({error:"نماد معتبر در فهرست بازار پیدا نشد."},502,request);
   const jobs=[
    ["Binance","https://api.binance.com/api/v3/ticker/24hr",d=>(Array.isArray(d)?d:[]).filter(x=>String(x.symbol).endsWith("USDT")).map(x=>({symbol:String(x.symbol).slice(0,-4),volume:Number(x.quoteVolume)||0,price:Number(x.lastPrice)||0,change24h:Number(x.priceChangePercent)||0}))],
    ["Bybit","https://api.bybit.com/v5/market/tickers?category=spot",d=>(d.result?.list||[]).filter(x=>String(x.symbol).endsWith("USDT")).map(x=>({symbol:String(x.symbol).slice(0,-4),volume:Number(x.turnover24h)||0,price:Number(x.lastPrice)||0,change24h:(Number(x.price24hPcnt)||0)*100}))],
@@ -501,8 +502,8 @@ async function handle(request,env){
     item.venues.add(name);item.quotes.push({...row,exchange:name});
    });
   });
-  const assets=eligible.map(symbol=>{
-   const meta=cmcBySymbol.get(symbol),market=markets.get(symbol)||{venues:new Set(["Binance"]),quotes:[]};
+  const assets=[...markets.keys()].map(symbol=>{
+   const meta=cmcBySymbol.get(symbol),market=markets.get(symbol);
    const quotes=market.quotes.slice().sort((a,b)=>b.volume-a.volume),best=quotes.find(x=>x.price>0)||{};
    const cmcQuote=Array.isArray(meta.quote)?(meta.quote.find(q=>String(q.symbol||"").toUpperCase()==="USD")||{}):(meta.quote?.USD||meta.quote||{});
    const venueVolume={};
