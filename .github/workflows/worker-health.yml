@@ -121,3 +121,23 @@ jobs:
           echo "Live candle endpoint HTTP $status"
           jq -e '.symbol == "BTCUSDT" and .interval == "15m" and (.candles | length >= 30) and (.provider | type == "string" and length > 0) and (.candles[0].open > 0)' /tmp/candles.json >/dev/null
           echo "- Live spot candlesticks: responding with real OHLCV data" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Live AI analyzer end-to-end smoke test
+        if: github.event_name == 'push'
+        env:
+          WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
+        run: |
+          set -euo pipefail
+          payload='{"coin_id":"bitcoin","symbol":"BTC","name":"Bitcoin","market_mode":"spot"}'
+          status=$(curl --silent --show-error --max-time 95 -H "Content-Type: application/json" -X POST --data "$payload" -o /tmp/analysis.json -w "%{http_code}" "$WORKER_URL/analyze")
+          echo "Live AI analyzer HTTP $status"
+          if [ "$status" != "200" ]; then
+            jq -r '.stage // "unknown stage", .error // "unknown error"' /tmp/analysis.json || cat /tmp/analysis.json
+            exit 1
+          fi
+          jq -e '.analysis.action as $a | (["BUY","SELL","WAIT"] | index($a) != null) and (.market.timeframes | has("15m") and has("1h") and has("4h") and has("1d"))' /tmp/analysis.json >/dev/null
+          {
+            echo "- AI analyzer: HTTP 200"
+            echo "- Four timeframes: 15m, 1h, 4h, 1d"
+            echo "- Structured analysis: valid"
+          } >> "$GITHUB_STEP_SUMMARY"
