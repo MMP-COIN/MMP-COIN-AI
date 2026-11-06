@@ -667,7 +667,7 @@ body:after{content:"";position:fixed;width:42vw;height:42vw;max-width:620px;max-
 .ai-terminal .ai-coin-picker-trigger{width:100%;min-height:46px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 12px;border:1px solid rgba(218,181,104,.38);border-radius:11px;background:rgba(8,15,25,.94);color:var(--text,#f4f0e6);text-align:right;cursor:pointer;font:inherit}
 .ai-coin-picker-current{display:flex;align-items:center;gap:9px;min-width:0}.ai-coin-picker-current img,.ai-coin-picker-option img{width:27px;height:27px;border-radius:50%;object-fit:contain;flex:0 0 27px;background:rgba(255,255,255,.06)}
 .ai-coin-picker-current span,.ai-coin-picker-option span{display:flex;flex-direction:column;min-width:0;gap:2px}.ai-coin-picker-current b,.ai-coin-picker-option b{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ai-coin-picker-current small,.ai-coin-picker-option small{font-size:10px;color:#aab5c5;direction:ltr;text-align:right}.ai-coin-picker-placeholder{font-size:12px;color:#b9c2cf}.ai-coin-picker-chevron{color:#d9b66d;font-size:19px}
-.ai-coin-picker-menu{position:absolute;z-index:1000;top:calc(100% + 7px);right:0;left:0;max-height:340px;padding:9px;border:1px solid rgba(218,181,104,.35);border-radius:13px;background:#0c1420;box-shadow:0 14px 35px rgba(0,0,0,.48)}.ai-coin-picker-menu[hidden]{display:none}.ai-coin-picker-menu input{width:100%;height:38px;margin-bottom:7px;padding:0 10px;border:1px solid rgba(255,255,255,.13);border-radius:8px;background:#111d2b;color:#fff;font:12px Tahoma,Arial}.ai-coin-picker-options{max-height:275px;overflow:auto}.ai-coin-picker-group{padding:8px 5px 5px;color:#d8b66d;font-size:10px;font-weight:700}.ai-coin-picker-option{width:100%;display:flex;align-items:center;gap:9px;padding:7px 8px;border:0;border-radius:8px;background:transparent;color:#f4f0e6;text-align:right;cursor:pointer}.ai-coin-picker-option:hover,.ai-coin-picker-option[aria-selected=true]{background:rgba(218,181,104,.13)}.ai-coin-picker-option[hidden],.ai-coin-picker-group[hidden]{display:none}
+.ai-coin-picker-menu{position:absolute;z-index:1000;top:calc(100% + 7px);right:0;left:0;max-height:340px;padding:9px;border:1px solid rgba(218,181,104,.35);border-radius:13px;background:#0c1420;box-shadow:0 14px 35px rgba(0,0,0,.48)}.ai-coin-picker-menu[hidden]{display:none}.ai-coin-picker-menu input{width:100%;height:38px;margin-bottom:7px;padding:0 10px;border:1px solid rgba(255,255,255,.13);border-radius:8px;background:#111d2b;color:#fff;font:12px Tahoma,Arial}.ai-coin-picker-options{max-height:275px;overflow:auto}.ai-coin-picker-group{padding:8px 5px 5px;color:#d8b66d;font-size:10px;font-weight:700}.ai-coin-picker-option{width:100%;display:flex;align-items:center;gap:9px;padding:7px 8px;border:0;border-radius:8px;background:transparent;color:#f4f0e6;text-align:right;cursor:pointer}.ai-coin-picker-option:hover,.ai-coin-picker-option[aria-selected=true]{background:rgba(218,181,104,.13)}.ai-coin-picker-option[hidden],.ai-coin-picker-group[hidden]{display:none}.ai-coin-icon-fallback{width:27px;height:27px;flex:0 0 27px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:linear-gradient(145deg,#d8b66d,#72552b);color:#111;font-size:8px;font-weight:900;direction:ltr}
 @media(max-width:680px){.ai-terminal .ai-toolbar{grid-template-columns:1fr}.ai-coin-picker-menu{max-height:300px}.ai-coin-picker-options{max-height:235px}}
 </style>
 
@@ -1290,19 +1290,13 @@ function toggleFullCoinsList() {
 
 const LAYERZERO_COIN_ID = 'layerzero';
 // ۴۰ دارایی پیش‌فرض برای تحلیل کامل؛ سایر دارایی‌های فهرست ۱۰۰تایی نیز قابل انتخاب‌اند.
-const PRIMARY_ANALYSIS_SYMBOLS = [
- 'BTC','ETH','BNB','XRP','SOL','TRX','ZEC','HYPE','DOGE','XMR',
- 'LINK','ADA','XLM','BCH','NEAR','UNI','LTC','AVAX','SUI','HBAR',
- 'SHIB','TAO','CRO','ENA','OKB','ONDO','DOT','APT','ARB','INJ',
- 'ZRO','ETC','ATOM','FIL','ICP','AAVE','OP','RENDER','PEPE','POL'
-];
-const PRIMARY_ANALYSIS_ORDER = new Map(PRIMARY_ANALYSIS_SYMBOLS.map((symbol,index)=>[symbol,index]));
+// اولویت تحلیل فقط بر اساس رتبه واقعی ارزش بازار است؛ نه فهرست ثابت نمادها.
 function orderPrimaryCoins(coins){
  return [...coins].sort((a,b)=>{
-  const sa=String(a.symbol||'').toUpperCase(),sb=String(b.symbol||'').toUpperCase();
-  const ia=PRIMARY_ANALYSIS_ORDER.has(sa)?PRIMARY_ANALYSIS_ORDER.get(sa):999;
-  const ib=PRIMARY_ANALYSIS_ORDER.has(sb)?PRIMARY_ANALYSIS_ORDER.get(sb):999;
-  return ia-ib || (Number(a.market_cap_rank)||999999)-(Number(b.market_cap_rank)||999999);
+  const rankA=Number(a.market_cap_rank)||999999;
+  const rankB=Number(b.market_cap_rank)||999999;
+  if(rankA!==rankB)return rankA-rankB;
+  return (Number(b.market_cap)||0)-(Number(a.market_cap)||0);
  });
 }
 const EXTRA_COIN_IDS = [
@@ -1539,7 +1533,7 @@ async function refreshAll(){
    const pageTwoResponse=await fetch(pageTwoUrl,{cache:"no-store"});
    if(pageTwoResponse.ok){
     const pageTwoPayload=await pageTwoResponse.json();
-    const pageTwo=marketMetadataSource==="CoinCap"?normalizeCoinLoreAssets(pageTwoPayload):pageTwoPayload;
+    const pageTwo=marketMetadataSource==="CoinLore"?normalizeCoinLoreAssets(pageTwoPayload):pageTwoPayload;
     if(Array.isArray(pageTwo)){
      const knownIds=new Set(candidateCoins.map(c=>c.id));
      const knownSymbols=new Set(candidateCoins.map(c=>String(c.symbol||"").toUpperCase()));
@@ -1643,16 +1637,15 @@ function syncAiCoinOptions(data=[]) {
   if(NON_TRADABLE_COIN_IDS.has(c.id)||NON_TRADABLE_SYMBOLS.has(symbol)||byId.has(c.id))return;
   byId.set(c.id,c);
  });
- const available=[...byId.values()];
- const primary=available.filter(c=>PRIMARY_ANALYSIS_ORDER.has(String(c.symbol||"").toUpperCase()));
- const others=available.filter(c=>!PRIMARY_ANALYSIS_ORDER.has(String(c.symbol||"").toUpperCase()));
+ const available=[...byId.values()].sort((a,b)=>{
+  const rankA=Number(a.market_cap_rank)||999999,rankB=Number(b.market_cap_rank)||999999;
+  return rankA-rankB||(Number(b.market_cap)||0)-(Number(a.market_cap)||0);
+ }).slice(0,100);
  const optionHtml=c=>{
   const symbol=String(c.symbol||"").toUpperCase(),image=/^https:\/\//i.test(String(c.image||""))?String(c.image):"https://assets.coincap.io/assets/icons/"+symbol.toLowerCase()+"@2x.png";
-  return '<button type="button" class="ai-coin-picker-option" role="option" aria-selected="'+(c.id===currentAiVal?'true':'false')+'" data-ai-coin-id="'+aiEscape(c.id)+'" data-search="'+aiEscape((c.name||"")+" "+symbol).toLowerCase()+'"><img src="'+aiEscape(image)+'" alt="" loading="lazy" onerror="this.hidden=true"><span><b>'+aiEscape(c.name||symbol)+'</b><small>'+aiEscape(symbol)+'</small></span></button>';
+  return '<button type="button" class="ai-coin-picker-option" role="option" aria-selected="'+(c.id===currentAiVal?'true':'false')+'" data-ai-coin-id="'+aiEscape(c.id)+'" data-search="'+aiEscape((c.name||"")+" "+symbol).toLowerCase()+'"><img src="'+aiEscape(image)+'" data-symbol="'+aiEscape(symbol)+'" alt="'+aiEscape(symbol)+'" loading="lazy" onerror="if(this.dataset.fallback!==\'1\'){this.dataset.fallback=\'1\';this.src=\'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/\'+this.dataset.symbol.toLowerCase()+\'.png\';}else{this.outerHTML=\'<span class=\\\'ai-coin-icon-fallback\\\'>\'+this.dataset.symbol+\'</span>\';}"><span><b>'+aiEscape(c.name||symbol)+'</b><small>'+aiEscape(symbol)+'</small></span></button>';
  };
- let html="";
- if(primary.length)html+='<div class="ai-coin-picker-group">ارزهای اصلی</div>'+primary.map(optionHtml).join("");
- if(others.length)html+='<div class="ai-coin-picker-group">سایر ارزهای قابل تحلیل</div>'+others.map(optionHtml).join("");
+ let html=available.length?'<div class="ai-coin-picker-group">۱۰۰ ارز اولویت‌دار بر اساس ارزش بازار · '+available.length+' ارز</div>'+available.map(optionHtml).join(""):"";
  optionsBox.innerHTML=html||'<div class="ai-empty">فهرست ارزها هنوز دریافت نشده است.</div>';
  selectAi.innerHTML='<option value="">انتخاب ارز…</option>'+available.map(c=>'<option value="'+aiEscape(c.id)+'">'+aiEscape(c.name||c.symbol)+' ('+aiEscape(String(c.symbol).toUpperCase())+')</option>').join("");
  if(currentAiVal&&[...selectAi.options].some(o=>o.value===currentAiVal))selectAi.value=currentAiVal;else selectAi.value="";
@@ -1666,7 +1659,7 @@ function updateAiCoinPickerCurrent(){
  const coin=(Array.isArray(cachedCoinsData)?cachedCoinsData:[]).find(c=>c.id===selected.value);
  if(!coin){current.textContent=selected.textContent;return;}
  const symbol=String(coin.symbol||"").toUpperCase(),image=/^https:\/\//i.test(String(coin.image||""))?String(coin.image):"https://assets.coincap.io/assets/icons/"+symbol.toLowerCase()+"@2x.png";
- current.innerHTML='<img src="'+aiEscape(image)+'" alt="" onerror="this.hidden=true"><span><b>'+aiEscape(coin.name||symbol)+'</b><small>'+aiEscape(symbol)+'</small></span>';
+ current.innerHTML='<img src="'+aiEscape(image)+'" data-symbol="'+aiEscape(symbol)+'" alt="'+aiEscape(symbol)+'" onerror="if(this.dataset.fallback!==\'1\'){this.dataset.fallback=\'1\';this.src=\'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/\'+this.dataset.symbol.toLowerCase()+\'.png\';}else{this.outerHTML=\'<span class=\\\'ai-coin-icon-fallback\\\'>\'+this.dataset.symbol+\'</span>\';}"><span><b>'+aiEscape(coin.name||symbol)+'</b><small>'+aiEscape(symbol)+'</small></span>';
 }
 function closeAiCoinPicker(){
  const menu=$("ai-coin-picker-menu"),trigger=$("ai-coin-picker-trigger");
