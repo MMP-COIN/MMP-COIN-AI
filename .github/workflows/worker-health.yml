@@ -35,6 +35,17 @@ jobs:
             echo "- AI binding: available"
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Check private analytics Worker
+        env:
+          ADMIN_WORKER_URL: https://mmp-coin-ai-admin.mehrdadmohammadi1988.workers.dev
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 2 --retry-delay 3 --max-time 20 "$ADMIN_WORKER_URL/health" -o /tmp/admin-health.json
+          jq -e '.worker == "mmp-coin-ai-admin" and .status == "online"' /tmp/admin-health.json >/dev/null
+          curl --fail --silent --show-error --retry 2 --retry-delay 3 --max-time 20 "$ADMIN_WORKER_URL/admin/api/session" -o /tmp/admin-session.json
+          jq -e '.authenticated == false' /tmp/admin-session.json >/dev/null
+          echo "- Private analytics Worker: online; admin API responds without a session" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Diagnose exchange API access from GitHub runner
         continue-on-error: true
         run: |
