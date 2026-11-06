@@ -464,7 +464,7 @@ async function handle(request,env){
    timedJson(cmcUrl(1),18000,60),
    timedJson(cmcUrl(5001),18000,60)
   ]);
-  if(primary[1].status!=="fulfilled")return json({error:"دریافت فهرست فعال CoinMarketCap ناموفق بود.",detail:String(primary[1].reason?.message||primary[1].reason).slice(0,180)},502,request);
+  // در صورت خطای CMC، کاتالوگ جایگزین CoinLore در ادامه بررسی می‌شود.
   const binanceInfo=primary[0].status==="fulfilled"?primary[0].value:{symbols:[]};
   let cmcRows=[...(Array.isArray(primary[1].value?.data)?primary[1].value.data:[]),...(primary[2].status==="fulfilled"&&Array.isArray(primary[2].value?.data)?primary[2].value.data:[])];
   let metadataProvider="CoinMarketCap";
