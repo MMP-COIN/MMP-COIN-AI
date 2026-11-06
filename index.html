@@ -2022,17 +2022,21 @@ async function fetchFastCandles(symbol,coin){
  throw new Error(errors.join(" · "));
 }
 async function fetchHunterOrderFlow(symbol){
- const pair=String(symbol||"").toUpperCase()+"USDT";
- const raw=await hunterFetchJson("https://api.binance.com/api/v3/klines?symbol="+encodeURIComponent(pair)+"&interval=1m&limit=36",8500);
- if(!Array.isArray(raw)||raw.length<25)throw new Error("insufficient Binance flow candles");
+ const pair=String(symbol||"").toUpperCase()+"USDT";let raw,lastError;
+ for(const base of ["https://api.binance.com","https://data-api.binance.vision"]){
+  try{raw=await hunterFetchJson(base+"/api/v3/klines?symbol="+encodeURIComponent(pair)+"&interval=1m&limit=36",8500);if(Array.isArray(raw)&&raw.length>=25)break;throw new Error("کندل جریان سفارش کافی نیست");}catch(error){lastError=error;raw=null;}
+ }
+ if(!Array.isArray(raw)||raw.length<25)throw lastError||new Error("جریان سفارش در دسترس نیست");
  const rows=raw.map(k=>{const quote=Number(k[7])||0,buy=Number(k[10])||0,sell=Math.max(0,quote-buy);return [Number(k[0]),quote,buy,sell,buy-sell];});
  const closed=rows.slice(0,-1),idx=closed.length-1,last=closed[idx],base=closed.slice(Math.max(0,idx-20),idx).map(x=>x[1]).filter(x=>x>0);
- if(!last||base.length<16)throw new Error("insufficient flow baseline");
- const avg=base.reduce((a,b)=>a+b,0)/base.length,ratio=avg>0?last[1]/avg:0;
- const recent=closed.slice(-5),sum=k=>recent.reduce((a,x)=>a+x[k],0),quote5=sum(1),buy5=sum(2),sell5=sum(3),net5=buy5-sell5,netPct=quote5>0?net5/quote5*100:0;
- const prev5=closed.slice(-25,-5),prevAvg=prev5.length?prev5.reduce((a,x)=>a+x[1],0)/prev5.length:0,ratio5=prevAvg>0?quote5/(prevAvg*5):0;
+ if(!last||base.length<16)throw new Error("خط مبنای حجم کافی نیست");
+ const avg=base.reduce((a,b)=>a+b,0)/base.length,ratio1=avg>0?last[1]/avg:0;
+ const sum=(arr,k)=>arr.reduce((a,x)=>a+(Number(x[k])||0),0);
+ const recent3=closed.slice(-3),quote3=sum(recent3,1),buy3=sum(recent3,2),sell3=sum(recent3,3),net3=buy3-sell3,netPct3=quote3>0?net3/quote3*100:0;
+ const prev3=closed.slice(-23,-3),prevAvg=prev3.length?sum(prev3,1)/prev3.length:0,ratio3=prevAvg>0?quote3/(prevAvg*3):0;
+ const netPct1=last[1]>0?last[4]/last[1]*100:0;
  const chartRows=closed.slice(-30).map((x,i,arr)=>{const prior=arr.slice(Math.max(0,i-20),i).map(v=>v[1]).filter(v=>v>0),mean=prior.length?prior.reduce((a,b)=>a+b,0)/prior.length:avg;return [...x,mean>0?x[1]/mean:0];});
- return {source:"Binance Spot · taker buy/sell",quote1m:last[1],buy1m:last[2],sell1m:last[3],net1m:last[4],ratio1m:ratio,quote5m,buy5m,sell5m,net5m:net5,netPct5m:netPct,volumeRatio5m:ratio5,rows:chartRows,updatedAt:Date.now(),unusual:ratio>=2||ratio5>=2.2};
+ return {source:"Binance Spot · خرید/فروش تهاجمی",quote1m:last[1],buy1m:last[2],sell1m:last[3],net1m:last[4],netPct1m,ratio1m,quote3m,buy3m,sell3m,net3m,netPct3m,volumeRatio3m:ratio3,rows:chartRows,updatedAt:Date.now(),unusual:ratio1>=1.8||ratio3>=2};
 }
 async function scanFastCoin(coin){
  const symbol=String(coin?.symbol||"").toUpperCase();
@@ -2060,17 +2064,17 @@ async function scanFastCoin(coin){
  const change3m=(close/start3-1)*100,change5m=(close/start5-1)*100,dailyChange24h=Number(coin.hunterChange24h)||0;
  const recent=rows.slice(Math.max(0,index-7),index),priorHigh=Math.max(...recent.map(x=>Number(x[2]))),priorLow=Math.min(...recent.map(x=>Number(x[3])));
  const breakoutUp=close>priorHigh,breakoutDown=close<priorLow;
- const flowNetPct=Number(flow?.netPct5m)||0,flowRatio=Number(flow?.volumeRatio5m)||0,flowNet=Number(flow?.net5m)||0;
- const volumeSpike=volumeRatio>=1.3||flowRatio>=1.45;
- const buyPressure=!!flow&&flowNetPct>=7&&flowNet>0;
- const sellPressure=!!flow&&flowNetPct<=-7&&flowNet<0;
- // شکار زودهنگام: حجم غیرعادی و فشار سفارش، پیش از جهش بزرگ قیمت؛ حرکت قیمت به‌تنهایی کافی نیست.
- const bullEarly=volumeSpike&&buyPressure&&change5m>=-0.35;
- const bearEarly=volumeSpike&&sellPressure&&change5m<=0.35;
- const bullBreakout=breakoutUp&&volumeRatio>=1.2&&change1m>=0.02;
- const bearBreakout=breakoutDown&&volumeRatio>=1.2&&change1m<=-0.02;
- const bullImpulse=change1m>=0.12&&change3m>=0.12&&volumeRatio>=1.15;
- const bearImpulse=change1m<=-0.12&&change3m<=-0.12&&volumeRatio>=1.15;
+ const flowNetPct=Number(flow?.netPct3m)||0,flowRatio=Number(flow?.volumeRatio3m)||0,flowNet=Number(flow?.net3m)||0;
+ const volumeSpike=volumeRatio>=1.15||flowRatio>=1.3;
+ const buyPressure=!!flow&&((flowNetPct>=4.5&&flowNet>0)||(Number(flow.netPct1m)>=9&&Number(flow.net1m)>0));
+ const sellPressure=!!flow&&((flowNetPct<=-4.5&&flowNet<0)||(Number(flow.netPct1m)<=-9&&Number(flow.net1m)<0));
+ // شکار جریان پول با کندل یک‌دقیقه‌ای و تأیید فشار خالص سه‌دقیقه‌ای؛ هیچ شرطی به کندل پنج‌دقیقه‌ای وابسته نیست.
+ const bullEarly=volumeSpike&&buyPressure&&change3m>=-0.25;
+ const bearEarly=volumeSpike&&sellPressure&&change3m<=0.25;
+ const bullBreakout=breakoutUp&&volumeRatio>=1.1&&change1m>=0.01;
+ const bearBreakout=breakoutDown&&volumeRatio>=1.1&&change1m<=-0.01;
+ const bullImpulse=change1m>=0.08&&change3m>=0.08&&volumeRatio>=1.1;
+ const bearImpulse=change1m<=-0.08&&change3m<=-0.08&&volumeRatio>=1.1;
  const bullMomentum=bullEarly||bullBreakout||bullImpulse;
  const bearMomentum=bearEarly||bearBreakout||bearImpulse;
  if(!bullMomentum&&!bearMomentum)return null;
@@ -2078,15 +2082,15 @@ async function scanFastCoin(coin){
  if(bullMomentum&&bearMomentum)return null;
  const trend=bullMomentum?"bull":"bear",pressure=trend==="bull"?Math.max(0,flowNetPct):Math.max(0,-flowNetPct);
  const liquidity=Number(coin.total_volume)||0,lowLiquidity=liquidity<150000;
- const score=Math.min(96,Math.round(54+
-  Math.min(18,Math.max(0,volumeRatio-1)*9)+
-  Math.min(15,pressure*.35)+
-  Math.min(10,Math.abs(change1m)*12)+
+ const score=Math.min(96,Math.round(52+
+  Math.min(20,Math.max(0,volumeRatio-1)*10)+
+  Math.min(18,pressure*.45)+
+  Math.min(10,Math.abs(change1m)*10)+
   ((trend==="bull"?breakoutUp:breakoutDown)?8:0)+
   (listedVenues.length>=2?5:listedVenues.length?2:0)+
-  (lowLiquidity?-8:0)+(flow?4:0)));
- if(score<58)return null;
- return {trend,score,change1m,change3m,change5m,dailyChange24h,dailyMover:Math.abs(dailyChange24h)>=8,lowLiquidity,volumeRatio,breakout:breakoutUp||breakoutDown,overextended:Math.abs(change5m)>=1.5||Math.abs(change1m)>=0.8,price:Number(coin.current_price)||close,provider,flow,flowSignal:bullEarly?"inflow":bearEarly?"outflow":"",earlySignal:bullEarly||bearEarly,updatedAt:now,candleTime:Number(last[0]),rows:rows.map(x=>x.slice(0,6).map(Number))};
+  (lowLiquidity?-6:0)+(flow?4:0)+(volumeSpike?2:0)));
+ if(score<55)return null;
+ return {trend,score,change1m,change3m,dailyChange24h,dailyMover:Math.abs(dailyChange24h)>=8,lowLiquidity,volumeRatio,breakout:breakoutUp||breakoutDown,overextended:Math.abs(change3m)>=1.2||Math.abs(change1m)>=0.7,price:Number(coin.current_price)||close,provider,flow,flowSignal:bullEarly?"inflow":bearEarly?"outflow":"",earlySignal:bullEarly||bearEarly,updatedAt:now,candleTime:Number(last[0]),rows:rows.map(x=>x.slice(0,6).map(Number))};
 }
 async function fetchHunterUniverse(){
  if(Date.now()<hunterUniverseCache.expires&&hunterUniverseCache.coins.length)return hunterUniverseCache.coins;
@@ -2128,7 +2132,7 @@ function ingestHunterEarlyPrice(exchange,baseSymbol,rawPrice){
  if(!coin||!Number.isFinite(price)||price<=0)return;
  const now=Date.now(),historyKey=exchange+":"+base;
  const listedVenues=Object.entries(coin.hunterVenueVolume||{}).filter(([,volume])=>Number(volume)>=10000);
- if(Number(coin.total_volume||0)<50000||listedVenues.length<1)return;
+ if(Number(coin.total_volume||0)<20000&&listedVenues.length<1)return;
  let history=hunterPriceHistory.get(historyKey);if(!history){history=[];hunterPriceHistory.set(historyKey,history);}
  const last=history[history.length-1];if(last&&now-last.t<650)return;
  history.push({t:now,p:price});while(history.length&&now-history[0].t>240000)history.shift();
@@ -2274,7 +2278,7 @@ async function runFastRadarScan(){
   renderOpportunities();renderMarketHunter();connectHunterStreams();
   if(!fastRadarSignals.size&&hunterStatus)hunterStatus.textContent="رصد این نوبت کامل شد؛ هنوز حرکت غیرعادی با شرایط سخت‌گیرانه تأیید نشده است.";
   else if(hunterStatus)hunterStatus.textContent=fastRadarSignals.size.toLocaleString("fa-IR")+" شکار فعال · رصد چرخشی بازار ادامه دارد";
-  const displayed=[...fastRadarSignals.entries()].map(([id,signal])=>({coin:hunterCoinIndex.get(id),signal,id})).filter(x=>x.coin&&x.signal.score>=58).sort((a,b)=>b.signal.score-a.signal.score).slice(0,6);
+  const displayed=[...fastRadarSignals.entries()].map(([id,signal])=>({coin:hunterCoinIndex.get(id),signal,id})).filter(x=>x.coin&&x.signal.score>=55).sort((a,b)=>b.signal.score-a.signal.score).slice(0,6);
   displayed.filter(item=>{const old=previous.get(item.id);return !old||old.trend!==item.signal.trend;}).slice(0,3).forEach(item=>notifyHunterOpportunity(item.coin,item.signal));
  }catch(error){fastRadarLastMessage="این نوبت پایش کامل نشد؛ شکارهای قبلی معتبر تا پایان مهلت نمایش حفظ شدند.";if(status)status.textContent=fastRadarLastMessage;if(hunterStatus)hunterStatus.textContent="پایش این نوبت کامل نشد؛ رصد در نوبت بعدی ادامه می‌یابد.";console.warn("Fast radar:",error);}
  finally{fastRadarBusy=false;}
@@ -2398,10 +2402,10 @@ function hunterUsd(value){const n=Number(value)||0;return (n>=1000000?(n/1000000
 function openHunterChart(id){
  const signal=fastRadarSignals.get(id),coin=hunterCoinIndex.get(id)||cachedCoinsData.find(c=>c.id===id);
  if(!signal||!coin)return;
- const rows=(signal.rows||[]).slice(-30),symbol=String(coin.symbol||"").toUpperCase(),up=signal.trend==="bull",trend=up?"روند صعودی":"روند نزولی",change=rows.length>1&&Number(rows[0][1])?(Number(rows[rows.length-1][4])/Number(rows[0][1])-1)*100:signal.change5m;
+ const rows=(signal.rows||[]).slice(-30),symbol=String(coin.symbol||"").toUpperCase(),up=signal.trend==="bull",trend=up?"روند صعودی":"روند نزولی",change=rows.length>1&&Number(rows[0][1])?(Number(rows[rows.length-1][4])/Number(rows[0][1])-1)*100:signal.change3m;
  const modal=document.getElementById("hunter-chart-modal");
  if(!modal)return;
- modal.innerHTML='<div class="hunter-chart-backdrop" data-hunter-chart-close="1"></div><section class="hunter-chart-dialog '+(up?"up":"down")+'" role="dialog" aria-modal="true" aria-labelledby="hunter-chart-title"><header class="hunter-chart-header"><div><small>نمودار زنده شکار · تایم‌فریم ۱ دقیقه</small><h3 id="hunter-chart-title">'+aiEscape(coin.name)+' ('+aiEscape(symbol)+'/USDT)</h3></div><button type="button" class="hunter-chart-close" data-hunter-chart-close="1" aria-label="بستن نمودار">×</button></header><div class="hunter-chart-trend"><b>'+trend+'</b><span>قدرت حرکت '+Number(signal.score||0).toLocaleString("fa-IR")+' از ۱۰۰</span><strong>'+((Number(change)>=0?"+":"")+Number(change||0).toFixed(2))+'٪</strong></div><div class="hunter-chart-canvas">'+hunterExpandedCandles(rows,signal.trend)+'</div><div class="hunter-flow-title"><b>جریان خرید و فروش تهاجمی · Binance Spot</b><small>سبز: خرید به قیمت بازار · قرمز: فروش به قیمت بازار</small></div><div class="hunter-chart-canvas hunter-flow-canvas">'+hunterExpandedFlow(signal.flow)+'</div><div class="hunter-chart-stats"><div><small>خرید تهاجمی ۵ دقیقه</small><b>'+hunterUsd(signal.flow?.buy5m)+'</b></div><div><small>فروش تهاجمی ۵ دقیقه</small><b>'+hunterUsd(signal.flow?.sell5m)+'</b></div><div><small>خالص جریان ۵ دقیقه</small><b class="'+(Number(signal.flow?.net5m)>=0?"up":"down")+'">'+(Number(signal.flow?.net5m)>=0?"+":"")+hunterUsd(signal.flow?.net5m)+'</b></div><div><small>حجم غیرعادی</small><b>'+Number(signal.flow?.volumeRatio5m||signal.volumeRatio||0).toFixed(1)+'× میانگین</b></div><div><small>آخرین قیمت</small><b>'+hunterPrice(signal.price)+'</b></div><div><small>بالاترین کندل</small><b>'+hunterPrice(Math.max(...rows.map(c=>Number(c[2])||0)))+'</b></div><div><small>پایین‌ترین کندل</small><b>'+hunterPrice(Math.min(...rows.map(c=>Number(c[3])||0)))+'</b></div><div><small>حجم نسبی</small><b>'+Number(signal.volumeRatio||0).toFixed(1)+'×</b></div></div><p class="hunter-chart-foot">'+(signal.flow?.unusual?"حجم غیرعادی شناسایی شد. ":"")+'جریان خالص از حجم خرید و فروش تهاجمی Binance محاسبه شده و معادل ورود یا خروج قطعی سرمایه کل بازار نیست.</p></section>';
+ modal.innerHTML='<div class="hunter-chart-backdrop" data-hunter-chart-close="1"></div><section class="hunter-chart-dialog '+(up?"up":"down")+'" role="dialog" aria-modal="true" aria-labelledby="hunter-chart-title"><header class="hunter-chart-header"><div><small>نمودار زنده شکار · تایم‌فریم ۱ دقیقه</small><h3 id="hunter-chart-title">'+aiEscape(coin.name)+' ('+aiEscape(symbol)+'/USDT)</h3></div><button type="button" class="hunter-chart-close" data-hunter-chart-close="1" aria-label="بستن نمودار">×</button></header><div class="hunter-chart-trend"><b>'+trend+'</b><span>قدرت حرکت '+Number(signal.score||0).toLocaleString("fa-IR")+' از ۱۰۰</span><strong>'+((Number(change)>=0?"+":"")+Number(change||0).toFixed(2))+'٪</strong></div><div class="hunter-chart-canvas">'+hunterExpandedCandles(rows,signal.trend)+'</div><div class="hunter-flow-title"><b>جریان خرید و فروش تهاجمی · Binance Spot</b><small>سبز: خرید به قیمت بازار · قرمز: فروش به قیمت بازار</small></div><div class="hunter-chart-canvas hunter-flow-canvas">'+hunterExpandedFlow(signal.flow)+'</div><div class="hunter-chart-stats"><div><small>خرید تهاجمی ۳ دقیقه</small><b>'+hunterUsd(signal.flow?.buy3m)+'</b></div><div><small>فروش تهاجمی ۳ دقیقه</small><b>'+hunterUsd(signal.flow?.sell3m)+'</b></div><div><small>خالص جریان ۳ دقیقه</small><b class="'+(Number(signal.flow?.net3m)>=0?"up":"down")+'">'+(Number(signal.flow?.net3m)>=0?"+":"")+hunterUsd(signal.flow?.net3m)+'</b></div><div><small>حجم غیرعادی</small><b>'+Number(signal.flow?.volumeRatio3m||signal.volumeRatio||0).toFixed(1)+'× میانگین</b></div><div><small>آخرین قیمت</small><b>'+hunterPrice(signal.price)+'</b></div><div><small>بالاترین کندل</small><b>'+hunterPrice(Math.max(...rows.map(c=>Number(c[2])||0)))+'</b></div><div><small>پایین‌ترین کندل</small><b>'+hunterPrice(Math.min(...rows.map(c=>Number(c[3])||0)))+'</b></div><div><small>حجم نسبی</small><b>'+Number(signal.volumeRatio||0).toFixed(1)+'×</b></div></div><p class="hunter-chart-foot">'+(signal.flow?.unusual?"حجم غیرعادی شناسایی شد. ":"")+'جریان خالص از حجم خرید و فروش تهاجمی Binance محاسبه شده و معادل ورود یا خروج قطعی سرمایه کل بازار نیست.</p></section>';
  modal.classList.add("show");document.body.classList.add("hunter-chart-open");
  const close=modal.querySelector(".hunter-chart-close");if(close)close.focus();
 }
@@ -2411,7 +2415,7 @@ function closeHunterChart(){
 }
 function renderMarketHunter(){
  const feed=$("hunter-feed");if(!feed)return;
- const candidates=[...fastRadarSignals.entries()].map(([id,signal])=>({coin:hunterCoinIndex.get(id)||cachedCoinsData.find(c=>c.id===id),signal,id})).filter(x=>x.coin&&Date.now()-x.signal.updatedAt<8*60*1000&&x.signal.score>=58);
+ const candidates=[...fastRadarSignals.entries()].map(([id,signal])=>({coin:hunterCoinIndex.get(id)||cachedCoinsData.find(c=>c.id===id),signal,id})).filter(x=>x.coin&&Date.now()-x.signal.updatedAt<8*60*1000&&x.signal.score>=55);
  const rank=(a,b)=>b.signal.score-a.signal.score;
  const entries=[...candidates.filter(x=>x.signal.trend==="bull").sort(rank).slice(0,6),...candidates.filter(x=>x.signal.trend==="bear").sort(rank).slice(0,6)];
  const density=entries.length<=2?"wide":entries.length<=6?"medium":"compact";
@@ -2423,7 +2427,7 @@ function renderMarketHunter(){
  if(!entries.length){feed.innerHTML='<div class="hunter-empty"><span class="hunter-radar-icon">⌁</span><b>در حال رصد بازار</b><small>تمام نمادهای مشترک Binance Spot و CoinMarketCap به‌صورت چرخشی از نظر جهش، ریزش و حجم غیرعادی بررسی می‌شوند.</small></div>';return;}
  feed.innerHTML=entries.map(({coin:c,signal:m,id})=>{
   const up=m.trend==="bull",direction=up?"جهش صعودی":"ریزش نزولی",cls=up?"up":"down",mainSymbols=new Set(cachedCoinsData.map(x=>String(x.symbol||"").toUpperCase())),isMain100=mainSymbols.has(String(c.symbol||"").toUpperCase()),originTag=isMain100?"":'<small class="hunter-origin-tag" title="این ارز خارج از فهرست اصلی ۱۰۰ ارز است">🎯 شکار</small>',risk=m.overextended?'<span class="hunter-warning">حرکت کش‌آمده · ورود دیرهنگام پرریسک</span>':m.dailyMover?'<span class="hunter-confirm">حرکت ۲۴ساعته قابل‌توجه · منتظر تأیید کندلی</span>':m.lowLiquidity?'<span class="hunter-warning">نقدشوندگی محدود · ریسک لغزش قیمت</span>':'<span class="hunter-confirm">'+(m.breakout?"شکست محدوده تأیید شد":"شتاب حرکت در حال شکل‌گیری")+'</span>';
-  return '<article class="hunter-card '+cls+' hunter-density-'+density+'" data-hunter-card="'+aiEscape(id)+'"><div class="hunter-card-head"><div class="hunter-coin"><div class="hunter-coin-emblem"><img src="'+aiEscape(hunterCoinImage(c))+'" data-symbol="'+aiEscape(String(c.symbol).toUpperCase())+'" alt="'+aiEscape(String(c.symbol).toUpperCase())+'" loading="lazy" onerror="hunterCoinImageError(this)"><i style="display:none">'+aiEscape(String(c.symbol).slice(0,1).toUpperCase())+'</i></div><span><b>'+aiEscape(c.name)+' <small>('+aiEscape(String(c.symbol).toUpperCase())+')</small>'+originTag+'</b><em>'+direction+'</em><small class="hunter-symbol-tag">نماد معاملاتی: '+aiEscape(String(c.symbol).toUpperCase())+'/USDT</small></span></div><button type="button" class="hunter-mini-move hunter-chart-trigger" data-hunter-mini="'+aiEscape(id)+'" data-hunter-chart="'+aiEscape(id)+'" aria-label="نمایش نمودار بزرگ '+aiEscape(String(c.symbol).toUpperCase())+'"><span>'+(up?'پرواز قیمت ↑':'سقوط قیمت ↓')+'</span>'+hunterMiniCandles(m.rows,m.trend)+'</button><div class="hunter-score"><b>'+m.score.toLocaleString("fa-IR")+'</b><small>قدرت حرکت</small></div></div><div class="hunter-exchanges" data-hunter-exchanges="'+aiEscape(id)+'"><span class="hunter-exchange-label">در حال بررسی بازارهای قابل معامله…</span></div><div class="hunter-price-row"><span>قیمت مرجع <b class="hunter-live-price">'+hunterPrice(m.price)+'</b></span><span>حجم نسبی <b>'+m.volumeRatio.toFixed(1)+'×</b></span><span>خالص جریان ۵ دقیقه <b class="'+(Number(m.flow?.net5m)>=0?"up":"down")+'">'+(Number(m.flow?.net5m)>=0?"+":"")+hunterUsd(m.flow?.net5m)+'</b></span><span>تغییر ۱ دقیقه <b class="'+cls+'">'+(m.change1m>0?"+":"")+m.change1m.toFixed(2)+'٪</b></span><span>تغییر ۵ دقیقه <b class="'+cls+'">'+(m.change5m>0?"+":"")+m.change5m.toFixed(2)+'٪</b></span><span>تغییر ۲۴ ساعت <b class="'+(m.dailyChange24h>=0?"up":"down")+'">'+(m.dailyChange24h>0?"+":"")+Number(m.dailyChange24h||0).toFixed(2)+'٪</b></span></div><div class="hunter-card-bottom">'+risk+'</div></article>';
+  return '<article class="hunter-card '+cls+' hunter-density-'+density+'" data-hunter-card="'+aiEscape(id)+'"><div class="hunter-card-head"><div class="hunter-coin"><div class="hunter-coin-emblem"><img src="'+aiEscape(hunterCoinImage(c))+'" data-symbol="'+aiEscape(String(c.symbol).toUpperCase())+'" alt="'+aiEscape(String(c.symbol).toUpperCase())+'" loading="lazy" onerror="hunterCoinImageError(this)"><i style="display:none">'+aiEscape(String(c.symbol).slice(0,1).toUpperCase())+'</i></div><span><b>'+aiEscape(c.name)+' <small>('+aiEscape(String(c.symbol).toUpperCase())+')</small>'+originTag+'</b><em>'+direction+'</em><small class="hunter-symbol-tag">نماد معاملاتی: '+aiEscape(String(c.symbol).toUpperCase())+'/USDT</small></span></div><button type="button" class="hunter-mini-move hunter-chart-trigger" data-hunter-mini="'+aiEscape(id)+'" data-hunter-chart="'+aiEscape(id)+'" aria-label="نمایش نمودار بزرگ '+aiEscape(String(c.symbol).toUpperCase())+'"><span>'+(up?'پرواز قیمت ↑':'سقوط قیمت ↓')+'</span>'+hunterMiniCandles(m.rows,m.trend)+'</button><div class="hunter-score"><b>'+m.score.toLocaleString("fa-IR")+'</b><small>قدرت حرکت</small></div></div><div class="hunter-exchanges" data-hunter-exchanges="'+aiEscape(id)+'"><span class="hunter-exchange-label">در حال بررسی بازارهای قابل معامله…</span></div><div class="hunter-price-row"><span>قیمت مرجع <b class="hunter-live-price">'+hunterPrice(m.price)+'</b></span><span>حجم نسبی <b>'+m.volumeRatio.toFixed(1)+'×</b></span><span>خالص جریان ۳ دقیقه <b class="'+(Number(m.flow?.net3m)>=0?"up":"down")+'">'+(Number(m.flow?.net3m)>=0?"+":"")+hunterUsd(m.flow?.net3m)+'</b></span><span>تغییر ۱ دقیقه <b class="'+cls+'">'+(m.change1m>0?"+":"")+m.change1m.toFixed(2)+'٪</b></span><span>تغییر ۳ دقیقه <b class="'+cls+'">'+(m.change3m>0?"+":"")+m.change3m.toFixed(2)+'٪</b></span><span>تغییر ۲۴ ساعت <b class="'+(m.dailyChange24h>=0?"up":"down")+'">'+(m.dailyChange24h>0?"+":"")+Number(m.dailyChange24h||0).toFixed(2)+'٪</b></span></div><div class="hunter-card-bottom">'+risk+'</div></article>';
  }).join("");
  loadHunterListings(entries.map(({coin,id})=>({coin,id}))).catch(error=>console.debug("Hunter exchange listing check:",error));
 }
@@ -2435,14 +2439,14 @@ document.addEventListener("click",function(event){
 });
 document.addEventListener("keydown",function(event){if(event.key==="Escape")closeHunterChart();});
 function connectHunterStreams(){
- const entries=[...fastRadarSignals.entries()].filter(([,m])=>m.provider.includes("Binance")).sort((a,b)=>b[1].score-a[1].score).slice(0,12),wanted=new Set(entries.map(([id])=>id));
+ const entries=[...fastRadarSignals.entries()].sort((a,b)=>b[1].score-a[1].score).slice(0,12),wanted=new Set(entries.map(([id])=>id));
  for(const [id,ws] of hunterSockets){if(!wanted.has(id)){try{ws.close();}catch(e){}hunterSockets.delete(id);}}
  entries.forEach(([id,m])=>{
   if(hunterSockets.has(id)||typeof WebSocket==="undefined")return;
   const coin=hunterCoinIndex.get(id)||cachedCoinsData.find(c=>c.id===id);if(!coin)return;
   try{
-   const ws=new WebSocket("wss://stream.binance.com:9443/ws/"+String(coin.symbol||"").toLowerCase()+"usdt@kline_5m");hunterSockets.set(id,ws);
-   ws.onmessage=event=>{try{const payload=JSON.parse(event.data),k=payload.k;if(!k)return;const current=fastRadarSignals.get(id);if(!current)return;const row=[Number(k.t),Number(k.o),Number(k.h),Number(k.l),Number(k.c),Number(k.v)],rows=current.rows||[],last=rows[rows.length-1];if(last&&Number(last[0])===row[0])rows[rows.length-1]=row;else rows.push(row);current.rows=rows.slice(-30);current.price=row[4];current.change1m=(row[4]/row[1]-1)*100;current.change5m=(row[4]/Number(current.rows[Math.max(0,current.rows.length-5)][1])-1)*100;current.updatedAt=Date.now();const mini=document.querySelector('[data-hunter-mini="'+id+'"]');if(mini)mini.innerHTML='<span>'+(current.trend==="bull"?"پرواز قیمت ↑":"سقوط قیمت ↓")+'</span>'+hunterMiniCandles(current.rows,current.trend);const card=document.querySelector('[data-hunter-card="'+id+'"]');if(card){const price=card.querySelector(".hunter-live-price");if(price)price.textContent=hunterPrice(current.price);}}catch(error){console.debug("Hunter stream parse:",error);}};
+   const ws=new WebSocket("wss://stream.binance.com:9443/ws/"+String(coin.symbol||"").toLowerCase()+"usdt@kline_1m");hunterSockets.set(id,ws);
+   ws.onmessage=event=>{try{const payload=JSON.parse(event.data),k=payload.k;if(!k)return;const current=fastRadarSignals.get(id);if(!current)return;const row=[Number(k.t),Number(k.o),Number(k.h),Number(k.l),Number(k.c),Number(k.v)],rows=current.rows||[],last=rows[rows.length-1];if(last&&Number(last[0])===row[0])rows[rows.length-1]=row;else rows.push(row);current.rows=rows.slice(-30);current.price=row[4];current.change1m=(row[4]/row[1]-1)*100;current.change3m=(row[4]/Number(current.rows[Math.max(0,current.rows.length-3)][1])-1)*100;current.updatedAt=Date.now();const mini=document.querySelector('[data-hunter-mini="'+id+'"]');if(mini)mini.innerHTML='<span>'+(current.trend==="bull"?"پرواز قیمت ↑":"سقوط قیمت ↓")+'</span>'+hunterMiniCandles(current.rows,current.trend);const card=document.querySelector('[data-hunter-card="'+id+'"]');if(card){const price=card.querySelector(".hunter-live-price");if(price)price.textContent=hunterPrice(current.price);}}catch(error){console.debug("Hunter stream parse:",error);}};
    ws.onerror=()=>{try{ws.close();}catch(e){}};ws.onclose=()=>{if(hunterSockets.get(id)===ws)hunterSockets.delete(id);};
   }catch(error){console.debug("Hunter websocket unavailable:",error);}
  });
