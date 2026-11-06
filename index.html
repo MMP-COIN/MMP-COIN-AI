@@ -1722,8 +1722,8 @@ function radarScore(c){
  const liquidity=m>0&&v>0?Math.max(0,Math.min(100,(v/m)*100*2.5)):null;
  const range=hi>lo&&p>0?(p-lo)/(hi-lo)*100:null;
  const trend=directional==null?"unknown":directional>.15?"bull":directional<-.15?"bear":"neutral";
- // امتیاز قدرت روند: تغییر ترکیبی ۵٪ ≈ ۷۰ و ۷٫۵٪ ≈ ۸۰؛ برای جلوگیری از خالی ماندن غیرواقعی رادار، مقیاس متناسب با نوسان معمول بازار تنظیم شده است.
- const score=directional==null?0:Math.round(50+Math.min(45,Math.abs(directional)*4));
+ // امتیاز غربالگری: تغییر ترکیبی حدود ۲٫۵٪ امتیاز ۷۰ و حدود ۳٫۷۵٪ امتیاز ۸۰ می‌سازد؛ این امتیاز یک شاخص نسبی است، نه احتمال سود.
+ const score=directional==null?0:Math.round(50+Math.min(45,Math.abs(directional)*8));
  return {score,trend,h:has24?h:null,d:has7?d:null,directional,liquidity:liquidity==null?null:v/m*100,range,dataQuality:parts===2?"دو بازه معتبر":parts===1?"یک بازه معتبر":"داده تغییرات ناقص"};
 }
 let radarDeepScanBusy=false;
