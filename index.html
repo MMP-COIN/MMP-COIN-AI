@@ -473,6 +473,7 @@ body:after{content:"";position:fixed;width:42vw;height:42vw;max-width:620px;max-
 \n/* Radar clarity refresh */
 .section-head h2,.radar-group-title b{font-family:'Estedad',var(--font-fa,Tahoma),sans-serif;letter-spacing:-.25px}
 .radar-live-note{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:10px 12px;margin:12px 0 15px;border:1px solid #344052;border-radius:12px;background:linear-gradient(100deg,#141c28,#10151c);font-size:11px;color:#c4cbd6}
+.radar-refresh-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:42px;padding:8px 12px;border:1px solid #8b713f;border-radius:12px;background:linear-gradient(145deg,#292315,#171b23);color:#f5dda2;font-size:11px;font-weight:800;white-space:nowrap;box-shadow:0 5px 16px #0004;transition:border-color .2s,transform .2s,opacity .2s;flex:none}.radar-refresh-btn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}.radar-refresh-btn:hover{border-color:#e5c477;transform:translateY(-1px)}.radar-refresh-btn:disabled{opacity:.6;cursor:wait}.radar-refresh-btn.is-refreshing svg{animation:radarRefreshSpin 1s linear infinite}@keyframes radarRefreshSpin{to{transform:rotate(360deg)}}@media(max-width:420px){.radar-refresh-btn{min-height:38px;padding:7px 9px}.radar-refresh-btn span{font-size:10px}}
 .radar-live-note .sub{margin-right:auto;font-size:10px}
 .radar-live-dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 12px var(--green);flex:none}
 .radar-groups{display:grid;gap:16px}
@@ -941,7 +942,7 @@ body{background:
 
 
 <section class="terminal-grid" id="opportunities">
-<section class="card radar-card"><div class="section-head"><div><div class="section-kicker">MMP MARKET SCANNER</div><h2>رادار هوشمند بازار</h2><p class="sub">خلاصه وضعیت بازار و پیشنهاد ورود و خروج بر پایه داده‌های زنده</p></div></div><div class="radar-live-note"><span class="radar-live-dot"></span><span>به‌روزرسانی خودکار با داده‌های بازار</span><span id="radar-updated" class="sub">در انتظار داده بازار…</span></div>
+<section class="card radar-card"><div class="section-head"><div><div class="section-kicker">MMP MARKET SCANNER</div><h2>رادار هوشمند بازار</h2><p class="sub">خلاصه وضعیت بازار و پیشنهاد ورود و خروج بر پایه داده‌های زنده</p></div><button class="radar-refresh-btn" id="radar-refresh-btn" type="button" aria-label="بروزرسانی رادار و داده‌های بازار" title="بروزرسانی رادار و داده‌های بازار"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.2v2.1M12 18.7v2.1M3.2 12h2.1m13.4 0h2.1M5.8 5.8l1.5 1.5m9.4 9.4 1.5 1.5m0-12.4-1.5 1.5m-9.4 9.4-1.5 1.5"/><circle cx="12" cy="12" r="6.1"/><path d="M12 8.7v3.6l2.3 1.4"/></svg><span>بروزرسانی</span></button></div><div class="radar-live-note"><span class="radar-live-dot"></span><span>به‌روزرسانی خودکار با داده‌های بازار</span><span id="radar-updated" class="sub">در انتظار داده بازار…</span></div>
 <div id="opportunity-list" class="radar-groups"><div class="ai-empty">پس از دریافت قیمت‌ها، رادار بازار را بررسی می‌کند.</div></div>
 <div class="radar-ai-title">پیشنهاد هوش مصنوعی</div><button class="btn primary" id="radar-deep-scan" type="button">بررسی پیشنهادها با هوش مصنوعی</button><div id="radar-deep-status" class="sub radar-ai-status" aria-live="polite">در انتظار تحلیل داده‌های بازار…</div><div id="radar-deep-results" class="radar-deep-results" aria-live="polite"></div>
 <p class="sub radar-footnote">پیشنهادها بر اساس داده‌های واقعی بازار تهیه می‌شوند و تضمین سود نیستند. در نبود داده معتبر، پیشنهادی صادر نمی‌شود.</p></section></section>
@@ -1304,7 +1305,9 @@ async function refreshAll(){
  if(refreshInFlight)return;
  refreshInFlight=true;
  const refreshButton=$("market-refresh-btn");
+ const radarRefreshButton=$("radar-refresh-btn");
  if(refreshButton){refreshButton.disabled=true;refreshButton.textContent="در حال بروزرسانی…";}
+ if(radarRefreshButton){radarRefreshButton.disabled=true;radarRefreshButton.classList.add("is-refreshing");radarRefreshButton.querySelector("span").textContent="در حال بروزرسانی";}
  $('updated').textContent='در حال بروزرسانی از مراجع معتبر…';
 
  try{
@@ -1423,7 +1426,7 @@ async function refreshAll(){
 
   $('updated').textContent='بروزرسانی شد: '+new Date().toLocaleTimeString('fa-IR');
  }catch(e){coinGeckoConnectionStatus='down';renderCoinGeckoConnection();$('updated').textContent='خطا در دریافت داده';}
- finally{refreshInFlight=false;const button=$("market-refresh-btn");if(button){button.disabled=false;button.textContent="↻ بروزرسانی بازار";}}
+ finally{refreshInFlight=false;const button=$("market-refresh-btn");if(button){button.disabled=false;button.textContent="↻ بروزرسانی بازار";}const radarButton=$("radar-refresh-btn");if(radarButton){radarButton.disabled=false;radarButton.classList.remove("is-refreshing");radarButton.querySelector("span").textContent="بروزرسانی";}}
 }
 
 function renderHeroCards() {
@@ -1810,6 +1813,7 @@ function saveJournal(entry){try{const a=JSON.parse(localStorage.getItem(MMP_JOUR
 function renderJournal(){const el=$("analysis-journal");if(!el)return;let a=[];try{a=JSON.parse(localStorage.getItem(MMP_JOURNAL_KEY)||"[]")}catch(e){}el.innerHTML=a.length?a.slice(0,8).map(x=>'<div class="tool-list-item"><span><b>'+aiEscape(x.name)+' ('+aiEscape(x.symbol)+')</b><small class="muted" style="display:block">'+new Date(x.time).toLocaleString("fa-IR")+'</small></span><span>'+aiEscape(x.action)+' · '+aiEscape(x.confidence)+'</span></div>').join(""):'<p class="sub">هنوز تحلیلی ثبت نشده است.</p>';}
 function calcRisk(){const capital=Number($("risk-capital").value),pct=Number($("risk-percent").value),entry=Number($("risk-entry").value),stop=Number($("risk-stop").value);const out=$("risk-result");if(!(capital>0&&pct>0&&pct<=100&&entry>0&&stop>0)){out.textContent="سرمایه، درصد ریسک، قیمت ورود و قیمت حد ضرر را کامل و معتبر وارد کنید.";return;}if(entry===stop){out.textContent="قیمت ورود و قیمت حد ضرر نباید برابر باشند.";return;}const risk=capital*pct/100,dist=Math.abs(entry-stop)/entry,notional=risk/dist,qty=notional/entry;out.innerHTML="<div><b>مبلغ ورود به معامله:</b> "+money(notional,2)+" USDT</div><div><b>ضرر احتمالی در صورت برخورد به حد ضرر:</b> "+money(risk,2)+" USDT</div><div><b>فاصله تا حد ضرر:</b> "+(dist*100).toFixed(2)+"%</div><div><b>مقدار دارایی:</b> "+money(qty,6)+"</div><small>مبلغ ورود، ارزش کل معامله است و با اهرم می‌تواند از مارجین پرداختی بیشتر باشد. کارمزد و لغزش قیمت محاسبه نشده‌اند.</small>";}
 $("market-refresh-btn")?.addEventListener("click",()=>refreshAll());
+ $("radar-refresh-btn")?.addEventListener("click",()=>{refreshAll();checkConnections();});
  $("risk-calc")?.addEventListener("click",calcRisk);
 $("watch-add-btn")?.addEventListener("click",()=>addWatch($("watch-add-select")?.value));
 $("watch-list")?.addEventListener("click",e=>{const analyze=e.target.closest("[data-watch-analyze]");if(analyze){analyzeWatchCoin(analyze.dataset.watchAnalyze);return;}const button=e.target.closest("[data-watch-remove]");if(button)removeWatch(button.dataset.watchRemove)});
