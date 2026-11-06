@@ -2051,13 +2051,14 @@ async function fetchHunterUniverse(){
  const allUniverse=[...eligibleSymbols].map(symbol=>{
   const meta=cmcBySymbol.get(symbol),market=marketsBySymbol.get(symbol)||{venues:new Set(["Binance"]),totalVolume:0,quotes:[]};
   const quote=market.quotes.sort((a,b)=>b.volume-a.volume)[0]||{};
+  const usdQuote=Array.isArray(meta.quote)?(meta.quote.find(q=>String(q.symbol||"").toUpperCase()==="USD")||{}):(meta.quote?.USD||meta.quote||{});
   return {
    id:"cmc:"+String(meta.id),cmcId:Number(meta.id),symbol,name:meta.name||symbol,
    image:"https://s2.coinmarketcap.com/static/img/coins/"+String(meta.id)+"/64x64.png",
-   current_price:quote.price||Number(meta.quote?.USD?.price)||0,total_volume:market.totalVolume,
-   market_cap:Number(meta.quote?.USD?.market_cap)||null,market_cap_rank:Number(meta.cmc_rank)||null,
+   current_price:quote.price||Number(usdQuote.price)||0,total_volume:market.totalVolume,
+   market_cap:Number(usdQuote.market_cap)||null,market_cap_rank:Number(meta.cmc_rank)||null,
    hunterExchange:[...market.venues].join(", "),hunterPriceExchange:quote.exchange||"CoinMarketCap",
-   hunterChange24h:(quote.change24h??Number(meta.quote?.USD?.percent_change_24h))||0,
+   hunterChange24h:(quote.change24h??Number(usdQuote.percent_change_24h))||0,
    hunterVenueVolume:Object.fromEntries([...market.venues].map(venue=>[venue,Math.max(0,...market.quotes.filter(q=>q.exchange===venue).map(q=>Number(q.volume)||0))]))
   };
  }).filter(c=>c.current_price>0).sort((a,b)=>b.total_volume-a.total_volume||Number(a.market_cap_rank||999999)-Number(b.market_cap_rank||999999));
