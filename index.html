@@ -2789,6 +2789,64 @@ setInterval(()=>mmpSendEvent("heartbeat"),240000);
   values.forEach((v,i)=>{if(signals[i])out+='<circle cx="'+(L+i*slot+slot/2)+'" cy="'+yy(v)+'" r="4" fill="'+(signals[i]==="BUY"?"#25d695":"#ff6576")+'"/>';});
   return out+'</svg>';
  }
+ let boomLiveSocket=null,boomLiveRows=null,boomLiveInterval=null,boomLivePair=null;
+ function stopBoomLive(){if(boomLiveSocket){try{boomLiveSocket.onclose=null;boomLiveSocket.close();}catch(e){}boomLiveSocket=null;}}
+ function renderBoomLiveUpdate(){
+  if(!boomLiveRows||boomLiveRows.length<60)return;
+  const rows=boomLiveRows,closes=rows.map(r=>r[4]),base=ema(closes,34),deviation=closes.map((v,i)=>v-base[i]),osc=[];
+  for(let i=0;i<rows.length;i++){const start=Math.max(0,i-19),sample=deviation.slice(start,i+1),mean=sample.reduce((a,b)=>a+b,0)/sample.length,variance=sample.reduce((a,b)=>a+(b-mean)*(b-mean),0)/sample.length,sd=Math.sqrt(variance)||1,momentum=i>=3?(closes[i]/closes[i-3]-1)*100:0;osc.push(Math.max(-2,Math.min(2,(deviation[i]/sd)*.72+momentum*1.8)));}
+  const smooth=ema(osc,5),signals=rows.map((r,i)=>i>0&&smooth[i]>.75&&smooth[i-1]<=.75?"BUY":i>0&&smooth[i]<-.75&&smooth[i-1]>=-.75?"SELL":null);
+  const last=smooth[smooth.length-1],closed=rows.slice(-5),sum=k=>closed.reduce((a,r)=>a+(Number(r[k])||0),0),buy=sum(9),sell=sum(10),net=buy-sell,latest=rows[rows.length-1];
+  $("boom-signal").textContent=last>.35?"فشار صعودی":last<-.35?"فشار نزولی":"خنثی";
+  $("boom-signal").style.color=last>.35?"#35dfa9":last<-.35?"#ff8291":"#f1d596";
+  $("boom-osc").textContent=last.toFixed(2);$("boom-price").textContent=fmt(latest[4])+" USDT";
+  $("boom-buy-flow").textContent=money(buy)+" USDT";$("boom-sell-flow").textContent=money(sell)+" USDT";
+  $("boom-net-flow").textContent=(net>=0?"+":"−")+money(Math.abs(net))+" USDT";
+  $("boom-net-flow").className=net>=0?"positive":"negative";
+  $("boom-volume-ratio").textContent=money(latest[6])+" USDT · "+(Number(latest[11])||0).toFixed(1)+"×";
+  $("boom-candles").innerHTML=drawCandles(rows.slice(-90),signals.slice(-90));
+  $("boom-flow-chart").innerHTML=drawFlow(rows);$("boom-oscillator").innerHTML=drawOsc(smooth.slice(-120),signals.slice(-120));
+  const stamp=new Date().toLocaleTimeString("fa-IR");
+  $("boom-status").textContent=boomLivePair+" · "+boomLiveInterval+" · کندل در حال تشکیل · جریان زنده WebSocket · "+stamp;
+  syncBoomExpanded();
+ }
+ function startBoomLive(pair,interval){
+  stopBoomLive();boomLivePair=pair;boomLiveInterval=interval;
+  const stream=pair.toLowerCase()+"@kline_"+interval;
+  const connectBinance=()=>{
+   let ws;try{ws=new WebSocket("wss://stream.binance.com:9443/ws/"+stream);}catch(e){connectOkx();return;}
+   boomLiveSocket=ws;let opened=false;
+   ws.onopen=()=>{opened=true;};
+   ws.onmessage=event=>{
+    try{const msg=JSON.parse(event.data),k=msg.k;if(!k)return;
+     const t=Number(k.t),row=[t,Number(k.o),Number(k.h),Number(k.l),Number(k.c),Number(k.v),Number(k.q),Number(k.n),Number(k.V),Number(k.Q),Math.max(0,Number(k.q)-Number(k.Q)),0];
+     if(!boomLiveRows)return;
+     const last=boomLiveRows[boomLiveRows.length-1];
+     if(last&&last[0]===t)boomLiveRows[boomLiveRows.length-1]=row;else boomLiveRows.push(row);
+     if(boomLiveRows.length>220)boomLiveRows.shift();
+     const prev=boomLiveRows.slice(-21,-1).map(x=>x[6]).filter(x=>x>0),avg=prev.length?prev.reduce((a,b)=>a+b,0)/prev.length:0;
+     row[11]=avg>0?row[6]/avg:0;renderBoomLiveUpdate();
+    }catch(e){console.debug("Boom live candle parse failed",e);}
+   };
+   ws.onerror=()=>{if(!opened)connectOkx();};
+   ws.onclose=()=>{if(boomLiveSocket===ws){boomLiveSocket=null;setTimeout(()=>{if(boomLivePair===pair)connectOkx();},2500);}};
+  };
+  const connectOkx=()=>{
+   if(boomLivePair!==pair)return;
+   const map={"1m":"1m","5m":"5m","15m":"15m","1h":"1H"};let ws;
+   try{ws=new WebSocket("wss://ws.okx.com:8443/ws/v5/business");}catch(e){return;}
+   boomLiveSocket=ws;
+   ws.onopen=()=>ws.send(JSON.stringify({op:"subscribe",args:[{channel:"candle"+map[interval],instId:pair.replace("USDT","-USDT") }]}));
+   ws.onmessage=event=>{try{const msg=JSON.parse(event.data),c=msg.data?.[0];if(!c)return;
+    const t=Number(c[0]),row=[t,Number(c[1]),Number(c[2]),Number(c[3]),Number(c[4]),Number(c[5]),Number(c[6]),0,0,0,0,0];
+    if(!boomLiveRows)return;const last=boomLiveRows[boomLiveRows.length-1];
+    if(last&&last[0]===t)boomLiveRows[boomLiveRows.length-1]=row;else boomLiveRows.push(row);
+    renderBoomLiveUpdate();
+   }catch(e){}};
+   ws.onerror=()=>{try{ws.close();}catch(e){}};
+  };
+  connectBinance();
+ }
  async function run(){
   const button=$("boom-run"),status=$("boom-status"),symbol=String($("boom-symbol").value||"BTC").trim().toUpperCase(),interval=$("boom-interval").value;
   if(!/^[A-Z0-9]{2,20}$/.test(symbol)){status.textContent="نماد ارز معتبر نیست.";status.className="boom-status error";return;}
@@ -2828,7 +2886,7 @@ setInterval(()=>mmpSendEvent("heartbeat"),240000);
    $("boom-oscillator").innerHTML=drawOsc(smooth.slice(-120),signals.slice(-120));
    const unusual=flowRatio>=2?" · حجم غیرعادی در آخرین کندل":"";
    status.className="boom-status";status.textContent=pair+" · "+interval+" · "+rows.length+" کندل شامل کندل جاری · منبع: "+provider+" · سبز/قرمز: خرید/فروش تهاجمی · بروزرسانی "+new Date().toLocaleTimeString("fa-IR")+unusual;
-   boomLiveEnabled=true;if(!boomLiveTimer)boomLiveTimer=setInterval(()=>{if(boomLiveEnabled&&!document.hidden&&!button.disabled)run();},15000);
+   boomLiveRows=rows;startBoomLive(pair,interval);boomLiveEnabled=true;if(!boomLiveTimer)boomLiveTimer=setInterval(()=>{if(boomLiveEnabled&&!document.hidden&&!button.disabled)run();},15000);
    syncBoomExpanded();
   }catch(error){status.className="boom-status error";status.textContent="دریافت/تحلیل ناموفق: "+(error&&error.message?error.message:"خطای نامشخص");}
   finally{button.disabled=false;}
