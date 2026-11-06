@@ -1399,7 +1399,6 @@ async function refreshAll(){
   renderCoinsTables(data);
   updateDropdowns(data);
   renderMarketTicker(); renderOpportunities(); renderWatch(); syncWatchSelect();
-  auditExchangeSupport(data);
 
   const goldController=new AbortController(),goldTimer=setTimeout(()=>goldController.abort(),5000);
   try{
