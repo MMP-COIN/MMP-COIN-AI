@@ -2821,7 +2821,7 @@ setInterval(()=>mmpSendEvent("heartbeat"),240000);
   $("boom-candles").innerHTML=drawCandles(rows.slice(-90),signals.slice(-90));
   $("boom-flow-chart").innerHTML=drawFlow(rows);$("boom-oscillator").innerHTML=drawOsc(smooth.slice(-120),signals.slice(-120));
   const stamp=new Date().toLocaleTimeString("fa-IR");
-  $("boom-status").textContent=boomLivePair+" · "+boomLiveInterval+" · کندل در حال تشکیل · جریان زنده '+(boomLiveProvider||"WebSocket")+' · "+stamp;
+  $("boom-status").textContent=boomLivePair+" · "+boomLiveInterval+" · کندل در حال تشکیل · جریان زنده "+(boomLiveProvider||"WebSocket")+" · "+stamp;
   syncBoomExpanded();
  }
  function startBoomLive(pair,interval){
