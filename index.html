@@ -309,6 +309,9 @@ body:after{content:"";position:fixed;width:42vw;height:42vw;max-width:620px;max-
 .spark-a{top:30px;right:25px}.spark-b{bottom:33px;left:22px;background:#54ebd6;box-shadow:0 0 15px 5px #54ebd688}
 .hero-visual-label{position:absolute;bottom:-3px;white-space:nowrap;font-size:8px;letter-spacing:2px;color:#718c9b}
 .hero-visual-label span{color:#45e0b5}
+.hero-refresh-group{position:absolute;right:28px;bottom:22px;z-index:3;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.hero-refresh-btn{white-space:nowrap;min-height:34px;padding:8px 13px;font-size:11px;border-color:rgba(215,180,106,.55);background:linear-gradient(135deg,#d7b46a,#9c793d);color:#111923;box-shadow:0 5px 18px rgba(215,180,106,.2)}
+.hero-refresh-btn:disabled{opacity:.7;cursor:wait}
 .market-ticker{margin:0 0 22px;padding:10px;gap:10px;border:1px solid #263a4a;border-radius:16px;background:linear-gradient(100deg,#101a25,#0c131d);box-shadow:0 12px 28px #0005}
 .ticker-item{min-width:175px;border:1px solid #2a3c4d;border-radius:11px;background:linear-gradient(145deg,#192635,#111a25);box-shadow:inset 0 1px #ffffff0b}
 .terminal-nav{display:none!important}
@@ -355,7 +358,7 @@ body:after{content:"";position:fixed;width:42vw;height:42vw;max-width:620px;max-
 .footer{color:#687d8e!important;border-top:1px solid #243747;margin-top:28px}
 @media(max-width:1120px){:root{--sidebar:220px}.hero-visual{left:3%;opacity:.8}.top{padding-left:18px}.side-brand b{font-size:11px}}
 @media(max-width:900px){:root{--sidebar:0px}.mmp-sidebar{display:none}.top{height:68px;padding:0 15px}.wrap{width:100%;margin:0;padding:18px 16px 100px}.hero{min-height:220px}.hero-visual{left:2%;transform:translateY(-50%) scale(.8);opacity:.65}.mmp-mobile-dock{position:fixed;z-index:900;bottom:max(9px,env(safe-area-inset-bottom));left:12px;right:12px;display:flex;justify-content:space-around;align-items:center;padding:9px 6px;border:1px solid #43596b;border-radius:18px;background:linear-gradient(110deg,#121e2bf2,#0b141ef5);box-shadow:0 12px 40px #000b,inset 0 1px #ffffff19;backdrop-filter:blur(22px)}.mmp-mobile-dock a{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:48px;color:#91a7b8;text-decoration:none;font-size:9px}.mmp-mobile-dock i{font-style:normal;font-size:20px;line-height:1.1}.mmp-mobile-dock .dock-ai{color:#f0d28b}.mmp-mobile-dock .dock-ai i{width:37px;height:30px;border-radius:10px;display:grid;place-items:center;background:linear-gradient(145deg,#e9cc88,#96713b);color:#111923;box-shadow:0 4px 15px #d7b46a55}.terminal-grid{grid-template-columns:1fr}}
-@media(max-width:560px){.top{height:62px;padding:0 10px}.brand .logo{width:37px;height:37px}.brand b{font-size:11px;letter-spacing:1px}.brand small{font-size:8px}.top-actions{gap:5px}.top-actions .btn{padding:8px;font-size:10px}.currency-switch{transform:scale(.9);transform-origin:right}.wrap{padding:12px 10px 105px}.hero{min-height:195px;padding:23px 18px;border-radius:19px}.hero>div:first-child{max-width:100%;padding-left:45px}.hero h1{font-size:24px;max-width:340px}.hero p{font-size:11px;max-width:300px}.hero .eyebrow{font-size:8px;letter-spacing:1.5px}.hero-visual{left:-47px;transform:translateY(-50%) scale(.57);opacity:.42}.hero>#updated{left:12px;bottom:10px;font-size:8px}.market-ticker{margin-bottom:13px;padding:7px}.ticker-item{min-width:148px;padding:8px}.grid{gap:8px}.grid .card{min-height:105px;padding:13px 12px;border-radius:13px}.stat-label{font-size:10px}.stat-value{font-size:17px}.card{padding:14px;border-radius:15px}.chart-box-wrapper{padding:11px}#chart-container,#tradingview_widget{height:440px;min-height:440px}.section-head h2{font-size:13px}.ai-toolbar{grid-template-columns:1fr 1fr}.ai-toolbar button{font-size:10px;padding:10px 5px}.ai-grid{gap:7px}.ai-metric{min-height:74px;padding:10px}.market-hours-grid{gap:7px}.market-session{padding:9px}.market-session b{font-size:10px}.tool-grid{grid-template-columns:1fr}.connection-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.mmp-mobile-dock{left:8px;right:8px;bottom:max(7px,env(safe-area-inset-bottom));padding:8px 2px}.mmp-mobile-dock a{min-width:43px;font-size:8px}}
+@media(max-width:560px){.top{height:62px;padding:0 10px}.brand .logo{width:37px;height:37px}.brand b{font-size:11px;letter-spacing:1px}.brand small{font-size:8px}.top-actions{gap:5px}.top-actions .btn{padding:8px;font-size:10px}.currency-switch{transform:scale(.9);transform-origin:right}.wrap{padding:12px 10px 105px}.hero{min-height:195px;padding:23px 18px;border-radius:19px}.hero>div:first-child{max-width:100%;padding-left:45px}.hero h1{font-size:24px;max-width:340px}.hero p{font-size:11px;max-width:300px}.hero .eyebrow{font-size:8px;letter-spacing:1.5px}.hero-visual{left:-47px;transform:translateY(-50%) scale(.57);opacity:.42}.hero-refresh-group{right:10px;bottom:9px;left:10px;justify-content:flex-end;gap:6px}.hero-refresh-group #updated{font-size:8px}.hero-refresh-btn{min-height:30px;padding:6px 9px;font-size:9px}.market-ticker{margin-bottom:13px;padding:7px}.ticker-item{min-width:148px;padding:8px}.grid{gap:8px}.grid .card{min-height:105px;padding:13px 12px;border-radius:13px}.stat-label{font-size:10px}.stat-value{font-size:17px}.card{padding:14px;border-radius:15px}.chart-box-wrapper{padding:11px}#chart-container,#tradingview_widget{height:440px;min-height:440px}.section-head h2{font-size:13px}.ai-toolbar{grid-template-columns:1fr 1fr}.ai-toolbar button{font-size:10px;padding:10px 5px}.ai-grid{gap:7px}.ai-metric{min-height:74px;padding:10px}.market-hours-grid{gap:7px}.market-session{padding:9px}.market-session b{font-size:10px}.tool-grid{grid-template-columns:1fr}.connection-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.mmp-mobile-dock{left:8px;right:8px;bottom:max(7px,env(safe-area-inset-bottom));padding:8px 2px}.mmp-mobile-dock a{min-width:43px;font-size:8px}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition:none!important}}
 
  
@@ -903,7 +906,7 @@ body{background:
   <h1 class="hero-title"><span>ترمینال جامع و هوشمند</span><span>بازارهای مالی</span></h1>
   <p>داده‌های زنده بازار، رادار فرصت‌ها و تحلیل چندلایه هوش مصنوعی؛ برای تصمیم‌گیری آگاهانه، نه دنبال‌کردن سیگنال‌های کور.</p>
 </div>
-<div class="hero-visual"><div class="hero-orbit orbit-a"></div><div class="hero-orbit orbit-b"></div><div class="hero-coin"><img src="assets/mmp-coin-mark.svg?v=20261106" alt="سکه طلایی M برجسته MMP COIN AI"></div><div class="hero-spark spark-a"></div><div class="hero-spark spark-b"></div><div class="hero-visual-label">MARKET INTELLIGENCE <span>● LIVE</span></div></div><span class="badge" id="updated">در حال دریافت داده…</span>
+<div class="hero-visual"><div class="hero-orbit orbit-a"></div><div class="hero-orbit orbit-b"></div><div class="hero-coin"><img src="assets/mmp-coin-mark.svg?v=20261106" alt="سکه طلایی M برجسته MMP COIN AI"></div><div class="hero-spark spark-a"></div><div class="hero-spark spark-b"></div><div class="hero-visual-label">MARKET INTELLIGENCE <span>● LIVE</span></div></div><div class="hero-refresh-group"><span class="badge" id="updated">در حال دریافت داده…</span><button class="btn primary hero-refresh-btn" id="market-refresh-btn" type="button">↻ بروزرسانی بازار</button></div>
 </section>
 
 
@@ -1300,6 +1303,8 @@ let refreshInFlight=false;
 async function refreshAll(){
  if(refreshInFlight)return;
  refreshInFlight=true;
+ const refreshButton=$("market-refresh-btn");
+ if(refreshButton){refreshButton.disabled=true;refreshButton.textContent="در حال بروزرسانی…";}
  $('updated').textContent='در حال بروزرسانی از مراجع معتبر…';
 
  try{
@@ -1418,7 +1423,7 @@ async function refreshAll(){
 
   $('updated').textContent='بروزرسانی شد: '+new Date().toLocaleTimeString('fa-IR');
  }catch(e){coinGeckoConnectionStatus='down';renderCoinGeckoConnection();$('updated').textContent='خطا در دریافت داده';}
- finally{refreshInFlight=false;}
+ finally{refreshInFlight=false;const button=$("market-refresh-btn");if(button){button.disabled=false;button.textContent="↻ بروزرسانی بازار";}}
 }
 
 function renderHeroCards() {
@@ -1804,7 +1809,8 @@ function addWatch(id){if(!id){watchFeedback("ابتدا یک ارز انتخاب
 function saveJournal(entry){try{const a=JSON.parse(localStorage.getItem(MMP_JOURNAL_KEY)||"[]");a.unshift(entry);localStorage.setItem(MMP_JOURNAL_KEY,JSON.stringify(a.slice(0,30)));renderJournal()}catch(e){}}
 function renderJournal(){const el=$("analysis-journal");if(!el)return;let a=[];try{a=JSON.parse(localStorage.getItem(MMP_JOURNAL_KEY)||"[]")}catch(e){}el.innerHTML=a.length?a.slice(0,8).map(x=>'<div class="tool-list-item"><span><b>'+aiEscape(x.name)+' ('+aiEscape(x.symbol)+')</b><small class="muted" style="display:block">'+new Date(x.time).toLocaleString("fa-IR")+'</small></span><span>'+aiEscape(x.action)+' · '+aiEscape(x.confidence)+'</span></div>').join(""):'<p class="sub">هنوز تحلیلی ثبت نشده است.</p>';}
 function calcRisk(){const capital=Number($("risk-capital").value),pct=Number($("risk-percent").value),entry=Number($("risk-entry").value),stop=Number($("risk-stop").value);const out=$("risk-result");if(!(capital>0&&pct>0&&pct<=100&&entry>0&&stop>0)){out.textContent="سرمایه، درصد ریسک، قیمت ورود و قیمت حد ضرر را کامل و معتبر وارد کنید.";return;}if(entry===stop){out.textContent="قیمت ورود و قیمت حد ضرر نباید برابر باشند.";return;}const risk=capital*pct/100,dist=Math.abs(entry-stop)/entry,notional=risk/dist,qty=notional/entry;out.innerHTML="<div><b>مبلغ ورود به معامله:</b> "+money(notional,2)+" USDT</div><div><b>ضرر احتمالی در صورت برخورد به حد ضرر:</b> "+money(risk,2)+" USDT</div><div><b>فاصله تا حد ضرر:</b> "+(dist*100).toFixed(2)+"%</div><div><b>مقدار دارایی:</b> "+money(qty,6)+"</div><small>مبلغ ورود، ارزش کل معامله است و با اهرم می‌تواند از مارجین پرداختی بیشتر باشد. کارمزد و لغزش قیمت محاسبه نشده‌اند.</small>";}
-$("risk-calc")?.addEventListener("click",calcRisk);
+$("market-refresh-btn")?.addEventListener("click",()=>refreshAll());
+ $("risk-calc")?.addEventListener("click",calcRisk);
 $("watch-add-btn")?.addEventListener("click",()=>addWatch($("watch-add-select")?.value));
 $("watch-list")?.addEventListener("click",e=>{const analyze=e.target.closest("[data-watch-analyze]");if(analyze){analyzeWatchCoin(analyze.dataset.watchAnalyze);return;}const button=e.target.closest("[data-watch-remove]");if(button)removeWatch(button.dataset.watchRemove)});
 $("opportunity-list")?.addEventListener("click",e=>{const button=e.target.closest("[data-watch-add]");if(button)addWatch(button.dataset.watchAdd)});
