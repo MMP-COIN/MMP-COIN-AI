@@ -477,11 +477,11 @@ async function handle(request,env){
   const requestedTopPage=Number(url.searchParams.get("page")||1);
   const requestedOffset=Number(url.searchParams.get("offset")||0);
   if(source==="coingecko-top"&&(!Number.isInteger(requestedTopPage)||requestedTopPage<1||requestedTopPage>5))return json({error:"Invalid CoinGecko page"},400,request);
-  if(source==="coincap-top"&&(!Number.isInteger(requestedOffset)||requestedOffset<0||requestedOffset>5000||requestedOffset%250!==0))return json({error:"Invalid CoinCap offset"},400,request);
+  if(source==="coinlore-top"&&(!Number.isInteger(requestedOffset)||requestedOffset<0||requestedOffset>5000||requestedOffset%100!==0))return json({error:"Invalid CoinLore offset"},400,request);
   const urls={
    "binance-tickers":["https://api.binance.com/api/v3/ticker/24hr","https://api.binance.us/api/v3/ticker/24hr","https://api1.binance.com/api/v3/ticker/24hr","https://api2.binance.com/api/v3/ticker/24hr","https://api3.binance.com/api/v3/ticker/24hr","https://data-api.binance.vision/api/v3/ticker/24hr"],
    "coingecko-top":["https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page="+requestedTopPage+"&sparkline=false&price_change_percentage=1h%2C24h%2C7d"],
-   "coincap-top":["https://api.coincap.io/v2/assets?limit=250&offset="+requestedOffset],
+   "coinlore-top":["https://api.coinlore.net/api/tickers/?start="+requestedOffset+"&limit=100"],
    "nobitex-tether":["https://apiv2.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls","https://api.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls"],
    "wallex-markets":["https://api.wallex.ir/v1/markets","https://api.wallex.ir/hector/web/v1/markets","https://api.wallex.ir/v1/otc/markets"]
   };
