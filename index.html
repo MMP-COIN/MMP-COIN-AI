@@ -1551,6 +1551,8 @@ async function refreshAll(){
    });
   };
   let verifiedCoins=await verifyCoinBatch(candidateCoins);
+  // If exchange audit returns no usable matches, retain market-provider prices instead of blanking the board.
+  if(!verifiedCoins.length)verifiedCoins=candidateCoins;
   if(verifiedCoins.length<100){
    const pageTwoUrl=marketMetadataSource==="CoinLore"
     ?AI_ANALYSIS_ENDPOINT+"/market-proxy?source=coinlore-top&offset=100"
