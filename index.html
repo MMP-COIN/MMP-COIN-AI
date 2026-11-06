@@ -1916,7 +1916,7 @@ async function runFastRadarScan(){
  fastRadarBusy=true;fastRadarLastRun=Date.now();
  const status=$("radar-updated"),hunterStatus=$("hunter-feed-status"),hunterLast=$("hunter-last-scan");
  let completed=0,failed=0,cursor=0,universe=[];
- const scanned=new Map();
+ const scanned=new Map(),failedIds=new Set();
  if(hunterStatus)hunterStatus.textContent="در حال تازه‌سازی فهرست بازارهای اسپات…";
  if(hunterLast)hunterLast.textContent=new Date().toLocaleTimeString("fa-IR");
  try{universe=await fetchHunterUniverse();}catch(error){console.debug("Hunter universe unavailable:",error?.message||error);universe=[];}
@@ -1929,7 +1929,7 @@ async function runFastRadarScan(){
   while(cursor<batch.length){
    const coin=batch[cursor++];
    try{const signal=await scanFastCoin(coin);scanned.set(coin.id,signal&&signal.trend!=="neutral"?signal:null);}
-   catch(error){failed++;if(failed<=3)console.debug("Fast radar skipped "+coin.symbol,error?.message||error);}
+   catch(error){failed++;failedIds.add(coin.id);if(failed<=3)console.debug("Fast radar skipped "+coin.symbol,error?.message||error);}
    completed++;
    if(completed%6===0||completed===batch.length){
     const message="رصد زنده · "+completed.toLocaleString("fa-IR")+" از "+batch.length.toLocaleString("fa-IR")+" بازار این نوبت · نامزدهای تازه: "+[...scanned.values()].filter(Boolean).length.toLocaleString("fa-IR");
@@ -1941,7 +1941,7 @@ async function runFastRadarScan(){
  try{
   await Promise.all(workers);
   const previous=new Map(fastRadarSignals);
-  scanned.forEach((signal,id)=>{if(signal)fastRadarSignals.set(id,signal);else if(!failed||!previous.has(id))fastRadarSignals.delete(id);});
+  scanned.forEach((signal,id)=>{if(signal)fastRadarSignals.set(id,signal);else if(!failedIds.has(id))fastRadarSignals.delete(id);});
   // فرصت‌های قدیمی بیش از ۸ دقیقه در فهرست فعال باقی نمی‌مانند.
   for(const [id,signal] of fastRadarSignals){if(Date.now()-signal.updatedAt>8*60*1000)fastRadarSignals.delete(id);}
   fastRadarLastMessage="این نوبت "+completed+" بازار از "+universe.length+" بازار اولویت‌دار بررسی شد · فرصت‌های فعال: "+fastRadarSignals.size+" · "+new Date().toLocaleTimeString("fa-IR");
