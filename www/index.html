@@ -533,6 +533,19 @@ body:after{content:"";position:fixed;width:42vw;height:42vw;max-width:620px;max-
 .mmp-app-mode .app-tabbar .dock-ai{color:#f5dda2;background:linear-gradient(145deg,#3b301d,#1c2430);border:1px solid #9e804a}
 .mmp-app-mode .mmp-sidebar{border-color:#35465b;background:#0c1420}
 .mmp-app-mode .radar-group{background:linear-gradient(145deg,#182536,#101722)}
+.mmp-site-download,.mmp-app-footer{margin:18px 0 8px}
+.mmp-footer-panel{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:17px;border:1px solid #8e7445;border-radius:16px;background:linear-gradient(135deg,#1c2938,#171d26)}
+.mmp-footer-panel b,.mmp-footer-panel small{display:block}
+.mmp-footer-panel b{color:#f2d58e;font-size:14px}
+.mmp-footer-panel small{margin-top:5px;color:#aeb9c8;font-size:11px}
+.mmp-footer-panel>a{flex-shrink:0;padding:11px 15px;border-radius:11px;background:linear-gradient(145deg,#f0d38d,#a77c35);color:#17130a;text-decoration:none;font-weight:900;font-size:12px}
+.mmp-app-footer{display:none;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.mmp-footer-action{display:flex;align-items:center;justify-content:center;gap:9px;min-height:52px;padding:10px;border:1px solid #6f5b38;border-radius:14px;background:linear-gradient(145deg,#192738,#101823);color:#f2d58e;text-decoration:none;font:inherit;cursor:pointer}
+.mmp-footer-action span{font-size:20px}
+.mmp-footer-action b{font-size:12px}
+.mmp-native-app .mmp-site-download{display:none!important}
+.mmp-native-app .mmp-app-footer{display:grid}
+@media(max-width:420px){.mmp-footer-panel{align-items:flex-start;flex-direction:column}.mmp-footer-panel>a{width:100%;text-align:center}}
 @media(min-width:900px){.mmp-app-mode .app-tabbar{left:50%;right:auto;transform:translateX(-50%);width:min(520px,calc(100% - 32px))}}
 
 /* هویت یکپارچه تیترها: فونت و طیف طلایی MMP */
@@ -1012,10 +1025,31 @@ body.hunter-chart-open{overflow:hidden}
 </div>
 </section>
 
+<section class="mmp-site-download" id="site-app-download" aria-label="دانلود اپلیکیشن">
+  <div class="mmp-footer-panel">
+    <div><b>اپلیکیشن اندروید MMP COIN AI</b><small>نسخه رسمی اپلیکیشن را از سایت دریافت کنید.</small></div>
+    <a href="https://github.com/MMP-COIN/MMP-COIN-AI/releases/latest" target="_blank" rel="noopener">دانلود اپلیکیشن</a>
+  </div>
+</section>
+<section class="mmp-app-footer" aria-label="ارتباط و اشتراک‌گذاری">
+  <a class="mmp-footer-action" href="mailto:mehrdadmmp1988@gmail.com?subject=%D9%BE%DB%8C%D8%A7%D9%85%20%D8%A7%D8%B2%20%D8%A7%D9%BE%D9%84%DB%8C%DA%A9%DB%8C%D8%B4%D9%86%20MMP%20COIN%20AI"><span>✉</span><b>ایمیل به مدیریت</b></a>
+  <button class="mmp-footer-action" id="mmp-share-app" type="button"><span>↗</span><b>ارسال به دوستان</b></button>
+</section>
 <div class="footer" style="text-align:center; color:var(--muted); font-size:11px; padding:20px 0;">MMP COIN AI · ترمینال جامع، پایش و تحلیل هوش مصنوعی بازارهای مالی</div>
 </main>
 
 <script>
+(function(){
+ const nativeMode=new URLSearchParams(location.search).has("mmp_native_version")||!!(window.Capacitor&&typeof window.Capacitor.isNativePlatform==="function"&&window.Capacitor.isNativePlatform());
+ document.body.classList.toggle("mmp-native-app",nativeMode);
+ const share=document.getElementById("mmp-share-app");
+ if(share)share.addEventListener("click",async()=>{
+  const data={title:"MMP COIN AI",text:"ترمینال هوشمند تحلیل بازارهای مالی و رمزارزها",url:"https://mmp-coin.github.io/"};
+  try{if(navigator.share){await navigator.share(data);return;}}catch(error){if(error&&error.name==="AbortError")return;}
+  try{await navigator.clipboard.writeText(data.url);share.querySelector("b").textContent="لینک کپی شد";setTimeout(()=>{share.querySelector("b").textContent="ارسال به دوستان";},2200);}
+  catch(error){window.prompt("لینک سایت را کپی کنید:",data.url);}
+ });
+})();
 const $=id=>document.getElementById(id);
 let lastMarket={};
 let currentTetherPrice = 0;
