@@ -181,10 +181,12 @@ jobs:
           echo "Real-trade flow endpoint HTTP $flow_status"
           if [ "$flow_status" != "200" ]; then cat /tmp/market-flow.json; exit 1; fi
           jq -e '.symbol == "BTCUSDT" and (.trade_count | type == "number") and (.buy5m >= 0) and (.sell5m >= 0) and (.provider | type == "string" and length > 0)' /tmp/market-flow.json >/dev/null
+          jq -r '"Real-trade provider: " + .provider + " | trades: " + (.trade_count|tostring) + " | coverage complete: " + (.complete|tostring)' /tmp/market-flow.json
           hunter_status=$(curl --silent --show-error --retry 1 --retry-delay 2 --max-time 45 -o /tmp/hunter-scan.json -w "%{http_code}" "$WORKER_URL/hunter-scan?symbols=BTC,ETH")
           echo "Independent Hunter scan endpoint HTTP $hunter_status"
           if [ "$hunter_status" != "200" ]; then cat /tmp/hunter-scan.json; exit 1; fi
           jq -e '.engine == "independent-hunter" and .requested == 2 and (.signals | type == "array") and (.scanned >= 1)' /tmp/hunter-scan.json >/dev/null
+          jq -r '"Hunter scan: " + (.scanned|tostring) + " valid symbols; trade-flow providers: " + ([.signals[].flow.provider // empty] | unique | join(", "))' /tmp/hunter-scan.json
           {
             echo "- Shared trade-flow service: responding with real exchange trades and provider attribution"
             echo "- Independent Hunter scan: separate scan endpoint responding for BTC/ETH"
