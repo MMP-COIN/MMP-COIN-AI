@@ -1427,6 +1427,7 @@ async function checkConnections(){
 }
 
 const AI_ANALYSIS_ENDPOINT = "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev"; // بعد از انتشار Worker، نشانی ...workers.dev/analyze در این متغیر قرار می‌گیرد.
+const FAST_RADAR_SERVER_ENDPOINT = "https://mmp-coin-ai-radar.mehrdadmohammadi1988.workers.dev";
 
 let exchangeSupportBySymbol={};
 let exchangeAuditPromise=null;
@@ -1911,6 +1912,33 @@ function persistFastRadarState(){try{localStorage.setItem(FAST_RADAR_STATE_KEY,J
 function restoreFastRadarState(){try{const raw=localStorage.getItem(FAST_RADAR_STATE_KEY);if(!raw)return;const state=JSON.parse(raw);if(!state)return;fastRadarCursor=Math.max(0,Number(state.cursor)||0);fastRadarLastRun=Number(state.lastRun)||0;fastRadarLastMessage=String(state.lastMessage||fastRadarLastMessage);if(state.progress&&typeof state.progress==="object")fastRadarProgress={...fastRadarProgress,...state.progress};fastRadarPendingIds=Array.isArray(state.pendingIds)?state.pendingIds:[];fastRadarDoneIds=Array.isArray(state.doneIds)?state.doneIds:[];(state.signals||[]).forEach(([id,signal])=>{if(isFastRadarSignalFresh(signal))fastRadarSignals.set(id,signal);});}catch(error){console.debug("Radar state restore unavailable",error);}}
 function renderFastRadarProgress(){const p=fastRadarProgress,put=(id,value)=>{const el=$(id);if(el)el.textContent=String(value);};put("radar-scan-state",p.state||"رصد بازار");put("radar-scan-percent",Number(p.percent||0).toLocaleString("fa-IR")+"٪");put("radar-scan-done",Number(p.completed||0).toLocaleString("fa-IR"));put("radar-scan-total",Number(p.total||0).toLocaleString("fa-IR"));put("radar-scan-candidates",Number(p.candidates||0).toLocaleString("fa-IR"));put("radar-scan-errors",Number(p.failed||0).toLocaleString("fa-IR"));const bar=$("radar-scan-bar");if(bar)bar.style.width=Math.max(0,Math.min(100,Number(p.percent)||0))+"%";const note=$("radar-scan-persistence");if(note)note.textContent=fastRadarLastRun?"آخرین وضعیت ذخیره‌شده · ادامه اسکن از نماد بعدی پس از تازه‌سازی":"وضعیت اسکن به‌صورت خودکار ذخیره می‌شود.";}
 restoreFastRadarState();
+let fastRadarServerReady=false;
+async function loadServerFastRadarSnapshot(){
+ const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),10000);
+ try{
+  const response=await fetch(FAST_RADAR_SERVER_ENDPOINT+"/fast-radar-snapshot",{cache:"no-store",signal:controller.signal});
+  if(!response.ok)throw new Error("HTTP "+response.status);
+  const snapshot=await response.json();
+  if(snapshot.status!=="online")return snapshot;
+  fastRadarServerReady=true;
+  (Array.isArray(snapshot.signals)?snapshot.signals:[]).forEach(signal=>{
+   if(!signal||!signal.id||!Number.isFinite(Number(signal.score)))return;
+   const id=String(signal.id),old=fastRadarSignals.get(id);
+   if(!old||Number(signal.updatedAt||0)>=Number(old.updatedAt||0))fastRadarSignals.set(id,signal);
+   if(signal.coin&&typeof signal.coin==="object")hunterCoinIndex.set(id,signal.coin);
+  });
+  fastRadarLastMessage="رادار سرور فعال · "+Number(snapshot.scanned_count||0).toLocaleString("fa-IR")+" نماد در آخرین نوبت · "+Number(snapshot.universe_count||0).toLocaleString("fa-IR")+" نماد در صف پایش";
+  renderMarketHunter();
+  const status=$("hunter-feed-status");
+  if(status)status.textContent=(fastRadarSignals.size?fastRadarSignals.size.toLocaleString("fa-IR")+" فرصت فعال":"در انتظار فرصت معتبر")+" · اسکن پس‌زمینه سرور فعال";
+  const last=$("hunter-last-scan");
+  if(last&&snapshot.scanned_at)last.textContent=new Date(snapshot.scanned_at).toLocaleTimeString("fa-IR");
+  const updated=$("radar-updated");
+  if(updated)updated.textContent=fastRadarLastMessage;
+  return snapshot;
+ }catch(error){console.debug("Server radar snapshot unavailable:",error?.message||error);return null;}
+ finally{clearTimeout(timer);}
+}
 async function fetchFastCandles(symbol,coin){
  const pair=String(symbol||"").toUpperCase()+"USDT";
  const attempts=[
@@ -2385,8 +2413,9 @@ function renderOpportunities(){
 }
 
 renderOpportunities();renderFastRadarProgress();
-setTimeout(()=>{renderMarketHunter();runFastRadarScan();},5000);
-setInterval(()=>runFastRadarScan(),60000);
+loadServerFastRadarSnapshot();
+setTimeout(()=>{if(!fastRadarServerReady)runFastRadarScan();else renderMarketHunter();},5000);
+setInterval(loadServerFastRadarSnapshot,30000);
 </script>
 </body>
 </html>
