@@ -918,6 +918,45 @@ body.hunter-chart-open{overflow:hidden}
 }
 
 </style>
+
+<style id="hunter-centered-small-popup">
+/* Final override: centered floating popup, not a full-screen detail page */
+@media(max-width:560px){
+ #hunter-chart-modal.hunter-chart-modal.show{
+   display:grid!important;place-items:center!important;
+   padding:0!important;inset:0!important;
+ }
+ #hunter-chart-modal .hunter-chart-dialog{
+   box-sizing:border-box!important;
+   width:min(82vw,350px)!important;
+   max-width:350px!important;
+   height:auto!important;
+   max-height:66dvh!important;
+   min-height:0!important;
+   margin:auto!important;
+   padding:8px!important;
+   gap:4px!important;
+   border-radius:13px!important;
+   overflow-y:auto!important;
+ }
+ #hunter-chart-modal .hunter-chart-header{gap:6px!important;padding-bottom:2px!important}
+ #hunter-chart-modal .hunter-chart-header h3{font-size:12px!important;line-height:1.35!important}
+ #hunter-chart-modal .hunter-chart-header small{font-size:8px!important}
+ #hunter-chart-modal .hunter-chart-close{width:25px!important;height:25px!important;flex:0 0 25px!important}
+ #hunter-chart-modal .hunter-chart-trend{margin:2px 0!important;padding:5px 6px!important;font-size:9px!important}
+ #hunter-chart-modal .hunter-chart-trend strong{font-size:11px!important}
+ #hunter-chart-modal .hunter-chart-canvas{min-height:0!important;padding:2px 0!important}
+ #hunter-chart-modal .hunter-expanded-svg{min-height:0!important;max-height:105px!important}
+ #hunter-chart-modal .hunter-flow-title{margin:3px 0!important;font-size:9px!important}
+ #hunter-chart-modal .hunter-flow-svg{max-height:42px!important}
+ #hunter-chart-modal .hunter-chart-stats{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:3px!important}
+ #hunter-chart-modal .hunter-chart-stats>div{padding:4px!important}
+ #hunter-chart-modal .hunter-chart-stats small{font-size:8px!important}
+ #hunter-chart-modal .hunter-chart-stats b{font-size:9px!important}
+ #hunter-chart-modal .hunter-chart-price-line{padding:4px!important;font-size:7px!important}
+ #hunter-chart-modal .hunter-chart-foot{display:none!important}
+}
+</style>
 </head>
 <body class="mmp-app-mode">
 
