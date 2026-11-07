@@ -1977,7 +1977,7 @@ async function loadServerFastRadarSnapshot(){
     }
    });
    // Snapshot کامل سرور مرجع نامزدهای سروری است؛ حذف فقط پس از دو اسکن معتبر ضعیف در خود Worker رخ می‌دهد.
-   for(const [id,signal] of fastRadarSignals){if(signal.serverScanned&&!serverSignalIds.has(id)&&Number(signal.weakScans)>=1)fastRadarSignals.delete(id);}
+   const removedSignals=snapshot.removed_signals&&typeof snapshot.removed_signals==="object"?snapshot.removed_signals:{};for(const id of Object.keys(removedSignals))fastRadarSignals.delete(String(id));
    persistFastRadarState();
    renderOpportunities();
   }
