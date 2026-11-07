@@ -841,6 +841,50 @@ body.hunter-chart-open{overflow:hidden}
 .mmp-boom-lab{scroll-margin-top:100px;border-color:#806a3d;background:radial-gradient(ellipse at 90% 0,#b58b3920,transparent 38%),linear-gradient(145deg,#151c28,#0b111a)}
 
 
+
+/* Compact Hunter detail view for mobile app and small screens */
+.hunter-chart-modal.show{padding:6px;align-items:center}
+.hunter-chart-dialog{width:min(720px,100%);max-height:88dvh;overflow-y:auto;overscroll-behavior:contain;padding:12px;border-radius:14px;display:flex;flex-direction:column;gap:5px}
+.hunter-chart-header{gap:8px;padding-bottom:4px}
+.hunter-chart-header h3{font-size:14px;margin:2px 0}
+.hunter-chart-header small{font-size:9px}
+.hunter-chart-close{width:32px;height:32px;flex:0 0 32px;font-size:22px;border-radius:9px}
+.hunter-chart-trend{margin:5px 0;padding:7px 9px;gap:8px;border-radius:9px}
+.hunter-chart-trend span{font-size:10px}
+.hunter-chart-trend strong{font-size:14px}
+.hunter-chart-canvas{min-height:0;padding:2px 0}
+.hunter-chart-canvas .hunter-expanded-svg{max-height:210px}
+.hunter-flow-title{margin:5px 0 0;font-size:10px}
+.hunter-flow-title small{font-size:9px}
+.hunter-flow-svg{max-height:94px}
+.hunter-chart-flow-empty{padding:10px;text-align:center;font-size:10px;color:#b9a36f}
+.hunter-chart-stats{grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;margin-top:4px}
+.hunter-chart-stats>div{padding:6px 7px;border-radius:8px}
+.hunter-chart-stats small{font-size:9px}
+.hunter-chart-stats b{font-size:10px;margin-top:3px}
+.hunter-chart-price-line{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:6px 8px;border:1px solid #ffffff14;border-radius:8px;background:#ffffff07;color:#aeb9c5;font-size:9px}
+.hunter-chart-price-line span{display:flex;gap:5px;align-items:center}
+.hunter-chart-price-line b{color:#f0d28f;font-size:10px}
+.hunter-chart-foot{font-size:9px;line-height:1.5;margin:3px 0 0}
+@media(max-width:560px){
+ .hunter-chart-modal.show{padding:4px}
+ .hunter-chart-dialog{width:100%;max-height:86dvh;padding:9px;border-radius:12px;gap:4px}
+ .hunter-chart-header h3{font-size:12px}
+ .hunter-chart-trend{margin:3px 0;padding:6px 8px}
+ .hunter-chart-canvas .hunter-expanded-svg{max-height:145px}
+ .hunter-flow-svg{max-height:72px}
+ .hunter-chart-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}
+ .hunter-chart-stats>div{padding:5px 7px}
+ .hunter-chart-price-line{font-size:8px}
+ .hunter-chart-price-line b{font-size:9px}
+ .hunter-chart-foot{font-size:8px}
+}
+@media(max-height:720px){
+ .hunter-chart-dialog{max-height:82dvh}
+ .hunter-chart-canvas .hunter-expanded-svg{max-height:125px}
+ .hunter-flow-svg{max-height:62px}
+}
+
 </style>
 </head>
 <body class="mmp-app-mode">
@@ -2280,10 +2324,12 @@ function hunterUsd(value){const n=Number(value)||0;return (n>=1000000?(n/1000000
 function openHunterChart(id){
  const signal=hunterSignals.get(id),coin=signal?.coin||hunterCoinIndex.get(id)||cachedCoinsData.find(c=>c.id===id);
  if(!signal||!coin)return;
- const rows=(signal.rows||[]).slice(-30),symbol=String(coin.symbol||"").toUpperCase(),up=signal.trend==="bull",trend=up?"روند صعودی":"روند نزولی",change=rows.length>1&&Number(rows[0][1])?(Number(rows[rows.length-1][4])/Number(rows[0][1])-1)*100:signal.change5m;
- const modal=document.getElementById("hunter-chart-modal");
- if(!modal)return;
- modal.innerHTML='<div class="hunter-chart-backdrop" data-hunter-chart-close="1"></div><section class="hunter-chart-dialog '+(up?"up":"down")+'" role="dialog" aria-modal="true" aria-labelledby="hunter-chart-title"><header class="hunter-chart-header"><div><small>نمودار زنده شکار · تایم‌فریم ۱ دقیقه</small><h3 id="hunter-chart-title">'+aiEscape(coin.name)+' ('+aiEscape(symbol)+'/USDT)</h3></div><button type="button" class="hunter-chart-close" data-hunter-chart-close="1" aria-label="بستن نمودار">×</button></header><div class="hunter-chart-trend"><b>'+trend+'</b><span>قدرت حرکت '+Number(signal.score||0).toLocaleString("fa-IR")+' از ۱۰۰</span><strong>'+((Number(change)>=0?"+":"")+Number(change||0).toFixed(2))+'٪</strong></div><div class="hunter-chart-canvas">'+hunterExpandedCandles(rows,signal.trend)+'</div><div class="hunter-flow-title"><b>جریان واقعی خرید و فروش · '+aiEscape(signal.flow?.provider||"داده معاملات در انتظار")+'</b><small>معاملات ثبت‌شده بازار · سبز: خریدار تهاجمی · قرمز: فروشنده تهاجمی</small></div><div class="hunter-chart-canvas hunter-flow-canvas">'+hunterExpandedFlow(signal.flow)+'</div><div class="hunter-chart-stats"><div><small>خرید تهاجمی ۵ دقیقه</small><b>'+signal.flow?hunterUsd(signal.flow.buy5m):"—"+'</b></div><div><small>فروش تهاجمی ۵ دقیقه</small><b>'+signal.flow?hunterUsd(signal.flow.sell5m):"—"+'</b></div><div><small>خالص جریان ۵ دقیقه</small><b class="'+(Number(signal.flow?.net5m)>=0?"up":"down")+'">'+signal.flow?(Number(signal.flow.net5m)>=0?"+":"")+hunterUsd(signal.flow.net5m):"—"+'</b></div><div><small>حجم غیرعادی</small><b>'+Number(signal.flow?.volumeRatio5m||signal.volumeRatio||0).toFixed(1)+'× میانگین</b></div><div><small>آخرین قیمت</small><b>'+hunterPrice(signal.price)+'</b></div><div><small>بالاترین کندل</small><b>'+hunterPrice(Math.max(...rows.map(c=>Number(c[2])||0)))+'</b></div><div><small>پایین‌ترین کندل</small><b>'+hunterPrice(Math.min(...rows.map(c=>Number(c[3])||0)))+'</b></div><div><small>حجم نسبی</small><b>'+Number(signal.volumeRatio||0).toFixed(1)+'×</b></div></div><p class="hunter-chart-foot">'+(signal.flow?.unusual?"حجم غیرعادی شناسایی شد. ":"")+'جریان خالص از معاملات واقعی منبع اعلام‌شده محاسبه شده و فقط فشار خرید و فروش همان بازار را نشان می‌دهد؛ معادل ورود یا خروج قطعی سرمایه کل بازار نیست.</p></section>';
+ const rows=(signal.rows||[]).slice(-24),symbol=String(coin.symbol||"").toUpperCase(),up=signal.trend==="bull",trend=up?"روند صعودی":"روند نزولی",change=rows.length>1&&Number(rows[0][1])?(Number(rows[rows.length-1][4])/Number(rows[0][1])-1)*100:signal.change5m;
+ const modal=document.getElementById("hunter-chart-modal");if(!modal)return;
+ const flow=signal.flow||null,fmtFlow=v=>flow?hunterUsd(v):"—";
+ const high=rows.length?Math.max(...rows.map(x=>Number(x[2])||0)):Number(signal.price)||0;
+ const low=rows.length?Math.min(...rows.map(x=>Number(x[3])||Infinity)):Number(signal.price)||0;
+ modal.innerHTML='<div class="hunter-chart-backdrop" data-hunter-chart-close="1"></div><section class="hunter-chart-dialog '+(up?"up":"down")+'" role="dialog" aria-modal="true" aria-labelledby="hunter-chart-title"><header class="hunter-chart-header"><div><small>شکارچی مستقل · نمودار ۱ دقیقه</small><h3 id="hunter-chart-title">'+aiEscape(coin.name)+' <span>('+aiEscape(symbol)+'/USDT)</span></h3></div><button type="button" class="hunter-chart-close" data-hunter-chart-close="1" aria-label="بستن">×</button></header><div class="hunter-chart-trend"><b>'+trend+'</b><span>قدرت '+Number(signal.score||0).toLocaleString("fa-IR")+'/۱۰۰</span><strong>'+((Number(change)>=0?"+":"")+Number(change||0).toFixed(2))+'٪</strong></div><div class="hunter-chart-canvas">'+hunterExpandedCandles(rows,signal.trend)+'</div><div class="hunter-flow-title"><b>جریان واقعی معاملات · '+aiEscape(flow?.provider||"داده در دسترس نیست")+'</b><small>۵ دقیقه اخیر</small></div><div class="hunter-chart-canvas hunter-flow-canvas">'+hunterExpandedFlow(flow)+'</div><div class="hunter-chart-stats"><div><small>خرید</small><b>'+fmtFlow(flow?.buy5m)+'</b></div><div><small>فروش</small><b>'+fmtFlow(flow?.sell5m)+'</b></div><div><small>خالص جریان</small><b class="'+(Number(flow?.net5m)>=0?"up":"down")+'">'+(flow?(Number(flow.net5m)>=0?"+":"")+hunterUsd(flow.net5m):"—")+'</b></div><div><small>تعداد معاملات</small><b>'+ (flow?Number(flow.tradeCount||0).toLocaleString("fa-IR"):"—")+'</b></div></div><div class="hunter-chart-price-line"><span>قیمت فعلی <b>'+hunterPrice(signal.price)+'</b></span><span>بازه کندل‌ها <b>'+hunterPrice(low)+' – '+hunterPrice(high)+'</b></span></div><p class="hunter-chart-foot">جریان خالص، فشار خرید و فروش همین بازار را نشان می‌دهد و معادل ورود یا خروج قطعی سرمایه کل بازار نیست.</p></section>';
  modal.classList.add("show");document.body.classList.add("hunter-chart-open");
  const close=modal.querySelector(".hunter-chart-close");if(close)close.focus();
 }
