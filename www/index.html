@@ -1695,15 +1695,6 @@ function renderOpportunities(){
  const scored=cachedCoinsData.map(c=>({coin:c,metrics:radarScore(c)}));
  const bullish=scored.filter(x=>x.metrics.trend==="bull").sort((a,b)=>b.metrics.score-a.metrics.score);
  const bearish=scored.filter(x=>x.metrics.trend==="bear").sort((a,b)=>a.metrics.score-b.metrics.score);
- // هشدارهای زنده فقط پس از تأیید هم‌زمان حداقل دو صرافی وارد رادار می‌شوند؛
- // این لایه پیش‌هشدار است و جای تأیید کندلی Worker را نمی‌گیرد.
- // فقط نمادهای متعلق به فهرست اصلی اجازه نمایش در رادار را دارند؛
- // شکارهای خارج از فهرست در پنل مستقل شکارچی باقی می‌مانند.
- const mainRadarSymbols=new Set(cachedCoinsData.map(c=>String(c.symbol||"").toUpperCase().replace(/USDT$/,"")).filter(Boolean));
- const liveAlerts=[...hunterEarlyAlerts.values()]
-  .filter(x=>Date.now()-Number(x.updatedAt||0)<120000)
-  .filter(x=>mainRadarSymbols.has(String(x.symbol||"").toUpperCase().replace(/USDT$/,"")))
-  .sort((a,b)=>Math.abs(Number(b.triggerMove)||0)-Math.abs(Number(a.triggerMove)||0));
  const updated=$("radar-updated");
  if(updated)updated.textContent="بررسی "+cachedCoinsData.length+" دارایی · صعودی: "+bullish.length+" · نزولی: "+bearish.length;
  const renderCard=({coin:c,metrics:r})=>{
@@ -1722,10 +1713,7 @@ function renderOpportunities(){
   const visible=items.slice(0,3),remaining=items.slice(3);
   return '<section class="radar-group radar-group-'+type+'"><div class="radar-group-head"><div class="radar-group-title"><span class="radar-group-icon">'+icon+'</span><span><b>'+title+'</b><small>'+sub+'</small></span></div><span class="radar-group-count">'+count+' ارز</span></div><div class="radar-list">'+visible.map(renderCard).join("")+'</div>'+(remaining.length?'<details class="radar-more"><summary><span class="radar-expand-action" aria-hidden="true"></span><span class="radar-toggle-copy"><b>نمایش فهرست کامل '+(isBull?"صعودی":"نزولی")+'</b><small>'+remaining.length+' ارز دیگر · برای دیدن فهرست کامل لمس کنید</small></span></summary><div class="radar-list">'+remaining.map(renderCard).join("")+'</div></details>':"")+'</section>';
  };
- const liveHtml=liveAlerts.length
-  ? '<section class="radar-group radar-live-group"><div class="radar-group-head"><div class="radar-group-title"><span class="radar-group-icon">⚡</span><span><b>هشدار سریع زنده</b><small>حرکت‌های تأییدشده بین چند صرافی · پیش‌هشدار قبل از تأیید کندلی</small></span></div><span class="radar-group-count">'+liveAlerts.length.toLocaleString("fa-IR")+' فرصت</span></div><div class="radar-list">'+liveAlerts.map(x=>{const up=x.trend==="bull",move=Number(x.triggerMove)||0,windowLabel=x.triggerWindow||"حرکت زنده",venues=Array.isArray(x.exchanges)&&x.exchanges.length?x.exchanges.join("، "):"حداقل دو صرافی";return '<article class="radar-item radar-live-item"><div class="radar-asset"><span class="radar-live-pulse">●</span><span><b>'+aiEscape(x.name)+' ('+aiEscape(x.symbol)+')</b><small>پیش‌هشدار '+aiEscape(windowLabel)+' · '+aiEscape(venues)+'</small></span></div><div class="radar-score"><b class="'+(up?"positive":"negative")+'">'+(move>0?"+":"")+move.toFixed(2)+'٪</b><small>حرکت زنده</small></div><div class="radar-action"><span class="radar-trend '+(up?"positive":"negative")+'">'+(up?"جهش صعودی":"ریزش نزولی")+'</span></div></article>';}).join("")+'</div></section>'
-  : "";
- el.innerHTML=liveHtml+renderGroup(bullish,"bull")+renderGroup(bearish,"bear");
+ el.innerHTML=renderGroup(bullish,"bull")+renderGroup(bearish,"bear");
  el.querySelectorAll(".radar-more").forEach(details=>details.addEventListener("toggle",()=>{
   const title=details.querySelector(".radar-toggle-copy b");
   if(title)title.textContent=details.open?"بستن فهرست کامل":"نمایش فهرست کامل "+(details.closest(".radar-group-bull")?"صعودی":"نزولی");
@@ -1987,22 +1975,16 @@ async function loadServerFastRadarSnapshot(){
     if(!oldSignal||incomingAt>existingAt||!oldSignal.serverScanned){
      fastRadarSignals.set(id,{...signal,serverScanned:true,weakScans:Number(signal.weakScans)||0});
     }
-    if(signal.coin&&typeof signal.coin==="object")hunterCoinIndex.set(id,signal.coin);
    });
    // Snapshot کامل سرور مرجع نامزدهای سروری است؛ حذف فقط پس از دو اسکن معتبر ضعیف در خود Worker رخ می‌دهد.
    for(const [id,signal] of fastRadarSignals){if(signal.serverScanned&&!serverSignalIds.has(id)&&Number(signal.weakScans)>=1)fastRadarSignals.delete(id);}
    persistFastRadarState();
-   renderMarketHunter();
    renderOpportunities();
   }
   const radarTotal=Number(snapshot.universe_count)||0,radarCursor=Number(snapshot.next_cursor)||0;
   fastRadarProgress={...fastRadarProgress,completed:radarCursor,total:radarTotal,failed:Number(snapshot.failed_count)||0,candidates:fastRadarSignals.size,percent:radarTotal?Math.round(radarCursor/radarTotal*100):0,state:"اسکن چرخشی روی سرور · "+Number(snapshot.batch_size||36).toLocaleString("fa-IR")+" نماد در هر دقیقه"};
   renderFastRadarProgress();
   fastRadarLastMessage="رادار سرور فعال · "+Number(snapshot.scanned_count||0).toLocaleString("fa-IR")+" نماد در آخرین نوبت · "+Number(snapshot.universe_count||0).toLocaleString("fa-IR")+" نماد در صف پایش";
-  const status=$("hunter-feed-status");
-  if(status)status.textContent=(fastRadarSignals.size?fastRadarSignals.size.toLocaleString("fa-IR")+" فرصت فعال":"در انتظار فرصت معتبر")+" · اسکن پس‌زمینه سرور فعال";
-  const last=$("hunter-last-scan");
-  if(last&&snapshot.scanned_at)last.textContent=new Date(snapshot.scanned_at).toLocaleTimeString("fa-IR");
   const updated=$("radar-updated");
   if(updated)updated.textContent=fastRadarLastMessage;
   return snapshot;
@@ -2125,7 +2107,7 @@ function renderHunterEarlyAlerts(){
 }
 function queueHunterEarlyRender(){
  if(hunterEarlyRenderTimer)return;
- hunterEarlyRenderTimer=setTimeout(()=>{hunterEarlyRenderTimer=null;renderHunterEarlyAlerts();if(typeof renderOpportunities==="function")renderOpportunities();},900);
+ hunterEarlyRenderTimer=setTimeout(()=>{hunterEarlyRenderTimer=null;renderHunterEarlyAlerts();},900);
 }
 function updateHunterEarlyStatus(){
  const status=$("hunter-early-status");if(!status)return;
