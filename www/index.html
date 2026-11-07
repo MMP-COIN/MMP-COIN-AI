@@ -1978,7 +1978,7 @@ async function loadServerFastRadarSnapshot(){
     if(signal.coin&&typeof signal.coin==="object")hunterCoinIndex.set(id,signal.coin);
    });
    // Snapshot کامل سرور مرجع نامزدهای سروری است؛ حذف فقط پس از دو اسکن معتبر ضعیف در خود Worker رخ می‌دهد.
-   for(const [id,signal] of fastRadarSignals)if(signal.serverScanned&&!serverSignalIds.has(id))fastRadarSignals.delete(id);
+   for(const [id,signal] of fastRadarSignals){if(signal.serverScanned&&!serverSignalIds.has(id)&&Number(signal.weakScans)>=1)fastRadarSignals.delete(id);}
    persistFastRadarState();
    renderMarketHunter();
   }
