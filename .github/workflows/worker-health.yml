@@ -139,7 +139,14 @@ jobs:
           status=$(curl --fail --silent --show-error --retry 2 --retry-delay 2 --max-time 35 -o /tmp/candles.json -w "%{http_code}" "$WORKER_URL/market-candles?symbol=BTC&interval=15m")
           echo "Live candle endpoint HTTP $status"
           jq -e '.symbol == "BTCUSDT" and .interval == "15m" and (.candles | length >= 30) and (.provider | type == "string" and length > 0) and (.candles[0].open > 0)' /tmp/candles.json >/dev/null
-          echo "- Live spot candlesticks: responding with real OHLCV data" >> "$GITHUB_STEP_SUMMARY"
+          local_status=$(curl --silent --show-error --max-time 25 -o /tmp/local-candles.json -w "%{http_code}" "$WORKER_URL/market-candles?symbol=BTCIRT&interval=1h")
+          echo "Nobitex local Spot candle endpoint HTTP $local_status"
+          if [ "$local_status" != "200" ]; then cat /tmp/local-candles.json; exit 1; fi
+          jq -e '.symbol == "BTCIRT" and .provider == "Nobitex Spot" and (.candles | length >= 30) and (.candles[0].open > 0)' /tmp/local-candles.json >/dev/null
+          {
+            echo "- Live global Spot candlesticks: responding with real OHLCV data"
+            echo "- Live Nobitex IRT candlesticks: responding with real OHLCV data"
+          } >> "$GITHUB_STEP_SUMMARY"
 
 
       - name: Smoke-test market intelligence endpoints
