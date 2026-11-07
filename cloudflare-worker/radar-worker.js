@@ -93,12 +93,12 @@ async function runRadar(env,scheduledTime=Date.now()){
   const [state,oldSnapshot]=await Promise.all([env.RADAR_KV.get("radar:state",{type:"json"}),env.RADAR_KV.get("radar:snapshot",{type:"json"})]);
   const signals=new Map((Array.isArray(oldSnapshot?.signals)?oldSnapshot.signals:[]).map(x=>[String(x.id),x]));
   const start=Math.max(0,Number(state?.cursor)||0)%universe.length,batch=Array.from({length:Math.min(BATCH_SIZE,universe.length)},(_,i)=>universe[(start+i)%universe.length]);
-  let completed=0,failed=0,valid=0,removed=0;
+  let completed=0,failed=0,valid=0,removed=0,failedSamples=[];
   await mapLimit(batch,CONCURRENCY,async coin=>{
     try{const signal=await scanCoin(coin);if(signal){valid++;if(signal.score>=RETENTION_SCORE)signals.set(signal.id,signal);else if(signals.delete(signal.id))removed++;}}
-    catch(error){failed++;}finally{completed++;}
+    catch(error){failed++;if(failedSamples.length<8)failedSamples.push({symbol:String(coin.symbol||""),error:String(error?.message||error).slice(0,220)});}finally{completed++;}
   });
-  const nextCursor=(start+batch.length)%universe.length,snapshot={status:"online",source:"Cloudflare scheduled radar",retention_score:RETENTION_SCORE,scanned_at:new Date().toISOString(),scheduled_at:new Date(Number(scheduledTime)||Date.now()).toISOString(),universe_count:universe.length,scanned_count:completed,valid_count:valid,failed_count:failed,removed_count:removed,batch_size:BATCH_SIZE,next_cursor:nextCursor,signals:[...signals.values()].sort((a,b)=>b.score-a.score).slice(0,300)};
+  const nextCursor=(start+batch.length)%universe.length,snapshot={status:"online",source:"Cloudflare scheduled radar",retention_score:RETENTION_SCORE,scanned_at:new Date().toISOString(),scheduled_at:new Date(Number(scheduledTime)||Date.now()).toISOString(),universe_count:universe.length,scanned_count:completed,valid_count:valid,failed_count:failed,failed_samples:failedSamples,removed_count:removed,batch_size:BATCH_SIZE,next_cursor:nextCursor,signals:[...signals.values()].sort((a,b)=>b.score-a.score).slice(0,300)};
   await Promise.all([env.RADAR_KV.put("radar:snapshot",JSON.stringify(snapshot)),env.RADAR_KV.put("radar:state",JSON.stringify({cursor:nextCursor,updated_at:snapshot.scanned_at,universe_count:universe.length}))]);
   return snapshot;
 }
