@@ -1924,7 +1924,8 @@ async function fetchFastCandles(symbol,coin){
  const supported=new Set(["Binance","Bybit","OKX","Bitget","Gate","KuCoin"]);
  const listedPairs=Array.isArray(coin?.marketPairs)?coin.marketPairs.filter(item=>String(item.quote||"").toUpperCase()==="USDT"&&Number(item.volume)>=15000&&supported.has(String(item.exchange||""))):[];
  const preferred=listedPairs.length?[...new Map(listedPairs.sort((a,b)=>Number(b.volume)-Number(a.volume)).map(item=>[item.exchange,Number(item.volume)||0])).entries()].sort((a,b)=>b[1]-a[1]).map(([name])=>name):Object.entries(coin?.hunterVenueVolume||{}).filter(([name,volume])=>supported.has(name)&&Number(volume)>=15000).sort((a,b)=>Number(b[1])-Number(a[1])).map(([name])=>name);
- const byName=new Map(attempts);const ordered=preferred.map(name=>[name,byName.get(name)]).filter(x=>x[1]);
+ const byName=new Map(attempts.map(([label,load])=>[label.replace(/ Spot$/,""),[label,load]]));
+ const ordered=preferred.map(name=>byName.get(name)).filter(Boolean);
  if(!ordered.length)throw new Error("برای این نماد جفت USDT فعال در صرافی‌های پشتیبانی‌شده ثبت نشده است.");
  for(const [provider,load] of ordered){try{const rows=await load();if(rows.length>=25&&rows.every(r=>r.slice(1,6).every(Number.isFinite)))return {rows,provider};}catch(error){errors.push(provider+": "+(error?.message||"unavailable"));}}
  throw new Error(errors.join(" · "));
