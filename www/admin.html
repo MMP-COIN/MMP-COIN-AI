@@ -68,7 +68,7 @@ window.addEventListener("error",function(e){var n=document.getElementById("messa
 window.addEventListener("unhandledrejection",function(e){var n=document.getElementById("message");if(n){var q=e.reason&&e.reason.message?e.reason.message:String(e.reason||"خطای نامشخص");n.textContent="خطای ارتباط یا اجرای پنل: "+q;n.classList.add("error");}});
 var API="https://mmp-coin-ai-admin.mehrdadmohammadi1988.workers.dev";
 function readToken(){try{return sessionStorage.getItem("mmp_admin_token")||"";}catch(e){return "";}}
-function writeToken(v){try{if(v)sessionStorage.setItem("mmp_admin_token",v);else writeToken("");}catch(e){}}
+function writeToken(v){try{if(v)window.sessionStorage.setItem("mmp_admin_token",v);else window.sessionStorage.removeItem("mmp_admin_token");}catch(e){}}
 var token=readToken(),visitorOffset=0,visitorTotal=0;
 function el(id){return document.getElementById(id);}
 function msg(id,text,error){var n=el(id);if(!n)return;n.textContent=text||"";n.classList.toggle("error",!!error);if(id==="message")n.classList.toggle("ok",!error&&!!text);}
