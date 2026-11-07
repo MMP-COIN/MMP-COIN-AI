@@ -1981,6 +1981,7 @@ async function loadServerFastRadarSnapshot(){
    for(const [id,signal] of fastRadarSignals){if(signal.serverScanned&&!serverSignalIds.has(id)&&Number(signal.weakScans)>=1)fastRadarSignals.delete(id);}
    persistFastRadarState();
    renderMarketHunter();
+   renderOpportunities();
   }
   const radarTotal=Number(snapshot.universe_count)||0,radarCursor=Number(snapshot.next_cursor)||0;
   fastRadarProgress={...fastRadarProgress,completed:radarCursor,total:radarTotal,failed:Number(snapshot.failed_count)||0,candidates:fastRadarSignals.size,percent:radarTotal?Math.round(radarCursor/radarTotal*100):0,state:"اسکن چرخشی روی سرور · "+Number(snapshot.batch_size||36).toLocaleString("fa-IR")+" نماد در هر دقیقه"};
@@ -2264,7 +2265,7 @@ async function runFastRadarScan(options={}){
 }
 function radarScore(c){
  const fast=fastRadarSignals.get(c.id);
- if(fast&&Date.now()-fast.updatedAt<150000){
+ if(fast&&isFastRadarSignalFresh(fast)){
   const baseVolume=Number(c.total_volume),cap=Number(c.market_cap);
   return {score:fast.score,trend:fast.trend,h1:fast.change1m,h:fast.change5m,d:null,directional:fast.change5m,liquidity:cap>0?baseVolume/cap*100:null,range:null,dataQuality:fast.provider+" · حجم "+fast.volumeRatio.toFixed(1)+" برابر",fast};
  }
@@ -2435,15 +2436,22 @@ function connectHunterStreams(){
 function renderOpportunities(){
  const el=$("opportunity-list");
  if(!el)return;
- if(!cachedCoinsData.length){el.innerHTML='<div class="ai-empty">داده بازار هنوز دریافت نشده است.</div>';return;}
- const scored=cachedCoinsData.map(c=>({coin:c,metrics:radarScore(c)}));
+ const radarAssets=new Map(cachedCoinsData.map(c=>[String(c.id),c]));
+ for(const [id,signal] of fastRadarSignals){
+  if(!isFastRadarSignalFresh(signal))continue;
+  const coin=signal.coin&&typeof signal.coin==="object"?signal.coin:hunterCoinIndex.get(id);
+  if(coin&&!radarAssets.has(String(id)))radarAssets.set(String(id),{...coin,id:String(id)});
+ }
+ const radarCoins=[...radarAssets.values()];
+ if(!radarCoins.length){el.innerHTML='<div class="ai-empty">در انتظار دریافت فهرست بازار و نخستین نتیجه اسکن زنده…</div>';return;}
+ const scored=radarCoins.map(c=>({coin:c,metrics:radarScore(c)}));
  const rankRadar=(a,b)=>(b.metrics.score-a.metrics.score)||(Math.abs(b.metrics.directional??0)-Math.abs(a.metrics.directional??0));
  const bullish=scored.filter(x=>x.metrics.trend==="bull"&&x.metrics.score>=80).sort(rankRadar);
  const bearish=scored.filter(x=>x.metrics.trend==="bear"&&x.metrics.score>=80).sort(rankRadar);
- const bullish70=scored.filter(x=>x.metrics.trend==="bull"&&x.metrics.score>=70&&x.metrics.score<80).sort(rankRadar);
- const bearish70=scored.filter(x=>x.metrics.trend==="bear"&&x.metrics.score>=70&&x.metrics.score<80).sort(rankRadar);
+ const bullish70=scored.filter(x=>x.metrics.trend==="bull"&&x.metrics.score>=64&&x.metrics.score<80).sort(rankRadar);
+ const bearish70=scored.filter(x=>x.metrics.trend==="bear"&&x.metrics.score>=64&&x.metrics.score<80).sort(rankRadar);
  const updated=$("radar-updated");
- if(updated)updated.textContent="غربالگری خودکار "+cachedCoinsData.length+" ارز · صعودی: "+bullish.length+" قوی + "+bullish70.length+" در انتظار · نزولی: "+bearish.length+" قوی + "+bearish70.length+" در انتظار · "+new Date().toLocaleTimeString("fa-IR"); const chartSelect=$("tv-symbol");
+ if(updated)updated.textContent="رادار زنده · "+radarCoins.length+" دارایی · صعودی: "+bullish.length+" قوی + "+bullish70.length+" در انتظار · نزولی: "+bearish.length+" قوی + "+bearish70.length+" در انتظار"; const chartSelect=$("tv-symbol");
  if(chartSelect){
   const previous=chartSelect.value||"BINANCE:BTCUSDT";
   const options=['<option value="BINANCE:BTCUSDT">Bitcoin (BTC)</option>'];
@@ -2463,7 +2471,7 @@ function renderOpportunities(){
 
   return '<article class="radar-item radar-clickable '+(up?"radar-item-bullish":down?"radar-item-bearish":"radar-item-neutral")+'" data-radar-symbol="'+aiEscape(String(c.symbol).toUpperCase())+'" role="button" tabindex="0" aria-label="نمایش جزئیات '+aiEscape(c.name)+'"><div class="radar-asset"><img src="'+aiEscape(c.image||"")+'" alt="" loading="lazy"><span><b>'+aiEscape(c.name)+'</b><small>'+aiEscape(String(c.symbol).toUpperCase())+'</small><strong class="radar-direction-label">'+direction+'</strong></span></div><div class="radar-score"><b>'+m.score.toLocaleString("fa-IR")+'</b><small>قدرت روند</small></div><div class="radar-stats">'+(m.fast?'<span>تغییر ۱دقیقه<b class="'+(m.fast.change1m>=0?"positive":"negative")+'">'+change(m.fast.change1m)+'</b></span><span>تغییر ۵دقیقه<b class="'+(m.fast.change5m>=0?"positive":"negative")+'">'+change(m.fast.change5m)+'</b></span><span>حجم نسبی<b>'+m.fast.volumeRatio.toFixed(1)+'×</b></span>':'<span>تغییر ۱ساعته<b>'+change1h+'</b></span><span>تغییر ۲۴ساعته<b>'+change(m.h)+'</b></span><span>نقدشوندگی نسبی<b>'+(m.liquidity==null?"ناموجود":m.liquidity.toFixed(2)+"٪")+'</b></span>')+'</div><div class="radar-action"><span class="radar-trend">'+(m.fast?(m.fast.overextended?"حرکت سریع؛ ورود دیرهنگام پرریسک":"شتاب لحظه‌ای · "+(m.fast.breakout?"شکست محدوده":"در حال شکل‌گیری")):(m.dataQuality||""))+'</span></div></article>';
  };
- const list=(title,items,lower,cls)=>'<section class="radar-side '+cls+'"><div class="section-head radar-group-head"><div><b class="radar-large-heading">'+title+'</b><small class="radar-side-hint">مرتب‌شده از قوی‌ترین قدرت روند</small></div><span class="badge">'+(items.length+lower.length).toLocaleString("fa-IR")+' ارز</span></div><div class="radar-scroll-frame"><div class="radar-list">'+items.map(card).join("")+(lower.length?'<div class="radar-pending-label">در انتظار تأیید · قدرت ۷۰ تا ۷۹</div>'+lower.map(card).join(""):"")+'</div></div></section>';
+ const list=(title,items,lower,cls)=>'<section class="radar-side '+cls+'"><div class="section-head radar-group-head"><div><b class="radar-large-heading">'+title+'</b><small class="radar-side-hint">مرتب‌شده از قوی‌ترین قدرت روند</small></div><span class="badge">'+(items.length+lower.length).toLocaleString("fa-IR")+' ارز</span></div><div class="radar-scroll-frame"><div class="radar-list">'+items.map(card).join("")+(lower.length?'<div class="radar-pending-label">نامزدهای در حال تقویت · قدرت ۶۴ تا ۷۹</div>'+lower.map(card).join(""):"")+'</div></div></section>';
  el.innerHTML=list("فرصت‌های صعودی",bullish,bullish70,"bull")+list("فرصت‌های نزولی",bearish,bearish70,"bear");
  if(!el.dataset.radarClickBound){
   el.dataset.radarClickBound="1";
