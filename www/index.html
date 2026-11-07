@@ -1935,6 +1935,9 @@ async function loadServerFastRadarSnapshot(){
    persistFastRadarState();
    renderMarketHunter();
   }
+  const radarTotal=Number(snapshot.universe_count)||0,radarCursor=Number(snapshot.next_cursor)||0;
+  fastRadarProgress={...fastRadarProgress,completed:radarCursor,total:radarTotal,failed:Number(snapshot.failed_count)||0,candidates:fastRadarSignals.size,percent:radarTotal?Math.round(radarCursor/radarTotal*100):0,state:"اسکن چرخشی روی سرور · "+Number(snapshot.batch_size||36).toLocaleString("fa-IR")+" نماد در هر دقیقه"};
+  renderFastRadarProgress();
   fastRadarLastMessage="رادار سرور فعال · "+Number(snapshot.scanned_count||0).toLocaleString("fa-IR")+" نماد در آخرین نوبت · "+Number(snapshot.universe_count||0).toLocaleString("fa-IR")+" نماد در صف پایش";
   const status=$("hunter-feed-status");
   if(status)status.textContent=(fastRadarSignals.size?fastRadarSignals.size.toLocaleString("fa-IR")+" فرصت فعال":"در انتظار فرصت معتبر")+" · اسکن پس‌زمینه سرور فعال";
