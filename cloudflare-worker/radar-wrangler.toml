@@ -1,0 +1,10 @@
+name = "mmp-coin-ai-radar"
+main = "radar-worker.js"
+compatibility_date = "2026-11-04"
+
+[[kv_namespaces]]
+binding = "RADAR_KV"
+id = "c87328700fbd4796bfd86b7a4df46648"
+
+[triggers]
+crons = ["* * * * *"]
