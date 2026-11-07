@@ -2143,6 +2143,8 @@ async function runFastRadarScan(){
  let universeError="";
  try{universe=await fetchHunterUniverse();}catch(error){universeError=String(error?.message||error||"خطای نامشخص");console.warn("Hunter universe unavailable:",universeError);universe=[];}
  if(!universe.length){fastRadarLastMessage="دریافت فهرست بازارها ناموفق بود: "+(universeError||"پاسخ خالی از سرویس مرکزی");fastRadarProgress={...fastRadarProgress,failed:(Number(fastRadarProgress.failed)||0)+1,state:"خطا در دریافت فهرست بازارها"};renderFastRadarProgress();persistFastRadarState();if(status)status.textContent=fastRadarLastMessage;if(hunterStatus)hunterStatus.textContent="اسکن شروع نشد · "+(universeError||"فهرست خالی است")+" · ادامه اسکن ذخیره‌شده حفظ شد.";if(hunterLast)hunterLast.textContent="خطای دریافت داده";fastRadarBusy=false;return;}
+ // نمایش فوری سیگنال‌های بازیابی‌شده پس از بارگذاری فهرست نمادها؛ منتظر پایان کل نوبت نمان.
+ renderMarketHunter();
  const byId=new Map(universe.map(coin=>[coin.id,coin]));
  let batch=[];
  if(fastRadarPendingIds.length){batch=fastRadarPendingIds.map(id=>byId.get(id)).filter(Boolean);fastRadarDoneIds=fastRadarDoneIds.filter(id=>fastRadarPendingIds.includes(id));if(!batch.length){fastRadarPendingIds=[];fastRadarDoneIds=[];}}
