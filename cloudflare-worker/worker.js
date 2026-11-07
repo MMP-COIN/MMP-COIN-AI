@@ -497,7 +497,29 @@ async function loadMarketFlow(symbol,windowMinutes=5){
    }catch(error){lastError=String(error?.message||error).slice(0,160);}
   }
  }
- if(!trades)throw new Error("داده معاملات Bybit و Binance دریافت نشد: "+lastError);
+ if(!trades){
+  try{
+   const d=await marketFlowJson("https://www.okx.com/api/v5/market/trades?instId="+encodeURIComponent(pair.replace(/USDT$/,"")+"-USDT")+"&limit=500");
+   if(String(d.code)!=="0")throw new Error(d.msg||"OKX trades unavailable");
+   const raw=Array.isArray(d.data)?d.data:[];
+   const oldest=raw.reduce((v,x)=>Math.min(v,Number(x.ts)||Infinity),Infinity);
+   truncated=raw.length>=500&&oldest>cutoff;
+   trades=raw.map(x=>({time:Number(x.ts),price:Number(x.px),size:Number(x.sz),side:String(x.side||"").toLowerCase()==="buy"?"Buy":"Sell"})).filter(x=>x.time>=cutoff&&x.time<=now&&x.price>0&&x.size>0);
+   provider="OKX Spot · معاملات واقعی";
+  }catch(error){lastError=String(error?.message||error).slice(0,160);}
+ }
+ if(!trades){
+  try{
+   const gatePair=pair.replace(/USDT$/,"")+"_USDT";
+   const d=await marketFlowJson("https://api.gateio.ws/api/v4/spot/trades?currency_pair="+encodeURIComponent(gatePair)+"&limit=1000");
+   if(!Array.isArray(d))throw new Error("Gate trades response invalid");
+   const raw=d,oldest=raw.reduce((v,x)=>Math.min(v,Number(x.create_time_ms)||Number(x.create_time)*1000||Infinity),Infinity);
+   truncated=raw.length>=1000&&oldest>cutoff;
+   trades=raw.map(x=>({time:Number(x.create_time_ms)||Number(x.create_time)*1000,price:Number(x.price),size:Number(x.amount),side:String(x.side||"").toLowerCase()==="buy"?"Buy":"Sell"})).filter(x=>x.time>=cutoff&&x.time<=now&&x.price>0&&x.size>0);
+   provider="Gate Spot · معاملات واقعی";
+  }catch(error){lastError=String(error?.message||error).slice(0,160);}
+ }
+ if(!trades)throw new Error("داده معاملات از Bybit، Binance، OKX و Gate دریافت نشد: "+lastError);
  const buckets=new Map();let buy5m=0,sell5m=0;
  for(const trade of trades){
   const quote=trade.price*trade.size;if(!Number.isFinite(quote)||quote<=0)continue;
@@ -508,7 +530,7 @@ async function loadMarketFlow(symbol,windowMinutes=5){
  }
  const rows=[...buckets.values()].sort((a,b)=>a.time-b.time).map(x=>[x.time,x.buy,x.sell,x.buy-x.sell]);
  const oldestTrade=trades.reduce((v,x)=>Math.min(v,x.time),Infinity);
- return {symbol:pair,window_minutes:minutes,buy5m,sell5m,net5m:buy5m-sell5m,trade_count:trades.length,provider,exchange:provider.startsWith("Bybit")?"Bybit":"Binance",complete:!truncated,coverage_start:Number.isFinite(oldestTrade)?oldestTrade:null,window_start:cutoff,window_end:now,updated_at:now,rows};
+ return {symbol:pair,window_minutes:minutes,buy5m,sell5m,net5m:buy5m-sell5m,trade_count:trades.length,provider,exchange:provider.startsWith("Bybit")?"Bybit":provider.startsWith("Binance")?"Binance":provider.startsWith("OKX")?"OKX":"Gate",complete:!truncated,coverage_start:Number.isFinite(oldestTrade)?oldestTrade:null,window_start:cutoff,window_end:now,updated_at:now,rows};
 }
 async function fetchHunterCandles(symbol){
  const pair=symbol+"USDT";
