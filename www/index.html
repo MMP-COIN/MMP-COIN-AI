@@ -624,6 +624,38 @@ body:after{content:"";position:fixed;width:42vw;height:42vw;max-width:620px;max-
 @keyframes radarCoreSpin{to{transform:rotate(360deg)}}
 @keyframes radarCorePulse{50%{opacity:.35;box-shadow:0 0 2px #36d6a0}}
 @media(max-width:560px){.radar-core-console{grid-template-columns:100px minmax(0,1fr);gap:10px;padding:11px}.radar-core-visual{width:98px;height:98px}.radar-core-center{width:56px;height:56px}.radar-core-center strong{font-size:15px}.radar-core-lanes{gap:5px}.radar-core-lane{padding:7px 5px}.radar-core-lane b{font-size:10px}.radar-core-lane small{font-size:8px}}
+
+/* Extra-compact Hunter detail for narrow app screens */
+@media(max-width:560px){
+ .hunter-chart-modal.show{padding:3px;align-items:center}
+ .hunter-chart-dialog{width:92vw;max-width:420px;max-height:68dvh;padding:7px;border-radius:10px;gap:3px}
+ .hunter-chart-header{gap:5px;padding-bottom:2px}
+ .hunter-chart-header h3{font-size:11px;margin:1px 0}
+ .hunter-chart-header small{font-size:8px}
+ .hunter-chart-close{width:26px;height:26px;flex:0 0 26px;font-size:18px;border-radius:7px}
+ .hunter-chart-trend{margin:2px 0;padding:4px 6px;gap:5px;font-size:10px}
+ .hunter-chart-trend span{font-size:8px}
+ .hunter-chart-trend strong{font-size:11px}
+ .hunter-chart-canvas{padding:0;min-height:0}
+ .hunter-chart-canvas .hunter-expanded-svg{max-height:96px;min-height:0}
+ .hunter-flow-title{margin:3px 0 0;font-size:9px}
+ .hunter-flow-title small{font-size:8px}
+ .hunter-flow-svg{max-height:44px}
+ .hunter-chart-flow-empty{padding:5px;font-size:8px}
+ .hunter-chart-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:3px;margin-top:2px}
+ .hunter-chart-stats>div{padding:3px 5px;border-radius:6px}
+ .hunter-chart-stats small{font-size:8px}
+ .hunter-chart-stats b{font-size:9px;margin-top:1px}
+ .hunter-chart-price-line{gap:3px;padding:4px 5px;font-size:7px}
+ .hunter-chart-price-line b{font-size:8px}
+ .hunter-chart-foot{display:none}
+}
+@media(max-height:720px){
+ .hunter-chart-dialog{max-height:64dvh}
+ .hunter-chart-canvas .hunter-expanded-svg{max-height:82px}
+ .hunter-flow-svg{max-height:38px}
+}
+
 </style>
 <link href="https://fonts.googleapis.com/css2?family=Estedad:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
