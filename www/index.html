@@ -1942,6 +1942,7 @@ const fastRadarSignals=new Map();
 const hunterCoinIndex=new Map();
 const hunterEarlyAlerts=new Map(),hunterPriceHistory=new Map(),hunterSymbolIndex=new Map(),hunterEarlyVenueSignals=new Map();
 const hunterSignals=new Map();
+const HUNTER_MIN_SCORE=64;
 let hunterScanCursor=0,hunterScanBusy=false,hunterLastScan=0,hunterScanMessage="در انتظار اسکن مستقل شکارچی";
 let hunterEarlySocket=null,hunterEarlyRetryTimer=null,hunterEarlyRenderTimer=null,hunterEarlyExpiryTimer=null;
 const hunterEarlyExchangeSockets=new Map(),hunterEarlyExchangeRetry=new Map(),hunterEarlyExchangeKeepalive=new Map(),hunterEarlyExchangeState=new Map();
@@ -2294,7 +2295,7 @@ function closeHunterChart(){
 function renderMarketHunter(){
  const feed=$("hunter-feed");if(!feed)return;
  const detailModal=document.getElementById("hunter-chart-modal");if(detailModal?.classList.contains("show"))return;
- const candidates=[...hunterSignals.entries()].map(([id,signal])=>({coin:signal.coin||hunterCoinIndex.get(id)||cachedCoinsData.find(c=>c.id===id),signal,id})).filter(x=>x.coin&&Date.now()-Number(x.signal.updatedAt||0)<25*60*1000);
+ const candidates=[...hunterSignals.entries()].map(([id,signal])=>({coin:signal.coin||hunterCoinIndex.get(id)||cachedCoinsData.find(c=>c.id===id),signal,id})).filter(x=>x.coin&&Number(x.signal.score)>=HUNTER_MIN_SCORE&&Date.now()-Number(x.signal.updatedAt||0)<25*60*1000);
  const rank=(a,b)=>b.signal.score-a.signal.score;
  const entries=[...candidates.filter(x=>x.signal.trend==="bull").sort(rank),...candidates.filter(x=>x.signal.trend==="bear").sort(rank)];
  const density=entries.length<=2?"wide":entries.length<=6?"medium":"compact";
