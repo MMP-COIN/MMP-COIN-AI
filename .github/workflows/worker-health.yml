@@ -94,10 +94,12 @@ jobs:
           set -euo pipefail
           status=$(curl --silent --show-error --retry 1 --retry-delay 2 --max-time 55 "$WORKER_URL/hunter-universe" -o /tmp/hunter-universe.json -w "%{http_code}")
           if [ "$status" != "200" ]; then cat /tmp/hunter-universe.json; exit 1; fi
-          jq -e '.universe_mode == "multi_exchange_usdt" and (.assets | type == "array" and length > 100)' /tmp/hunter-universe.json >/dev/null
+          jq -e '.universe_mode == "unified_catalog_plus_independent_exchange_discovery" and (.assets | type == "array") and (.hunter_assets | type == "array" and length > 0) and (.sources | has("WhiteBIT") and has("Nobitex") and has("Wallex"))' /tmp/hunter-universe.json >/dev/null
           count=$(jq '.assets | length' /tmp/hunter-universe.json)
-          venues=$(jq -r '[.assets[].hunterExchange | split(", ")[]] | unique | join(", ")' /tmp/hunter-universe.json)
-          echo "- Hunter universe: $count assets across $venues" >> "$GITHUB_STEP_SUMMARY"
+          hunter_count=$(jq '.hunter_assets | length' /tmp/hunter-universe.json)
+          discovered=$(jq '.discovered_count // 0' /tmp/hunter-universe.json)
+          venues=$(jq -r '[.hunter_assets[].hunterExchange | split(", ")[]] | unique | join(", ")' /tmp/hunter-universe.json)
+          echo "- Canonical catalog: $count assets; independent Hunter universe: $hunter_count instruments ($discovered outside metadata catalog) across $venues" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Check market data proxy
         env:
