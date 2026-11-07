@@ -955,7 +955,7 @@ body.hunter-chart-open{overflow:hidden}
 <section class="terminal-grid" id="opportunities">
 <section class="card radar-card"><div class="section-head"><div><div class="section-kicker">MMP MARKET SCANNER</div><h2>رادار فرصت‌های بازار</h2><p class="sub">غربالگری هوشمند بر پایه مومنتوم، روند هفتگی، نقدشوندگی نسبی و موقعیت قیمت در دامنه روز</p></div><span class="badge">امتیاز تحلیلی / ۱۰۰</span></div>
 <div class="radar-live-note"><span class="radar-live-dot"></span><span>فهرست‌ها با دریافت داده‌های تازه بازار به‌روزرسانی می‌شوند</span><span id="radar-updated" class="sub">در انتظار داده بازار…</span></div>
-<div class="radar-scan-progress" aria-live="polite"><div class="radar-scan-progress-head"><b id="radar-scan-state">آماده‌سازی رصد مستقل</b><strong id="radar-scan-percent">۰٪</strong></div><div class="radar-scan-track"><span id="radar-scan-bar" style="width:0%"></span></div><div class="radar-scan-stats"><span>بررسی‌شده <b id="radar-scan-done">۰</b></span><span>از <b id="radar-scan-total">۰</b> نماد</span><span>نامزدها <b id="radar-scan-candidates">۰</b></span><span>خطا <b id="radar-scan-errors">۰</b></span></div><small id="radar-scan-persistence">وضعیت اسکن پس از تازه‌سازی صفحه حفظ می‌شود.</small></div>
+<div class="radar-scan-progress" aria-live="polite"><div class="radar-scan-progress-head"><b id="radar-scan-state">آماده‌سازی رصد مستقل</b><strong id="radar-scan-percent">۰٪</strong></div><div class="radar-scan-track"><span id="radar-scan-bar" style="width:0%"></span></div><div class="radar-scan-stats"><span>بررسی‌شده <b id="radar-scan-done">۰</b></span><span>از <b id="radar-scan-total">۰</b> نماد</span><span>نامزدها <b id="radar-scan-candidates">۰</b></span><span>خطا <b id="radar-scan-errors">۰</b></span></div><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:9px"><small id="radar-scan-persistence">نتایج رادار خودکار از سرور دریافت می‌شود.</small><button class="btn primary" id="radar-manual-scan" type="button">اسکن دستی ۱۲ نماد</button></div></div>
 <div id="opportunity-list" class="radar-groups"><div class="ai-empty">پس از دریافت قیمت‌ها، رادار بازار را بررسی می‌کند.</div></div>
 <p class="sub radar-footnote">این دسته‌بندی یک غربالگر آماری است، نه توصیه قطعی خرید یا فروش. امتیاز بر پایه مومنتوم ۲۴ساعته، روند ۷روزه، حجم نسبی و موقعیت قیمت محاسبه می‌شود؛ پیش از تصمیم، نمودار و نقدشوندگی صرافی را بررسی کنید.</p></section>
 
@@ -2168,8 +2168,9 @@ function connectHunterEarlyStream(){
   ws.onclose=()=>{if(hunterEarlySocket===ws){hunterEarlySocket=null;hunterEarlyExchangeState.set("Binance","disconnected");updateHunterEarlyStatus();hunterEarlyRetryTimer=setTimeout(connectHunterEarlyStream,5000);}};
  }catch(error){hunterEarlyExchangeState.set("Binance","disconnected");updateHunterEarlyStatus();hunterEarlyRetryTimer=setTimeout(connectHunterEarlyStream,10000);}
 }
-async function runFastRadarScan(){
- if(fastRadarBusy||Date.now()-fastRadarLastRun<45000)return;
+async function runFastRadarScan(options={}){
+ // Local candle scanning is strictly user-triggered; the server radar remains the only automatic scanner.
+ if(options.manual!==true||fastRadarBusy||Date.now()-fastRadarLastRun<45000)return;
  fastRadarBusy=true;fastRadarLastRun=Date.now();
  const status=$("radar-updated"),hunterStatus=$("hunter-feed-status"),hunterLast=$("hunter-last-scan");
  let completed=0,failed=fastRadarPendingIds.length?(Number(fastRadarProgress.failed)||0):0,cursor=0,universe=[];
@@ -2186,7 +2187,7 @@ async function runFastRadarScan(){
  let batch=[];
  if(fastRadarPendingIds.length){batch=fastRadarPendingIds.map(id=>byId.get(id)).filter(Boolean);fastRadarDoneIds=fastRadarDoneIds.filter(id=>fastRadarPendingIds.includes(id));if(!batch.length){fastRadarPendingIds=[];fastRadarDoneIds=[];}}
  if(!fastRadarPendingIds.length){
-  const size=Math.min(60,universe.length),selected=[],ids=new Set();
+  const size=Math.min(12,universe.length),selected=[],ids=new Set();
   [...hunterEarlyAlerts.values()].filter(x=>Date.now()-x.updatedAt<4*60*1000).sort((a,b)=>b.updatedAt-a.updatedAt).slice(0,12).forEach(alert=>{const coin=hunterCoinIndex.get(alert.id);if(coin&&!ids.has(coin.id)&&selected.length<Math.min(12,size)){selected.push(coin);ids.add(coin.id);}});
   let offset=0;while(selected.length<size&&offset<universe.length){const coin=universe[(fastRadarCursor+offset)%universe.length];offset++;if(!ids.has(coin.id)){selected.push(coin);ids.add(coin.id);}}
   fastRadarCursor=(fastRadarCursor+offset)%universe.length;fastRadarPendingIds=selected.map(coin=>coin.id);fastRadarDoneIds=[];batch=selected;persistFastRadarState();
@@ -2195,7 +2196,7 @@ async function runFastRadarScan(){
  if(!batch.length){fastRadarPendingIds=[];fastRadarDoneIds=[];fastRadarProgress={...fastRadarProgress,percent:100,state:"نوبت قبلی کامل شده؛ آماده نوبت بعدی"};renderFastRadarProgress();persistFastRadarState();fastRadarBusy=false;return;}
  const total=fastRadarPendingIds.length,previous=new Map(fastRadarSignals);
  fastRadarProgress={...fastRadarProgress,completed,total,failed,candidates:fastRadarSignals.size,percent:Math.round(completed/Math.max(1,total)*100),state:"ادامه اسکن کندل‌های ۱، ۳ و ۵ دقیقه‌ای از نماد باقی‌مانده"};renderFastRadarProgress();persistFastRadarState();
- const workers=Array.from({length:6},async()=>{while(cursor<batch.length){const coin=batch[cursor++];try{const previousSignal=fastRadarSignals.get(coin.id)||null;const signal=await scanFastCoin(coin,previousSignal);if(signal){if(Number(signal.score)>=FAST_RADAR_RETENTION_SCORE){scanned.set(coin.id,signal);fastRadarSignals.set(coin.id,signal);}else{fastRadarSignals.delete(coin.id);}}}catch(error){failed++;failedIds.add(coin.id);if(failed<=3)console.debug("Fast radar skipped "+coin.symbol,error?.message||error);}completed++;fastRadarDoneIds.push(coin.id);fastRadarProgress={completed,total,failed,candidates:fastRadarSignals.size,percent:Math.round(completed/Math.max(1,total)*100),state:"در حال اسکن · نقطه ادامه به‌صورت خودکار ذخیره می‌شود"};renderFastRadarProgress();persistFastRadarState();const message="رصد زنده · "+completed.toLocaleString("fa-IR")+" از "+total.toLocaleString("fa-IR")+" بازار این نوبت · نامزدهای فعال: "+fastRadarSignals.size.toLocaleString("fa-IR");if(hunterStatus)hunterStatus.textContent=message;if(status)status.textContent=message+(failed?" · خطاهای منبع: "+failed:"");}});
+ const workers=Array.from({length:3},async()=>{while(cursor<batch.length){const coin=batch[cursor++];try{const previousSignal=fastRadarSignals.get(coin.id)||null;const signal=await scanFastCoin(coin,previousSignal);if(signal){if(Number(signal.score)>=FAST_RADAR_RETENTION_SCORE){scanned.set(coin.id,signal);fastRadarSignals.set(coin.id,signal);}else{fastRadarSignals.delete(coin.id);}}}catch(error){failed++;failedIds.add(coin.id);if(failed<=3)console.debug("Fast radar skipped "+coin.symbol,error?.message||error);}completed++;fastRadarDoneIds.push(coin.id);fastRadarProgress={completed,total,failed,candidates:fastRadarSignals.size,percent:Math.round(completed/Math.max(1,total)*100),state:"در حال اسکن · نقطه ادامه به‌صورت خودکار ذخیره می‌شود"};renderFastRadarProgress();persistFastRadarState();const message="رصد زنده · "+completed.toLocaleString("fa-IR")+" از "+total.toLocaleString("fa-IR")+" بازار این نوبت · نامزدهای فعال: "+fastRadarSignals.size.toLocaleString("fa-IR");if(hunterStatus)hunterStatus.textContent=message;if(status)status.textContent=message+(failed?" · خطاهای منبع: "+failed:"");}});
  try{
   await Promise.all(workers);
   // سیگنال‌ها فقط هنگام دریافت اسکن معتبر با امتیاز زیر حدنصاب حذف می‌شوند؛ خطا یا تأخیر داده باعث حذف نیست.
@@ -2203,7 +2204,7 @@ async function runFastRadarScan(){
   fastRadarLastMessage="این نوبت "+total+" بازار از "+universe.length+" بازار اولویت‌دار بررسی شد · فرصت‌های فعال: "+fastRadarSignals.size+" · "+new Date().toLocaleTimeString("fa-IR");
   fastRadarProgress={completed:total,total,failed,candidates:fastRadarSignals.size,percent:100,state:"این نوبت کامل شد · نوبت بعدی از ادامه فهرست"};renderFastRadarProgress();persistFastRadarState();
   if(status)status.textContent=fastRadarLastMessage+(failed?" · خطاهای دریافت: "+failed:"");
-  renderOpportunities();renderMarketHunter();connectHunterStreams();
+  renderOpportunities();renderMarketHunter();
   if(!fastRadarSignals.size&&hunterStatus)hunterStatus.textContent="رصد این نوبت کامل شد؛ هنوز حرکت غیرعادی با شرایط سخت‌گیرانه تأیید نشده است.";else if(hunterStatus)hunterStatus.textContent=fastRadarSignals.size.toLocaleString("fa-IR")+" شکار فعال · رصد چرخشی بازار ادامه دارد";
   const displayed=[...fastRadarSignals.entries()].map(([id,signal])=>({coin:hunterCoinIndex.get(id),signal,id})).filter(x=>x.coin&&isFastRadarSignalFresh(x.signal)&&x.signal.score>=64).sort((a,b)=>b.signal.score-a.signal.score).slice(0,6);
   displayed.filter(item=>{const old=previous.get(item.id);return !old||old.trend!==item.signal.trend;}).slice(0,3).forEach(item=>notifyHunterOpportunity(item.coin,item.signal));
@@ -2424,7 +2425,9 @@ function renderOpportunities(){
 
 renderOpportunities();renderFastRadarProgress();
 loadServerFastRadarSnapshot();
-setTimeout(()=>{if(!fastRadarServerReady)runFastRadarScan();else renderMarketHunter();},5000);
+setTimeout(()=>{renderMarketHunter();if(!fastRadarServerReady){fastRadarProgress={...fastRadarProgress,state:"رادار خودکار سرور در دسترس نیست · اسکن خودکار مرورگر غیرفعال است"};renderFastRadarProgress();const status=$("radar-updated");if(status)status.textContent="اتصال به رادار سرور برقرار نیست؛ برای اسکن محدود از دکمه اسکن دستی استفاده کنید.";const note=$("radar-scan-persistence");if(note)note.textContent="اسکن خودکار محلی برای جلوگیری از مصرف بی‌رویه API غیرفعال است."; }},5000);
+const manualRadarButton=$("radar-manual-scan");
+if(manualRadarButton){manualRadarButton.addEventListener("click",async()=>{if(fastRadarBusy||Date.now()-fastRadarLastRun<45000)return;manualRadarButton.disabled=true;manualRadarButton.textContent="در حال اسکن…";try{await runFastRadarScan({manual:true});}finally{manualRadarButton.disabled=false;manualRadarButton.textContent="اسکن دستی ۱۲ نماد";}});}
 setInterval(loadServerFastRadarSnapshot,30000);
 </script>
 </body>
