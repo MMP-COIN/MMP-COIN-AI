@@ -1759,7 +1759,7 @@ setInterval(refreshAll, 60000);
    if(ratio>=2)out+='<circle cx="'+x+'" cy="'+(volTop-1)+'" r="3" fill="#f0c96d"/>';
    if(signals[i])out+='<circle cx="'+x+'" cy="'+(signals[i]==="BUY"?y(r[3])+9:y(r[2])-9)+'" r="4.2" fill="'+(signals[i]==="BUY"?"#f3d17d":"#ff8795")+'" stroke="#101722" stroke-width="1.5"><title>'+signals[i]+'</title></circle>';
   });
-  out+='<line x1="'+L+'" y1="'+(volTop-3)+'" x2="'+(W-R)+'" y2="'+(volTop-3)+'" stroke="#8795a5" opacity=".28"/><text x="'+(W-R)+'" y="'+(H-5)+'" text-anchor="end" fill="#9aa7b5" font-size="10">زرد: حجم غیرعادی · سبز/قرمز: خالص خرید/فروش</text></svg>';
+  out+='<line x1="'+L+'" y1="'+(volTop-3)+'" x2="'+(W-R)+'" y2="'+(volTop-3)+'" stroke="#8795a5" opacity=".28"/><text x="'+(W-R)+'" y="'+(H-5)+'" text-anchor="end" fill="#9aa7b5" font-size="10">رنگ ستون حجم: نسبت خرید ثبت‌شده در کندل · نمودار جریان پایین: معاملات واقعی</text></svg>';
   return out;
  }
  function drawFlow(rows){
@@ -2268,8 +2268,8 @@ function hunterExpandedCandles(rows,trend){
  svg+='<line x1="'+L+'" y1="'+lastY+'" x2="'+(W-R)+'" y2="'+lastY+'" stroke="'+color+'" stroke-width="1.5" stroke-dasharray="5 4" opacity=".8"/><circle cx="'+(W-R)+'" cy="'+lastY+'" r="4" fill="'+color+'"/></svg>';return svg;
 }
 function hunterExpandedFlow(flow){
- const rows=(flow?.rows||[]).slice(-30);if(rows.length<2)return '<div class="hunter-chart-no-data">جریان خرید و فروش تهاجمی Binance در دسترس نیست.</div>';
- const W=760,H=166,L=54,R=18,T=22,B=22,slot=(W-L-R)/rows.length,max=Math.max(1,...rows.map(x=>Math.abs(Number(x[4])||0))),scale=(H-T-B)/2/max,mid=T+(H-T-B)/2,cw=Math.max(5,Math.min(15,slot*.58));
+ const rows=(flow?.rows||[]).slice(-30);if(rows.length<2)return '<div class="hunter-chart-no-data">داده معاملات واقعی برای جریان خرید و فروش در دسترس نیست.</div>';
+ const W=760,H=166,L=54,R=18,T=22,B=22,slot=(W-L-R)/rows.length,max=Math.max(1,...rows.map(x=>Math.abs(Number(x[3])||0))),scale=(H-T-B)/2/max,mid=T+(H-T-B)/2,cw=Math.max(5,Math.min(15,slot*.58));
  let svg='<svg class="hunter-flow-svg" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="جریان خالص خرید و فروش تهاجمی بر حسب تتر" preserveAspectRatio="xMidYMid meet"><line x1="'+L+'" y1="'+mid+'" x2="'+(W-R)+'" y2="'+mid+'" stroke="#8c9baa" stroke-opacity=".55" stroke-dasharray="4 4"/>';
  rows.forEach((r,i)=>{const x=L+i*slot+slot/2,net=Number(r[3])||0,bar=Math.abs(net)*scale,col=net>=0?"#35e5ad":"#ff647d";svg+='<rect x="'+(x-cw/2)+'" y="'+(net>=0?mid-bar:mid)+'" width="'+cw+'" height="'+Math.max(1,bar)+'" rx="2" fill="'+col+'" opacity=".9"/>'+(i%Math.max(1,Math.ceil(rows.length/6))===0?'<text x="'+x+'" y="'+(H-4)+'" text-anchor="middle" fill="#9aa7b5" font-size="10">'+new Date(Number(r[0])).toLocaleTimeString("fa-IR",{hour:"2-digit",minute:"2-digit"})+'</text>':'');});
  svg+='<text x="'+L+'" y="12" fill="#35e5ad" font-size="11">خرید تهاجمی ↑</text><text x="'+(W-R)+'" y="12" text-anchor="end" fill="#ff647d" font-size="11">فروش تهاجمی ↓</text></svg>';return svg;
