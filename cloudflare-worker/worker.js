@@ -493,12 +493,15 @@ async function handle(request,env){
   const eligible=[...cmcBySymbol.keys()].filter(symbol=>!/^[0-9]+$/.test(symbol)&&!excluded.has(symbol)&&!/(UP|DOWN|BULL|BEAR|3L|3S)$/.test(symbol));
   if(!eligible.length)return json({error:"نماد معتبر در فهرست بازار پیدا نشد."},502,request);
   const jobs=[
-   ["Binance","https://api.binance.com/api/v3/ticker/24hr",d=>(Array.isArray(d)?d:[]).filter(x=>String(x.symbol).endsWith("USDT")).map(x=>({symbol:String(x.symbol).slice(0,-4),volume:Number(x.quoteVolume)||0,price:Number(x.lastPrice)||0,change24h:Number(x.priceChangePercent)||0}))],
-   ["Bybit","https://api.bybit.com/v5/market/tickers?category=spot",d=>(d.result?.list||[]).filter(x=>String(x.symbol).endsWith("USDT")).map(x=>({symbol:String(x.symbol).slice(0,-4),volume:Number(x.turnover24h)||0,price:Number(x.lastPrice)||0,change24h:(Number(x.price24hPcnt)||0)*100}))],
-   ["OKX","https://www.okx.com/api/v5/market/tickers?instType=SPOT",d=>(d.data||[]).filter(x=>String(x.instId).endsWith("-USDT")).map(x=>({symbol:String(x.instId).replace("-USDT",""),volume:Number(x.volCcy24h)||0,price:Number(x.last)||0,change24h:Number(x.open24h)>0?(Number(x.last)/Number(x.open24h)-1)*100:0}))],
-   ["Bitget","https://api.bitget.com/api/v2/spot/market/tickers",d=>(d.data||[]).filter(x=>String(x.symbol).endsWith("USDT")).map(x=>({symbol:String(x.symbol).slice(0,-4),volume:Number(x.usdtVolume||x.quoteVolume)||0,price:Number(x.lastPr)||0,change24h:(Number(x.change24h)||0)*100}))],
-   ["Gate","https://api.gateio.ws/api/v4/spot/tickers",d=>(Array.isArray(d)?d:[]).filter(x=>String(x.currency_pair).endsWith("_USDT")).map(x=>({symbol:String(x.currency_pair).replace("_USDT",""),volume:Number(x.quote_volume)||0,price:Number(x.last)||0,change24h:Number(x.change_percentage)||0}))],
-   ["KuCoin","https://api.kucoin.com/api/v1/market/allTickers",d=>(d.data?.ticker||[]).filter(x=>String(x.symbol).endsWith("-USDT")).map(x=>({symbol:String(x.symbol).replace("-USDT",""),volume:Number(x.volValue)||0,price:Number(x.last)||0,change24h:(Number(x.changeRate)||0)*100}))]
+   ["Binance","https://api.binance.com/api/v3/ticker/24hr",d=>(Array.isArray(d)?d:[]).filter(x=>String(x.symbol).endsWith("USDT")).map(x=>({symbol:String(x.symbol).slice(0,-4),pair:String(x.symbol),quoteAsset:"USDT",volume:Number(x.quoteVolume)||0,price:Number(x.lastPrice)||0,change24h:Number(x.priceChangePercent)||0}))],
+   ["Bybit","https://api.bybit.com/v5/market/tickers?category=spot",d=>(d.result?.list||[]).filter(x=>String(x.symbol).endsWith("USDT")).map(x=>({symbol:String(x.symbol).slice(0,-4),pair:String(x.symbol),quoteAsset:"USDT",volume:Number(x.turnover24h)||0,price:Number(x.lastPrice)||0,change24h:(Number(x.price24hPcnt)||0)*100}))],
+   ["OKX","https://www.okx.com/api/v5/market/tickers?instType=SPOT",d=>(d.data||[]).filter(x=>String(x.instId).endsWith("-USDT")).map(x=>({symbol:String(x.instId).replace("-USDT",""),pair:String(x.instId),quoteAsset:"USDT",volume:Number(x.volCcy24h)||0,price:Number(x.last)||0,change24h:Number(x.open24h)>0?(Number(x.last)/Number(x.open24h)-1)*100:0}))],
+   ["Bitget","https://api.bitget.com/api/v2/spot/market/tickers",d=>(d.data||[]).filter(x=>String(x.symbol).endsWith("USDT")).map(x=>({symbol:String(x.symbol).slice(0,-4),pair:String(x.symbol),quoteAsset:"USDT",volume:Number(x.usdtVolume||x.quoteVolume)||0,price:Number(x.lastPr)||0,change24h:(Number(x.change24h)||0)*100}))],
+   ["Gate","https://api.gateio.ws/api/v4/spot/tickers",d=>(Array.isArray(d)?d:[]).filter(x=>String(x.currency_pair).endsWith("_USDT")).map(x=>({symbol:String(x.currency_pair).replace("_USDT",""),pair:String(x.currency_pair),quoteAsset:"USDT",volume:Number(x.quote_volume)||0,price:Number(x.last)||0,change24h:Number(x.change_percentage)||0}))],
+   ["KuCoin","https://api.kucoin.com/api/v1/market/allTickers",d=>(d.data?.ticker||[]).filter(x=>String(x.symbol).endsWith("-USDT")).map(x=>({symbol:String(x.symbol).replace("-USDT",""),pair:String(x.symbol),quoteAsset:"USDT",volume:Number(x.volValue)||0,price:Number(x.last)||0,change24h:(Number(x.changeRate)||0)*100}))],
+   ["WhiteBIT","https://whitebit.com/api/v4/public/ticker",d=>Object.entries(d||{}).filter(([pair,x])=>pair.endsWith("_USDT")&&!x.isFrozen).map(([pair,x])=>({symbol:pair.slice(0,-5),pair,quoteAsset:"USDT",volume:Number(x.quote_volume)||0,price:Number(x.last_price)||0,change24h:Number(x.change)||0}))],
+   ["Nobitex","https://apiv2.nobitex.ir/market/stats?dstCurrency=rls",d=>{const stats=d?.stats||{},usdtRls=Number(stats["usdt-rls"]?.latest)||0;if(d?.status!=="ok"||usdtRls<=0)return [];return Object.entries(stats).filter(([pair,x])=>pair.endsWith("-rls")&&pair!=="usdt-rls"&&Number(x?.latest)>0).map(([pair,x])=>({symbol:pair.split("-")[0].toUpperCase(),pair:pair.toUpperCase(),quoteAsset:"IRT",volume:Number(x.volumeDst)>0?Number(x.volumeDst)/usdtRls:0,price:Number(x.latest)/usdtRls,change24h:Number(x.dayChange)||0}));}],
+   ["Wallex","https://api.wallex.ir/v1/markets",d=>{const raw=d?.result?.symbols||d?.result?.markets||{},rows=Array.isArray(raw)?raw:Object.values(raw),usdtRial=Number((Array.isArray(raw)?rows.find(x=>String(x.symbol).toUpperCase()==="USDTIRT"):raw.USDTIRT)?.stats?.lastPrice)||0;return d?.success===true?rows.map(x=>{const base=String(x.baseAsset||"").toUpperCase(),quote=String(x.quoteAsset||"").toUpperCase(),last=Number(x.stats?.lastPrice??x.lastPrice)||0,local=["IRT","IRR","RLS","TMN"].includes(quote),rate=local?usdtRial:1,quoteVolume=Number(x.stats?.["24h_quoteVolume"]??x.stats?.quoteVolume)||0;return {symbol:base,pair:String(x.symbol||base+quote),quoteAsset:local?"IRT":quote,volume:rate>0?quoteVolume/rate:quoteVolume,price:rate>0?last/rate:last,change24h:Number(x.stats?.["24h_ch"]??x.stats?.change24h)||0};}).filter(x=>x.symbol&&x.price>0&&["USDT","IRT"].includes(x.quoteAsset)):[];}]
   ];
   const tickerResults=await Promise.allSettled(jobs.map(async([name,url,normalize])=>({name,rows:normalize(await timedJson(url,11000,10))})));
   const markets=new Map(),sources={BinanceExchangeInfo:{ok:primary[0].status==="fulfilled",status:primary[0].status==="fulfilled"?200:0,error:primary[0].status==="rejected"?String(primary[0].reason?.message||primary[0].reason).slice(0,140):null},MetadataCatalog:{ok:true,provider:metadataProvider},CoinMarketCap:{ok:primary[1].status==="fulfilled",status:primary[1].status==="fulfilled"?200:0,page2:primary[2].status==="fulfilled"}};
@@ -509,7 +512,7 @@ async function handle(request,env){
    result.value.rows.forEach(row=>{
     if(!eligible.includes(row.symbol)||!(row.price>0)||!(row.volume>=0))return;
     let item=markets.get(row.symbol);if(!item){item={venues:new Set(),quotes:[]};markets.set(row.symbol,item);}
-    item.venues.add(name);item.quotes.push({...row,exchange:name});
+    item.venues.add(name);item.quotes.push({...row,pair:row.pair||row.symbol+"USDT",quoteAsset:row.quoteAsset||"USDT",exchange:name});
    });
   });
   const assets=[...markets.keys()].map(symbol=>{
@@ -525,13 +528,14 @@ async function handle(request,env){
     market_cap:Number(cmcQuote.market_cap)||null,market_cap_rank:Number(meta.cmc_rank)||null,
     hunterExchange:[...market.venues].join(", "),hunterPriceExchange:best.exchange||"CoinMarketCap",
     hunterChange24h:Number.isFinite(best.change24h)?best.change24h:Number(cmcQuote.percent_change_24h)||0,
-    hunterVenueVolume:venueVolume,cmcDuplicateCount:cmcDuplicateCount.get(symbol)||1
+    hunterVenueVolume:venueVolume,marketPairs:quotes.map(q=>({exchange:q.exchange,pair:q.pair,quote:q.quoteAsset,price:Number(q.price)||0,volume:Number(q.volume)||0})),hasUsdtMarket:quotes.some(q=>String(q.quoteAsset).toUpperCase()==="USDT"),hasDomesticMarket:quotes.some(q=>["Nobitex","Wallex"].includes(q.exchange)),cmcDuplicateCount:cmcDuplicateCount.get(symbol)||1
    };
   }).filter(x=>x.current_price>0).sort((a,b)=>Math.abs(Number(b.hunterChange24h)||0)-Math.abs(Number(a.hunterChange24h)||0)||b.total_volume-a.total_volume||Number(a.market_cap_rank||999999)-Number(b.market_cap_rank||999999));
   if(!assets.length)return json({error:"داده زنده برای نمادهای مشترک صرافی‌ها دریافت نشد."},502,request);
   // Keep the complete verified cross-exchange discovery universe; the client scans it in rotating batches to respect exchange rate limits.
   const rankedAssets=assets.sort((a,b)=>b.total_volume-a.total_volume||Number(a.market_cap_rank||999999)-Number(b.market_cap_rank||999999));
-  return json({checked_at:new Date().toISOString(),count:rankedAssets.length,binance_spot_symbols:binanceSymbols.size,cmc_listings:cmcRows.length,universe_mode:"multi_exchange_usdt",metadata_provider:metadataProvider,assets:rankedAssets,sources},200,request,{"X-MMP-Data-Source":"Binance, Bybit, OKX, Bitget, Gate, KuCoin + "+metadataProvider});
+  const hunterAssets=rankedAssets.filter(asset=>asset.hasUsdtMarket===true);
+  return json({checked_at:new Date().toISOString(),count:rankedAssets.length,hunter_count:hunterAssets.length,binance_spot_symbols:binanceSymbols.size,cmc_listings:cmcRows.length,universe_mode:"unified_multi_exchange_spot",metadata_provider:metadataProvider,assets:rankedAssets,hunter_assets:hunterAssets,sources},200,request,{"X-MMP-Data-Source":"Binance, Bybit, OKX, Bitget, Gate, KuCoin, WhiteBIT, Nobitex, Wallex + "+metadataProvider});
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/support-check"){
   const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"support-check");
