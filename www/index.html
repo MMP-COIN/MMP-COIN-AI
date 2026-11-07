@@ -2148,14 +2148,14 @@ function ingestHunterEarlyPrice(exchange,baseSymbol,rawPrice){
  const trend=trigger?(trigger.move>0?"bull":"bear"):null;
  if(!trend)return;
  let venueSignals=hunterEarlyVenueSignals.get(base);if(!venueSignals){venueSignals=new Map();hunterEarlyVenueSignals.set(base,venueSignals);}
- venueSignals.set(exchange,{trend,move:trigger.move,price,updatedAt:now});
+ venueSignals.set(exchange,{exchange,trend,move:trigger.move,price,updatedAt:now});
  for(const [venue,signal] of venueSignals)if(now-signal.updatedAt>30000)venueSignals.delete(venue);
  const corroborating=[...venueSignals.values()].filter(signal=>signal.trend===trend&&now-signal.updatedAt<=30000);
  const prices=corroborating.map(signal=>signal.price),priceSpread=prices.length>1?(Math.max(...prices)/Math.min(...prices)-1)*100:Infinity;
  if(corroborating.length<2||priceSpread>1.5)return;
  const movement=trigger.move,old=hunterEarlyAlerts.get(base);
  if(!old||old.trend!==trend||now-old.updatedAt>12000||Math.abs(movement)>Math.abs(old.triggerMove||old.move1m||old.move3m||0)+0.12){
-  hunterEarlyAlerts.set(base,{id:coin.id,symbol:base,name:coin.name,trend,move15s:move15,move30s:move30,move1m:move1,move3m:move3,triggerMove:movement,triggerWindow:trigger.window,price,exchange,exchanges:corroborating.map(([venue])=>venue),confirmations:corroborating.length,updatedAt:now});
+  hunterEarlyAlerts.set(base,{id:coin.id,symbol:base,name:coin.name,trend,move15s:move15,move30s:move30,move1m:move1,move3m:move3,triggerMove:movement,triggerWindow:trigger.window,price,exchange,exchanges:corroborating.map(signal=>signal.exchange),confirmations:corroborating.length,updatedAt:now});
   queueHunterEarlyRender();updateHunterEarlyStatus();
  }
 }
