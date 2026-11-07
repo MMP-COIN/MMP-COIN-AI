@@ -35,6 +35,29 @@ jobs:
             echo "- AI binding: available"
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Check independent server-side fast radar
+        env:
+          RADAR_WORKER_URL: https://mmp-coin-ai-radar.mehrdadmohammadi1988.workers.dev
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 2 --retry-delay 3 --max-time 20 "$RADAR_WORKER_URL/health" -o /tmp/radar-health.json
+          jq -e '.worker == "online" and .kv == true' /tmp/radar-health.json >/dev/null
+          echo "- Independent radar Worker: online; persistent KV binding available" >> "$GITHUB_STEP_SUMMARY"
+          if curl --fail --silent --show-error --max-time 20 "$RADAR_WORKER_URL/fast-radar-snapshot" -o /tmp/radar-snapshot.json; then
+            if jq -e '.status == "online"' /tmp/radar-snapshot.json >/dev/null; then
+              scanned=$(jq -r '.scanned_count // 0' /tmp/radar-snapshot.json)
+              universe=$(jq -r '.universe_count // 0' /tmp/radar-snapshot.json)
+              signals=$(jq -r '.signals | length' /tmp/radar-snapshot.json)
+              echo "- Server radar snapshot: $signals active signals; last batch $scanned/$universe" >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "::warning::Server radar is online; its first scheduled scan has not published a snapshot yet."
+              echo "- Server radar snapshot: warming up" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          else
+            echo "::warning::Server radar snapshot endpoint is temporarily unavailable."
+            echo "- Server radar snapshot: temporarily unavailable" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Check private analytics Worker
         env:
           ADMIN_WORKER_URL: https://mmp-coin-ai-admin.mehrdadmohammadi1988.workers.dev
