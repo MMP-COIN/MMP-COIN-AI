@@ -1903,10 +1903,12 @@ let hunterUniverseCache={expires:0,coins:[]};
 let hunterMetadataCache={expires:0,coins:[]};
 let fastRadarBusy=false,fastRadarLastRun=0,fastRadarLastMessage="در انتظار اولین پایش سریع",fastRadarCursor=0;
 const FAST_RADAR_STATE_KEY="mmp_fast_radar_state_v3";
+const FAST_RADAR_SIGNAL_MAX_AGE=6*60*60*1000;
+function isFastRadarSignalFresh(signal){return !!signal&&Date.now()-Number(signal.updatedAt||0)<FAST_RADAR_SIGNAL_MAX_AGE;}
 let fastRadarPendingIds=[],fastRadarDoneIds=[];
 let fastRadarProgress={completed:0,total:0,failed:0,candidates:0,percent:0,state:"در انتظار اولین پایش سریع"};
-function persistFastRadarState(){try{localStorage.setItem(FAST_RADAR_STATE_KEY,JSON.stringify({savedAt:Date.now(),cursor:fastRadarCursor,lastRun:fastRadarLastRun,lastMessage:fastRadarLastMessage,progress:fastRadarProgress,pendingIds:fastRadarPendingIds,doneIds:fastRadarDoneIds,signals:[...fastRadarSignals.entries()].filter(([,v])=>Date.now()-Number(v.updatedAt||0)<15*60*1000)}));}catch(error){console.debug("Radar state persistence unavailable",error);}}
-function restoreFastRadarState(){try{const raw=localStorage.getItem(FAST_RADAR_STATE_KEY);if(!raw)return;const state=JSON.parse(raw);if(!state)return;fastRadarCursor=Math.max(0,Number(state.cursor)||0);fastRadarLastRun=Number(state.lastRun)||0;fastRadarLastMessage=String(state.lastMessage||fastRadarLastMessage);if(state.progress&&typeof state.progress==="object")fastRadarProgress={...fastRadarProgress,...state.progress};fastRadarPendingIds=Array.isArray(state.pendingIds)?state.pendingIds:[];fastRadarDoneIds=Array.isArray(state.doneIds)?state.doneIds:[];(state.signals||[]).forEach(([id,signal])=>{if(signal&&Date.now()-Number(signal.updatedAt||0)<15*60*1000)fastRadarSignals.set(id,signal);});}catch(error){console.debug("Radar state restore unavailable",error);}}
+function persistFastRadarState(){try{localStorage.setItem(FAST_RADAR_STATE_KEY,JSON.stringify({savedAt:Date.now(),cursor:fastRadarCursor,lastRun:fastRadarLastRun,lastMessage:fastRadarLastMessage,progress:fastRadarProgress,pendingIds:fastRadarPendingIds,doneIds:fastRadarDoneIds,signals:[...fastRadarSignals.entries()].filter(([,v])=>isFastRadarSignalFresh(v))}));}catch(error){console.debug("Radar state persistence unavailable",error);}}
+function restoreFastRadarState(){try{const raw=localStorage.getItem(FAST_RADAR_STATE_KEY);if(!raw)return;const state=JSON.parse(raw);if(!state)return;fastRadarCursor=Math.max(0,Number(state.cursor)||0);fastRadarLastRun=Number(state.lastRun)||0;fastRadarLastMessage=String(state.lastMessage||fastRadarLastMessage);if(state.progress&&typeof state.progress==="object")fastRadarProgress={...fastRadarProgress,...state.progress};fastRadarPendingIds=Array.isArray(state.pendingIds)?state.pendingIds:[];fastRadarDoneIds=Array.isArray(state.doneIds)?state.doneIds:[];(state.signals||[]).forEach(([id,signal])=>{if(isFastRadarSignalFresh(signal))fastRadarSignals.set(id,signal);});}catch(error){console.debug("Radar state restore unavailable",error);}}
 function renderFastRadarProgress(){const p=fastRadarProgress,put=(id,value)=>{const el=$(id);if(el)el.textContent=String(value);};put("radar-scan-state",p.state||"رصد بازار");put("radar-scan-percent",Number(p.percent||0).toLocaleString("fa-IR")+"٪");put("radar-scan-done",Number(p.completed||0).toLocaleString("fa-IR"));put("radar-scan-total",Number(p.total||0).toLocaleString("fa-IR"));put("radar-scan-candidates",Number(p.candidates||0).toLocaleString("fa-IR"));put("radar-scan-errors",Number(p.failed||0).toLocaleString("fa-IR"));const bar=$("radar-scan-bar");if(bar)bar.style.width=Math.max(0,Math.min(100,Number(p.percent)||0))+"%";const note=$("radar-scan-persistence");if(note)note.textContent=fastRadarLastRun?"آخرین وضعیت ذخیره‌شده · ادامه اسکن از نماد بعدی پس از تازه‌سازی":"وضعیت اسکن به‌صورت خودکار ذخیره می‌شود.";}
 restoreFastRadarState();
 async function fetchFastCandles(symbol,coin){
@@ -1943,7 +1945,7 @@ async function fetchHunterOrderFlow(symbol){
  const chartRows=closed.slice(-30).map((x,i,arr)=>{const prior=arr.slice(Math.max(0,i-20),i).map(v=>v[1]).filter(v=>v>0),mean=prior.length?prior.reduce((a,b)=>a+b,0)/prior.length:avg;return [...x,mean>0?x[1]/mean:0];});
  return {source:"Binance Spot · taker buy/sell",quote1m:last[1],buy1m:last[2],sell1m:last[3],net1m:last[4],ratio1m:ratio,quote5m,buy5m,sell5m,net5m:net5,netPct5m:netPct,volumeRatio5m:ratio5,rows:chartRows,updatedAt:Date.now(),unusual:ratio>=2||ratio5>=2.2};
 }
-async function scanFastCoin(coin){
+async function scanFastCoin(coin,previousSignal=null){
  const symbol=String(coin?.symbol||"").toUpperCase();
  if(!/^[A-Z0-9]{2,20}$/.test(symbol)||NON_TRADABLE_SYMBOLS.has(symbol))return null;
  const supportedVenues=new Set(["Binance","Bybit","OKX","Bitget","Gate","KuCoin"]);
@@ -1976,13 +1978,13 @@ async function scanFastCoin(coin){
  const bearDaily=dailyChange24h<=-8&&change5m<=0.15&&volumeRatio>=0.9;
  const bullFlow=!!flow&&flow.unusual&&flow.netPct5m>=12&&flow.net5m>=5000&&change5m>=-0.15;
  const bearFlow=!!flow&&flow.unusual&&flow.netPct5m<=-12&&flow.net5m<=-5000&&change5m<=0.15;
- let trend="neutral",score=0;
- if(bullMomentum||bearMomentum||bullFlow||bearFlow||bullDaily||bearDaily){
-  trend=(bullMomentum||bullFlow||bullDaily)?"bull":"bear";
-  const flowStrength=flow?Math.min(20,Math.abs(flow.netPct5m)*.35)+Math.min(15,Math.max(0,flow.volumeRatio5m-1)*5):0;
-  score=Math.min(99,Math.max((bullFlow||bearFlow||bullDaily||bearDaily)?72:0,Math.round(55+Math.min(16,Math.abs(change1m)*30)+Math.min(14,Math.abs(change5m)*8)+Math.min(16,Math.max(0,volumeRatio-1)*8)+(breakoutUp||breakoutDown?8:0)+flowStrength)));
-  if(score<64)return null;
- }
+ const qualifies=bullMomentum||bearMomentum||bullFlow||bearFlow||bullDaily||bearDaily;
+ const flowStrength=flow?Math.min(20,Math.abs(flow.netPct5m)*.35)+Math.min(15,Math.max(0,flow.volumeRatio5m-1)*5):0;
+ const score=Math.min(99,Math.max((bullFlow||bearFlow||bullDaily||bearDaily)?72:0,Math.round(55+Math.min(16,Math.abs(change1m)*30)+Math.min(14,Math.abs(change5m)*8)+Math.min(16,Math.max(0,volumeRatio-1)*8)+(breakoutUp||breakoutDown?8:0)+flowStrength)));
+ const direction=change5m>=0?"bull":"bear";
+ let trend="neutral";
+ if(qualifies)trend=(bullMomentum||bullFlow||bullDaily)?"bull":"bear";
+ else if(previousSignal&&previousSignal.trend===direction&&score>=64)trend=direction;
  return {trend,score,change1m,change5m,dailyChange24h,dailyMover:Math.abs(dailyChange24h)>=8,lowLiquidity:Number(coin.total_volume||0)<150000,volumeRatio,breakout:breakoutUp||breakoutDown,overextended,price,provider,flow,flowSignal:bullFlow?"inflow":bearFlow?"outflow":"",updatedAt:now,candleTime:Number(last[0]),rows:rows.map(x=>x.slice(0,6).map(Number))};
 }
 async function fetchHunterUniverse(){
@@ -2158,17 +2160,17 @@ async function runFastRadarScan(){
  if(!batch.length){fastRadarPendingIds=[];fastRadarDoneIds=[];fastRadarProgress={...fastRadarProgress,percent:100,state:"نوبت قبلی کامل شده؛ آماده نوبت بعدی"};renderFastRadarProgress();persistFastRadarState();fastRadarBusy=false;return;}
  const total=fastRadarPendingIds.length,previous=new Map(fastRadarSignals);
  fastRadarProgress={...fastRadarProgress,completed,total,failed,candidates:fastRadarSignals.size,percent:Math.round(completed/Math.max(1,total)*100),state:"ادامه اسکن کندل‌های ۱، ۳ و ۵ دقیقه‌ای از نماد باقی‌مانده"};renderFastRadarProgress();persistFastRadarState();
- const workers=Array.from({length:6},async()=>{while(cursor<batch.length){const coin=batch[cursor++];try{const signal=await scanFastCoin(coin);if(signal&&signal.trend!=="neutral"){scanned.set(coin.id,signal);fastRadarSignals.set(coin.id,signal);}}catch(error){failed++;failedIds.add(coin.id);if(failed<=3)console.debug("Fast radar skipped "+coin.symbol,error?.message||error);}completed++;fastRadarDoneIds.push(coin.id);fastRadarProgress={completed,total,failed,candidates:fastRadarSignals.size,percent:Math.round(completed/Math.max(1,total)*100),state:"در حال اسکن · نقطه ادامه به‌صورت خودکار ذخیره می‌شود"};renderFastRadarProgress();persistFastRadarState();const message="رصد زنده · "+completed.toLocaleString("fa-IR")+" از "+total.toLocaleString("fa-IR")+" بازار این نوبت · نامزدهای فعال: "+fastRadarSignals.size.toLocaleString("fa-IR");if(hunterStatus)hunterStatus.textContent=message;if(status)status.textContent=message+(failed?" · خطاهای منبع: "+failed:"");}});
+ const workers=Array.from({length:6},async()=>{while(cursor<batch.length){const coin=batch[cursor++];try{const previousSignal=fastRadarSignals.get(coin.id)||null;const signal=await scanFastCoin(coin,previousSignal);if(signal&&signal.trend!=="neutral"){scanned.set(coin.id,signal);fastRadarSignals.set(coin.id,signal);}else if(signal&&signal.trend==="neutral"&&previousSignal){fastRadarSignals.delete(coin.id);}}catch(error){failed++;failedIds.add(coin.id);if(failed<=3)console.debug("Fast radar skipped "+coin.symbol,error?.message||error);}completed++;fastRadarDoneIds.push(coin.id);fastRadarProgress={completed,total,failed,candidates:fastRadarSignals.size,percent:Math.round(completed/Math.max(1,total)*100),state:"در حال اسکن · نقطه ادامه به‌صورت خودکار ذخیره می‌شود"};renderFastRadarProgress();persistFastRadarState();const message="رصد زنده · "+completed.toLocaleString("fa-IR")+" از "+total.toLocaleString("fa-IR")+" بازار این نوبت · نامزدهای فعال: "+fastRadarSignals.size.toLocaleString("fa-IR");if(hunterStatus)hunterStatus.textContent=message;if(status)status.textContent=message+(failed?" · خطاهای منبع: "+failed:"");}});
  try{
   await Promise.all(workers);
-  for(const [id,signal] of fastRadarSignals){if(Date.now()-signal.updatedAt>15*60*1000)fastRadarSignals.delete(id);}
+  for(const [id,signal] of fastRadarSignals){if(!isFastRadarSignalFresh(signal))fastRadarSignals.delete(id);}
   fastRadarPendingIds=[];fastRadarDoneIds=[];
   fastRadarLastMessage="این نوبت "+total+" بازار از "+universe.length+" بازار اولویت‌دار بررسی شد · فرصت‌های فعال: "+fastRadarSignals.size+" · "+new Date().toLocaleTimeString("fa-IR");
   fastRadarProgress={completed:total,total,failed,candidates:fastRadarSignals.size,percent:100,state:"این نوبت کامل شد · نوبت بعدی از ادامه فهرست"};renderFastRadarProgress();persistFastRadarState();
   if(status)status.textContent=fastRadarLastMessage+(failed?" · خطاهای دریافت: "+failed:"");
   renderOpportunities();renderMarketHunter();connectHunterStreams();
   if(!fastRadarSignals.size&&hunterStatus)hunterStatus.textContent="رصد این نوبت کامل شد؛ هنوز حرکت غیرعادی با شرایط سخت‌گیرانه تأیید نشده است.";else if(hunterStatus)hunterStatus.textContent=fastRadarSignals.size.toLocaleString("fa-IR")+" شکار فعال · رصد چرخشی بازار ادامه دارد";
-  const displayed=[...fastRadarSignals.entries()].map(([id,signal])=>({coin:hunterCoinIndex.get(id),signal,id})).filter(x=>x.coin&&x.signal.score>=72).sort((a,b)=>b.signal.score-a.signal.score).slice(0,6);
+  const displayed=[...fastRadarSignals.entries()].map(([id,signal])=>({coin:hunterCoinIndex.get(id),signal,id})).filter(x=>x.coin&&isFastRadarSignalFresh(x.signal)&&x.signal.score>=64).sort((a,b)=>b.signal.score-a.signal.score).slice(0,6);
   displayed.filter(item=>{const old=previous.get(item.id);return !old||old.trend!==item.signal.trend;}).slice(0,3).forEach(item=>notifyHunterOpportunity(item.coin,item.signal));
  }catch(error){fastRadarLastMessage="این نوبت پایش کامل نشد؛ نقطه ادامه ذخیره شد و پس از بازگشت برنامه از همان‌جا ادامه می‌دهد.";fastRadarProgress={...fastRadarProgress,state:"وقفه موقت؛ ادامه از نماد ذخیره‌شده"};renderFastRadarProgress();persistFastRadarState();if(status)status.textContent=fastRadarLastMessage;if(hunterStatus)hunterStatus.textContent="پایش متوقف شد؛ نقطه ادامه حفظ شده است.";console.warn("Fast radar:",error);}
  finally{fastRadarBusy=false;persistFastRadarState();}
@@ -2307,7 +2309,7 @@ function closeHunterChart(){
 function renderMarketHunter(){
  const feed=$("hunter-feed");if(!feed)return;
  const detailModal=document.getElementById("hunter-chart-modal");if(detailModal?.classList.contains("show"))return;
- const candidates=[...fastRadarSignals.entries()].map(([id,signal])=>({coin:hunterCoinIndex.get(id)||cachedCoinsData.find(c=>c.id===id),signal,id})).filter(x=>x.coin&&Date.now()-x.signal.updatedAt<15*60*1000&&x.signal.score>=72);
+ const candidates=[...fastRadarSignals.entries()].map(([id,signal])=>({coin:hunterCoinIndex.get(id)||cachedCoinsData.find(c=>c.id===id),signal,id})).filter(x=>x.coin&&isFastRadarSignalFresh(x.signal)&&x.signal.score>=64);
  const rank=(a,b)=>b.signal.score-a.signal.score;
  const entries=[...candidates.filter(x=>x.signal.trend==="bull").sort(rank).slice(0,6),...candidates.filter(x=>x.signal.trend==="bear").sort(rank).slice(0,6)];
  const density=entries.length<=2?"wide":entries.length<=6?"medium":"compact";
