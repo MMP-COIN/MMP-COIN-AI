@@ -2311,27 +2311,31 @@ function connectHunterStreams(){
  });
 }
 function renderOpportunities(){
+ // رادار هوشمند فقط خروجی موتور مرکزی سرور را نمایش می‌دهد؛
+ // موتورهای مشترک دیگر بخش‌ها دست‌نخورده باقی می‌مانند.
  const el=$("opportunity-list");if(!el)return;
- const active=[...fastRadarSignals.entries()].filter(([,signal])=>isFastRadarSignalFresh(signal)).map(([id,signal])=>{
+ const active=[...fastRadarSignals.entries()].filter(([,signal])=>
+  isFastRadarSignalFresh(signal)&&Number.isFinite(Number(signal.score))&&["bull","bear"].includes(signal.trend)
+ ).map(([id,signal])=>{
   const cached=cachedCoinsData.find(x=>String(x.id)===String(id));
   const coin={...(cached||{}),...(signal.coin||{}),id:String(id),symbol:signal.symbol||signal.coin?.symbol||cached?.symbol||""};
-  return {id:String(id),coin,signal,metrics:radarScore(coin)};
- }).filter(x=>x.metrics&&["bull","bear"].includes(x.metrics.trend));
+  return {id:String(id),coin,signal,metrics:{score:Number(signal.score),trend:signal.trend}};
+ }).filter(x=>x.coin.symbol);
  const bullish=active.filter(x=>x.metrics.trend==="bull").sort((a,b)=>b.metrics.score-a.metrics.score);
  const bearish=active.filter(x=>x.metrics.trend==="bear").sort((a,b)=>b.metrics.score-a.metrics.score);
  const updated=$("radar-updated");
- if(updated)updated.textContent="موتور یکپارچه · "+active.length.toLocaleString("fa-IR")+" سیگنال معتبر · صعودی "+bullish.length.toLocaleString("fa-IR")+" · نزولی "+bearish.length.toLocaleString("fa-IR");
+ if(updated)updated.textContent="موتور هوشمند مرکزی · "+active.length.toLocaleString("fa-IR")+" سیگنال معتبر · صعودی "+bullish.length.toLocaleString("fa-IR")+" · نزولی "+bearish.length.toLocaleString("fa-IR");
  const change=v=>v==null||!Number.isFinite(Number(v))?"—":(Number(v)>0?"+":"")+Number(v).toFixed(2)+"٪";
  const renderCard=x=>{
   const c=x.coin,m=x.metrics,q=x.signal,up=m.trend==="bull";
   const price=Number(q.price??c.current_price);
-  return '<article class="radar-item radar-clickable '+(up?"radar-item-bullish":"radar-item-bearish")+'" data-radar-symbol="'+aiEscape(String(c.symbol).toUpperCase())+'" role="button" tabindex="0" aria-label="جزئیات '+aiEscape(c.name||c.symbol)+'"><div class="radar-asset"><img src="'+aiEscape(c.image||"")+'" alt="" loading="lazy"><span><b>'+aiEscape(c.name||c.symbol)+'</b><small>'+aiEscape(String(c.symbol).toUpperCase())+' / USDT</small></span></div><div class="radar-score"><b>'+m.score.toLocaleString("fa-IR")+'</b><small>از ۱۰۰</small></div><div class="radar-stats"><span>۱ دقیقه <b class="'+(Number(q.change1m)>=0?"positive":"negative")+'">'+change(q.change1m)+'</b></span><span>۳ دقیقه <b class="'+(Number(q.change3m)>=0?"positive":"negative")+'">'+change(q.change3m)+'</b></span><span>۵ دقیقه <b class="'+(Number(q.change5m)>=0?"positive":"negative")+'">'+change(q.change5m)+'</b></span><span>حجم نسبی <b>'+Number(q.volumeRatio||0).toFixed(1)+'×</b></span></div><div class="radar-action"><span class="radar-trend '+(up?"positive":"negative")+'">'+(up?"تمایل صعودی":"تمایل نزولی")+' · '+aiEscape(q.provider||"کندل زنده")+'</span><span class="radar-trend">'+(Number(q.weakScans)===1?"بازسنجی · یک افت":q.overextended?"شتاب بالا":q.breakout?"شکست محدوده":"در حال شکل‌گیری")+'</span></div></article>';
+  return '<article class="radar-item radar-clickable '+(up?"radar-item-bullish":"radar-item-bearish")+'" data-radar-symbol="'+aiEscape(String(c.symbol).toUpperCase())+'" role="button" tabindex="0" aria-label="جزئیات '+aiEscape(c.name||c.symbol)+'"><div class="radar-asset"><img src="'+aiEscape(c.image||"")+'" alt="" loading="lazy"><span><b>'+aiEscape(c.name||c.symbol)+'</b><small>'+aiEscape(String(c.symbol).toUpperCase())+' / USDT</small></span></div><div class="radar-score"><b>'+m.score.toLocaleString("fa-IR")+'</b><small>از ۱۰۰</small></div><div class="radar-stats"><span>۱ دقیقه <b class="'+(Number(q.change1m)>=0?"positive":"negative")+'">'+change(q.change1m)+'</b></span><span>۳ دقیقه <b class="'+(Number(q.change3m)>=0?"positive":"negative")+'">'+change(q.change3m)+'</b></span><span>۵ دقیقه <b class="'+(Number(q.change5m)>=0?"positive":"negative")+'">'+change(q.change5m)+'</b></span><span>حجم نسبی <b>'+Number(q.volumeRatio||0).toFixed(1)+'×</b></span></div><div class="radar-action"><span class="radar-trend '+(up?"positive":"negative")+'">'+(up?"تمایل صعودی":"تمایل نزولی")+' · '+aiEscape(q.provider||"موتور مرکزی")+'</span><span class="radar-trend">'+(Number(q.weakScans)===1?"بازسنجی · یک افت":q.overextended?"شتاب بالا":q.breakout?"شکست محدوده":"در حال شکل‌گیری")+'</span></div></article>';
  };
  const renderGroup=(items,type)=>{
   const up=type==="bull",title=up?"فرصت‌های صعودی":"فرصت‌های نزولی",icon=up?"↗":"↘";
   return '<section class="radar-side '+type+'"><div class="radar-group-head"><div class="radar-group-title"><span class="radar-group-icon">'+icon+'</span><span><b>'+title+'</b><small class="radar-side-hint">قوی‌ترین امتیاز در بالا · برای دیدن بقیه اسکرول کنید</small></span></div><span class="radar-group-count">'+items.length.toLocaleString("fa-IR")+' نامزد</span></div><div class="radar-scroll-frame">'+(items.length?'<div class="radar-list">'+items.map(renderCard).join("")+'</div>':'<div class="radar-empty">هنوز سیگنال معتبر در این جهت تأیید نشده است.</div>')+'</div></section>';
  };
- if(!active.length){el.innerHTML='<div class="ai-empty">موتور یکپارچه فعال است؛ در انتظار تکمیل ارزیابی معتبر نمادها. سیگنال‌های قبلی تا زمان افت تأییدشده قدرت حفظ می‌شوند.</div>';return;}
+ if(!active.length){el.innerHTML='<div class="ai-empty">موتور هوشمند مرکزی فعال است؛ در انتظار ارزیابی معتبر نمادها. سیگنال‌های قبلی تا زمان افت تأییدشده قدرت حفظ می‌شوند.</div>';return;}
  el.innerHTML='<div class="radar-groups">'+renderGroup(bullish,"bull")+renderGroup(bearish,"bear")+'</div>';
  if(!el.dataset.radarClickBound){
   el.dataset.radarClickBound="1";
