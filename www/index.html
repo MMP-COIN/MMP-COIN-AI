@@ -1970,7 +1970,14 @@ async function loadServerFastRadarSnapshot(){
     const id=String(signal.id),oldSignal=fastRadarSignals.get(id);
     const incomingAt=Number(signal.updatedAt||signal.updated_at||snapshotAt)||snapshotAt;
     const existingAt=Number(oldSignal?.updatedAt||oldSignal?.updated_at||0);
-    if(!oldSignal||incomingAt>=existingAt)fastRadarSignals.set(id,signal);
+    if(!oldSignal||incomingAt>=existingAt){
+     if(oldSignal&&isFastRadarSignalFresh(oldSignal)&&Number(signal.score)<FAST_RADAR_RETENTION_SCORE){
+      const weakScans=(Number(oldSignal.weakScans)||0)+1;
+      if(weakScans<2)fastRadarSignals.set(id,{...oldSignal,weakScans,lastCheckedAt:incomingAt});
+      else fastRadarSignals.delete(id);
+     }else if(Number(signal.score)>=FAST_RADAR_RETENTION_SCORE)fastRadarSignals.set(id,{...signal,weakScans:0});
+     else if(!oldSignal)fastRadarSignals.set(id,signal);
+    }
     if(signal.coin&&typeof signal.coin==="object")hunterCoinIndex.set(id,signal.coin);
    });
    persistFastRadarState();
