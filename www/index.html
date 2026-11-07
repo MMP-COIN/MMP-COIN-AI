@@ -1925,7 +1925,9 @@ async function loadServerFastRadarSnapshot(){
   fastRadarServerReady=true;
   if(snapshotAt>fastRadarServerSnapshotAt){
    fastRadarServerSnapshotAt=snapshotAt;
+   const recentManualSignals=[...fastRadarSignals.entries()].filter(([,signal])=>signal?.manualScan&&Date.now()-Number(signal.updatedAt||0)<3*60*1000);
    fastRadarSignals.clear();
+   recentManualSignals.forEach(([id,signal])=>fastRadarSignals.set(id,signal));
    (Array.isArray(snapshot.signals)?snapshot.signals:[]).forEach(signal=>{
     if(!signal||!signal.id||!Number.isFinite(Number(signal.score)))return;
     const id=String(signal.id);
@@ -2196,7 +2198,7 @@ async function runFastRadarScan(options={}){
  if(!batch.length){fastRadarPendingIds=[];fastRadarDoneIds=[];fastRadarProgress={...fastRadarProgress,percent:100,state:"نوبت قبلی کامل شده؛ آماده نوبت بعدی"};renderFastRadarProgress();persistFastRadarState();fastRadarBusy=false;return;}
  const total=fastRadarPendingIds.length,previous=new Map(fastRadarSignals);
  fastRadarProgress={...fastRadarProgress,completed,total,failed,candidates:fastRadarSignals.size,percent:Math.round(completed/Math.max(1,total)*100),state:"ادامه اسکن کندل‌های ۱، ۳ و ۵ دقیقه‌ای از نماد باقی‌مانده"};renderFastRadarProgress();persistFastRadarState();
- const workers=Array.from({length:3},async()=>{while(cursor<batch.length){const coin=batch[cursor++];try{const previousSignal=fastRadarSignals.get(coin.id)||null;const signal=await scanFastCoin(coin,previousSignal);if(signal){if(Number(signal.score)>=FAST_RADAR_RETENTION_SCORE){scanned.set(coin.id,signal);fastRadarSignals.set(coin.id,signal);}else{fastRadarSignals.delete(coin.id);}}}catch(error){failed++;failedIds.add(coin.id);if(failed<=3)console.debug("Fast radar skipped "+coin.symbol,error?.message||error);}completed++;fastRadarDoneIds.push(coin.id);fastRadarProgress={completed,total,failed,candidates:fastRadarSignals.size,percent:Math.round(completed/Math.max(1,total)*100),state:"در حال اسکن · نقطه ادامه به‌صورت خودکار ذخیره می‌شود"};renderFastRadarProgress();persistFastRadarState();const message="رصد زنده · "+completed.toLocaleString("fa-IR")+" از "+total.toLocaleString("fa-IR")+" بازار این نوبت · نامزدهای فعال: "+fastRadarSignals.size.toLocaleString("fa-IR");if(hunterStatus)hunterStatus.textContent=message;if(status)status.textContent=message+(failed?" · خطاهای منبع: "+failed:"");}});
+ const workers=Array.from({length:3},async()=>{while(cursor<batch.length){const coin=batch[cursor++];try{const previousSignal=fastRadarSignals.get(coin.id)||null;const signal=await scanFastCoin(coin,previousSignal);if(signal){if(Number(signal.score)>=FAST_RADAR_RETENTION_SCORE){const manualSignal={...signal,manualScan:true};scanned.set(coin.id,manualSignal);fastRadarSignals.set(coin.id,manualSignal);}else{fastRadarSignals.delete(coin.id);}}}catch(error){failed++;failedIds.add(coin.id);if(failed<=3)console.debug("Fast radar skipped "+coin.symbol,error?.message||error);}completed++;fastRadarDoneIds.push(coin.id);fastRadarProgress={completed,total,failed,candidates:fastRadarSignals.size,percent:Math.round(completed/Math.max(1,total)*100),state:"در حال اسکن · نقطه ادامه به‌صورت خودکار ذخیره می‌شود"};renderFastRadarProgress();persistFastRadarState();const message="رصد زنده · "+completed.toLocaleString("fa-IR")+" از "+total.toLocaleString("fa-IR")+" بازار این نوبت · نامزدهای فعال: "+fastRadarSignals.size.toLocaleString("fa-IR");if(hunterStatus)hunterStatus.textContent=message;if(status)status.textContent=message+(failed?" · خطاهای منبع: "+failed:"");}});
  try{
   await Promise.all(workers);
   // سیگنال‌ها فقط هنگام دریافت اسکن معتبر با امتیاز زیر حدنصاب حذف می‌شوند؛ خطا یا تأخیر داده باعث حذف نیست.
