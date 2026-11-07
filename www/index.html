@@ -2093,7 +2093,6 @@ async function startHunterLiveRadar(){
   await fetchHunterUniverse();
   hunterLiveRadarBooted=true;
   renderHunterEarlyAlerts();
-  renderOpportunities();
  }catch(error){
   console.debug("Live radar universe unavailable:",error?.message||error);
  }finally{hunterLiveRadarLoading=false;}
