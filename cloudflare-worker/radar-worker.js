@@ -1,4 +1,5 @@
 const MAIN_UNIVERSE = "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/hunter-universe";
+const MAIN_FLOW = "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-flow";
 const RETENTION_SCORE = 64;
 const BATCH_SIZE = 36;
 const CONCURRENCY = 9;
@@ -93,11 +94,20 @@ async function runRadar(env,scheduledTime=Date.now()){
   const [state,oldSnapshot]=await Promise.all([env.RADAR_KV.get("radar:state",{type:"json"}),env.RADAR_KV.get("radar:snapshot",{type:"json"})]);
   const signals=new Map((Array.isArray(oldSnapshot?.signals)?oldSnapshot.signals:[]).filter(x=>Number(x?.score)>=RETENTION_SCORE).map(x=>[String(x.id),x]));
   const start=Math.max(0,Number(state?.cursor)||0)%universe.length,batch=Array.from({length:Math.min(BATCH_SIZE,universe.length)},(_,i)=>universe[(start+i)%universe.length]);
-  let completed=0,failed=0,valid=0,removed=0,failedSamples=[];
+  let completed=0,failed=0,valid=0,removed=0,failedSamples=[],scannedSignals=[];
   await mapLimit(batch,CONCURRENCY,async coin=>{
-    try{const signal=await scanCoin(coin);if(signal){valid++;if(signal.score>=RETENTION_SCORE)signals.set(signal.id,signal);else if(signals.delete(signal.id))removed++;}}
+    try{const signal=await scanCoin(coin);if(signal){valid++;scannedSignals.push(signal);if(signal.score>=RETENTION_SCORE)signals.set(signal.id,signal);else if(signals.delete(signal.id))removed++;}}
     catch(error){failed++;if(failedSamples.length<8)failedSamples.push({symbol:String(coin.symbol||""),error:String(error?.message||error).slice(0,220)});}finally{completed++;}
   });
+  // Shared real-trade flow enriches a small set of strongest fresh candidates; it never changes radar scores or retention decisions.
+  await Promise.all(scannedSignals.filter(x=>Number(x.score)>=RETENTION_SCORE).sort((a,b)=>b.score-a.score).slice(0,8).map(async signal=>{
+    try{
+      const flow=await getJson(MAIN_FLOW+"?symbol="+encodeURIComponent(signal.symbol)+"&window=5",8500);
+      signal.flow={buy5m:Number(flow.buy5m)||0,sell5m:Number(flow.sell5m)||0,net5m:Number(flow.net5m)||0,tradeCount:Number(flow.trade_count)||0,provider:flow.provider||"",complete:flow.complete!==false,rows:Array.isArray(flow.rows)?flow.rows:[]};
+      signal.flowSignal=signal.flow.net5m>0?"inflow":signal.flow.net5m<0?"outflow":"";
+    }catch(error){signal.flowError=String(error?.message||error).slice(0,120);}
+    const current=signals.get(signal.id);if(current&&Number(current.updatedAt)<=Number(signal.updatedAt))signals.set(signal.id,signal);
+  }));
   const nextCursor=(start+batch.length)%universe.length,snapshot={status:"online",source:"Cloudflare scheduled radar",retention_score:RETENTION_SCORE,scanned_at:new Date().toISOString(),scheduled_at:new Date(Number(scheduledTime)||Date.now()).toISOString(),universe_count:universe.length,scanned_count:completed,valid_count:valid,failed_count:failed,failed_samples:failedSamples,removed_count:removed,batch_size:BATCH_SIZE,next_cursor:nextCursor,signals:[...signals.values()].filter(x=>Number(x?.score)>=RETENTION_SCORE).sort((a,b)=>b.score-a.score).slice(0,300)};
   await Promise.all([env.RADAR_KV.put("radar:snapshot",JSON.stringify(snapshot)),env.RADAR_KV.put("radar:state",JSON.stringify({cursor:nextCursor,updated_at:snapshot.scanned_at,universe_count:universe.length}))]);
   return snapshot;
