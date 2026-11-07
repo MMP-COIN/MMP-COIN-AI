@@ -3,7 +3,7 @@
   "appName": "MMP COIN AI",
   "webDir": "www",
   "server": {
-    "url": "https://mmp-coin.github.io/MMP-COIN-AI/?mmp_native_version=1.0.0",
+    "url": "https://mmp-coin.github.io/?mmp_native_version=1.0.0",
     "cleartext": false,
     "allowNavigation": [
       "mmp-coin.github.io"
