@@ -2145,6 +2145,7 @@ async function runFastRadarScan(){
  });
  let offset=0;while(batch.length<batchSize&&offset<universe.length){const coin=universe[(fastRadarCursor+offset)%universe.length];offset++;if(!selectedIds.has(coin.id)){batch.push(coin);selectedIds.add(coin.id);}}
  fastRadarCursor=(fastRadarCursor+offset)%universe.length;
+ persistFastRadarState();
  const workers=Array.from({length:18},async()=>{
   while(cursor<batch.length){
    const coin=batch[cursor++];
