@@ -1943,7 +1943,7 @@ let hunterMetadataCache={expires:0,coins:[]};
 let fastRadarBusy=false,fastRadarLastRun=0,fastRadarLastMessage="در انتظار اولین پایش سریع",fastRadarCursor=0;
 const FAST_RADAR_STATE_KEY="mmp_fast_radar_state_v3";
 const FAST_RADAR_RETENTION_SCORE=64;
-function isFastRadarSignalFresh(signal){return !!signal&&Number(signal.score)>=FAST_RADAR_RETENTION_SCORE;}
+function isFastRadarSignalFresh(signal){return !!signal&&(Number(signal.score)>=FAST_RADAR_RETENTION_SCORE||Number(signal.weakScans)===1);}
 let fastRadarPendingIds=[],fastRadarDoneIds=[];
 let fastRadarProgress={completed:0,total:0,failed:0,candidates:0,percent:0,state:"در انتظار اولین پایش سریع"};
 function persistFastRadarState(){try{localStorage.setItem(FAST_RADAR_STATE_KEY,JSON.stringify({savedAt:Date.now(),cursor:fastRadarCursor,lastRun:fastRadarLastRun,lastMessage:fastRadarLastMessage,progress:fastRadarProgress,pendingIds:fastRadarPendingIds,doneIds:fastRadarDoneIds,signals:[...fastRadarSignals.entries()].filter(([,v])=>isFastRadarSignalFresh(v))}));}catch(error){console.debug("Radar state persistence unavailable",error);}}
@@ -1965,21 +1965,20 @@ async function loadServerFastRadarSnapshot(){
    fastRadarServerSnapshotAt=snapshotAt;
    // Snapshot فقط سیگنال‌های فعلی سرور را گزارش می‌کند؛ نبودن یک ارز در پاسخ
    // به معنی افت قدرت یا حذف معتبر نیست. سیگنال‌های قبلی را حفظ و فقط موارد گزارش‌شده را تازه‌سازی کن.
+   const serverSignalIds=new Set();
    (Array.isArray(snapshot.signals)?snapshot.signals:[]).forEach(signal=>{
     if(!signal||!signal.id||!Number.isFinite(Number(signal.score)))return;
-    const id=String(signal.id),oldSignal=fastRadarSignals.get(id);
+    const id=String(signal.id);serverSignalIds.add(id);
+    const oldSignal=fastRadarSignals.get(id);
     const incomingAt=Number(signal.updatedAt||signal.updated_at||snapshotAt)||snapshotAt;
     const existingAt=Number(oldSignal?.updatedAt||oldSignal?.updated_at||0);
-    if(!oldSignal||incomingAt>=existingAt){
-     if(oldSignal&&isFastRadarSignalFresh(oldSignal)&&Number(signal.score)<FAST_RADAR_RETENTION_SCORE){
-      const weakScans=(Number(oldSignal.weakScans)||0)+1;
-      if(weakScans<2)fastRadarSignals.set(id,{...oldSignal,weakScans,lastCheckedAt:incomingAt});
-      else fastRadarSignals.delete(id);
-     }else if(Number(signal.score)>=FAST_RADAR_RETENTION_SCORE)fastRadarSignals.set(id,{...signal,weakScans:0});
-     else if(!oldSignal)fastRadarSignals.set(id,signal);
+    if(!oldSignal||incomingAt>existingAt||!oldSignal.serverScanned){
+     fastRadarSignals.set(id,{...signal,serverScanned:true,weakScans:Number(signal.weakScans)||0});
     }
     if(signal.coin&&typeof signal.coin==="object")hunterCoinIndex.set(id,signal.coin);
    });
+   // Snapshot کامل سرور مرجع نامزدهای سروری است؛ حذف فقط پس از دو اسکن معتبر ضعیف در خود Worker رخ می‌دهد.
+   for(const [id,signal] of fastRadarSignals)if(signal.serverScanned&&!serverSignalIds.has(id))fastRadarSignals.delete(id);
    persistFastRadarState();
    renderMarketHunter();
   }
@@ -2397,9 +2396,9 @@ function closeHunterChart(){
 function renderMarketHunter(){
  const feed=$("hunter-feed");if(!feed)return;
  const detailModal=document.getElementById("hunter-chart-modal");if(detailModal?.classList.contains("show"))return;
- const candidates=[...fastRadarSignals.entries()].map(([id,signal])=>({coin:hunterCoinIndex.get(id)||cachedCoinsData.find(c=>c.id===id),signal,id})).filter(x=>x.coin&&isFastRadarSignalFresh(x.signal)&&x.signal.score>=64);
+ const candidates=[...fastRadarSignals.entries()].map(([id,signal])=>({coin:hunterCoinIndex.get(id)||cachedCoinsData.find(c=>c.id===id),signal,id})).filter(x=>x.coin&&isFastRadarSignalFresh(x.signal));
  const rank=(a,b)=>b.signal.score-a.signal.score;
- const entries=[...candidates.filter(x=>x.signal.trend==="bull").sort(rank).slice(0,6),...candidates.filter(x=>x.signal.trend==="bear").sort(rank).slice(0,6)];
+ const entries=[...candidates.filter(x=>x.signal.trend==="bull").sort(rank),...candidates.filter(x=>x.signal.trend==="bear").sort(rank)];
  const density=entries.length<=2?"wide":entries.length<=6?"medium":"compact";
  const bulls=entries.filter(x=>x.signal.trend==="bull").length,bears=entries.filter(x=>x.signal.trend==="bear").length;
  if($("hunter-bull-count"))$("hunter-bull-count").textContent=bulls.toLocaleString("fa-IR");
