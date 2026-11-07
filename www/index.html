@@ -815,47 +815,11 @@ body.hunter-chart-open{overflow:hidden}
 .mmp-boom-lab{scroll-margin-top:100px;border-color:#806a3d;background:radial-gradient(ellipse at 90% 0,#b58b3920,transparent 38%),linear-gradient(145deg,#151c28,#0b111a)}
 
 
-/* اجباری‌بودن به‌روزرسانی نسخه اپ */
-#mmp-force-update{position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;padding:24px;padding-top:max(24px,env(safe-area-inset-top));padding-bottom:max(24px,env(safe-area-inset-bottom));background:rgba(3,7,12,.97);backdrop-filter:blur(18px)}
-#mmp-force-update .mmp-update-card{width:min(100%,430px);padding:28px 22px;border:1px solid #9b7b42;border-radius:24px;background:radial-gradient(ellipse at 50% 0,#b78b3a26,transparent 55%),linear-gradient(145deg,#172333,#0b111a);box-shadow:0 25px 90px #000b;text-align:center;color:#f4f1e9}
-#mmp-force-update .mmp-update-mark{width:66px;height:66px;margin:0 auto 16px;border:1px solid #d9b66d;border-radius:20px;display:grid;place-items:center;background:linear-gradient(145deg,#f0d38d,#a77c35);color:#15120b;font-size:30px;font-weight:900}
-#mmp-force-update h2{margin:0 0 10px;color:#f2d58e;font-size:22px}
-#mmp-force-update p{margin:0 0 20px;color:#c1c8d3;font-size:14px;line-height:2}
-#mmp-force-update .mmp-update-version{display:block;margin:0 0 20px;color:#e4c477;font-size:12px}
-#mmp-force-update .mmp-update-link{display:flex;min-height:54px;align-items:center;justify-content:center;border-radius:14px;background:linear-gradient(145deg,#f0d38d,#a77c35);color:#17130a;text-decoration:none;font-weight:900}
-#mmp-force-update .mmp-update-note{display:block;margin-top:13px;color:#8793a5;font-size:11px;line-height:1.8}
-body.mmp-update-required{overflow:hidden!important}
 </style>
 </head>
 <body class="mmp-app-mode">
 
-<script>
-(function(){
- const REQUIRED="1.0.307";
- const params=new URLSearchParams(location.search);
- const native=params.has("mmp_native_version")||!!(window.Capacitor&&typeof window.Capacitor.isNativePlatform==="function"&&window.Capacitor.isNativePlatform());
- if(!native)return;
- const installed=params.get("mmp_native_version")||"0";
- const parts=v=>String(v).split(".").map(x=>{const n=parseInt(x,10);return Number.isFinite(n)?n:0;});
- const compare=(a,b)=>{const x=parts(a),y=parts(b);for(let i=0;i<Math.max(x.length,y.length);i++){const d=(x[i]||0)-(y[i]||0);if(d)return d;}return 0;};
- if(compare(installed,REQUIRED)>=0)return;
- document.documentElement.classList.add("mmp-update-required");
- document.body.classList.add("mmp-update-required");
- const url="https://github.com/MMP-COIN/MMP-COIN-AI/releases/latest/download/app-release.apk";
- const layer=document.createElement("div");
- layer.id="mmp-force-update";
- layer.setAttribute("role","alertdialog");
- layer.setAttribute("aria-modal","true");
- layer.setAttribute("aria-labelledby","mmp-update-title");
- layer.innerHTML='<div class="mmp-update-card"><div class="mmp-update-mark">M</div><h2 id="mmp-update-title">به‌روزرسانی اجباری اپلیکیشن</h2><p>نسخه فعلی اپلیکیشن قدیمی است. برای دسترسی کامل و هماهنگ به تمام بخش‌ها و چیدمان جدید سایت، ابتدا نسخه جدید را نصب کن.</p><span class="mmp-update-version">نسخه نصب‌شده: '+installed+'　|　نسخه لازم: '+REQUIRED+'</span><a class="mmp-update-link" id="mmp-update-download" href="'+url+'" target="_blank" rel="noopener">دانلود و نصب نسخه جدید</a><small class="mmp-update-note">پس از نصب، اپ را دوباره باز کن. اطلاعات و تنظیمات سایت حذف نمی‌شوند.</small></div>';
- document.body.appendChild(layer);
- const link=document.getElementById("mmp-update-download");
- if(link)link.addEventListener("click",function(event){
-  const browser=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.Browser;
-  if(browser&&typeof browser.open==="function"){event.preventDefault();browser.open({url:url});}
- });
-})();
-</script>
+
 
 
 <header class="top">
