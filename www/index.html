@@ -969,7 +969,7 @@ body.hunter-chart-open{overflow:hidden}
 })();
 </script>
 <style id="mmp-native-hunter-popup">
-/* Native app only: compact centered Hunter popup. Website visitors are unaffected. */
+/* Native app only: small information popup; keep website layout unchanged. */
 html.mmp-native-app #hunter-chart-modal.hunter-chart-modal.show{
   display:grid!important;
   place-items:center!important;
@@ -978,32 +978,34 @@ html.mmp-native-app #hunter-chart-modal.hunter-chart-modal.show{
 }
 html.mmp-native-app #hunter-chart-modal .hunter-chart-dialog{
   box-sizing:border-box!important;
-  width:min(70vw,350px)!important;
-  max-width:350px!important;
+  width:min(64vw,290px)!important;
+  max-width:290px!important;
   height:auto!important;
-  max-height:50dvh!important;
+  max-height:42dvh!important;
   min-height:0!important;
   margin:auto!important;
-  padding:8px!important;
-  gap:4px!important;
-  border-radius:13px!important;
+  padding:7px!important;
+  gap:3px!important;
+  border-radius:12px!important;
   overflow-y:auto!important;
 }
-html.mmp-native-app #hunter-chart-modal .hunter-chart-header{gap:6px!important;padding-bottom:2px!important}
-html.mmp-native-app #hunter-chart-modal .hunter-chart-header h3{font-size:12px!important;line-height:1.35!important}
+html.mmp-native-app #hunter-chart-modal .hunter-chart-header{gap:5px!important;padding-bottom:2px!important}
+html.mmp-native-app #hunter-chart-modal .hunter-chart-header h3{font-size:11px!important;line-height:1.3!important;margin:1px 0!important}
 html.mmp-native-app #hunter-chart-modal .hunter-chart-header small{font-size:8px!important}
-html.mmp-native-app #hunter-chart-modal .hunter-chart-close{width:25px!important;height:25px!important;flex:0 0 25px!important}
-html.mmp-native-app #hunter-chart-modal .hunter-chart-trend{margin:2px 0!important;padding:5px 6px!important;font-size:9px!important}
-html.mmp-native-app #hunter-chart-modal .hunter-chart-trend strong{font-size:11px!important}
-html.mmp-native-app #hunter-chart-modal .hunter-chart-canvas{min-height:0!important;padding:2px 0!important}
-html.mmp-native-app #hunter-chart-modal .hunter-expanded-svg{min-height:0!important;max-height:105px!important}
-html.mmp-native-app #hunter-chart-modal .hunter-flow-title{margin:3px 0!important;font-size:9px!important}
-html.mmp-native-app #hunter-chart-modal .hunter-flow-svg{max-height:42px!important}
-html.mmp-native-app #hunter-chart-modal .hunter-chart-stats{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:3px!important}
-html.mmp-native-app #hunter-chart-modal .hunter-chart-stats>div{padding:4px!important}
+html.mmp-native-app #hunter-chart-modal .hunter-chart-close{width:23px!important;height:23px!important;flex:0 0 23px!important;font-size:16px!important}
+html.mmp-native-app #hunter-chart-modal .hunter-chart-trend{margin:2px 0!important;padding:4px 5px!important;gap:4px!important;font-size:9px!important}
+html.mmp-native-app #hunter-chart-modal .hunter-chart-trend span{font-size:8px!important}
+html.mmp-native-app #hunter-chart-modal .hunter-chart-trend strong{font-size:10px!important}
+/* The popup is for quick facts: keep numeric flow details, omit the large plots. */
+html.mmp-native-app #hunter-chart-modal .hunter-chart-canvas{display:none!important}
+html.mmp-native-app #hunter-chart-modal .hunter-flow-title{margin:3px 0 1px!important;font-size:8px!important;gap:4px!important}
+html.mmp-native-app #hunter-chart-modal .hunter-flow-title small{font-size:7px!important}
+html.mmp-native-app #hunter-chart-modal .hunter-chart-stats{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:3px!important;margin-top:2px!important}
+html.mmp-native-app #hunter-chart-modal .hunter-chart-stats>div{padding:4px!important;border-radius:6px!important}
 html.mmp-native-app #hunter-chart-modal .hunter-chart-stats small{font-size:8px!important}
-html.mmp-native-app #hunter-chart-modal .hunter-chart-stats b{font-size:9px!important}
-html.mmp-native-app #hunter-chart-modal .hunter-chart-price-line{padding:4px!important;font-size:7px!important}
+html.mmp-native-app #hunter-chart-modal .hunter-chart-stats b{font-size:9px!important;margin-top:1px!important}
+html.mmp-native-app #hunter-chart-modal .hunter-chart-price-line{gap:3px!important;padding:4px!important;font-size:7px!important}
+html.mmp-native-app #hunter-chart-modal .hunter-chart-price-line b{font-size:8px!important}
 html.mmp-native-app #hunter-chart-modal .hunter-chart-foot{display:none!important}
 </style>
 
