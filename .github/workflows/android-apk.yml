@@ -10,6 +10,7 @@ on:
       - "package-lock.json"
       - "capacitor.config.json"
       - "assets/mmp-coin-ai-icon.svg"
+      - ".github/workflows/android-apk.yml"
   workflow_dispatch:
 
 permissions:
@@ -64,9 +65,11 @@ jobs:
       - name: Generate Android project
         run: npx cap add android
 
-      - name: Copy dashboard, browser icon and manifest
+      - name: Verify and package the canonical dashboard, browser icon and manifest
         run: |
-          cp index.html www/index.html
+          test -s www/index.html
+          grep -q 'id="mmp-sidebar"' www/index.html
+          grep -q 'id="boom-hunter"' www/index.html
           mkdir -p www/assets
           cp -R assets/. www/assets/
           cp manifest.webmanifest www/manifest.webmanifest
