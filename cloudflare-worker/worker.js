@@ -669,7 +669,7 @@ async function handle(request,env){
   const url=new URL(request.url),rawSymbol=String(url.searchParams.get("symbol")||"").toUpperCase();
   const interval=String(url.searchParams.get("interval")||"15m");
   if(!/^[A-Z0-9]{2,15}$/.test(rawSymbol)||!["15m","1h","4h","1d"].includes(interval))return json({error:"نماد یا بازه زمانی نامعتبر است."},400,request);
-  const symbol=rawSymbol.endsWith("USDT")?rawSymbol:rawSymbol+"USDT";
+  const symbol=splitQuotePair(rawSymbol)?rawSymbol:rawSymbol+"USDT";
   try{
    const result=await candles(symbol,interval,env,"spot");
    return json({symbol,interval,provider:result.data_provider,price:result.price,change_pct:result.change_pct,candles:result.candles.map(c=>({time:Math.floor(c.t/1000),open:c.o,high:c.h,low:c.l,close:c.c,volume:c.v}))},200,request);
