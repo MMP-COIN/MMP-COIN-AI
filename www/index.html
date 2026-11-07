@@ -2476,7 +2476,7 @@ function renderOpportunities(){
 
 renderOpportunities();renderFastRadarProgress();
 loadServerFastRadarSnapshot();
-setTimeout(()=>{renderMarketHunter();if(!fastRadarServerReady){fastRadarProgress={...fastRadarProgress,state:"رادار خودکار سرور در دسترس نیست · اسکن خودکار مرورگر غیرفعال است"};renderFastRadarProgress();const status=$("radar-updated");if(status)status.textContent="اتصال به رادار سرور برقرار نیست؛ برای اسکن محدود از دکمه اسکن دستی استفاده کنید.";const note=$("radar-scan-persistence");if(note)note.textContent="اسکن خودکار محلی برای جلوگیری از مصرف بی‌رویه API غیرفعال است."; }},5000);
+setTimeout(()=>{renderMarketHunter();if(!fastRadarServerReady){fastRadarProgress={...fastRadarProgress,state:"اتصال به رادار سرور برقرار نیست · تلاش مجدد خودکار فعال است"};renderFastRadarProgress();const status=$("radar-updated");if(status)status.textContent="اتصال به سرویس رادار برقرار نشد؛ هر ۳۰ ثانیه دوباره تلاش می‌کنیم.";const note=$("radar-scan-persistence");if(note)note.textContent="اسکن خودکار روی سرور انجام می‌شود؛ این صفحه فقط نتایج را دریافت می‌کند."; }},5000);
 setInterval(loadServerFastRadarSnapshot,30000);
 </script>
 </body>
