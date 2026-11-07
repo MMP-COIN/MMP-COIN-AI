@@ -462,12 +462,116 @@ function persianize(value){
  return value;
 }
 
+
+async function marketFlowJson(url,timeoutMs=7500){
+ const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeoutMs);
+ try{const response=await fetch(url,{headers:{"Accept":"application/json","User-Agent":"MMP-COIN-AI-FLOW/1.0"},signal:controller.signal});if(!response.ok)throw new Error("HTTP "+response.status);return await response.json();}
+ finally{clearTimeout(timer);}
+}
+async function loadMarketFlow(symbol,windowMinutes=5){
+ const pair=String(symbol||"").toUpperCase().replace(/USDT$/,"")+"USDT";
+ if(!/^[A-Z0-9]{2,24}USDT$/.test(pair))throw new Error("نماد نامعتبر است.");
+ const minutes=Math.max(1,Math.min(15,Number(windowMinutes)||5)),now=Date.now(),cutoff=now-minutes*60000;
+ let trades=null,provider="",truncated=false,lastError="";
+ for(const host of ["https://api.bybit.com","https://api.bybit.eu","https://api.bytick.com","https://api.bytick.eu"]){
+  try{
+   const d=await marketFlowJson(host+"/v5/market/recent-trade?category=spot&symbol="+pair+"&limit=1000");
+   if(Number(d.retCode)!==0)throw new Error(d.retMsg||"Bybit retCode "+d.retCode);
+   const raw=Array.isArray(d.result?.list)?d.result.list:[];
+   const oldest=raw.reduce((v,x)=>Math.min(v,Number(x.time)||Infinity),Infinity);
+   truncated=raw.length>=1000&&oldest>cutoff;
+   trades=raw.map(x=>({time:Number(x.time),price:Number(x.price),size:Number(x.size),side:String(x.side||"")})).filter(x=>x.time>=cutoff&&x.time<=now&&x.price>0&&x.size>0&&["Buy","Sell"].includes(x.side));
+   provider="Bybit Spot · معاملات واقعی";
+   break;
+  }catch(error){lastError=String(error?.message||error).slice(0,160);}
+ }
+ if(!trades){
+  for(const host of ["https://api.binance.com","https://data-api.binance.vision"]){
+   try{
+    const d=await marketFlowJson(host+"/api/v3/aggTrades?symbol="+pair+"&startTime="+cutoff+"&endTime="+now+"&limit=1000");
+    if(!Array.isArray(d))throw new Error("ساختار معاملات Binance نامعتبر است");
+    truncated=d.length>=1000;
+    trades=d.map(x=>({time:Number(x.T),price:Number(x.p),size:Number(x.q),side:x.m?"Sell":"Buy"})).filter(x=>x.time>=cutoff&&x.time<=now&&x.price>0&&x.size>0);
+    provider="Binance Spot · معاملات تجمیعی واقعی";
+    break;
+   }catch(error){lastError=String(error?.message||error).slice(0,160);}
+  }
+ }
+ if(!trades)throw new Error("داده معاملات Bybit و Binance دریافت نشد: "+lastError);
+ const buckets=new Map();let buy5m=0,sell5m=0;
+ for(const trade of trades){
+  const quote=trade.price*trade.size;if(!Number.isFinite(quote)||quote<=0)continue;
+  if(trade.side==="Buy")buy5m+=quote;else sell5m+=quote;
+  const minute=Math.floor(trade.time/60000)*60000;
+  const bucket=buckets.get(minute)||{time:minute,buy:0,sell:0,count:0};
+  bucket[trade.side==="Buy"?"buy":"sell"]+=quote;bucket.count++;buckets.set(minute,bucket);
+ }
+ const rows=[...buckets.values()].sort((a,b)=>a.time-b.time).map(x=>[x.time,x.buy,x.sell,x.buy-x.sell]);
+ const oldestTrade=trades.reduce((v,x)=>Math.min(v,x.time),Infinity);
+ return {symbol:pair,window_minutes:minutes,buy5m,sell5m,net5m:buy5m-sell5m,trade_count:trades.length,provider,exchange:provider.startsWith("Bybit")?"Bybit":"Binance",complete:!truncated,coverage_start:Number.isFinite(oldestTrade)?oldestTrade:null,window_start:cutoff,window_end:now,updated_at:now,rows};
+}
+async function fetchHunterCandles(symbol){
+ const pair=symbol+"USDT";
+ const get=async url=>marketFlowJson(url,6500);
+ const providers=[
+  async()=>{const d=await get("https://api.binance.com/api/v3/klines?symbol="+pair+"&interval=1m&limit=40");if(!Array.isArray(d))throw new Error("Binance response invalid");return {provider:"Binance Spot",rows:d.map(x=>[Number(x[0]),Number(x[1]),Number(x[2]),Number(x[3]),Number(x[4]),Number(x[7])])};},
+  async()=>{const d=await get("https://api.bybit.com/v5/market/kline?category=spot&symbol="+pair+"&interval=1&limit=40");if(Number(d.retCode)!==0)throw new Error(d.retMsg||"Bybit unavailable");return {provider:"Bybit Spot",rows:(d.result?.list||[]).map(x=>[Number(x[0]),Number(x[1]),Number(x[2]),Number(x[3]),Number(x[4]),Number(x[6])])};},
+  async()=>{const d=await get("https://www.okx.com/api/v5/market/candles?instId="+symbol+"-USDT&bar=1m&limit=40");if(String(d.code)!=="0")throw new Error(d.msg||"OKX unavailable");return {provider:"OKX Spot",rows:(d.data||[]).map(x=>[Number(x[0]),Number(x[1]),Number(x[2]),Number(x[3]),Number(x[4]),Number(x[7]||x[6])])};}
+ ];
+ let errors=[];
+ for(const provider of providers){
+  try{
+   const result=await provider(),rows=result.rows.filter(r=>r.every(Number.isFinite)&&r[1]>0&&r[2]>=r[3]&&r[3]>0&&r[4]>0&&r[5]>=0).sort((a,b)=>a[0]-b[0]);
+   if(rows.length>=25)return {...result,rows};
+   throw new Error("کندل کافی نیست");
+  }catch(error){errors.push(String(error?.message||error).slice(0,100));}
+ }
+ throw new Error(errors.join(" | ")||"منبع کندل در دسترس نیست");
+}
+async function scanIndependentHunterSymbol(symbol){
+ const market=await fetchHunterCandles(symbol),rows=market.rows,now=Date.now(),index=rows.length-2;
+ if(index<21)return null;
+ const last=rows[index],age=now-last[0];
+ if(age<0||age>180000)return null;
+ const baseline=rows.slice(index-20,index).map(x=>x[5]).filter(x=>x>0);
+ if(baseline.length<16)return null;
+ const avg=baseline.reduce((a,b)=>a+b,0)/baseline.length,volumeRatio=avg>0?last[5]/avg:0;
+ const change1m=(last[4]/last[1]-1)*100,anchor=rows[index-4][1];
+ if(!(anchor>0))return null;
+ const change5m=(last[4]/anchor-1)*100,prior=rows.slice(index-6,index),high=Math.max(...prior.map(x=>x[2])),low=Math.min(...prior.map(x=>x[3]));
+ const breakoutUp=last[4]>high,breakoutDown=last[4]<low;
+ const momentum=Math.min(22,Math.abs(change1m)*28)+Math.min(22,Math.abs(change5m)*10);
+ const volume=Math.min(24,Math.max(0,volumeRatio-0.7)*12),structure=breakoutUp||breakoutDown?14:0;
+ const score=Math.max(0,Math.min(99,Math.round(38+momentum+volume+structure)));
+ return {symbol,trend:change5m>=0?"bull":"bear",score,change1m,change5m,volumeRatio,breakout:breakoutUp||breakoutDown,price:last[4],provider:market.provider,rows:rows.slice(-30),updatedAt:now,candleTime:last[0],flow:null,flowSignal:"",engine:"independent-hunter"};
+}
+
 async function handle(request,env){
  if(request.method==="OPTIONS"){
   const origin=request.headers.get("Origin");
   if(origin&&!ALLOWED_ORIGINS.has(origin))return new Response(null,{status:403,headers:{"Vary":"Origin"}});
   return new Response(null,{status:204,headers:{...corsHeaders(request),"X-Content-Type-Options":"nosniff","Referrer-Policy":"no-referrer"}});
  }
+
+ if(request.method==="GET"&&new URL(request.url).pathname==="/market-flow"){
+  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"market-flow"),request);if(limited)return limited;
+  const url=new URL(request.url),symbol=String(url.searchParams.get("symbol")||"").toUpperCase();
+  if(!/^[A-Z0-9]{2,24}(USDT)?$/.test(symbol))return json({error:"نماد نامعتبر است."},400,request);
+  try{return json(await loadMarketFlow(symbol,url.searchParams.get("window")||5),200,request);}
+  catch(error){return json({error:String(error?.message||"دریافت جریان معاملات ناموفق بود").slice(0,260)},502,request);}
+ }
+ if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-scan"){
+  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-scan"),request);if(limited)return limited;
+  const url=new URL(request.url),symbols=[...new Set((url.searchParams.get("symbols")||"").split(",").map(x=>x.toUpperCase().replace(/[^A-Z0-9]/g,"")).filter(x=>/^[A-Z0-9]{2,24}$/.test(x)))].slice(0,36);
+  if(!symbols.length)return json({error:"حداقل یک نماد معتبر ارسال کنید."},400,request);
+  let cursor=0,failed=0;const signals=[],errors=[];
+  const workers=Array.from({length:Math.min(8,symbols.length)},async()=>{while(cursor<symbols.length){const symbol=symbols[cursor++];try{const signal=await scanIndependentHunterSymbol(symbol);if(signal)signals.push(signal);}catch(error){failed++;if(errors.length<8)errors.push({symbol,error:String(error?.message||error).slice(0,140)});}}});
+  await Promise.all(workers);
+  signals.sort((a,b)=>b.score-a.score);
+  await Promise.all(signals.slice(0,8).map(async signal=>{try{const flow=await loadMarketFlow(signal.symbol,5);signal.flow={buy5m:flow.buy5m,sell5m:flow.sell5m,net5m:flow.net5m,tradeCount:flow.trade_count,provider:flow.provider,complete:flow.complete,rows:flow.rows};signal.flowSignal=flow.net5m>0?"inflow":flow.net5m<0?"outflow":"";}catch(error){signal.flowError=String(error?.message||error).slice(0,100);}}));
+  return json({engine:"independent-hunter",checked_at:new Date().toISOString(),requested:symbols.length,scanned:signals.length,failed,errors,signals},200,request);
+ }
+
  if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-universe"){
   const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-universe");
   const limited=rateLimitReply(limitResult,request);if(limited)return limited;
