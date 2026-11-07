@@ -138,7 +138,7 @@ async function candles(symbol,interval,env,marketType="spot"){
  const headers={"Accept":"application/json, text/plain, */*","User-Agent":"MMP-COIN-AI/1.0","Accept-Language":"en-US,en;q=0.9"};
  const minimumCandles=interval==="1d"?20:30;
  if(marketType==="spot"&&String(symbol).toUpperCase().endsWith("IRT")){
-  const base=String(symbol).toUpperCase().slice(0,-3),resolution={"15m":"15","1h":"60","4h":"240","1d":"D"}[interval],seconds={"15m":900,"1h":3600,"4h":14400,"1d":86400}[interval];
+  const base=String(symbol).toUpperCase().slice(0,-3),resolution={"1m":"1","15m":"15","1h":"60","4h":"240","1d":"D"}[interval],seconds={"1m":60,"15m":900,"1h":3600,"4h":14400,"1d":86400}[interval];
   if(!base||!resolution||!seconds)throw new Error("Unsupported Nobitex candle interval or pair");
   const to=Math.floor(Date.now()/1000),from=to-seconds*260;let lastError=null;
   for(const host of ["https://apiv2.nobitex.ir","https://api.nobitex.ir"]){
@@ -567,8 +567,9 @@ async function handle(request,env){
    return {id:"market-discovery:"+symbol,symbol,name:symbol,image:"",current_price:Number(best.price)||0,total_volume:quotes.reduce((sum,x)=>sum+(Number(x.volume)||0),0),market_cap:null,market_cap_rank:null,hunterExchange:[...market.venues].join(", "),hunterPriceExchange:best.exchange||"Exchange discovery",hunterChange24h:Number(best.change24h)||0,hunterVenueVolume:Object.fromEntries(quotes.map(x=>[x.exchange,Number(x.volume)||0])),marketPairs:quotes.map(q=>({exchange:q.exchange,pair:q.pair,quote:q.quoteAsset,price:Number(q.price)||0,volume:Number(q.volume)||0})),hasUsdtMarket:true,hasDomesticMarket:false,isDiscovery:true};
   }).filter(asset=>asset.current_price>0&&discoveryMarkets.get(asset.symbol).venues.size>=2&&asset.total_volume>=50000);
   const hunterAssets=[...rankedAssets.filter(asset=>asset.hasUsdtMarket===true),...discoveredAssets].sort((a,b)=>Number(b.total_volume||0)-Number(a.total_volume||0));
-  if(!rankedAssets.length&&!hunterAssets.length)return json({error:"هیچ بازار معتبر و قابل‌تأییدی از صرافی‌ها دریافت نشد.",sources},502,request);
-  return json({checked_at:new Date().toISOString(),count:rankedAssets.length,hunter_count:hunterAssets.length,discovered_count:discoveredAssets.length,binance_spot_symbols:binanceSymbols.size,cmc_listings:cmcRows.length,universe_mode:"unified_catalog_plus_independent_exchange_discovery",metadata_provider:metadataProvider,assets:rankedAssets,hunter_assets:hunterAssets,sources},200,request,{"X-MMP-Data-Source":"Binance, Bybit, OKX, Bitget, Gate, KuCoin, WhiteBIT, Nobitex, Wallex + "+metadataProvider});
+  const radarAssets=[...rankedAssets,...discoveredAssets].sort((a,b)=>Number(b.total_volume||0)-Number(a.total_volume||0));
+  if(!rankedAssets.length&&!hunterAssets.length&&!radarAssets.length)return json({error:"هیچ بازار معتبر و قابل‌تأییدی از صرافی‌ها دریافت نشد.",sources},502,request);
+  return json({checked_at:new Date().toISOString(),count:rankedAssets.length,hunter_count:hunterAssets.length,radar_count:radarAssets.length,discovered_count:discoveredAssets.length,binance_spot_symbols:binanceSymbols.size,cmc_listings:cmcRows.length,universe_mode:"unified_catalog_plus_independent_exchange_discovery",metadata_provider:metadataProvider,assets:rankedAssets,hunter_assets:hunterAssets,radar_assets:radarAssets,sources},200,request,{"X-MMP-Data-Source":"Binance, Bybit, OKX, Bitget, Gate, KuCoin, WhiteBIT, Nobitex, Wallex + "+metadataProvider});
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/support-check"){
   const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"support-check");
@@ -668,7 +669,7 @@ async function handle(request,env){
   const limited=rateLimitReply(limitResult,request);if(limited)return limited;
   const url=new URL(request.url),rawSymbol=String(url.searchParams.get("symbol")||"").toUpperCase();
   const interval=String(url.searchParams.get("interval")||"15m");
-  if(!/^[A-Z0-9]{2,15}$/.test(rawSymbol)||!["15m","1h","4h","1d"].includes(interval))return json({error:"نماد یا بازه زمانی نامعتبر است."},400,request);
+  if(!/^[A-Z0-9]{2,15}$/.test(rawSymbol)||!["1m","15m","1h","4h","1d"].includes(interval))return json({error:"نماد یا بازه زمانی نامعتبر است."},400,request);
   const symbol=splitQuotePair(rawSymbol)?rawSymbol:rawSymbol+"USDT";
   try{
    const result=await candles(symbol,interval,env,"spot");
