@@ -2218,7 +2218,7 @@ function connectHunterEarlyStream(){
 }
 async function runFastRadarScan(options={}){
  // Local candle scanning is strictly user-triggered; the server radar remains the only automatic scanner.
- if(options.manual!==true||fastRadarBusy||Date.now()-fastRadarLastRun<45000)return;
+ if(options.manual!==true)return;if(fastRadarBusy){const busyStatus=$("radar-updated");if(busyStatus)busyStatus.textContent="اسکن قبلی هنوز در حال اجراست؛ پس از پایان آن دوباره تلاش کنید.";return;}
  fastRadarBusy=true;fastRadarLastRun=Date.now();
  const status=$("radar-updated"),hunterStatus=$("hunter-feed-status"),hunterLast=$("hunter-last-scan");
  let completed=0,failed=fastRadarPendingIds.length?(Number(fastRadarProgress.failed)||0):0,cursor=0,universe=[];
@@ -2479,7 +2479,7 @@ renderOpportunities();renderFastRadarProgress();
 loadServerFastRadarSnapshot();
 setTimeout(()=>{renderMarketHunter();if(!fastRadarServerReady){fastRadarProgress={...fastRadarProgress,state:"رادار خودکار سرور در دسترس نیست · اسکن خودکار مرورگر غیرفعال است"};renderFastRadarProgress();const status=$("radar-updated");if(status)status.textContent="اتصال به رادار سرور برقرار نیست؛ برای اسکن محدود از دکمه اسکن دستی استفاده کنید.";const note=$("radar-scan-persistence");if(note)note.textContent="اسکن خودکار محلی برای جلوگیری از مصرف بی‌رویه API غیرفعال است."; }},5000);
 const manualRadarButton=$("radar-manual-scan");
-if(manualRadarButton){manualRadarButton.addEventListener("click",async()=>{if(fastRadarBusy||Date.now()-fastRadarLastRun<45000)return;manualRadarButton.disabled=true;manualRadarButton.textContent="در حال اسکن…";try{await runFastRadarScan({manual:true});}finally{manualRadarButton.disabled=false;manualRadarButton.textContent="اسکن دستی ۱۲ نماد";}});}
+if(manualRadarButton){manualRadarButton.addEventListener("click",async()=>{if(fastRadarBusy){const status=$("radar-updated");if(status)status.textContent="اسکن در حال اجراست؛ لطفاً تا پایان همین نوبت صبر کنید.";return;}manualRadarButton.disabled=true;manualRadarButton.textContent="در حال اسکن…";try{await runFastRadarScan({manual:true});}catch(error){const status=$("radar-updated");if(status)status.textContent="شروع اسکن ناموفق بود: "+String(error?.message||error||"خطای نامشخص");console.warn("Manual radar start:",error);}finally{manualRadarButton.disabled=false;manualRadarButton.textContent="اسکن دستی ۱۲ نماد";}});}
 setInterval(loadServerFastRadarSnapshot,30000);
 </script>
 </body>
