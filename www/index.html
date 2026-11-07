@@ -1963,13 +1963,14 @@ async function loadServerFastRadarSnapshot(){
   fastRadarServerReady=true;
   if(snapshotAt>fastRadarServerSnapshotAt){
    fastRadarServerSnapshotAt=snapshotAt;
-   const recentManualSignals=[...fastRadarSignals.entries()].filter(([,signal])=>signal?.manualScan&&Date.now()-Number(signal.updatedAt||0)<3*60*1000);
-   fastRadarSignals.clear();
-   recentManualSignals.forEach(([id,signal])=>fastRadarSignals.set(id,signal));
+   // Snapshot فقط سیگنال‌های فعلی سرور را گزارش می‌کند؛ نبودن یک ارز در پاسخ
+   // به معنی افت قدرت یا حذف معتبر نیست. سیگنال‌های قبلی را حفظ و فقط موارد گزارش‌شده را تازه‌سازی کن.
    (Array.isArray(snapshot.signals)?snapshot.signals:[]).forEach(signal=>{
     if(!signal||!signal.id||!Number.isFinite(Number(signal.score)))return;
-    const id=String(signal.id);
-    fastRadarSignals.set(id,signal);
+    const id=String(signal.id),oldSignal=fastRadarSignals.get(id);
+    const incomingAt=Number(signal.updatedAt||signal.updated_at||snapshotAt)||snapshotAt;
+    const existingAt=Number(oldSignal?.updatedAt||oldSignal?.updated_at||0);
+    if(!oldSignal||incomingAt>=existingAt)fastRadarSignals.set(id,signal);
     if(signal.coin&&typeof signal.coin==="object")hunterCoinIndex.set(id,signal.coin);
    });
    persistFastRadarState();
