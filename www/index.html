@@ -1697,8 +1697,12 @@ function renderOpportunities(){
  const bearish=scored.filter(x=>x.metrics.trend==="bear").sort((a,b)=>a.metrics.score-b.metrics.score);
  // هشدارهای زنده فقط پس از تأیید هم‌زمان حداقل دو صرافی وارد رادار می‌شوند؛
  // این لایه پیش‌هشدار است و جای تأیید کندلی Worker را نمی‌گیرد.
+ // فقط نمادهای متعلق به فهرست اصلی اجازه نمایش در رادار را دارند؛
+ // شکارهای خارج از فهرست در پنل مستقل شکارچی باقی می‌مانند.
+ const mainRadarSymbols=new Set(cachedCoinsData.map(c=>String(c.symbol||"").toUpperCase().replace(/USDT$/,"")).filter(Boolean));
  const liveAlerts=[...hunterEarlyAlerts.values()]
   .filter(x=>Date.now()-Number(x.updatedAt||0)<120000)
+  .filter(x=>mainRadarSymbols.has(String(x.symbol||"").toUpperCase().replace(/USDT$/,"")))
   .sort((a,b)=>Math.abs(Number(b.triggerMove)||0)-Math.abs(Number(a.triggerMove)||0));
  const updated=$("radar-updated");
  if(updated)updated.textContent="بررسی "+cachedCoinsData.length+" دارایی · صعودی: "+bullish.length+" · نزولی: "+bearish.length;
