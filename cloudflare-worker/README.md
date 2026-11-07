@@ -8,6 +8,9 @@ This folder contains the secure backend for the market-analysis section on GitHu
 - When futures mode is selected, also reads Binance Futures funding and open interest when available.
 - Adds Fear & Greed sentiment and CoinGecko global market context when those public endpoints respond.
 - Sends the structured snapshot to Cloudflare Workers AI (Llama 3.3 70B) for a Persian BUY / SELL / WAIT report.
+- Exposes `/market-flow?symbol=BTC&window=5` as a shared real-trade flow service. It aggregates actual Bybit Spot public trades first, then Binance aggregate trades as fallback; it reports trade count, provider, and whether the 1,000-record window may be truncated.
+- Exposes `/hunter-scan?symbols=BTC,ETH` as a separate Hunter scan engine. It uses its own exchange-candle scan and score, independent of the scheduled Radar Worker; it enriches the strongest Hunter candidates with the shared real-trade flow service.
+- The scheduled Radar Worker remains independent and only consumes the shared flow service as supplemental evidence. Flow data does not change Radar scores or retention decisions.
 - Never shows a fabricated fallback signal when data or AI is unavailable.
 
 ## Deploy (Cloudflare account required)
