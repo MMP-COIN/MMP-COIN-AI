@@ -54,7 +54,7 @@ jobs:
           const config = JSON.parse(fs.readFileSync(file, 'utf8'));
           config.server = {
             ...(config.server || {}),
-            url: 'https://mmp-coin.github.io/MMP-COIN-AI/?mmp_native_version=' + process.env.BUILD_VERSION,
+            url: 'https://mmp-coin.github.io/?mmp_native_version=' + process.env.BUILD_VERSION,
             cleartext: false,
             allowNavigation: ['mmp-coin.github.io']
           };
