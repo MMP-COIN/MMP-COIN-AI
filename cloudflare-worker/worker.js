@@ -504,15 +504,25 @@ async function handle(request,env){
    ["Wallex","https://api.wallex.ir/v1/markets",d=>{const raw=d?.result?.symbols||d?.result?.markets||{},rows=Array.isArray(raw)?raw:Object.values(raw),usdtRial=Number((Array.isArray(raw)?rows.find(x=>String(x.symbol).toUpperCase()==="USDTIRT"):raw.USDTIRT)?.stats?.lastPrice)||0;return d?.success===true?rows.map(x=>{const base=String(x.baseAsset||"").toUpperCase(),quote=String(x.quoteAsset||"").toUpperCase(),last=Number(x.stats?.lastPrice??x.lastPrice)||0,local=["IRT","IRR","RLS","TMN"].includes(quote),rate=local?usdtRial:1,quoteVolume=Number(x.stats?.["24h_quoteVolume"]??x.stats?.quoteVolume)||0;return {symbol:base,pair:String(x.symbol||base+quote),quoteAsset:local?"IRT":quote,volume:rate>0?quoteVolume/rate:quoteVolume,price:rate>0?last/rate:last,change24h:Number(x.stats?.["24h_ch"]??x.stats?.change24h)||0};}).filter(x=>x.symbol&&x.price>0&&["USDT","IRT"].includes(x.quoteAsset)):[];}]
   ];
   const tickerResults=await Promise.allSettled(jobs.map(async([name,url,normalize])=>({name,rows:normalize(await timedJson(url,11000,10))})));
-  const markets=new Map(),sources={BinanceExchangeInfo:{ok:primary[0].status==="fulfilled",status:primary[0].status==="fulfilled"?200:0,error:primary[0].status==="rejected"?String(primary[0].reason?.message||primary[0].reason).slice(0,140):null},MetadataCatalog:{ok:true,provider:metadataProvider},CoinMarketCap:{ok:primary[1].status==="fulfilled",status:primary[1].status==="fulfilled"?200:0,page2:primary[2].status==="fulfilled"}};
+  const markets=new Map(),discoveryMarkets=new Map(),sources={BinanceExchangeInfo:{ok:primary[0].status==="fulfilled",status:primary[0].status==="fulfilled"?200:0,error:primary[0].status==="rejected"?String(primary[0].reason?.message||primary[0].reason).slice(0,140):null},MetadataCatalog:{ok:true,provider:metadataProvider},CoinMarketCap:{ok:primary[1].status==="fulfilled",status:primary[1].status==="fulfilled"?200:0,page2:primary[2].status==="fulfilled"}};
   tickerResults.forEach((result,i)=>{
    const name=jobs[i][0];
    if(result.status!=="fulfilled"){sources[name]={ok:false,error:String(result.reason?.message||result.reason).slice(0,140)};return;}
    sources[name]={ok:true,status:200};
    result.value.rows.forEach(row=>{
-    if(!eligible.includes(row.symbol)||!(row.price>0)||!(row.volume>=0))return;
+    if(!(row.price>0)||!(row.volume>=0)||!/^[A-Z0-9]{2,20}$/.test(String(row.symbol||"")))return;
+    const normalized={...row,pair:row.pair||row.symbol+"USDT",quoteAsset:row.quoteAsset||"USDT",exchange:name};
+    if(!eligible.includes(row.symbol)){
+     // Independent hunter discovery: unknown-to-metadata USDT instruments are kept out of the canonical asset catalog.
+     // They enter the scan universe only after corroboration by at least two independent exchanges.
+     if(normalized.quoteAsset==="USDT"&&!excluded.has(row.symbol)&&!/(UP|DOWN|BULL|BEAR|3L|3S)$/.test(row.symbol)){
+      let found=discoveryMarkets.get(row.symbol);if(!found){found={venues:new Set(),quotes:[]};discoveryMarkets.set(row.symbol,found);}
+      found.venues.add(name);found.quotes.push(normalized);
+     }
+     return;
+    }
     let item=markets.get(row.symbol);if(!item){item={venues:new Set(),quotes:[]};markets.set(row.symbol,item);}
-    item.venues.add(name);item.quotes.push({...row,pair:row.pair||row.symbol+"USDT",quoteAsset:row.quoteAsset||"USDT",exchange:name});
+    item.venues.add(name);item.quotes.push(normalized);
    });
   });
   const assets=[...markets.keys()].map(symbol=>{
@@ -534,8 +544,12 @@ async function handle(request,env){
   if(!assets.length)return json({error:"داده زنده برای نمادهای مشترک صرافی‌ها دریافت نشد."},502,request);
   // Keep the complete verified cross-exchange discovery universe; the client scans it in rotating batches to respect exchange rate limits.
   const rankedAssets=assets.sort((a,b)=>b.total_volume-a.total_volume||Number(a.market_cap_rank||999999)-Number(b.market_cap_rank||999999));
-  const hunterAssets=rankedAssets.filter(asset=>asset.hasUsdtMarket===true);
-  return json({checked_at:new Date().toISOString(),count:rankedAssets.length,hunter_count:hunterAssets.length,binance_spot_symbols:binanceSymbols.size,cmc_listings:cmcRows.length,universe_mode:"unified_multi_exchange_spot",metadata_provider:metadataProvider,assets:rankedAssets,hunter_assets:hunterAssets,sources},200,request,{"X-MMP-Data-Source":"Binance, Bybit, OKX, Bitget, Gate, KuCoin, WhiteBIT, Nobitex, Wallex + "+metadataProvider});
+  const discoveredAssets=[...discoveryMarkets.entries()].map(([symbol,market])=>{
+   const quotes=market.quotes.slice().sort((a,b)=>b.volume-a.volume),best=quotes[0]||{};
+   return {id:"market-discovery:"+symbol,symbol,name:symbol,image:"",current_price:Number(best.price)||0,total_volume:quotes.reduce((sum,x)=>sum+(Number(x.volume)||0),0),market_cap:null,market_cap_rank:null,hunterExchange:[...market.venues].join(", "),hunterPriceExchange:best.exchange||"Exchange discovery",hunterChange24h:Number(best.change24h)||0,hunterVenueVolume:Object.fromEntries(quotes.map(x=>[x.exchange,Number(x.volume)||0])),marketPairs:quotes.map(q=>({exchange:q.exchange,pair:q.pair,quote:q.quoteAsset,price:Number(q.price)||0,volume:Number(q.volume)||0})),hasUsdtMarket:true,hasDomesticMarket:false,isDiscovery:true};
+  }).filter(asset=>asset.current_price>0&&discoveryMarkets.get(asset.symbol).venues.size>=2&&asset.total_volume>=50000);
+  const hunterAssets=[...rankedAssets.filter(asset=>asset.hasUsdtMarket===true),...discoveredAssets].sort((a,b)=>Number(b.total_volume||0)-Number(a.total_volume||0));
+  return json({checked_at:new Date().toISOString(),count:rankedAssets.length,hunter_count:hunterAssets.length,discovered_count:discoveredAssets.length,binance_spot_symbols:binanceSymbols.size,cmc_listings:cmcRows.length,universe_mode:"unified_catalog_plus_independent_exchange_discovery",metadata_provider:metadataProvider,assets:rankedAssets,hunter_assets:hunterAssets,sources},200,request,{"X-MMP-Data-Source":"Binance, Bybit, OKX, Bitget, Gate, KuCoin, WhiteBIT, Nobitex, Wallex + "+metadataProvider});
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/support-check"){
   const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"support-check");
