@@ -478,7 +478,6 @@ async function handle(request,env){
    metadataProvider="CoinLore fallback";
   }
   const binanceSymbols=new Set((binanceInfo.symbols||[]).filter(x=>x.status==="TRADING"&&x.isSpotTradingAllowed!==false&&String(x.quoteAsset||"").toUpperCase()==="USDT").map(x=>String(x.baseAsset||"").toUpperCase()).filter(Boolean));
-  if(!cmcRows.length)return json({error:"فهرست CMC و مسیر جایگزین CoinLore در دسترس نیست.",cmc_error:primary[1].status==="rejected"?String(primary[1].reason?.message||primary[1].reason).slice(0,140):null},502,request);
   const cmcBySymbol=new Map(),cmcDuplicateCount=new Map();
   cmcRows.forEach(item=>{
    const symbol=String(item?.symbol||"").toUpperCase();
@@ -491,7 +490,6 @@ async function handle(request,env){
   const excluded=new Set(["UP","DOWN","BULL","BEAR","3L","3S"]);
   // یونیورس چندصرافی: نمادها فقط به Binance محدود نیستند؛ فهرست CMC با بازارهای واقعی USDT در شش صرافی تطبیق داده می‌شود.
   const eligible=[...cmcBySymbol.keys()].filter(symbol=>!/^[0-9]+$/.test(symbol)&&!excluded.has(symbol)&&!/(UP|DOWN|BULL|BEAR|3L|3S)$/.test(symbol));
-  if(!eligible.length)return json({error:"نماد معتبر در فهرست بازار پیدا نشد."},502,request);
   const jobs=[
    ["Binance","https://api.binance.com/api/v3/ticker/24hr",d=>(Array.isArray(d)?d:[]).filter(x=>String(x.symbol).endsWith("USDT")).map(x=>({symbol:String(x.symbol).slice(0,-4),pair:String(x.symbol),quoteAsset:"USDT",volume:Number(x.quoteVolume)||0,price:Number(x.lastPrice)||0,change24h:Number(x.priceChangePercent)||0}))],
    ["Bybit","https://api.bybit.com/v5/market/tickers?category=spot",d=>(d.result?.list||[]).filter(x=>String(x.symbol).endsWith("USDT")).map(x=>({symbol:String(x.symbol).slice(0,-4),pair:String(x.symbol),quoteAsset:"USDT",volume:Number(x.turnover24h)||0,price:Number(x.lastPrice)||0,change24h:(Number(x.price24hPcnt)||0)*100}))],
@@ -504,7 +502,7 @@ async function handle(request,env){
    ["Wallex","https://api.wallex.ir/v1/markets",d=>{const raw=d?.result?.symbols||d?.result?.markets||{},rows=Array.isArray(raw)?raw:Object.values(raw),usdtRial=Number((Array.isArray(raw)?rows.find(x=>String(x.symbol).toUpperCase()==="USDTIRT"):raw.USDTIRT)?.stats?.lastPrice)||0;return d?.success===true?rows.map(x=>{const base=String(x.baseAsset||"").toUpperCase(),quote=String(x.quoteAsset||"").toUpperCase(),last=Number(x.stats?.lastPrice??x.lastPrice)||0,local=["IRT","IRR","RLS","TMN"].includes(quote),rate=local?usdtRial:1,quoteVolume=Number(x.stats?.["24h_quoteVolume"]??x.stats?.quoteVolume)||0;return {symbol:base,pair:String(x.symbol||base+quote),quoteAsset:local?"IRT":quote,volume:rate>0?quoteVolume/rate:quoteVolume,price:rate>0?last/rate:last,change24h:Number(x.stats?.["24h_ch"]??x.stats?.change24h)||0};}).filter(x=>x.symbol&&x.price>0&&["USDT","IRT"].includes(x.quoteAsset)):[];}]
   ];
   const tickerResults=await Promise.allSettled(jobs.map(async([name,url,normalize])=>({name,rows:normalize(await timedJson(url,11000,10))})));
-  const markets=new Map(),discoveryMarkets=new Map(),sources={BinanceExchangeInfo:{ok:primary[0].status==="fulfilled",status:primary[0].status==="fulfilled"?200:0,error:primary[0].status==="rejected"?String(primary[0].reason?.message||primary[0].reason).slice(0,140):null},MetadataCatalog:{ok:true,provider:metadataProvider},CoinMarketCap:{ok:primary[1].status==="fulfilled",status:primary[1].status==="fulfilled"?200:0,page2:primary[2].status==="fulfilled"}};
+  const markets=new Map(),discoveryMarkets=new Map(),sources={BinanceExchangeInfo:{ok:primary[0].status==="fulfilled",status:primary[0].status==="fulfilled"?200:0,error:primary[0].status==="rejected"?String(primary[0].reason?.message||primary[0].reason).slice(0,140):null},MetadataCatalog:{ok:cmcRows.length>0,provider:metadataProvider},CoinMarketCap:{ok:primary[1].status==="fulfilled",status:primary[1].status==="fulfilled"?200:0,page2:primary[2].status==="fulfilled"}};
   tickerResults.forEach((result,i)=>{
    const name=jobs[i][0];
    if(result.status!=="fulfilled"){sources[name]={ok:false,error:String(result.reason?.message||result.reason).slice(0,140)};return;}
@@ -541,14 +539,14 @@ async function handle(request,env){
     hunterVenueVolume:venueVolume,marketPairs:quotes.map(q=>({exchange:q.exchange,pair:q.pair,quote:q.quoteAsset,price:Number(q.price)||0,volume:Number(q.volume)||0})),hasUsdtMarket:quotes.some(q=>String(q.quoteAsset).toUpperCase()==="USDT"),hasDomesticMarket:quotes.some(q=>["Nobitex","Wallex"].includes(q.exchange)),cmcDuplicateCount:cmcDuplicateCount.get(symbol)||1
    };
   }).filter(x=>x.current_price>0).sort((a,b)=>Math.abs(Number(b.hunterChange24h)||0)-Math.abs(Number(a.hunterChange24h)||0)||b.total_volume-a.total_volume||Number(a.market_cap_rank||999999)-Number(b.market_cap_rank||999999));
-  if(!assets.length)return json({error:"داده زنده برای نمادهای مشترک صرافی‌ها دریافت نشد."},502,request);
-  // Keep the complete verified cross-exchange discovery universe; the client scans it in rotating batches to respect exchange rate limits.
+  // Canonical assets retain metadata identity where available; independent discoveries remain a separate market-instrument universe.
   const rankedAssets=assets.sort((a,b)=>b.total_volume-a.total_volume||Number(a.market_cap_rank||999999)-Number(b.market_cap_rank||999999));
   const discoveredAssets=[...discoveryMarkets.entries()].map(([symbol,market])=>{
    const quotes=market.quotes.slice().sort((a,b)=>b.volume-a.volume),best=quotes[0]||{};
    return {id:"market-discovery:"+symbol,symbol,name:symbol,image:"",current_price:Number(best.price)||0,total_volume:quotes.reduce((sum,x)=>sum+(Number(x.volume)||0),0),market_cap:null,market_cap_rank:null,hunterExchange:[...market.venues].join(", "),hunterPriceExchange:best.exchange||"Exchange discovery",hunterChange24h:Number(best.change24h)||0,hunterVenueVolume:Object.fromEntries(quotes.map(x=>[x.exchange,Number(x.volume)||0])),marketPairs:quotes.map(q=>({exchange:q.exchange,pair:q.pair,quote:q.quoteAsset,price:Number(q.price)||0,volume:Number(q.volume)||0})),hasUsdtMarket:true,hasDomesticMarket:false,isDiscovery:true};
   }).filter(asset=>asset.current_price>0&&discoveryMarkets.get(asset.symbol).venues.size>=2&&asset.total_volume>=50000);
   const hunterAssets=[...rankedAssets.filter(asset=>asset.hasUsdtMarket===true),...discoveredAssets].sort((a,b)=>Number(b.total_volume||0)-Number(a.total_volume||0));
+  if(!rankedAssets.length&&!hunterAssets.length)return json({error:"هیچ بازار معتبر و قابل‌تأییدی از صرافی‌ها دریافت نشد.",sources},502,request);
   return json({checked_at:new Date().toISOString(),count:rankedAssets.length,hunter_count:hunterAssets.length,discovered_count:discoveredAssets.length,binance_spot_symbols:binanceSymbols.size,cmc_listings:cmcRows.length,universe_mode:"unified_catalog_plus_independent_exchange_discovery",metadata_provider:metadataProvider,assets:rankedAssets,hunter_assets:hunterAssets,sources},200,request,{"X-MMP-Data-Source":"Binance, Bybit, OKX, Bitget, Gate, KuCoin, WhiteBIT, Nobitex, Wallex + "+metadataProvider});
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/support-check"){
