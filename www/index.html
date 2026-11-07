@@ -1948,7 +1948,9 @@ async function scanFastCoin(coin){
  const supportedVenues=new Set(["Binance","Bybit","OKX","Bitget","Gate","KuCoin"]);
  const listedVenues=Array.isArray(coin.marketPairs)?coin.marketPairs.filter(item=>String(item.quote||"").toUpperCase()==="USDT"&&Number(item.volume)>=15000&&supportedVenues.has(String(item.exchange||""))):Object.entries(coin.hunterVenueVolume||{}).filter(([name,volume])=>supportedVenues.has(name)&&Number(volume)>=15000);
  if(Number(coin.total_volume||0)<50000||listedVenues.length<1)return null;
- const [{rows,provider},flowResult]=await Promise.all([fetchFastCandles(symbol,coin),fetchHunterOrderFlow(symbol).then(flow=>({flow})).catch(error=>({flow:null,error}))]);
+ const hasBinanceSpot=Array.isArray(coin.marketPairs)?coin.marketPairs.some(item=>item.exchange==="Binance"&&String(item.quote||"").toUpperCase()==="USDT"&&Number(item.volume)>=15000):Number(coin.hunterVenueVolume?.Binance)>=15000;
+ const flowTask=hasBinanceSpot?fetchHunterOrderFlow(symbol).then(flow=>({flow})).catch(error=>({flow:null,error})):Promise.resolve({flow:null});
+ const [{rows,provider},flowResult]=await Promise.all([fetchFastCandles(symbol,coin),flowTask]);
  const flow=flowResult.flow;
  if(!Array.isArray(rows)||rows.length<25)return null;
  const valid=rows.every(r=>r.length>=6&&r.slice(1,6).every(Number.isFinite)&&Number(r[1])>0&&Number(r[2])>=Number(r[3])&&Number(r[3])>0&&Number(r[4])>0&&Number(r[5])>=0);
