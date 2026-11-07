@@ -31,13 +31,13 @@ h2{font-size:17px;margin:4px 0 13px}.section-head{display:flex;justify-content:s
 <header class="top"><div class="brand"><div class="mark">M</div><div><b>MMP COIN AI</b><small>SECURE ADMIN CONTROL CENTER</small></div></div><div class="muted" id="clock">مرکز مدیریت امن</div></header>
 <section id="authPanel" class="panel auth">
 <h1 class="gold" id="authTitle">ورود به پنل مدیریت</h1><p class="muted" id="authDesc">برای دسترسی به آمار و تنظیمات، وارد حساب مدیریت شوید.</p>
-<form id="loginForm">
+<form id="loginForm" onsubmit="return false">
 <label class="field">نام کاربری<input id="username" name="username" autocomplete="username" required></label>
 <label class="field">رمز عبور<input id="password" name="password" type="password" autocomplete="current-password" required></label>
 <label class="muted"><input type="checkbox" class="reveal" data-target="password" style="min-height:0;width:auto;vertical-align:middle"> نمایش رمز عبور</label>
 <button class="primary" id="loginButton" type="submit" style="width:100%;margin-top:14px">ورود امن</button>
 </form>
-<form id="setupForm" class="hidden">
+<form id="setupForm" class="hidden" onsubmit="return false">
 <label class="field">نام کاربری اولیه<input id="setupUsername" value="mmp1988" readonly></label>
 <label class="field">رمز عبور جدید (حداقل ۱۲ نویسه)<input id="setupPassword" type="password" minlength="12" maxlength="128" required></label>
 <label class="muted"><input type="checkbox" class="reveal" data-target="setupPassword" style="min-height:0;width:auto;vertical-align:middle"> نمایش رمز عبور</label>
@@ -64,8 +64,12 @@ h2{font-size:17px;margin:4px 0 13px}.section-head{display:flex;justify-content:s
 <script>
 (function(){
 "use strict";
+window.addEventListener("error",function(e){var n=document.getElementById("message");if(n){n.textContent="خطای اجرای پنل: "+String(e.message||"خطای نامشخص")+" · صفحه را دوباره بارگذاری کن.";n.classList.add("error");}});
+window.addEventListener("unhandledrejection",function(e){var n=document.getElementById("message");if(n){var q=e.reason&&e.reason.message?e.reason.message:String(e.reason||"خطای نامشخص");n.textContent="خطای ارتباط یا اجرای پنل: "+q;n.classList.add("error");}});
 var API="https://mmp-coin-ai-admin.mehrdadmohammadi1988.workers.dev";
-var token=sessionStorage.getItem("mmp_admin_token")||"",visitorOffset=0,visitorTotal=0;
+function readToken(){try{return sessionStorage.getItem("mmp_admin_token")||"";}catch(e){return "";}}
+function writeToken(v){try{if(v)sessionStorage.setItem("mmp_admin_token",v);else writeToken("");}catch(e){}}
+var token=readToken(),visitorOffset=0,visitorTotal=0;
 function el(id){return document.getElementById(id);}
 function msg(id,text,error){var n=el(id);if(!n)return;n.textContent=text||"";n.classList.toggle("error",!!error);if(id==="message")n.classList.toggle("ok",!error&&!!text);}
 function esc(v){return String(v===null||v===undefined?"—":v).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
@@ -85,7 +89,7 @@ async function loadOverview(){msg("dashMessage","در حال دریافت آما
 async function loadVisitors(reset){if(reset!==false){visitorOffset=0;visitorTotal=0;el("visitorRows").innerHTML='<tr><td colspan="8">در حال دریافت...</td></tr>';}var d=await api("/admin/api/visitors?days="+el("visitorRange").value+"&limit=100&offset="+visitorOffset),rows=d.visitors||[];visitorTotal=Number(d.total||0);var html=rows.map(function(x){return "<tr><td dir=ltr>"+esc(x.ip_address)+"</td><td>"+esc([x.country,x.city].filter(Boolean).join(" · "))+"</td><td>"+esc(x.device)+"</td><td>"+esc(x.os)+"</td><td>"+esc(x.browser)+"</td><td dir=ltr>"+esc(x.path)+"</td><td>"+fmt(x.visits)+"</td><td>"+esc(date(x.last_seen))+"</td></tr>";}).join("");if(reset!==false)el("visitorRows").innerHTML=html||'<tr><td colspan="8">بازدیدکننده‌ای ثبت نشده است.</td></tr>';else if(html)el("visitorRows").insertAdjacentHTML("beforeend",html);visitorOffset+=rows.length;el("visitorSummary").textContent="نمایش "+fmt(Math.min(visitorOffset,visitorTotal))+" از "+fmt(visitorTotal)+" بازدیدکننده یکتا · نگهداری اطلاعات حداکثر ۳۰ روز";el("visitorMore").classList.toggle("hidden",visitorOffset>=visitorTotal);}
 async function loadSecurity(){var d=await api("/admin/api/security"),attempts=d.attempts||[],blocks=d.blocks||[];el("attemptRows").innerHTML=attempts.length?attempts.map(function(x){return '<tr><td>'+esc(x.username)+'</td><td dir=ltr>'+esc(x.ip_address)+'</td><td class="'+(x.success?'good':'bad')+'">'+(x.success?'موفق':'ناموفق')+'</td><td>'+esc(date(x.created_at))+'</td><td><button class="secondary small del-attempt" data-id="'+esc(x.id)+'">حذف</button></td></tr>';}).join(""):'<tr><td colspan="5">سابقه‌ای موجود نیست.</td></tr>';el("blockRows").innerHTML=blocks.length?blocks.map(function(x){return '<div class="section-head" style="padding:8px 0;border-bottom:1px solid #ffffff12"><span dir=ltr>'+esc(x.ip_address)+'</span><span>'+esc(x.reason)+'</span><button class="secondary small unblock" data-ip="'+esc(x.ip_address)+'">رفع مسدودی</button></div>';}).join(""):'<span>IP مسدودشده‌ای وجود ندارد.</span>';}
 async function refreshAll(){try{await loadOverview();}catch(e){msg("dashMessage","خطا در دریافت آمار: "+e.message,true);}try{await loadVisitors(true);}catch(e){el("visitorRows").innerHTML='<tr><td colspan="8">'+esc(e.message)+'</td></tr>';}try{await loadSecurity();}catch(e){el("attemptRows").innerHTML='<tr><td colspan="5">'+esc(e.message)+'</td></tr>';}}
-async function authenticate(kind,body){var d=await api("/admin/api/"+kind,{method:"POST",body:JSON.stringify(body)});if(!d.token)throw Error("سرور نشست معتبر برنگرداند.");token=d.token;sessionStorage.setItem("mmp_admin_token",token);var s=await api("/admin/api/session");if(!s.authenticated)throw Error("نشست ورود تأیید نشد.");showDashboard(s.username||body.username);await refreshAll();}
+async function authenticate(kind,body){var d=await api("/admin/api/"+kind,{method:"POST",body:JSON.stringify(body)});if(!d.token)throw Error("سرور نشست معتبر برنگرداند.");token=d.token;writeToken(token);var s=await api("/admin/api/session");if(!s.authenticated)throw Error("نشست ورود تأیید نشد.");showDashboard(s.username||body.username);await refreshAll();}
 el("loginForm").addEventListener("submit",async function(e){e.preventDefault();var b=el("loginButton");b.disabled=true;b.textContent="در حال بررسی...";msg("message","در حال بررسی اطلاعات ورود...");try{await authenticate("login",{username:el("username").value.trim(),password:el("password").value});msg("message","");}catch(err){token="";sessionStorage.removeItem("mmp_admin_token");showLogin();msg("message","ورود انجام نشد: "+err.message,true);}finally{b.disabled=false;b.textContent="ورود امن";}});
 el("setupForm").addEventListener("submit",async function(e){e.preventDefault();var b=el("setupButton");b.disabled=true;try{await authenticate("setup",{username:"mmp1988",password:el("setupPassword").value});}catch(err){msg("message","ساخت حساب انجام نشد: "+err.message,true);}finally{b.disabled=false;}});
 document.addEventListener("change",function(e){if(!e.target.classList.contains("reveal"))return;String(e.target.dataset.target||"").split(",").forEach(function(id){var n=el(id);if(n)n.type=e.target.checked?"text":"password";});});
