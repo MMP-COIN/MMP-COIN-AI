@@ -131,12 +131,30 @@ function analyzeKlines(rows){
  return {candles,price:last.c,change_pct:(last.c/closes[closes.length-2]-1)*100,rsi:rsi(closes),ema20:e20,ema50:e50,ema200:e200,ema_trend:e20&&e50&&e200?(last.c>e20&&e20>e50&&e50>e200?"bullish":last.c<e20&&e20<e50&&e50<e200?"bearish":"mixed"):"insufficient",macd,macd_signal:macd==null||signal==null?"insufficient":macd>signal?"bullish crossover bias":macd<signal?"bearish crossover bias":"neutral",atr,atr_percent:atr?atr/last.c*100:null,support,resistance,volume_ratio:mean(vols.slice(-5))/(mean(vols.slice(-25))||1),taker_buy_volume_ratio:totalBase?takerBuyBase/totalBase:null,candle_time:new Date(last.t).toISOString()};
 }
 function splitQuotePair(symbol){
- const match=String(symbol||"").toUpperCase().match(/^([A-Z0-9_]+?)(USDT|USDC|FDUSD|BUSD|USD|BTC|ETH)$/);
+ const match=String(symbol||"").toUpperCase().match(/^([A-Z0-9_]+?)(USDT|USDC|FDUSD|BUSD|USD|BTC|ETH|IRT)$/);
  return match?{base:match[1],quote:match[2]}:null;
 }
 async function candles(symbol,interval,env,marketType="spot"){
  const headers={"Accept":"application/json, text/plain, */*","User-Agent":"MMP-COIN-AI/1.0","Accept-Language":"en-US,en;q=0.9"};
  const minimumCandles=interval==="1d"?20:30;
+ if(marketType==="spot"&&String(symbol).toUpperCase().endsWith("IRT")){
+  const base=String(symbol).toUpperCase().slice(0,-3),resolution={"15m":"15","1h":"60","4h":"240","1d":"D"}[interval],seconds={"15m":900,"1h":3600,"4h":14400,"1d":86400}[interval];
+  if(!base||!resolution||!seconds)throw new Error("Unsupported Nobitex candle interval or pair");
+  const to=Math.floor(Date.now()/1000),from=to-seconds*260;let lastError=null;
+  for(const host of ["https://apiv2.nobitex.ir","https://api.nobitex.ir"]){
+   try{
+    const url=host+"/market/udf/history?symbol="+encodeURIComponent(base+"IRT")+"&resolution="+resolution+"&from="+from+"&to="+to;
+    const response=await fetch(url,{headers});
+    if(!response.ok)throw new Error("Nobitex candle HTTP "+response.status);
+    const payload=await response.json();
+    if(payload?.s!=="ok"||!Array.isArray(payload.t))throw new Error(payload?.errmsg||"Nobitex candle history unavailable");
+    const rows=payload.t.map((time,i)=>[Number(time)*1000,String(payload.o?.[i]??0),String(payload.h?.[i]??0),String(payload.l?.[i]??0),String(payload.c?.[i]??0),String(payload.v?.[i]??0)]).filter(row=>row.slice(1,5).every(value=>Number(value)>0)).sort((a,b)=>a[0]-b[0]);
+    if(rows.length<minimumCandles)throw new Error("Nobitex candle history is insufficient");
+    const result=analyzeKlines(rows);result.data_provider="Nobitex Spot";return result;
+   }catch(error){lastError=error;}
+  }
+  throw new Error("Nobitex Spot data unavailable for "+symbol+": "+(lastError?.message||"no candle response"));
+ }
  const okxBar={"15m":"15m","1h":"1H","4h":"4H","1d":"1Dutc"}[interval];
  const bybitInterval={"15m":"15","1h":"60","4h":"240","1d":"D"}[interval];
  const toBybitRows=list=>list.slice().reverse().map(x=>[Number(x[0]),x[1],x[2],x[3],x[4],x[5],x[6]||"0","0","0","0"]);
@@ -348,7 +366,8 @@ async function getExchangeCatalogs(){
   ["bitget_spot","https://api.bitget.com/api/v3/market/instruments?category=SPOT"],
   ["whitebit_spot",["https://whitebit.com/api/v1/public/markets","https://whitebit.eu/api/v1/public/markets","https://whitebit.tr/api/v1/public/markets","https://whitebit.ge/api/v1/public/markets"]],
   ["gate_spot",["https://api.gateio.ws/api/v4/spot/currency_pairs","https://api.gate.us/api/v4/spot/currency_pairs"]],
-  ["kucoin_spot",["https://api.kucoin.com/api/v2/symbols","https://api.kucoin.tr/api/v2/symbols"]]
+  ["kucoin_spot",["https://api.kucoin.com/api/v2/symbols","https://api.kucoin.tr/api/v2/symbols"]],
+  ["nobitex_spot","https://apiv2.nobitex.ir/market/stats?dstCurrency=rls"]
  ];
  const results=await Promise.all(urls.map(async ([key,endpoint])=>[key,Array.isArray(endpoint)?await readAnyPublicJson(endpoint):await readPublicJson(endpoint)]));
  const out=Object.fromEntries(results);
@@ -358,7 +377,7 @@ async function getExchangeCatalogs(){
 }
 function exchangeSupport(symbol,catalogs){
  const base=String(symbol||"").toUpperCase();
- const quotes=["USDT","USDC","FDUSD","BUSD","USD","BTC","ETH"];
+ const quotes=["USDT","USDC","FDUSD","BUSD","USD","BTC","ETH","IRT"];
  const choose=items=>items.filter(Boolean).sort((a,b)=>quotes.indexOf(a.quote)-quotes.indexOf(b.quote))[0]||null;
  const binanceSpotPair=(catalogs.binance_spot?.data?.symbols||[]).filter(x=>x.status==="TRADING"&&x.baseAsset===base&&quotes.includes(x.quoteAsset)).map(x=>({pair:x.symbol,quote:x.quoteAsset})).sort((a,b)=>quotes.indexOf(a.quote)-quotes.indexOf(b.quote))[0]||null;
  const bybitSpotPair=(catalogs.bybit_spot?.data?.result?.list||[]).filter(x=>x.status==="Trading"&&x.baseCoin===base&&quotes.includes(x.quoteCoin)).map(x=>({pair:x.symbol,quote:x.quoteCoin})).sort((a,b)=>quotes.indexOf(a.quote)-quotes.indexOf(b.quote))[0]||null;
@@ -367,10 +386,12 @@ function exchangeSupport(symbol,catalogs){
  const whitebitSpotPair=(catalogs.whitebit_spot?.data?.success===true?(catalogs.whitebit_spot.data.result||[]):[]).filter(x=>String(x.stock||"").toUpperCase()===base&&quotes.includes(String(x.money||"").toUpperCase())).map(x=>({pair:String(x.name||"").toUpperCase().replace("_",""),quote:String(x.money).toUpperCase()})).sort((a,b)=>quotes.indexOf(a.quote)-quotes.indexOf(b.quote))[0]||null;
  const gateSpotPair=(Array.isArray(catalogs.gate_spot?.data)?catalogs.gate_spot.data:[]).filter(x=>String(x.base||"").toUpperCase()===base&&quotes.includes(String(x.quote||"").toUpperCase())&&["tradable","buyable","sellable"].includes(String(x.trade_status||"").toLowerCase())).map(x=>({pair:String(x.base).toUpperCase()+String(x.quote).toUpperCase(),quote:String(x.quote).toUpperCase()})).sort((a,b)=>quotes.indexOf(a.quote)-quotes.indexOf(b.quote))[0]||null;
  const kucoinSpotPair=(catalogs.kucoin_spot?.data?.code==="200000"&&Array.isArray(catalogs.kucoin_spot.data.data)?catalogs.kucoin_spot.data.data:[]).filter(x=>x.enableTrading===true&&String(x.baseCurrency||"").toUpperCase()===base&&quotes.includes(String(x.quoteCurrency||"").toUpperCase())).map(x=>({pair:String(x.baseCurrency).toUpperCase()+String(x.quoteCurrency).toUpperCase(),quote:String(x.quoteCurrency).toUpperCase()})).sort((a,b)=>quotes.indexOf(a.quote)-quotes.indexOf(b.quote))[0]||null;
+ const nobitexStats=catalogs.nobitex_spot?.data?.stats||{};
+ const nobitexSpotPair=Number(nobitexStats[base.toLowerCase()+"-rls"]?.latest)>0&&Number(nobitexStats["usdt-rls"]?.latest)>0?{pair:base+"IRT",quote:"IRT"}:null;
  const binanceFuturesPair=(catalogs.binance_futures?.data?.symbols||[]).filter(x=>x.status==="TRADING"&&(!x.contractType||x.contractType==="PERPETUAL")&&x.baseAsset===base&&quotes.includes(x.quoteAsset)).map(x=>({pair:x.symbol,quote:x.quoteAsset})).sort((a,b)=>quotes.indexOf(a.quote)-quotes.indexOf(b.quote))[0]||null;
  const bybitFuturesPair=(catalogs.bybit_futures?.data?.result?.list||[]).filter(x=>x.status==="Trading"&&(!x.contractType||x.contractType==="LinearPerpetual")&&x.baseCoin===base&&quotes.includes(x.quoteCoin)).map(x=>({pair:x.symbol,quote:x.quoteCoin})).sort((a,b)=>quotes.indexOf(a.quote)-quotes.indexOf(b.quote))[0]||null;
  const okxFuturesPair=(catalogs.okx_futures?.data?.data||[]).filter(x=>x.state==="live"&&(!x.ctType||x.ctType==="linear")&&String(x.instId||"").endsWith("-SWAP")).map(x=>{const p=String(x.instId||"").split("-");return p[0]===base&&quotes.includes(p[1])?{pair:p[0]+p[1],quote:p[1]}:null;}).filter(Boolean).sort((a,b)=>quotes.indexOf(a.quote)-quotes.indexOf(b.quote))[0]||null;
- const spotEntries=[["Binance",binanceSpotPair,catalogs.binance_spot],["Bybit",bybitSpotPair,catalogs.bybit_spot],["OKX",okxSpotPair,catalogs.okx_spot],["Bitget",bitgetSpotPair,catalogs.bitget_spot],["WhiteBIT",whitebitSpotPair,catalogs.whitebit_spot],["Gate.io",gateSpotPair,catalogs.gate_spot],["KuCoin",kucoinSpotPair,catalogs.kucoin_spot]];
+ const spotEntries=[["Binance",binanceSpotPair,catalogs.binance_spot],["Bybit",bybitSpotPair,catalogs.bybit_spot],["OKX",okxSpotPair,catalogs.okx_spot],["Bitget",bitgetSpotPair,catalogs.bitget_spot],["WhiteBIT",whitebitSpotPair,catalogs.whitebit_spot],["Gate.io",gateSpotPair,catalogs.gate_spot],["KuCoin",kucoinSpotPair,catalogs.kucoin_spot],["Nobitex",nobitexSpotPair,catalogs.nobitex_spot]];
  const futuresEntries=[["Binance",binanceFuturesPair,catalogs.binance_futures],["Bybit",bybitFuturesPair,catalogs.bybit_futures],["OKX",okxFuturesPair,catalogs.okx_futures]];
  const spot=choose(spotEntries.map(x=>x[1])),futures=choose(futuresEntries.map(x=>x[1]));
  const providerStates=entries=>Object.fromEntries(entries.map(([name,pair,source])=>[name,!source?.ok?(source?.error||"تأیید نشد"):pair?"فعال":"جفت فعال پیدا نشد"]));
