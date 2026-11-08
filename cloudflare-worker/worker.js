@@ -1,6 +1,6 @@
 // MMP Quantum Intelligence Engine: dynamic market discovery with no fixed asset ceiling
 import { QUANTUM_ENGINE_NAME, QUANTUM_ENGINE_VERSION, normalizeQuantumUniverse, scoreQuantumOpportunity } from "./quantum-core.js";
-const HUNTER_BATCH_SIZE = 24;
+const HUNTER_BATCH_SIZE = 12;
 const MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 function extractAIJson(value){
  let raw=typeof value==="string"?value:JSON.stringify(value??"");
@@ -534,7 +534,7 @@ async function loadMarketFlow(symbol,windowMinutes=5){
  const oldestTrade=trades.reduce((v,x)=>Math.min(v,x.time),Infinity);
  return {symbol:pair,window_minutes:minutes,buy5m,sell5m,net5m:buy5m-sell5m,trade_count:trades.length,provider,exchange:provider.startsWith("Bybit")?"Bybit":provider.startsWith("Binance")?"Binance":provider.startsWith("OKX")?"OKX":"Gate",complete:!truncated,coverage_start:Number.isFinite(oldestTrade)?oldestTrade:null,window_start:cutoff,window_end:now,updated_at:now,rows};
 }
-async function fetchHunterCandles(symbol,marketType="spot"){
+async function fetchHunterCandles(symbol,marketType="spot",asset=null){
  const pair=symbol+"USDT",get=url=>marketFlowJson(url,6500);
  const futuresSources=[
   async()=>{const d=await get("https://fapi.binance.com/fapi/v1/klines?symbol="+pair+"&interval=1m&limit=100");if(!Array.isArray(d))throw Error("Binance Futures invalid");return ["Binance Futures",d.map(x=>[+x[0],+x[1],+x[2],+x[3],+x[4],+x[7]])];},
@@ -550,12 +550,23 @@ async function fetchHunterCandles(symbol,marketType="spot"){
   async()=>{const d=await get("https://api.kucoin.com/api/v1/market/candles?type=1min&symbol="+symbol+"-USDT");if(String(d.code)!=="200000")throw Error(d.msg||"KuCoin unavailable");return ["KuCoin Spot",(d.data||[]).map(x=>[+x[0]*1000,+x[1],+x[3],+x[4],+x[2],+x[6]||+x[5]])];}
  ];
  const sources=marketType==="futures"?futuresSources:spotSources,errors=[];
- for(const fn of sources)try{const [provider,data]=await fn(),rows=data.filter(x=>x.every(Number.isFinite)&&x[1]>0&&x[2]>=x[3]&&x[3]>0&&x[4]>0&&x[5]>=0).sort((x,y)=>x[0]-y[0]);if(rows.length>=65)return {provider,rows,market:marketType};throw Error("Insufficient candles");}catch(e){errors.push(String(e?.message||e).slice(0,100));}
+ const unique=values=>[...new Set(values.filter(Number.isInteger))];
+ let order=[];
+ if(marketType==="futures"){
+  const indexOf=name=>{const value=String(name||"").trim().toLowerCase();return value.startsWith("binance")?0:value.startsWith("bybit")?1:value.startsWith("okx")?2:null;};
+  order=unique([indexOf(asset?.hunterPriceExchange),...String(asset?.hunterExchange||"").split(",").map(indexOf),2,1,0]);
+ }else{
+  const indices={Binance:0,Bybit:1,Bitget:2,OKX:3,Gate:4,"Gate.io":4,KuCoin:5};
+  const preferred=(Array.isArray(asset?.marketPairs)?asset.marketPairs.slice().sort((a,b)=>Number(b.volume||0)-Number(a.volume||0)):[]).map(x=>indices[String(x.exchange||"")]);
+  order=unique([...preferred,3,4,5,2,1,0]);
+ }
+ const orderedSources=order.map(index=>sources[index]).filter(Boolean).slice(0,2);
+ for(const fn of orderedSources)try{const [provider,data]=await fn(),rows=data.filter(x=>x.every(Number.isFinite)&&x[1]>0&&x[2]>=x[3]&&x[3]>0&&x[4]>0&&x[5]>=0).sort((x,y)=>x[0]-y[0]);if(rows.length>=65)return {provider,rows,market:marketType};throw Error("Insufficient candles");}catch(e){errors.push(String(e?.message||e).slice(0,100));}
  throw new Error((marketType==="futures"?"Futures":"Spot")+" candles unavailable: "+errors.join(" | "));
 }
 
-async function analyzeDigitalHunterSymbol(symbol,marketType="spot"){
- const m=await fetchHunterCandles(symbol,marketType),rows=m.rows.slice(0,-1),now=Date.now();if(rows.length<60)return null;
+async function analyzeDigitalHunterSymbol(symbol,marketType="spot",asset=null){
+ const m=await fetchHunterCandles(symbol,marketType,asset),rows=m.rows.slice(0,-1),now=Date.now();if(rows.length<60)return null;
  const last=rows.at(-1);if(now-last[0]>210000)return null;
  const b=[];for(let i=0;i+2<rows.length;i+=3){const g=rows.slice(i,i+3);if(g.length===3)b.push({o:g[0][1],h:Math.max(...g.map(x=>x[2])),l:Math.min(...g.map(x=>x[3])),c:g[2][4],v:g.reduce((z,x)=>z+x[5],0)});}
  if(b.length<18)return null;const x=b.at(-1),m1=(last[4]/last[1]-1)*100,m3=(last[4]/rows.at(-3)[1]-1)*100,m5=(last[4]/rows.at(-5)[1]-1)*100,m15=(last[4]/rows.at(-15)[1]-1)*100,trend=m5>=0?"bull":"bear";
@@ -583,11 +594,12 @@ async function loadFuturesMarketFlow(symbol,windowMinutes=5){
  const rows=[...buckets.values()].sort((a,b)=>a.time-b.time).map(x=>[x.time,x.buy,x.sell,x.buy-x.sell]);
  return {symbol:pair,window_minutes:minutes,buy5m,sell5m,net5m:buy5m-sell5m,trade_count:trades.length,provider,exchange:provider.startsWith("Bybit")?"Bybit Linear":"Binance Futures",complete:!truncated,coverage_start:trades.reduce((v,x)=>Math.min(v,x.time),Infinity),window_start:cutoff,window_end:now,updated_at:now,rows};
 }
-async function scanHunterSymbols(symbols,marketType="spot"){
+async function scanHunterSymbols(symbols,marketType="spot",assetList=[]){
+ const assetMap=new Map((Array.isArray(assetList)?assetList:[]).map(x=>[String(x.symbol||"").toUpperCase(),x]));
  let i=0,failed=0;const candidates=[],errors=[];
- await Promise.all(Array.from({length:Math.min(8,symbols.length)},async()=>{while(i<symbols.length){const symbol=symbols[i++];try{const x=await analyzeDigitalHunterSymbol(symbol,marketType);if(x)candidates.push(x);}catch(e){failed++;if(errors.length<8)errors.push({symbol,error:String(e?.message||e).slice(0,120)});}}}));
+ await Promise.all(Array.from({length:Math.min(8,symbols.length)},async()=>{while(i<symbols.length){const symbol=symbols[i++];try{const x=await analyzeDigitalHunterSymbol(symbol,marketType,assetMap.get(symbol));if(x)candidates.push(x);}catch(e){failed++;if(errors.length<8)errors.push({symbol,error:String(e?.message||e).slice(0,120)});}}}));
  candidates.sort((a,b)=>b.score-a.score);const signals=[];
- await Promise.all(candidates.filter(x=>x.score>=60).slice(0,Math.min(4,candidates.length)).map(async x=>{
+ await Promise.all(candidates.filter(x=>x.score>=60).slice(0,Math.min(2,candidates.length)).map(async x=>{
   try{
    const f=marketType==="futures"?await loadFuturesMarketFlow(x.symbol,5):await loadMarketFlow(x.symbol,5);
    const gross=f.buy5m+f.sell5m,imb=gross?f.net5m/gross:0,ok=x.trend==="bull"?imb>=.045:imb<=-.045;
@@ -618,7 +630,7 @@ async function loadDigitalHunterFuturesUniverse(){
  if(!assets.length||providerCount===0)throw Error("No active USDT perpetual markets from Binance, Bybit or OKX");
  return {assets,sources,metadata_provider:"multi-exchange futures"};
 }
-async function runDigitalHunterMarketCycle(env,marketType="spot"){
+export async function runDigitalHunterMarketCycle(env,marketType="spot"){
  if(!env.ADMIN_DB)throw Error("ADMIN_DB binding missing");
  const stateId=marketType==="futures"?"digital-hunter-v2-futures":"digital-hunter-v2",stored=await env.ADMIN_DB.prepare("SELECT payload FROM hunter_engine_state WHERE id = ?").bind(stateId).first(),previous=stored?.payload?JSON.parse(stored.payload):{},now=Date.now();
  if(previous.lastRun&&now-Number(previous.lastRun)<45000&&previous.snapshot)return {...previous.snapshot,cycle_skipped:true};
@@ -639,7 +651,7 @@ async function runDigitalHunterMarketCycle(env,marketType="spot"){
   await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(stateId,payload,new Date(now).toISOString()).run();
   return snapshot;
  }
- const cursor=(Number(previous.cursor)||0)%assets.length,batch=Array.from({length:Math.min(HUNTER_BATCH_SIZE,assets.length)},(_,i)=>assets[(cursor+i)%assets.length]),result=await scanHunterSymbols(batch.map(x=>x.symbol),marketType);
+ const cursor=(Number(previous.cursor)||0)%assets.length,batch=Array.from({length:Math.min(HUNTER_BATCH_SIZE,assets.length)},(_,i)=>assets[(cursor+i)%assets.length]),result=await scanHunterSymbols(batch.map(x=>x.symbol),marketType,batch);
  const map=new Map((previous.snapshot?.signals||[]).map(x=>[x.symbol,x])),scanned=new Set(batch.map(x=>x.symbol));
  for(const symbol of scanned){const old=map.get(symbol);if(old)old.weakScans=Number(old.weakScans||0)+1;}
  for(const signal of result.signals){const asset=batch.find(x=>x.symbol===signal.symbol)||assets.find(x=>x.symbol===signal.symbol);signal.coin=asset?{...asset,current_price:Number(asset.current_price)||signal.price}:{id:signal.symbol,symbol:signal.symbol,name:signal.symbol,current_price:signal.price};signal.dailyChange24h=Number(asset?.hunterChange24h)||0;signal.weakScans=0;map.set(signal.symbol,signal);}
@@ -971,7 +983,11 @@ async function handle(request,env){
   ];
   return json({checked_at:new Date().toISOString(),checks},200,request);
  }
-if(request.method==="GET"&&new URL(request.url).pathname==="/health"){
+if(request.method==="GET"&&new URL(request.url).pathname==="/futures-engine-health"){
+  if(!env.FUTURES_ENGINE)return json({service_binding:"missing",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION},503,request);
+  try{const response=await env.FUTURES_ENGINE.fetch(new Request("https://futures-engine/health"));const payload=await response.json();return json({...payload,service_binding:"connected"},response.status,request);}catch(error){return json({service_binding:"error",detail:String(error?.message||error).slice(0,180)},502,request);}
+ }
+ if(request.method==="GET"&&new URL(request.url).pathname==="/health"){
   const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"health");
   const limited=rateLimitReply(limitResult,request);if(limited)return limited;
   const probe=async(url)=>{try{const r=await fetch(url,{headers:{"Accept":"application/json, text/plain, */*","User-Agent":"MMP-COIN-AI/1.0","Accept-Language":"en-US,en;q=0.9"}});return {ok:r.ok,status:r.status};}catch(e){return {ok:false,error:e.message||"network error"};}};
@@ -980,7 +996,7 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/health"){
    probe("https://fapi.binance.com/fapi/v1/klines?symbol=BTCUSDT&interval=1h&limit=1"),
    probe("https://api.bybit.com/v5/market/kline?category=linear&symbol=BTCUSDT&interval=60&limit=1")
   ]);
-  return json({service:"MMP COIN AI",worker:"online",ai_binding:!!env.AI,providers:{spot_binance:spot,futures_binance:futures,futures_bybit_fallback:bybit},checked_at:new Date().toISOString()},200,request);
+  return json({service:"MMP COIN AI",worker:"online",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,ai_binding:!!env.AI,futures_engine_binding:!!env.FUTURES_ENGINE,providers:{spot_binance:spot,futures_binance:futures,futures_bybit_fallback:bybit},checked_at:new Date().toISOString()},200,request);
  }
  if(request.method!=="POST")return json({error:"Method not allowed"},405,request);
  const limitResult=await checkRateLimit(env.AI_ANALYSIS_LIMITER,request,"ai-analysis");
@@ -1109,16 +1125,19 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/health"){
 }
 async function runDigitalHunterCron(event,env){
  const id="digital-hunter-cron-heartbeat",started=Date.now(),stamp=new Date(started).toISOString();
- await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(id,JSON.stringify({status:"started",cron:event?.cron||"* * * * *",scheduledTime:event?.scheduledTime||null,markets:["spot","futures"]}),stamp).run();
- const results=await Promise.allSettled([runDigitalHunterMarketCycle(env,"spot"),runDigitalHunterMarketCycle(env,"futures")]),finished=Date.now();
+ await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(id,JSON.stringify({status:"started",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,cron:event?.cron||"* * * * *",scheduledTime:event?.scheduledTime||null,markets:["spot","futures-service-binding"]}),stamp).run();
+ const results=await Promise.allSettled([
+  runDigitalHunterMarketCycle(env,"spot"),
+  (async()=>{if(!env.FUTURES_ENGINE)throw new Error("FUTURES_ENGINE service binding missing");const response=await env.FUTURES_ENGINE.fetch(new Request("https://futures-engine/run",{method:"POST",headers:{"Accept":"application/json"}}));if(!response.ok)throw new Error("Futures engine HTTP "+response.status);return await response.json();})()
+ ]),finished=Date.now();
  const spot=results[0].status==="fulfilled"?results[0].value:null,futures=results[1].status==="fulfilled"?results[1].value:null;
  const errors={};if(results[0].status==="rejected")errors.spot=String(results[0].reason?.message||results[0].reason).slice(0,220);if(results[1].status==="rejected")errors.futures=String(results[1].reason?.message||results[1].reason).slice(0,220);
  const status=spot&&futures?"success":spot||futures?"partial":"error";
- const payload={status,cron:event?.cron||"* * * * *",scheduledTime:event?.scheduledTime||null,startedAt:stamp,finishedAt:new Date(finished).toISOString(),markets:{
+ const payload={status,engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,cron:event?.cron||"* * * * *",scheduledTime:event?.scheduledTime||null,startedAt:stamp,finishedAt:new Date(finished).toISOString(),markets:{
   spot:spot?{scanned:spot.scanned_count||0,failed:spot.failed_count||0,universe:spot.universe_count||0,signals:spot.signals?.length||0}:{status:"error",error:errors.spot||"unavailable"},
   futures:futures?{scanned:futures.scanned_count||0,failed:futures.failed_count||0,universe:futures.universe_count||0,signals:futures.signals?.length||0}:{status:"error",error:errors.futures||"unavailable"}
  },errors};
  await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(id,JSON.stringify(payload),new Date(finished).toISOString()).run();
- if(!spot&&!futures)throw new Error("Digital Hunter Spot and Futures cycles both failed: "+JSON.stringify(errors));
+ if(!spot&&!futures)throw new Error("Quantum Spot and Futures cycles both failed: "+JSON.stringify(errors));
 }
 export default {fetch:handle,scheduled(event,env,ctx){ctx.waitUntil(runDigitalHunterCron(event,env).catch(error=>console.error("Digital Hunter scheduled cycle failed:",error?.message||error)));}};
