@@ -543,6 +543,8 @@ async function fetchHunterCandles(symbol,marketType="spot"){
  ];
  const spotSources=[
   async()=>{const d=await get("https://api.binance.com/api/v3/klines?symbol="+pair+"&interval=1m&limit=100");if(!Array.isArray(d))throw Error("Binance invalid");return ["Binance Spot",d.map(x=>[+x[0],+x[1],+x[2],+x[3],+x[4],+x[7]])];},
+  async()=>{const d=await get("https://api.bybit.com/v5/market/kline?category=spot&symbol="+pair+"&interval=1&limit=100");if(Number(d.retCode)!==0)throw Error(d.retMsg||"Bybit Spot unavailable");return ["Bybit Spot",(d.result?.list||[]).slice().reverse().map(x=>[+x[0],+x[1],+x[2],+x[3],+x[4],+x[6]||+x[5]])];},
+  async()=>{const d=await get("https://api.bitget.com/api/v3/market/candles?category=SPOT&symbol="+pair+"&interval=1m&limit=100");if(!["00000","0"].includes(String(d.code)))throw Error(d.msg||"Bitget Spot unavailable");return ["Bitget Spot",(d.data||[]).map(x=>[+x[0],+x[1],+x[2],+x[3],+x[4],+x[5]])];},
   async()=>{const d=await get("https://www.okx.com/api/v5/market/candles?instId="+symbol+"-USDT&bar=1m&limit=100");if(String(d.code)!=="0")throw Error(d.msg||"OKX unavailable");return ["OKX Spot",(d.data||[]).map(x=>[+x[0],+x[1],+x[2],+x[3],+x[4],+x[7]||+x[6]])];},
   async()=>{const d=await get("https://api.gateio.ws/api/v4/spot/candlesticks?currency_pair="+symbol+"_USDT&interval=1m&limit=100");return ["Gate Spot",(Array.isArray(d)?d:[]).map(x=>[+x[0]*1000,+x[4],+x[2],+x[3],+x[5],+x[1]])];},
   async()=>{const d=await get("https://api.kucoin.com/api/v1/market/candles?type=1min&symbol="+symbol+"-USDT");if(String(d.code)!=="200000")throw Error(d.msg||"KuCoin unavailable");return ["KuCoin Spot",(d.data||[]).map(x=>[+x[0]*1000,+x[1],+x[3],+x[4],+x[2],+x[6]||+x[5]])];}
