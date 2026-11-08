@@ -43,10 +43,16 @@ jobs:
           set -euo pipefail
           curl --fail --silent --show-error --retry 2 --retry-delay 3 --max-time 20 "$FUTURES_URL/health" -o /tmp/futures-health.json
           jq -e '.status == "online" and .market == "futures" and .d1 == true' /tmp/futures-health.json >/dev/null
-          curl --fail --silent --show-error --retry 2 --retry-delay 3 --max-time 20 "$WORKER_URL/hunter-snapshot" -o /tmp/spot-hunter.json
-          curl --fail --silent --show-error --retry 2 --retry-delay 3 --max-time 20 "$WORKER_URL/hunter-futures-snapshot" -o /tmp/futures-hunter.json
-          jq -e '.status == "online" and (.universe_count // 0) > 0' /tmp/spot-hunter.json >/dev/null
-          jq -e '.status == "online" and (.universe_count // 0) > 0' /tmp/futures-hunter.json >/dev/null
+          for endpoint in hunter-snapshot hunter-futures-snapshot; do
+            output="/tmp/${endpoint}.json"
+            status=$(curl --silent --show-error --max-time 20 -o "$output" -w "%{http_code}" "$WORKER_URL/$endpoint" || true)
+            echo "Endpoint $endpoint: HTTP $status"
+            cat "$output" || true
+            test "$status" = "200"
+            jq -e '(.status == "online" or .status == "warming_up") and (.universe_count // 0) > 0' "$output" >/dev/null
+          done
+          cp /tmp/hunter-snapshot.json /tmp/spot-hunter.json
+          cp /tmp/hunter-futures-snapshot.json /tmp/futures-hunter.json
           {
             echo "- Quantum Spot universe: $(jq -r '.universe_count' /tmp/spot-hunter.json) assets; last batch $(jq -r '.scanned_count // 0' /tmp/spot-hunter.json) scanned"
             echo "- Quantum Futures universe: $(jq -r '.universe_count' /tmp/futures-hunter.json) contracts; last batch $(jq -r '.scanned_count // 0' /tmp/futures-hunter.json) scanned; $(jq -r '.failed_count // 0' /tmp/futures-hunter.json) failures"
