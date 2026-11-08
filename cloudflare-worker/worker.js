@@ -603,7 +603,7 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
  }
  const fallbackPriority=marketType==="futures"?[3,4,1,2,0]:[7,2,6,4,5,1,3,0];
  order=unique([...order,...fallbackPriority.filter(index=>!order.includes(index))]);
- const orderedSources=order.map(index=>sources[index]).filter(Boolean).slice(0,4),verified=[];
+ const orderedSources=order.map(index=>sources[index]).filter(Boolean),verified=[];
  for(let offset=0;offset<orderedSources.length&&verified.length<2;offset+=2){
   const attempts=await Promise.allSettled(orderedSources.slice(offset,offset+2).map(fn=>fn()));
   for(const result of attempts){if(result.status==="fulfilled"){const [provider,rows]=result.value;verified.push({provider,rows});}else errors.push(String(result.reason?.message||result.reason).slice(0,130));}
@@ -725,7 +725,7 @@ async function loadHunterDepth(symbol,marketType="spot",preferredProviders=[]){
   {key:"Bybit",name:"Bybit Spot",load:async()=>{const d=await get("https://api.bybit.eu/v5/market/orderbook?category=spot&symbol="+pair+"&limit=50");if(Number(d.retCode)!==0)throw Error(d.retMsg||"Bybit order book unavailable");return {bids:d.result?.b,asks:d.result?.a};}}
  ];
  const preferred=preferredProviders.map(value=>sources.findIndex(x=>String(value||"").toLowerCase().includes(x.key.toLowerCase()))).filter(index=>index>=0);
- const order=[...new Set([...preferred,...sources.map((_,index)=>index)])].slice(0,4);
+ const order=[...new Set([...preferred,...sources.map((_,index)=>index)])];
  let best=null,lastError="";
  for(const index of order){
   const source=sources[index];
