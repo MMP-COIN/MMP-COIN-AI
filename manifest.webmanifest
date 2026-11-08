@@ -1,7 +1,7 @@
 {
-  "name": "MMP COIN AI",
-  "short_name": "MMP COIN",
-  "description": "ترمینال هوشمند پایش و تحلیل بازار رمزارزها",
+  "name": "MMP COIN AI · Quantum Intelligence",
+  "short_name": "MMP QUANTUM",
+  "description": "ترمینال هوشمند پایش و تحلیل بازار با موتور هوشمند کوانتومی MMP",
   "start_url": "./?source=pwa",
   "scope": "./",
   "display": "standalone",
@@ -10,13 +10,13 @@
   "theme_color": "#08090d",
   "icons": [
     {
-      "src": "assets/mmp-coin-ai-icon.svg?v=20261106",
+      "src": "assets/mmp-coin-ai-icon.svg?v=20261108-quantum1",
       "sizes": "192x192",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "assets/mmp-coin-ai-icon.svg?v=20261106",
+      "src": "assets/mmp-coin-ai-icon.svg?v=20261108-quantum1",
       "sizes": "512x512",
       "type": "image/svg+xml",
       "purpose": "any"
