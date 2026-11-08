@@ -55,7 +55,9 @@ jobs:
           const ids = [...html.matchAll(/\bid=["']([^"']+)["']/g)].map(x => x[1]);
           const duplicates = [...new Set(ids.filter((id, i) => ids.indexOf(id) !== i))];
           if (duplicates.length) throw new Error('Duplicate HTML IDs: ' + duplicates.join(', '));
-          if (!ids.includes('market-ticker')) throw new Error('Live market ticker container is missing');
+          if (/market-ticker|ticker-item|renderMarketTicker/.test(html)) throw new Error('Removed horizontal market ticker code has returned');
+          if (html.includes('checkNativeApkUpdate') || !html.includes('function checkNativeUpdate(manual){checkLivePageUpdate(!!manual);}')) throw new Error('Native app update must remain internal-only without an APK version update');
+          if (!html.includes("params.set('mmp_live_refresh',String(Date.now()))")) throw new Error('Native live-update cache refresh is missing');
           const scripts = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)];
           let parsed = 0;
           for (let i = 0; i < scripts.length; i++) {
