@@ -1,11 +1,13 @@
-name: MMP COIN AI - audit all 100 assets
+name: MMP COIN AI - audit full Quantum market universe
 
 on:
   push:
     branches: ["main"]
     paths:
       - "cloudflare-worker/worker.js"
-      - "index.html"
+      - "cloudflare-worker/radar-worker.js"
+      - "cloudflare-worker/quantum-core.js"
+      - "www/index.html"
       - ".github/workflows/asset-audit.yml"
   schedule:
     - cron: "25 16 * * *"
@@ -21,7 +23,7 @@ concurrency:
 jobs:
   audit:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 45
     steps:
       - name: Checkout canonical project
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -48,7 +50,7 @@ jobs:
             const controller = new AbortController();
             const timer = setTimeout(() => controller.abort(), timeout);
             try {
-              const r = await fetch(url, {headers:{'Accept':'application/json','User-Agent':'MMP-COIN-AI-Asset-Audit/1.0'}, signal:controller.signal, cache:'no-store'});
+              const r = await fetch(url, {headers:{'Accept':'application/json','User-Agent':'MMP-QUANTUM-UNIVERSE-AUDIT/1.0'}, signal:controller.signal, cache:'no-store'});
               const body = await r.text();
               if (!r.ok) throw new Error('HTTP '+r.status+' '+body.slice(0,100));
               let data; try { data = JSON.parse(body); } catch { throw new Error('Invalid JSON '+body.slice(0,80)); }
@@ -73,7 +75,7 @@ jobs:
             return null;
           };
           const rowsArray = x => Array.isArray(x);
-          const spotCandidates = (pair,tf) => {
+          const spotCandidates = (pair,tf,support) => {
             const p=pairParts(pair); if(!p) return [];
             const {base,quote}=p, bybitTf={'15m':'15','1h':'60','4h':'240','1d':'D'}[tf], okxTf={'15m':'15m','1h':'1H','4h':'4H','1d':'1Dutc'}[tf], bitgetTf={'15m':'15m','1h':'1H','4h':'4H','1d':'1D'}[tf], kucoinTf={'15m':'15min','1h':'1hour','4h':'4hour','1d':'1day'}[tf];
             const c=[];
@@ -84,15 +86,17 @@ jobs:
             for(const host of ['https://whitebit.com','https://whitebit.eu','https://whitebit.tr','https://whitebit.ge']) c.push({name:'WhiteBIT Spot',url:host+'/api/v1/public/kline?market='+base+'_'+quote+'&interval='+tf+'&limit=250',rows:d=>d?.success===true?d.result:null});
             for(const host of ['https://api.bybit.eu','https://api.bytick.eu','https://api.bybit.com','https://api.bytick.com']) c.push({name:'Bybit Spot',url:host+'/v5/market/kline?category=spot&symbol='+pair+'&interval='+bybitTf+'&limit=250',rows:d=>d?.retCode===0?d.result?.list:null});
             for(const host of ['https://www.okx.com','https://us.okx.com','https://openapi.okx.com']) c.push({name:'OKX Spot',url:host+'/api/v5/market/candles?instId='+base+'-'+quote+'&bar='+okxTf+'&limit=250',rows:d=>d?.code==='0'?d.data:null});
-            return c;
+            const supported=new Set(Array.isArray(support?.spot?.providers)?support.spot.providers:[]);
+            return supported.size?c.filter(x=>supported.has(x.name.replace(/ Spot$/,""))).slice(0,2):c.slice(0,4);
           };
-          const futuresCandidates = (pair,tf) => {
+          const futuresCandidates = (pair,tf,support) => {
             const p=pairParts(pair); if(!p) return [];
             const {base,quote}=p, bybitTf={'15m':'15','1h':'60','4h':'240','1d':'D'}[tf], okxTf={'15m':'15m','1h':'1H','4h':'4H','1d':'1Dutc'}[tf];
             const c=[{name:'Binance Futures',url:'https://fapi.binance.com/fapi/v1/klines?symbol='+pair+'&interval='+tf+'&limit=250',rows:rowsArray}];
             for(const host of ['https://api.bybit.eu','https://api.bytick.eu','https://api.bybit.com','https://api.bytick.com']) c.push({name:'Bybit Linear',url:host+'/v5/market/kline?category=linear&symbol='+pair+'&interval='+bybitTf+'&limit=250',rows:d=>d?.retCode===0?d.result?.list:null});
             for(const host of ['https://www.okx.com','https://us.okx.com','https://openapi.okx.com']) c.push({name:'OKX Swap',url:host+'/api/v5/market/candles?instId='+base+'-'+quote+'-SWAP&bar='+okxTf+'&limit=250',rows:d=>d?.code==='0'?d.data:null});
-            return c;
+            const supported=new Set(Array.isArray(support?.futures?.providers)?support.futures.providers:[]);
+            return supported.size?c.filter(x=>supported.has(x.name.split(" ")[0])).slice(0,2):c;
           };
           async function checkAsset(asset, support) {
             const symbol=String(asset.symbol).toUpperCase();
@@ -100,10 +104,10 @@ jobs:
             const futuresPair=support?.futures?.pair || symbol+'USDT';
             const tests=[];
             for(const tf of intervals) {
-              let result=await firstValid(spotCandidates(spotPair,tf),tf);
+              let result=await firstValid(spotCandidates(spotPair,tf,support),tf);
               let market='spot';
               if(!result.ok && support?.futures?.confirmed) {
-                const fut=await firstValid(futuresCandidates(futuresPair,tf),tf);
+                const fut=await firstValid(futuresCandidates(futuresPair,tf,support),tf);
                 if(fut.ok){result=fut;market='futures';}
                 else result.error='Spot: '+result.error+' || Futures: '+fut.error;
               }
@@ -112,46 +116,23 @@ jobs:
             return {id:asset.id,name:asset.name,symbol,rank:asset.market_cap_rank||null,tests,ready:tests.every(x=>x.ok)};
           }
           (async()=>{
-            let top, assetSource='CoinGecko Worker Proxy';
-            try {
-              top=await getJson(WORKER+'/market-proxy?source=coingecko-top');
-              if(!Array.isArray(top)) throw new Error('Invalid worker market list');
-            } catch(workerError) {
-              console.warn('Worker/CoinGecko proxy unavailable; trying public market-list fallbacks:',workerError.message);
-              try {
-                top=await getJson('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=false');
-                assetSource='CoinGecko direct';
-              } catch(coingeckoError) {
-                console.warn('CoinGecko direct unavailable; trying CoinPaprika:',coingeckoError.message);
-                try {
-                  const rows=await getJson('https://api.coinpaprika.com/v1/tickers?quotes=USD');
-                  top=rows.filter(x=>Number(x.rank)>0).map(x=>({id:x.id,name:x.name,symbol:x.symbol,market_cap_rank:Number(x.rank)}));
-                  assetSource='CoinPaprika fallback';
-                } catch(paprikaError) {
-                  console.warn('CoinPaprika unavailable; trying CoinCap:',paprikaError.message);
-                  const payload=await getJson('https://api.coincap.io/v2/assets?limit=250');
-                  top=(payload.data||[]).map(x=>({id:x.id,name:x.name,symbol:x.symbol,market_cap_rank:Number(x.rank)}));
-                  assetSource='CoinCap fallback';
-                }
-              }
-            }
-            if(!Array.isArray(top)) throw new Error('All public asset-list sources returned invalid data');
-            console.log('Asset list source: '+assetSource);
-            // The top 250 already contains every market-cap-ranked candidate
-            // capable of entering the top 100; avoid a second request that can
-            // be rate-limited and cannot change the final top-100 selection.
+            const universe=await getJson(WORKER+'/hunter-universe',25000);
+            const top=Array.isArray(universe.hunter_assets)?universe.hunter_assets:[];
+            const assetSource='MMP Quantum dynamic multi-exchange universe';
+            if(!top.length)throw new Error('Quantum universe returned no eligible USDT instruments');
+            console.log('Asset list source: '+assetSource+'; discovered '+top.length+' instruments');
             const map=new Map();
             top.forEach(c=>{
-              if(!c?.id||!c?.symbol) return;
+              if(!c?.id||!c?.symbol)return;
               const symbol=String(c.symbol).toUpperCase();
-              if(nonTradableIds.has(c.id)||nonTradableSymbols.has(symbol)||map.has(c.id)||[...map.values()].some(x=>String(x.symbol).toUpperCase()===symbol)) return;
-              map.set(c.id,c);
+              if(nonTradableIds.has(c.id)||nonTradableSymbols.has(symbol)||map.has(symbol))return;
+              map.set(symbol,{...c,symbol});
             });
-            const candidates=[...map.values()].sort((a,b)=>(a.market_cap_rank||999999)-(b.market_cap_rank||999999)).filter(x=>/^[A-Z0-9_]{2,30}$/.test(String(x.symbol||"").toUpperCase()));
+            const candidates=[...map.values()].filter(x=>/^[A-Z0-9_]{2,30}$/.test(String(x.symbol||"").toUpperCase()));
             const supportMap={},supportSources={};
             for(let i=0;i<candidates.length;i+=120){
               const symbols=[...new Set(candidates.slice(i,i+120).map(x=>String(x.symbol).toUpperCase()))];
-              const supportPayload=await getJson(WORKER+'/support-check?symbols='+encodeURIComponent(symbols.join(',')));
+              const supportPayload=await getJson(WORKER+'/support-check?symbols='+encodeURIComponent(symbols.join(',')),12000);
               (supportPayload.assets||[]).forEach(x=>{supportMap[String(x.symbol||"").toUpperCase()]=x;});
               Object.assign(supportSources,supportPayload.sources||{});
             }
@@ -159,24 +140,25 @@ jobs:
             const assets=candidates.filter(x=>{
               const support=supportMap[String(x.symbol||"").toUpperCase()];
               return !!support?.spot?.confirmed;
-            }).slice(0,100);
-            if(assets.length!==100)throw new Error('Only '+assets.length+' assets have confirmed active exchange pairs; 100 required');
+            });
+            if(!assets.length)throw new Error('No instruments have confirmed active Spot USDT markets');
             const results=[];
-            for(let i=0;i<assets.length;i+=4) {
-              const batch=assets.slice(i,i+4);
+            const batchSize=24;
+            for(let i=0;i<assets.length;i+=batchSize){
+              const batch=assets.slice(i,i+batchSize);
               const rows=await Promise.all(batch.map(a=>checkAsset(a,supportMap[String(a.symbol).toUpperCase()])));
               results.push(...rows);
-              console.log('Checked '+results.length+'/100 assets');
+              console.log('Checked '+results.length+'/'+assets.length+' dynamic-universe instruments');
             }
             const failed=results.filter(x=>!x.ready);
-            const report={checked_at:new Date().toISOString(),asset_count:results.length,ready_count:results.length-failed.length,failed_count:failed.length,intervals,results};
+            const report={checked_at:new Date().toISOString(),asset_count:results.length,ready_count:results.length-failed.length,failed_count:failed.length,intervals,results,source:assetSource};
             fs.writeFileSync('asset-audit.json',JSON.stringify(report,null,2));
-            const md=['# MMP COIN AI — بررسی تک‌به‌تک ۱۰۰ ارز','', 'زمان بررسی: '+report.checked_at,'', 'نتیجه: '+report.ready_count+'/100 آماده تحلیل؛ '+report.failed_count+' مورد نیازمند بررسی','', '| ارز | نماد | 15m | 1h | 4h | 1d | نتیجه |','|---|---|---|---|---|---|---|'];
-            for(const x of results) md.push('| '+x.name+' | '+x.symbol+' | '+(x.tests[0].provider||'خطا')+' | '+(x.tests[1].provider||'خطا')+' | '+(x.tests[2].provider||'خطا')+' | '+(x.tests[3].provider||'خطا')+' | '+(x.ready?'آماده':'نیازمند اصلاح')+' |');
-            fs.writeFileSync('asset-audit.md',md.join('\n'));
-            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,md.join('\n')+'\n');
+            const md=['# MMP QUANTUM — بررسی کامل یونیورس پویا','', 'منبع: '+assetSource,'زمان بررسی: '+report.checked_at,'', 'نتیجه: '+report.ready_count+'/'+report.asset_count+' آماده تحلیل؛ '+report.failed_count+' مورد نیازمند بررسی','', '| ارز | نماد | 15m | 1h | 4h | 1d | نتیجه |','|---|---|---|---|---|---|---|'];
+            for(const x of results)md.push('| '+x.name+' | '+x.symbol+' | '+(x.tests[0].provider||'خطا')+' | '+(x.tests[1].provider||'خطا')+' | '+(x.tests[2].provider||'خطا')+' | '+(x.tests[3].provider||'خطا')+' | '+(x.ready?'آماده':'نیازمند اصلاح')+' |');
+            fs.writeFileSync('asset-audit.md',md.join('\\n'));
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,md.join('\\n')+'\\n');
             console.log(JSON.stringify({checked:results.length,ready:report.ready_count,failed:report.failed_count,failed_assets:failed.map(x=>({symbol:x.symbol,tests:x.tests.filter(t=>!t.ok)}))},null,2));
-            if(failed.length) process.exitCode=1;
+            if(failed.length)process.exitCode=1;
           })().catch(e=>{console.error(e);process.exit(1)});
           NODE
 
@@ -184,7 +166,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: MMP-COIN-AI-100-asset-audit
+          name: MMP-COIN-AI-quantum-universe-audit
           path: |
             asset-audit.json
             asset-audit.md
