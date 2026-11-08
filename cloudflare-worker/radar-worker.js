@@ -2,9 +2,9 @@ import { QUANTUM_ENGINE_NAME, QUANTUM_ENGINE_VERSION, normalizeQuantumUniverse, 
 const MAIN_UNIVERSE = "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/hunter-universe";
 const MAIN_FLOW = "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-flow";
 const RETENTION_SCORE = 64;
-const BATCH_SIZE = 24;
-const CONCURRENCY = 6;
-const SUPPORTED = new Set(["Binance","Bybit","OKX","Bitget","Gate","KuCoin"]);
+const BATCH_SIZE = 16;
+const CONCURRENCY = 4;
+const SUPPORTED = new Set(["Binance","Bybit","OKX","Bitget","Gate","KuCoin","WhiteBIT"]);
 const JSON_HEADERS = { "Accept":"application/json", "User-Agent":"MMP-COIN-AI-RADAR/1.0" };
 async function getJson(url, timeoutMs = 6500) {
   const controller = new AbortController(), timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -56,6 +56,12 @@ async function loadProvider(symbol,exchange) {
     if(String(d.code)!=="200000")throw new Error("KuCoin unavailable");
     const rows=normalizeRows(Array.isArray(d.data)?d.data.map(x=>[Number(x[0])*1000,x[1],x[3],x[4],x[2],x[6]||x[5]]):[]);
     if(rows.length<25)throw new Error("KuCoin candle history insufficient");return {rows,provider:"KuCoin Spot"};
+  }
+  if(exchange==="WhiteBIT"){
+    const d=await getJson("https://whitebit.com/api/v1/public/kline?market="+symbol+"_USDT&interval=1m&limit=40");
+    if(d?.success!==true)throw new Error(d?.message||"WhiteBIT unavailable");
+    const rows=normalizeRows(Array.isArray(d.result)?d.result.map(x=>[Number(x[0])*1000,x[1],x[3],x[4],x[2],x[5]]):[]);
+    if(rows.length<25)throw new Error("WhiteBIT candle history insufficient");return {rows,provider:"WhiteBIT Spot"};
   }
   throw new Error("Unsupported venue");
 }
@@ -235,6 +241,8 @@ async function runRadar(env,scheduledTime=Date.now()){
     // A below-average candle volume is accepted only when executed trades independently confirm direction.
     signal.volumeConfirmed=Number(signal.volumeRatio)>=1||Number(signal.flowAdjustment)===8;
     if(!signal.volumeConfirmed)signal.score=Math.min(signal.score,RETENTION_SCORE-1);
+    signal.flowConfirmed=flow.complete===true&&Number(flow.tradeCount)>=10;
+    if(!signal.flowConfirmed||Number(signal.flowAdjustment)<0)signal.score=Math.min(signal.score,RETENTION_SCORE-1);
     if(signal.score>=RETENTION_SCORE){
       signals.set(signal.id,signal);
       delete removedSignals[signal.id];
