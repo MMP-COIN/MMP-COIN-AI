@@ -960,6 +960,12 @@ async function handle(request,env){
     }
    }catch{}
   }
+  if(!data||!data.premium){
+   try{
+    let ticker;try{const rows=await get("https://api.gateio.ws/api/v4/futures/usdt/tickers?contract="+base+"_USDT");ticker=Array.isArray(rows)?rows[0]:null;}catch{const rows=await get("https://api.gate.us/api/v4/futures/usdt/tickers?contract="+base+"_USDT");ticker=Array.isArray(rows)?rows[0]:null;}
+    if(ticker)data={premium:data?.premium||{lastFundingRate:ticker.funding_rate,markPrice:ticker.mark_price},oi:data?.oi||null,ratio:data?.ratio||null,source:data?data.source+" + Gate":"Gate USDT Futures"};
+   }catch{}
+  }
   if(!data){
    try{
     const results=await Promise.allSettled([get("https://www.okx.com/api/v5/public/funding-rate?instId="+instId),get("https://www.okx.com/api/v5/public/open-interest?instType=SWAP&instId="+instId)]);
