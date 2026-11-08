@@ -21,10 +21,12 @@ namespace_id = "2026110402"
 limit = 300
 period = 60
 
-[[kv_namespaces]]
-binding = "HUNTER_KV"
-namespace_id = "312f8ff92567418c9f95635f2c44cef1"
 
 [triggers]
 crons = ["* * * * *"]
 
+
+[[d1_databases]]
+binding = "ADMIN_DB"
+database_name = "mmp_coin_ai_private_admin"
+database_id = "dfb3ee95-ef2f-4067-a973-31b8fb1ee62f"
