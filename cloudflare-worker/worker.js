@@ -574,7 +574,7 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
  };
  const futuresSources=[
   async()=>tryHosts("Binance Futures",["https://fapi.binance.com"],host=>host+"/fapi/v1/klines?symbol="+pair+"&interval=1m&limit=100",d=>Array.isArray(d)?d:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],+x[7]]),
-  async()=>tryHosts("Bybit Linear",["https://api.bybit.eu"],host=>host+"/v5/market/kline?category=linear&symbol="+pair+"&interval=1&limit=100",d=>Number(d.retCode)===0?d.result?.list:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],(+x[6]||+x[5])]),
+  async()=>tryHosts("Bybit Linear",["https://api.bybit.com","https://api.bybit.eu"],host=>host+"/v5/market/kline?category=linear&symbol="+pair+"&interval=1&limit=100",d=>Number(d.retCode)===0?d.result?.list:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],(+x[6]||+x[5])]),
   async()=>tryHosts("OKX USDT Swap",["https://www.okx.com"],host=>host+"/api/v5/market/candles?instId="+symbol+"-USDT-SWAP&bar=1m&limit=100",d=>String(d.code)==="0"?d.data:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],(+x[7]||+x[6])]),
   async()=>tryHosts("Bitget USDT Futures",["https://api.bitget.com"],host=>host+"/api/v3/market/candles?category=USDT-FUTURES&symbol="+pair+"&interval=1m&limit=100",d=>String(d.code)==="00000"?d.data:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],(+x[6]||+x[5])]),
   async()=>tryHosts("Gate USDT Futures",["https://api.gateio.ws","https://api.gate.us"],host=>host+"/api/v4/futures/usdt/candlesticks?contract="+symbol+"_USDT&interval=1m&limit=100",d=>Array.isArray(d)?d:null,x=>[+x.t*1000,+x.o,+x.h,+x.l,+x.c,(+x.sum||+x.v)])
@@ -602,7 +602,8 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
   order=unique([...(primaryTrusted?[primary]:[]),...available,...(!available.length?priority:[])]);
  }
  const fallbackPriority=marketType==="futures"?[3,4,1,2,0]:[7,2,6,4,5,1,3,0];
- order=unique([...order,...fallbackPriority.filter(index=>!order.includes(index))]);
+ const hasTwoActiveFuturesVenues=marketType==="futures"&&String(asset?.hunterExchange||"").split(",").filter(Boolean).length>=2;
+ if(!hasTwoActiveFuturesVenues)order=unique([...order,...fallbackPriority.filter(index=>!order.includes(index))]);
  const orderedSources=order.map(index=>sources[index]).filter(Boolean),verified=[];
  for(let offset=0;offset<orderedSources.length&&verified.length<2;offset+=2){
   const attempts=await Promise.allSettled(orderedSources.slice(offset,offset+2).map(fn=>fn()));
@@ -783,7 +784,8 @@ async function loadDigitalHunterFuturesUniverse(){
  ];
  const settled=await Promise.allSettled(jobs.map(fn=>fn())),map=new Map(),sources={};let providerCount=0;
  settled.forEach((r,i)=>{const name=["Binance USD-M Futures","Bybit Linear","OKX USDT Swap","Bitget USDT Futures","Gate USDT Futures"][i];if(r.status!=="fulfilled"){sources[name]={ok:false,error:String(r.reason?.message||r.reason).slice(0,130)};return;}providerCount++;sources[name]={ok:true,count:r.value[1].length};for(const q of r.value[1]){if(!/^[A-Z0-9]{2,20}$/.test(q.symbol)||!(q.price>0)||!(q.volume>=50000))continue;const old=map.get(q.symbol)||{symbol:q.symbol,name:q.symbol,id:"futures:"+q.symbol,venues:new Set(),volume:0,price:0,change24h:0,priceExchange:name};old.venues.add(name);if(q.volume>=old.volume){old.volume=q.volume;old.price=q.price;old.change24h=q.change24h;old.priceExchange=name;}map.set(q.symbol,old);}});
- const assets=normalizeQuantumUniverse([...map.values()].filter(x=>x.venues.size>=2).map(x=>({id:x.id,symbol:x.symbol,name:x.name,current_price:x.price,total_volume:x.volume,hunterExchange:[...x.venues].join(", "),hunterPriceExchange:x.priceExchange||[...x.venues][0],hunterChange24h:x.change24h,marketPairs:[]})),"futures");
+ const activeProviders=new Set(Object.entries(sources).filter(([,status])=>status?.ok===true).map(([name])=>name));
+ const assets=normalizeQuantumUniverse([...map.values()].filter(x=>[...x.venues].filter(name=>activeProviders.has(name)).length>=2).map(x=>({id:x.id,symbol:x.symbol,name:x.name,current_price:x.price,total_volume:x.volume,hunterExchange:[...x.venues].filter(name=>activeProviders.has(name)).join(", "),hunterPriceExchange:activeProviders.has(x.priceExchange)?x.priceExchange:[...x.venues].find(name=>activeProviders.has(name)),hunterChange24h:x.change24h,marketPairs:[]})),"futures");
  if(!assets.length||providerCount===0)throw Error("No active USDT perpetual markets from Binance, Bybit, OKX, Bitget or Gate");
  return {assets,sources,metadata_provider:"multi-exchange futures"};
 }
