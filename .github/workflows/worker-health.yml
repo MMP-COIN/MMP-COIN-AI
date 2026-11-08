@@ -172,6 +172,20 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
 
+      - name: Run and verify the scheduled Digital Hunter snapshot
+        env:
+          WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
+        run: |
+          set -euo pipefail
+          run_status=$(curl --silent --show-error --retry 1 --retry-delay 2 --max-time 85 -o /tmp/hunter-run.json -w "%{http_code}" "$WORKER_URL/hunter-run")
+          echo "Digital Hunter cycle HTTP $run_status"
+          if [ "$run_status" != "200" ]; then cat /tmp/hunter-run.json; exit 1; fi
+          jq -e '.status == "online" and .engine == "MMP DIGITAL HUNTER v2" and (.universe_count > 0) and (.batch_size > 0) and (.signals | type == "array")' /tmp/hunter-run.json >/dev/null
+          snapshot_status=$(curl --fail --silent --show-error --max-time 15 "$WORKER_URL/hunter-snapshot" -o /tmp/hunter-snapshot.json -w "%{http_code}")
+          test "$snapshot_status" = "200"
+          jq -e '.status == "online" and .engine == "MMP DIGITAL HUNTER v2" and (.signals | type == "array")' /tmp/hunter-snapshot.json >/dev/null
+          jq -r '"Digital Hunter snapshot: scanned " + (.scanned_count|tostring) + "/" + (.universe_count|tostring) + " liquid instruments; " + (.signals|length|tostring) + " confirmed signals; failures " + (.failed_count|tostring)' /tmp/hunter-snapshot.json >> "$GITHUB_STEP_SUMMARY"
+
       - name: Smoke-test independent Hunter and shared real-trade flow
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
