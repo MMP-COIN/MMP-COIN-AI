@@ -2,7 +2,7 @@ const MAIN_UNIVERSE = "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers
 const MAIN_FLOW = "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-flow";
 const RETENTION_SCORE = 64;
 const BATCH_SIZE = 20;
-const CONCURRENCY = 6;
+const CONCURRENCY = 4;
 const SUPPORTED = new Set(["Binance","Bybit","OKX","Bitget","Gate","KuCoin"]);
 const JSON_HEADERS = { "Accept":"application/json", "User-Agent":"MMP-COIN-AI-RADAR/1.0" };
 async function getJson(url, timeoutMs = 6500) {
@@ -19,7 +19,7 @@ async function loadProvider(symbol,exchange) {
   const pair=symbol+"USDT";
   if(exchange==="Binance"){
     let lastError;
-    for(const host of ["https://api.binance.com","https://data-api.binance.vision"]){
+    for(const host of ["https://api.binance.com"]){
       try{const rows=normalizeRows(await getJson(host+"/api/v3/klines?symbol="+pair+"&interval=1m&limit=40"));if(rows.length>=25)return {rows,provider:"Binance Spot"};throw new Error("کمبود کندل");}
       catch(error){lastError=error;}
     }
@@ -194,10 +194,9 @@ async function runRadar(env,scheduledTime=Date.now()){
     legacy_signals:[...signals.values()].filter(x=>Number(x?.scoringVersion)!==2)
       .sort((a,b)=>b.score-a.score).slice(0,300)
   };
-  await Promise.all([
-    env.RADAR_KV.put("radar:snapshot",JSON.stringify(snapshot)),
-    env.RADAR_KV.put("radar:state",JSON.stringify({cursor:nextCursor,updated_at:snapshot.scanned_at,universe_count:universe.length,removed_signals:removedSignals}))
-  ]);
+  // Persist the public snapshot first; advance the cursor only after it is safely stored.
+  await env.RADAR_KV.put("radar:snapshot",JSON.stringify(snapshot));
+  await env.RADAR_KV.put("radar:state",JSON.stringify({cursor:nextCursor,updated_at:snapshot.scanned_at,universe_count:universe.length,removed_signals:removedSignals}));
   return snapshot;
 }
 function json(data,status=200){return new Response(JSON.stringify(data),{status,headers:{"Content-Type":"application/json; charset=utf-8","Access-Control-Allow-Origin":"*","Access-Control-Allow-Methods":"GET, OPTIONS","Access-Control-Allow-Headers":"Content-Type","Cache-Control":"no-store","X-Content-Type-Options":"nosniff"}});}
