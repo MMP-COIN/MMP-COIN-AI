@@ -20,8 +20,8 @@
 </script>
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<link rel="icon" type="image/svg+xml" href="assets/mmp-coin-ai-icon.svg?v=20261108-quantum1">
-<link rel="manifest" href="manifest.webmanifest?v=20261108-quantum1">
+<link rel="icon" type="image/svg+xml" href="assets/mmp-coin-ai-icon.svg?v=20261108-qcoin2">
+<link rel="manifest" href="manifest.webmanifest?v=20261108-qcoin2">
 <title>MMP QUANTUM | ترمینال جامع و هوشمند بازارهای مالی</title>
 <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
 <style>
@@ -1301,7 +1301,7 @@ body.radar-detail-open{overflow:hidden}
 
 <header class="top">
 <div class="brand">
-  <div class="logo">M</div>
+  <div class="logo"><img src="assets/mmp-coin-mark.svg?v=20261108-qcoin2" alt="نشان سکه کوانتومی MMP" style="width:100%;height:100%;object-fit:contain;padding:1px;border-radius:12px"></div>
   <div><b>MMP COIN AI</b><small>ترمینال هوشمند ارز دیجیتال</small></div>
 </div>
 <div class="top-actions">
@@ -1327,7 +1327,7 @@ body.radar-detail-open{overflow:hidden}
 </header>
 
 <aside class="mmp-sidebar" id="mmp-sidebar">
-  <div class="side-brand"><div class="side-emblem">M</div><div><b>MMP <span>COIN AI</span></b><small>PRO TRADING TERMINAL</small></div></div>
+  <div class="side-brand"><div class="side-emblem" style="background:transparent;box-shadow:none"><img src="assets/mmp-coin-mark.svg?v=20261108-qcoin2" alt="نشان سکه کوانتومی MMP" style="width:100%;height:100%;object-fit:contain"></div><div><b>MMP <span>COIN AI</span></b><small>PRO TRADING TERMINAL</small></div></div>
   <div class="side-caption">INTELLIGENCE FIRST</div>
   <a class="side-link active" href="#hero"><i>◈</i><span>نمای کلی بازار</span><em>01</em></a>
   <a class="side-link" href="#opportunities"><i>⌖</i><span>رادار صعودی و نزولی</span><em>02</em></a>
@@ -1359,7 +1359,7 @@ body.radar-detail-open{overflow:hidden}
   <div class="quantum-engine-chip"><span></span> QUANTUM CORE · QIE-1.1.0 · LIVE INTELLIGENCE</div><h1 class="hero-title"><span>ترمینال جامع و هوشمند</span><span>بازارهای مالی</span></h1>
   <p>داده‌های زنده بازار، رادار فرصت‌ها و تحلیل چندلایه هوش مصنوعی؛ برای تصمیم‌گیری آگاهانه، نه دنبال‌کردن سیگنال‌های کور.</p>
 </div>
-<div class="hero-visual"><div class="hero-orbit orbit-a"></div><div class="hero-orbit orbit-b"></div><div class="hero-coin"><img src="assets/mmp-coin-mark.svg?v=20261108-quantum1" alt="سکه طلایی M برجسته MMP COIN AI"></div><div class="hero-spark spark-a"></div><div class="hero-spark spark-b"></div><div class="hero-visual-label">MARKET INTELLIGENCE <span>● LIVE</span></div></div><div class="hero-refresh-group"><span class="badge" id="updated">در حال دریافت داده…</span><button class="btn primary hero-refresh-btn" id="market-refresh-btn" type="button">↻ بروزرسانی بازار</button></div>
+<div class="hero-visual"><div class="hero-orbit orbit-a"></div><div class="hero-orbit orbit-b"></div><div class="hero-coin"><img src="assets/mmp-coin-mark.svg?v=20261108-qcoin2" alt="سکه طلایی M برجسته MMP COIN AI"></div><div class="hero-spark spark-a"></div><div class="hero-spark spark-b"></div><div class="hero-visual-label">MARKET INTELLIGENCE <span>● LIVE</span></div></div><div class="hero-refresh-group"><span class="badge" id="updated">در حال دریافت داده…</span><button class="btn primary hero-refresh-btn" id="market-refresh-btn" type="button">↻ بروزرسانی بازار</button></div>
 </section>
 
 
@@ -3375,7 +3375,7 @@ html.mmp-native-app .native-refresh-label{font:700 9px Tahoma,Arial,sans-serif!i
   document.addEventListener("DOMContentLoaded",function(){
    if(document.querySelector(".native-appbar"))return;
    var header=document.createElement("header");header.className="native-appbar";
-   header.innerHTML='<div class="native-brand"><div class="native-mark"><img src="assets/mmp-coin-ai-icon.svg" alt="MMP QUANTUM"></div><div><b>MMP QUANTUM</b><small>QUANTUM INTELLIGENCE</small></div></div><div class="native-appbar-actions"><div class="native-currency-switch" role="group" aria-label="واحد نمایش قیمت"><button type="button" id="native-currency-irt" class="active" aria-pressed="true" onclick="setCurrency(\'IRT\')">تومان</button><button type="button" id="native-currency-usdt" aria-pressed="false" onclick="setCurrency(\'USDT\')">تتر</button></div><button type="button" class="native-update-check-btn" id="native-update-check-btn" aria-label="بررسی نسخه جدید" title="بررسی نسخه جدید">⇧</button><button type="button" class="native-refresh-btn" id="native-refresh-btn" aria-label="بروزرسانی بازار" title="دریافت دوباره قیمت‌ها و وضعیت اتصال منابع داده">⟳<span class="native-refresh-label">تازه‌سازی داده‌ها</span></button><button type="button" class="native-menu-toggle" id="native-menu-toggle" aria-label="منوی اپلیکیشن" aria-expanded="false">☰</button></div><nav class="native-app-menu" id="native-app-menu" aria-label="منوی اپلیکیشن"><a href="#opportunities">📡 رادار هوشمند بازار</a><a href="#market-hunter">🎯 شکارچی بازار</a><a href="#ai-section">✧ تحلیلگر هوشمند AI</a><a href="#boom-hunter">◉ آزمایشگاه Boom Hunter</a><a href="#chart-section">▥ نمودار تریدینگ‌ویو</a><a href="#trading-tools">⌗ ابزارهای معامله</a><a class="native-admin-link" href="https://mmp-coin.github.io/admin.html">⚙ ورود به پنل مدیریت</a><div class="native-menu-version" id="native-menu-version">نسخه فعلی اپ · 1.0.0</div><button type="button" id="native-share-app">↗ ارسال اپلیکیشن برای دوستان</button></nav>';
+   header.innerHTML='<div class="native-brand"><div class="native-mark"><img src="assets/mmp-coin-mark.svg?v=20261108-qcoin2" alt="MMP QUANTUM"></div><div><b>MMP QUANTUM</b><small>QUANTUM INTELLIGENCE</small></div></div><div class="native-appbar-actions"><div class="native-currency-switch" role="group" aria-label="واحد نمایش قیمت"><button type="button" id="native-currency-irt" class="active" aria-pressed="true" onclick="setCurrency(\'IRT\')">تومان</button><button type="button" id="native-currency-usdt" aria-pressed="false" onclick="setCurrency(\'USDT\')">تتر</button></div><button type="button" class="native-update-check-btn" id="native-update-check-btn" aria-label="بررسی نسخه جدید" title="بررسی نسخه جدید">⇧</button><button type="button" class="native-refresh-btn" id="native-refresh-btn" aria-label="بروزرسانی بازار" title="دریافت دوباره قیمت‌ها و وضعیت اتصال منابع داده">⟳<span class="native-refresh-label">تازه‌سازی داده‌ها</span></button><button type="button" class="native-menu-toggle" id="native-menu-toggle" aria-label="منوی اپلیکیشن" aria-expanded="false">☰</button></div><nav class="native-app-menu" id="native-app-menu" aria-label="منوی اپلیکیشن"><a href="#opportunities">📡 رادار هوشمند بازار</a><a href="#market-hunter">🎯 شکارچی بازار</a><a href="#ai-section">✧ تحلیلگر هوشمند AI</a><a href="#boom-hunter">◉ آزمایشگاه Boom Hunter</a><a href="#chart-section">▥ نمودار تریدینگ‌ویو</a><a href="#trading-tools">⌗ ابزارهای معامله</a><a class="native-admin-link" href="https://mmp-coin.github.io/admin.html">⚙ ورود به پنل مدیریت</a><div class="native-menu-version" id="native-menu-version">نسخه فعلی اپ · 1.0.0</div><button type="button" id="native-share-app">↗ ارسال اپلیکیشن برای دوستان</button></nav>';
    document.body.insertBefore(header,document.body.firstChild);
    var menuToggle=header.querySelector("#native-menu-toggle"),appMenu=header.querySelector("#native-app-menu");
    var nativeVersionLabel=header.querySelector("#native-menu-version");if(nativeVersionLabel)nativeVersionLabel.textContent="نسخه فعلی اپ · "+(document.querySelector('meta[name="mmp-app-version"]')?.content||"1.0.0");
