@@ -115,7 +115,7 @@ async function scanCoin(coin){
   const dailyScore=dailyChange24h!==0&&Math.sign(dailyChange24h)===direction?5:0;
   const impulseScore=signs[0]===direction&&Math.abs(change1m)>=0.08?5:0;
   let score=Math.round(10+alignmentScore+momentumScore+volumeScore+breakoutScore+dailyScore+impulseScore);
-  const quantum=scoreQuantumOpportunity({trend,change1m,change3m,change5m,change15m,volumeRatio,breakout,structureAligned:coreAligned,trend15:Math.sign(change15m)===direction,overextended:Math.abs(change5m)>=1.5||Math.abs(change1m)>=0.8,dataAgeMs:now-last[0],flowConfirmed:false,multiExchangeConfirmed});
+  const quantum=scoreQuantumOpportunity({trend,change1m,change3m,change5m,change15m,volumeRatio,breakout,structureAligned:coreAligned,trend15:Math.sign(change15m)===direction,overextended:Math.abs(change5m)>=1.5||Math.abs(change1m)>=0.8||Math.abs(dailyChange24h)>=18,dataAgeMs:now-last[0],flowConfirmed:false,multiExchangeConfirmed,totalVolume24h:coin.total_volume});
   score=Math.round(score*0.55+quantum.score*0.45);
   if(!coreAligned)score=Math.min(score,63);
   if(volumeRatio<0.75)score=Math.min(score,60);
