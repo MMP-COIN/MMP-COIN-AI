@@ -1037,4 +1037,15 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/health"){
   return json({analysis,market:snapshot},200,request);
  }catch(e){return json({error:String(e?.message||"Analysis failed").slice(0,300),stage,symbol:pair,market_mode:mode},502,request)}
 }
-export default {fetch:handle,scheduled(_event,env,ctx){ctx.waitUntil(runDigitalHunterCycle(env).catch(error=>console.error("Digital Hunter scheduled cycle failed:",error?.message||error)));}};
+async function runDigitalHunterCron(event,env){
+ const id="digital-hunter-cron-heartbeat",started=Date.now(),stamp=new Date(started).toISOString();
+ await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(id,JSON.stringify({status:"started",cron:event?.cron||"* * * * *",scheduledTime:event?.scheduledTime||null}),stamp).run();
+ try{
+  const snapshot=await runDigitalHunterCycle(env),finished=Date.now();
+  await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(id,JSON.stringify({status:"success",cron:event?.cron||"* * * * *",scheduledTime:event?.scheduledTime||null,startedAt:stamp,finishedAt:new Date(finished).toISOString(),scanned:snapshot.scanned_count||0,failed:snapshot.failed_count||0,universe:snapshot.universe_count||0,signals:snapshot.signals?.length||0}),new Date(finished).toISOString()).run();
+ }catch(error){
+  const finished=Date.now();await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(id,JSON.stringify({status:"error",cron:event?.cron||"* * * * *",scheduledTime:event?.scheduledTime||null,startedAt:stamp,finishedAt:new Date(finished).toISOString(),error:String(error?.message||error).slice(0,240)}),new Date(finished).toISOString()).run();
+  throw error;
+ }
+}
+export default {fetch:handle,scheduled(event,env,ctx){ctx.waitUntil(runDigitalHunterCron(event,env).catch(error=>console.error("Digital Hunter scheduled cycle failed:",error?.message||error)));}};
