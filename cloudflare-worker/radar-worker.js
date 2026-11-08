@@ -137,24 +137,35 @@ async function mapLimit(items,limit,fn){
 }
 async function runRadar(env,scheduledTime=Date.now()){
   if(!env.RADAR_KV)throw new Error("RADAR_KV binding is missing");
-  const response=await getJson(MAIN_UNIVERSE,55000);
-  const source=Array.isArray(response.hunter_assets)&&response.hunter_assets.length?response.hunter_assets:Array.isArray(response.radar_assets)&&response.radar_assets.length?response.radar_assets:response.assets;
-  if(!Array.isArray(source)||!source.length)throw new Error("Exchange universe returned no assets; previous snapshot retained");
-  const eligible=source.filter(coin=>{
-    const venues=Array.isArray(coin.marketPairs)?coin.marketPairs.some(x=>String(x.quote||"").toUpperCase()==="USDT"&&Number(x.volume)>=15000&&SUPPORTED.has(String(x.exchange))):
-      Object.entries(coin.hunterVenueVolume||{}).some(([name,volume])=>SUPPORTED.has(name)&&Number(volume)>=15000);
-    return venues&&Number(coin.total_volume||0)>=50000&&/^[A-Z0-9]{2,20}$/.test(String(coin.symbol||""));
-  }).sort((a,b)=>Number(b.total_volume||0)-Number(a.total_volume||0));
-  // Keep one highest-liquidity instrument per ticker; avoid duplicate CMC/discovery records in the radar.
-  const seenUniverseSymbols=new Set();
-  const universe=eligible.filter(coin=>{
-    const symbol=String(coin.symbol||"").toUpperCase();
-    if(seenUniverseSymbols.has(symbol))return false;
-    seenUniverseSymbols.add(symbol);
-    return true;
-  });
-  if(!universe.length)throw new Error("No eligible USDT spot symbols; previous snapshot retained");
   const [state,oldSnapshot]=await Promise.all([env.RADAR_KV.get("radar:state",{type:"json"}),env.RADAR_KV.get("radar:snapshot",{type:"json"})]);
+  const cacheTimestamp=Date.parse(state?.universe_cache_updated_at||state?.updated_at||"")||Number(state?.universe_cache_updated_at||state?.updated_at||0)||0;
+  const cacheAge=Math.max(0,Date.now()-cacheTimestamp);
+  const cachedUniverse=Array.isArray(state?.universe_cache)&&state.universe_cache.length&&cacheAge<=30*60*1000?state.universe_cache:null;
+  let source=null,universeSource="live";
+  try{
+    const response=await getJson(MAIN_UNIVERSE,12000);
+    source=Array.isArray(response.hunter_assets)&&response.hunter_assets.length?response.hunter_assets:Array.isArray(response.radar_assets)&&response.radar_assets.length?response.radar_assets:response.assets;
+    if(!Array.isArray(source)||!source.length)throw new Error("Exchange universe returned no assets");
+  }catch(error){
+    if(!cachedUniverse)throw new Error("Live universe unavailable and no fresh cache exists: "+String(error?.message||error).slice(0,160));
+    source=cachedUniverse;universeSource="cached";
+  }
+  const buildUniverse=items=>{
+    const eligible=items.filter(coin=>{
+      const venues=Array.isArray(coin.marketPairs)?coin.marketPairs.some(x=>String(x.quote||"").toUpperCase()==="USDT"&&Number(x.volume)>=15000&&SUPPORTED.has(String(x.exchange))):
+        Object.entries(coin.hunterVenueVolume||{}).some(([name,volume])=>SUPPORTED.has(name)&&Number(volume)>=15000);
+      return venues&&Number(coin.total_volume||0)>=50000&&/^[A-Z0-9]{2,20}$/.test(String(coin.symbol||""));
+    }).sort((a,b)=>Number(b.total_volume||0)-Number(a.total_volume||0));
+    const seen=new Set();
+    return eligible.filter(coin=>{
+      const symbol=String(coin.symbol||"").toUpperCase();
+      if(seen.has(symbol))return false;
+      seen.add(symbol);return true;
+    });
+  };
+  let universe=buildUniverse(source);
+  if(!universe.length&&universeSource==="live"&&cachedUniverse){universe=buildUniverse(cachedUniverse);universeSource="cached";}
+  if(!universe.length)throw new Error("No eligible USDT spot symbols; previous snapshot retained");
   const previousSignals=[...(Array.isArray(oldSnapshot?.signals)?oldSnapshot.signals:[]),...(Array.isArray(oldSnapshot?.legacy_signals)?oldSnapshot.legacy_signals:[])];
   const signals=new Map(previousSignals.filter(x=>Number(x?.score)>=RETENTION_SCORE).map(x=>[String(x.id),x]));
   const start=Math.max(0,Number(state?.cursor)||0)%universe.length;
@@ -226,6 +237,7 @@ async function runRadar(env,scheduledTime=Date.now()){
   const nextCursor=cursor;
   const snapshot={
     status:"online",source:"Cloudflare scheduled radar",scoring_version:2,retention_score:RETENTION_SCORE,
+    universe_source:universeSource,universe_cache_age_ms:universeSource==="cached"?cacheAge:0,
     scanned_at:new Date().toISOString(),scheduled_at:new Date(Number(scheduledTime)||Date.now()).toISOString(),
     universe_count:universe.length,scanned_count:completed,valid_count:valid,failed_count:failed,failed_samples:failedSamples,
     removed_count:removed,removed_signals:removedSignals,batch_size:BATCH_SIZE,priority_scanned_count:priorityCoins.length,next_cursor:nextCursor,
@@ -244,7 +256,16 @@ async function runRadar(env,scheduledTime=Date.now()){
   };
   // Persist the public snapshot first; advance the cursor only after it is safely stored.
   await env.RADAR_KV.put("radar:snapshot",JSON.stringify(snapshot));
-  await env.RADAR_KV.put("radar:state",JSON.stringify({cursor:nextCursor,updated_at:snapshot.scanned_at,universe_count:universe.length,removed_signals:removedSignals}));
+  const universeCache=universe.map(coin=>({id:coin.id,symbol:coin.symbol,name:coin.name||"",image:coin.image||"",
+    total_volume:Number(coin.total_volume)||0,market_cap:coin.market_cap||null,market_cap_rank:coin.market_cap_rank||null,
+    hunterExchange:coin.hunterExchange||"",hunterPriceExchange:coin.hunterPriceExchange||"",
+    hunterChange24h:Number(coin.hunterChange24h)||0,hunterVenueVolume:coin.hunterVenueVolume||{},
+    marketPairs:Array.isArray(coin.marketPairs)?coin.marketPairs:[]}));
+  await env.RADAR_KV.put("radar:state",JSON.stringify({
+    cursor:nextCursor,updated_at:snapshot.scanned_at,universe_count:universe.length,removed_signals:removedSignals,
+    universe_cache:universeCache,
+    universe_cache_updated_at:universeSource==="live"?snapshot.scanned_at:Number(state?.universe_cache_updated_at||state?.updated_at||snapshot.scanned_at)
+  }));
   return snapshot;
 }
 function json(data,status=200){return new Response(JSON.stringify(data),{status,headers:{"Content-Type":"application/json; charset=utf-8","Access-Control-Allow-Origin":"*","Access-Control-Allow-Methods":"GET, OPTIONS","Access-Control-Allow-Headers":"Content-Type","Cache-Control":"no-store","X-Content-Type-Options":"nosniff"}});}
