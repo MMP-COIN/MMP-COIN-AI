@@ -19,7 +19,7 @@ This folder contains the secure backend for the market-analysis section on GitHu
 2. Create a Worker named `mmp-coin-ai-analyzer`.
 3. Open the Worker editor and paste the contents of `worker.js` from this folder, then deploy.
 4. In the Worker settings, open **Bindings** → **Add binding** → **Workers AI**. Set the variable name to exactly `AI`, save, and deploy again.
-   Also add Rate Limiting bindings `AI_ANALYSIS_LIMITER` (5 requests per 60 seconds) and `PUBLIC_API_LIMITER` (60 requests per 60 seconds). The matching configuration is already in `wrangler.toml`.
+   Also add Rate Limiting bindings `AI_ANALYSIS_LIMITER` (15 requests per 60 seconds) and `PUBLIC_API_LIMITER` (300 requests per 60 seconds). The matching configuration is already in `wrangler.toml`.
 5. Bind the dedicated Workers KV namespace `MMP-COIN-AI-Digital-Hunter` as `HUNTER_KV` and configure the `* * * * *` Cron trigger from `wrangler.toml`. The Radar Worker and its KV namespace remain separate.
 6. Copy the Worker URL. The endpoint is the same URL with `/analyze` appended only if you later add a route; for this code the root URL itself handles POST requests.
 7. In `index.html`, set `AI_ANALYSIS_ENDPOINT` to the deployed Worker root URL (including https://), commit, and wait for GitHub Pages deployment.
