@@ -13,6 +13,9 @@ on:
       - "www/index.html"
       - "manifest.webmanifest"
       - ".github/workflows/android-apk.yml"
+      - "www/index.html"
+      - "www/assets/**"
+      - "manifest.webmanifest"
   workflow_dispatch:
 
 permissions:
