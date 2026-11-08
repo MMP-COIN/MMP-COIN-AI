@@ -598,10 +598,10 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
   order=unique([...(primaryTrusted&&available.includes(primary)?[primary]:[]),...available,...(!available.length?priority:[])]);
  }else{
   const indices={Binance:0,Bybit:1,Bitget:2,OKX:3,Gate:4,"Gate.io":4,KuCoin:5,WhiteBIT:6,"Binance.US":7,BinanceUS:7};
-  const preferred=(Array.isArray(asset?.marketPairs)?asset.marketPairs.slice().sort((a,b)=>Number(b.volume||0)-Number(a.volume||0)):[]).map(x=>indices[String(x.exchange||"")]).filter(Number.isInteger),priority=[2,6,4,5,1,3,7,0],available=unique(preferred).sort((a,b)=>priority.indexOf(a)-priority.indexOf(b)),primary=preferred[0],primaryTrusted=[2,4,5,6,7].includes(primary);
+  const preferred=(Array.isArray(asset?.marketPairs)?asset.marketPairs.slice().sort((a,b)=>Number(b.volume||0)-Number(a.volume||0)):[]).map(x=>indices[String(x.exchange||"")]).filter(Number.isInteger),priority=[2,6,4,7,5,1,3,0],available=unique(preferred).sort((a,b)=>priority.indexOf(a)-priority.indexOf(b)),primary=preferred[0],primaryTrusted=[2,4,5,6,7].includes(primary);
   order=unique([...(primaryTrusted?[primary]:[]),...available,...(!available.length?priority:[])]);
  }
- const fallbackPriority=marketType==="futures"?[3,4,1,2,0]:[2,6,4,5,1,3,7,0];
+ const fallbackPriority=marketType==="futures"?[3,4,1,2,0]:[2,6,4,7,5,1,3,0];
  order=unique([...order,...fallbackPriority.filter(index=>!order.includes(index))]);
  const orderedSources=order.map(index=>sources[index]).filter(Boolean).slice(0,4),verified=[];
  for(const fn of orderedSources){if(verified.length>=2)break;try{const [provider,rows]=await fn();verified.push({provider,rows});}catch(error){errors.push(String(error?.message||error).slice(0,130));}}
