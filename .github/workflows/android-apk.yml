@@ -4,18 +4,12 @@ on:
   push:
     branches: ["main"]
     paths:
-      # Build an installable Android release for canonical Quantum UI, engine integration or brand changes.
+      # Web UI and Worker changes ship through the live dashboard; rebuild only for native shell or dependency changes.
       - "package.json"
       - "package-lock.json"
       - "capacitor.config.json"
       - "assets/mmp-coin-ai-icon.svg"
-      - "assets/mmp-coin-mark.svg"
-      - "www/index.html"
-      - "manifest.webmanifest"
-      - ".github/workflows/android-apk.yml"
-      - "www/index.html"
-      - "www/assets/**"
-      - "manifest.webmanifest"
+      - "android/**"
   workflow_dispatch:
 
 permissions:
