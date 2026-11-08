@@ -1,7 +1,7 @@
 const MAIN_UNIVERSE = "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/hunter-universe";
 const MAIN_FLOW = "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-flow";
 const RETENTION_SCORE = 64;
-const BATCH_SIZE = 20;
+const BATCH_SIZE = 21;
 const CONCURRENCY = 4;
 const SUPPORTED = new Set(["Binance","Bybit","OKX","Bitget","Gate","KuCoin"]);
 const JSON_HEADERS = { "Accept":"application/json", "User-Agent":"MMP-COIN-AI-RADAR/1.0" };
@@ -134,17 +134,48 @@ async function runRadar(env,scheduledTime=Date.now()){
   const response=await getJson(MAIN_UNIVERSE,55000);
   const source=Array.isArray(response.hunter_assets)&&response.hunter_assets.length?response.hunter_assets:Array.isArray(response.radar_assets)&&response.radar_assets.length?response.radar_assets:response.assets;
   if(!Array.isArray(source)||!source.length)throw new Error("Exchange universe returned no assets; previous snapshot retained");
-  const universe=source.filter(coin=>{
+  const eligible=source.filter(coin=>{
     const venues=Array.isArray(coin.marketPairs)?coin.marketPairs.some(x=>String(x.quote||"").toUpperCase()==="USDT"&&Number(x.volume)>=15000&&SUPPORTED.has(String(x.exchange))):
       Object.entries(coin.hunterVenueVolume||{}).some(([name,volume])=>SUPPORTED.has(name)&&Number(volume)>=15000);
     return venues&&Number(coin.total_volume||0)>=50000&&/^[A-Z0-9]{2,20}$/.test(String(coin.symbol||""));
   }).sort((a,b)=>Number(b.total_volume||0)-Number(a.total_volume||0));
+  // Keep one highest-liquidity instrument per ticker; avoid duplicate CMC/discovery records in the radar.
+  const seenUniverseSymbols=new Set();
+  const universe=eligible.filter(coin=>{
+    const symbol=String(coin.symbol||"").toUpperCase();
+    if(seenUniverseSymbols.has(symbol))return false;
+    seenUniverseSymbols.add(symbol);
+    return true;
+  });
   if(!universe.length)throw new Error("No eligible USDT spot symbols; previous snapshot retained");
   const [state,oldSnapshot]=await Promise.all([env.RADAR_KV.get("radar:state",{type:"json"}),env.RADAR_KV.get("radar:snapshot",{type:"json"})]);
   const previousSignals=[...(Array.isArray(oldSnapshot?.signals)?oldSnapshot.signals:[]),...(Array.isArray(oldSnapshot?.legacy_signals)?oldSnapshot.legacy_signals:[])];
   const signals=new Map(previousSignals.filter(x=>Number(x?.score)>=RETENTION_SCORE).map(x=>[String(x.id),x]));
   const start=Math.max(0,Number(state?.cursor)||0)%universe.length;
-  const batch=Array.from({length:Math.min(BATCH_SIZE,universe.length)},(_,i)=>universe[(start+i)%universe.length]);
+  const byId=new Map(universe.map(coin=>[String(coin.id),coin]));
+  const bySymbol=new Map(universe.map(coin=>[String(coin.symbol).toUpperCase(),coin]));
+  const prioritySignals=[...signals.values()]
+    .filter(x=>Number(x?.scoringVersion)===2&&Number(x?.score)>=RETENTION_SCORE)
+    .sort((a,b)=>Number(b.score)-Number(a.score)||Number(a.updatedAt||0)-Number(b.updatedAt||0));
+  const priorityCoins=[],prioritySymbols=new Set();
+  for(const signal of prioritySignals){
+    const symbol=String(signal.symbol||signal.coin?.symbol||"").toUpperCase();
+    const coin=byId.get(String(signal.id))||bySymbol.get(symbol);
+    if(!coin||!symbol||prioritySymbols.has(symbol))continue;
+    priorityCoins.push(coin);prioritySymbols.add(symbol);
+    if(priorityCoins.length>=4)break;
+  }
+  // Recheck the strongest live candidates every minute, while the rotating tail discovers new movers.
+  const rotationTarget=Math.max(0,Math.min(BATCH_SIZE,universe.length)-priorityCoins.length);
+  const rotatingCoins=[],rotatingSymbols=new Set(prioritySymbols);
+  let cursor=start,inspected=0;
+  while(rotatingCoins.length<rotationTarget&&inspected<universe.length){
+    const coin=universe[cursor],symbol=String(coin.symbol||"").toUpperCase();
+    cursor=(cursor+1)%universe.length;inspected++;
+    if(!symbol||rotatingSymbols.has(symbol))continue;
+    rotatingCoins.push(coin);rotatingSymbols.add(symbol);
+  }
+  const batch=[...priorityCoins,...rotatingCoins];
   let completed=0,failed=0,valid=0,removed=0,failedSamples=[],scannedSignals=[],removedSignals={...(state?.removed_signals||{})};
   const tombstoneCutoff=Date.now()-24*60*60*1000;
   for(const [id,item] of Object.entries(removedSignals)){if(Number(item?.removedAt||0)<tombstoneCutoff)delete removedSignals[id];}
@@ -183,12 +214,12 @@ async function runRadar(env,scheduledTime=Date.now()){
       removedSignals[signal.id]={symbol:signal.symbol,score:signal.score,scannedAt:signal.updatedAt,removedAt:Date.now(),reason:"below_retention_threshold"};
     }
   }
-  const nextCursor=(start+batch.length)%universe.length;
+  const nextCursor=cursor;
   const snapshot={
     status:"online",source:"Cloudflare scheduled radar",scoring_version:2,retention_score:RETENTION_SCORE,
     scanned_at:new Date().toISOString(),scheduled_at:new Date(Number(scheduledTime)||Date.now()).toISOString(),
     universe_count:universe.length,scanned_count:completed,valid_count:valid,failed_count:failed,failed_samples:failedSamples,
-    removed_count:removed,removed_signals:removedSignals,batch_size:BATCH_SIZE,next_cursor:nextCursor,
+    removed_count:removed,removed_signals:removedSignals,batch_size:BATCH_SIZE,priority_scanned_count:priorityCoins.length,next_cursor:nextCursor,
     signals:[...signals.values()].filter(x=>Number(x?.score)>=RETENTION_SCORE&&Number(x?.scoringVersion)===2)
       .sort((a,b)=>b.score-a.score).slice(0,300),
     legacy_signals:[...signals.values()].filter(x=>Number(x?.scoringVersion)!==2)
