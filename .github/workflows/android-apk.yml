@@ -9,6 +9,7 @@ on:
       - "package-lock.json"
       - "capacitor.config.json"
       - "assets/mmp-coin-ai-icon.svg"
+      - "assets/mmp-coin-mark.svg"
       - "www/index.html"
       - "manifest.webmanifest"
       - ".github/workflows/android-apk.yml"
