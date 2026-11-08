@@ -917,6 +917,14 @@ async function handle(request,env){
     }catch{}
    }
   }
+  if(!data||!data.premium||!data.oi){
+   try{
+    const d=await get("https://api.bitget.com/api/v3/market/tickers?category=USDT-FUTURES&symbol="+symbol),ticker=d?.code==="00000"?(d.data||[])[0]:null;
+    if(ticker){
+     data={premium:data?.premium||{lastFundingRate:ticker.fundingRate,markPrice:ticker.markPrice},oi:data?.oi||{openInterest:ticker.openInterest},ratio:data?.ratio||null,source:data?data.source+" + Bitget":"Bitget USDT Futures"};
+    }
+   }catch{}
+  }
   if(!data){
    try{
     const results=await Promise.allSettled([get("https://www.okx.com/api/v5/public/funding-rate?instId="+instId),get("https://www.okx.com/api/v5/public/open-interest?instType=SWAP&instId="+instId)]);
