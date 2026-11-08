@@ -985,6 +985,14 @@ async function handle(request,env){
    ["Gate Spot",()=>get("https://api.gateio.ws/api/v4/spot/order_book?currency_pair="+base+"_USDT&limit=100"),d=>Array.isArray(d?.bids)&&Array.isArray(d?.asks)?d:null]
   ];
   const futuresDepthSources=[
+   ["Gate USDT Futures",async()=>{
+    let details,book;
+    try{[details,book]=await Promise.all([get("https://api.gateio.ws/api/v4/futures/usdt/contracts/"+base+"_USDT"),get("https://api.gateio.ws/api/v4/futures/usdt/order_book?contract="+base+"_USDT&limit=100")]);}
+    catch{[details,book]=await Promise.all([get("https://api.gate.us/api/v4/futures/usdt/contracts/"+base+"_USDT"),get("https://api.gate.us/api/v4/futures/usdt/order_book?contract="+base+"_USDT&limit=100")]);}
+    const multiplier=Number(details?.quanto_multiplier)||0;if(!multiplier)throw new Error("Gate Futures contract multiplier unavailable");
+    const levels=items=>(items||[]).map(x=>Array.isArray(x)?[Number(x[0]),Number(x[1])*multiplier]:[Number(x.p),Number(x.s)*multiplier]).filter(x=>x[0]>0&&x[1]>0);
+    return {bids:levels(book?.bids),asks:levels(book?.asks)};
+   },d=>d],
    ["Bitget USDT Futures",()=>get("https://api.bitget.com/api/v3/market/orderbook?category=USDT-FUTURES&symbol="+symbol+"&limit=100"),d=>d?.code==="00000"?{bids:d.data?.b,asks:d.data?.a}:null],
    ["Bybit Linear Futures",()=>get("https://api.bybit.eu/v5/market/orderbook?category=linear&symbol="+symbol+"&limit=100"),d=>d?.retCode===0?{bids:d.result?.b,asks:d.result?.a}:null],
    ["Bybit Global Futures",()=>get("https://api.bybit.com/v5/market/orderbook?category=linear&symbol="+symbol+"&limit=100"),d=>d?.retCode===0?{bids:d.result?.b,asks:d.result?.a}:null]
