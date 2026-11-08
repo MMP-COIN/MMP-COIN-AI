@@ -499,30 +499,30 @@ async function loadMarketFlow(symbol,windowMinutes=5){
  let trades=null,provider="",truncated=false,lastError="";
  for(const host of ["https://api.bybit.com"]){
   try{
-   const d=await marketFlowJson(host+"/v5/market/recent-trade?category=spot&symbol="+pair+"&limit=1000");
+   const d=await marketFlowJson(host+"/v5/market/recent-trade?category=spot&symbol="+pair+"&limit=60");
    if(Number(d.retCode)!==0)throw new Error(d.retMsg||"Bybit retCode "+d.retCode);
    const raw=Array.isArray(d.result?.list)?d.result.list:[];
    const oldest=raw.reduce((v,x)=>Math.min(v,Number(x.time)||Infinity),Infinity);
-   truncated=raw.length>=1000&&oldest>cutoff;
+   truncated=raw.length>=60&&oldest>cutoff;
    trades=raw.map(x=>({time:Number(x.time),price:Number(x.price),size:Number(x.size),side:String(x.side||"")})).filter(x=>x.time>=cutoff&&x.time<=now&&x.price>0&&x.size>0&&["Buy","Sell"].includes(x.side));
    provider="Bybit Spot · معاملات واقعی";
    break;
   }catch(error){lastError=String(error?.message||error).slice(0,160);}
  }
- if(!trades){
+ if(!trades||truncated){
   for(const host of ["https://api.binance.com"]){
    try{
     const d=await marketFlowJson(host+"/api/v3/aggTrades?symbol="+pair+"&startTime="+cutoff+"&endTime="+now+"&limit=1000");
     if(!Array.isArray(d))throw new Error("ساختار معاملات Binance نامعتبر است");
-    const oldest=d.reduce((value,x)=>Math.min(value,Number(x.T)||Infinity),Infinity);
-    truncated=d.length>=1000&&oldest>cutoff;
-    trades=d.map(x=>({time:Number(x.T),price:Number(x.p),size:Number(x.q),side:x.m?"Sell":"Buy"})).filter(x=>x.time>=cutoff&&x.time<=now&&x.price>0&&x.size>0);
-    provider="Binance Spot · معاملات تجمیعی واقعی";
+    const newest=d.reduce((value,x)=>Math.max(value,Number(x.T)||0),0);
+    const binanceTruncated=d.length>=1000&&newest<now-1500;
+    const binanceTrades=d.map(x=>({time:Number(x.T),price:Number(x.p),size:Number(x.q),side:x.m?"Sell":"Buy"})).filter(x=>x.time>=cutoff&&x.time<=now&&x.price>0&&x.size>0);
+    if(binanceTrades.length&&(!trades||!binanceTruncated||binanceTrades.length>trades.length)){trades=binanceTrades;truncated=binanceTruncated;provider="Binance Spot · معاملات تجمیعی واقعی";}
     break;
    }catch(error){lastError=String(error?.message||error).slice(0,160);}
   }
  }
- if(!trades){
+ if(!trades||truncated){
   try{
    const d=await marketFlowJson("https://www.okx.com/api/v5/market/trades?instId="+encodeURIComponent(pair.replace(/USDT$/,"")+"-USDT")+"&limit=500");
    if(String(d.code)!=="0")throw new Error(d.msg||"OKX trades unavailable");
