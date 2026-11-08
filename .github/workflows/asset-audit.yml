@@ -101,15 +101,22 @@ jobs:
           }
           async function firstValid(candidates, tf) {
             const errors=[];
+            let limitedHistory=null;
             for (const c of candidates) {
               try {
                 const data=await getJson(c.url);
                 const rows=c.rows(data);
-                if (!Array.isArray(rows) || rows.length < minRows(tf)) throw new Error('کندل ناکافی: '+(Array.isArray(rows)?rows.length:0));
-                return {ok:true,provider:c.name,candles:rows.length};
+                if (!Array.isArray(rows)) throw new Error('ساختار کندل نامعتبر است');
+                if (rows.length < minRows(tf)) {
+                  if (tf==='1d' && rows.length>=7 && (!limitedHistory || rows.length>limitedHistory.candles)) {
+                    limitedHistory={ok:true,provider:c.name,candles:rows.length,limited_history:true,note:'تاریخچه روزانه کمتر از ۲۰ کندل است'};
+                  }
+                  throw new Error('کندل ناکافی: '+rows.length);
+                }
+                return {ok:true,provider:c.name,candles:rows.length,limited_history:false};
               } catch(e) { errors.push(c.name+': '+String(e.message||e).slice(0,140)); }
             }
-            return {ok:false,error:errors.join(' | ')};
+            return limitedHistory || {ok:false,error:errors.join(' | ')};
           }
           const pairParts = pair => {
             const p=String(pair||'').toUpperCase();
@@ -204,11 +211,11 @@ jobs:
               results.push(...rows);
               console.log('Checked '+results.length+'/'+assets.length+' dynamic-universe instruments');
             }
-            const failed=results.filter(x=>!x.ready);
-            const report={checked_at:new Date().toISOString(),asset_count:results.length,ready_count:results.length-failed.length,failed_count:failed.length,intervals,results,source:assetSource};
+            const failed=results.filter(x=>!x.ready),limitedHistoryCount=results.filter(x=>x.tests.some(t=>t.limited_history)).length;
+            const report={checked_at:new Date().toISOString(),asset_count:results.length,ready_count:results.length-failed.length,failed_count:failed.length,limited_history_count:limitedHistoryCount,intervals,results,source:assetSource};
             fs.writeFileSync('asset-audit.json',JSON.stringify(report,null,2));
-            const md=['# MMP QUANTUM — بررسی کامل یونیورس پویا','', 'منبع: '+assetSource,'زمان بررسی: '+report.checked_at,'', 'نتیجه: '+report.ready_count+'/'+report.asset_count+' آماده تحلیل؛ '+report.failed_count+' مورد نیازمند بررسی','', '| ارز | نماد | 15m | 1h | 4h | 1d | نتیجه |','|---|---|---|---|---|---|---|'];
-            for(const x of results)md.push('| '+x.name+' | '+x.symbol+' | '+(x.tests[0].provider||'خطا')+' | '+(x.tests[1].provider||'خطا')+' | '+(x.tests[2].provider||'خطا')+' | '+(x.tests[3].provider||'خطا')+' | '+(x.ready?'آماده':'نیازمند اصلاح')+' |');
+            const md=['# MMP QUANTUM — بررسی کامل یونیورس پویا','', 'منبع: '+assetSource,'زمان بررسی: '+report.checked_at,'', 'نتیجه: '+report.ready_count+'/'+report.asset_count+' دارای پوشش کندل؛ '+report.failed_count+' مورد نیازمند بررسی؛ '+limitedHistoryCount+' مورد با تاریخچه روزانه محدود','', '| ارز | نماد | 15m | 1h | 4h | 1d | نتیجه |','|---|---|---|---|---|---|---|'];
+            for(const x of results)md.push('| '+x.name+' | '+x.symbol+' | '+(x.tests[0].provider||'خطا')+' | '+(x.tests[1].provider||'خطا')+' | '+(x.tests[2].provider||'خطا')+' | '+(x.tests[3].limited_history?('تاریخچه محدود · '+x.tests[3].candles):(x.tests[3].provider||'خطا'))+' | '+(x.ready?'آماده':'نیازمند اصلاح')+' |');
             fs.writeFileSync('asset-audit.md',md.join('\\n'));
             fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,md.join('\\n')+'\\n');
             console.log(JSON.stringify({checked:results.length,ready:report.ready_count,failed:report.failed_count,failed_assets:failed.map(x=>({symbol:x.symbol,tests:x.tests.filter(t=>!t.ok)}))},null,2));
