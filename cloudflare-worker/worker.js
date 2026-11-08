@@ -705,6 +705,41 @@ async function loadFuturesMarketFlow(symbol,windowMinutes=5){
  const rows=[...buckets.values()].sort((a,b)=>a.time-b.time).map(x=>[x.time,x.buy,x.sell,x.buy-x.sell]);
  return {symbol:pair,window_minutes:minutes,buy5m,sell5m,net5m:buy5m-sell5m,trade_count:trades.length,provider,exchange:provider.startsWith("Bybit")?"Bybit":provider.startsWith("Bitget")?"Bitget":provider.startsWith("Binance")?"Binance":provider.startsWith("Gate")?"Gate":"OKX",complete:!truncated,coverage_start:trades.reduce((v,x)=>Math.min(v,x.time),Infinity),window_start:cutoff,window_end:now,updated_at:now,rows};
 }
+async function loadHunterDepth(symbol,marketType="spot",preferredProviders=[]){
+ const base=String(symbol||"").toUpperCase().replace(/USDT$/,""),pair=base+"USDT";
+ if(!/^[A-Z0-9]{2,24}$/.test(pair))throw new Error("Invalid depth symbol");
+ const get=url=>marketFlowJson(url,7500);
+ const sources=marketType==="futures"?[
+  {key:"Binance",name:"Binance USD-M Futures",load:async()=>{const d=await get("https://fapi.binance.com/fapi/v1/depth?symbol="+pair+"&limit=100");return {bids:d.bids,asks:d.asks};}},
+  {key:"Bybit",name:"Bybit Linear Futures",load:async()=>{const d=await get("https://api.bybit.eu/v5/market/orderbook?category=linear&symbol="+pair+"&limit=100");if(Number(d.retCode)!==0)throw Error(d.retMsg||"Bybit order book unavailable");return {bids:d.result?.b,asks:d.result?.a};}},
+  {key:"Gate",name:"Gate USDT Futures",load:async()=>{const contract=base+"_USDT";let details,book;try{[details,book]=await Promise.all([get("https://api.gateio.ws/api/v4/futures/usdt/contracts/"+contract),get("https://api.gateio.ws/api/v4/futures/usdt/order_book?contract="+contract+"&limit=100")]);}catch{[details,book]=await Promise.all([get("https://fx-api.gateio.ws/api/v4/futures/usdt/contracts/"+contract),get("https://fx-api.gateio.ws/api/v4/futures/usdt/order_book?contract="+contract+"&limit=100")]);}const multiplier=Number(details?.quanto_multiplier)||0;if(!multiplier)throw Error("Gate contract multiplier unavailable");return {bids:(book.bids||[]).map(x=>[Number(x.p??x[0]),Number(x.s??x[1])*multiplier]),asks:(book.asks||[]).map(x=>[Number(x.p??x[0]),Number(x.s??x[1])*multiplier])};}}
+ ]:[
+  {key:"Binance",name:"Binance Spot",load:async()=>{const d=await get("https://api.binance.com/api/v3/depth?symbol="+pair+"&limit=100");return {bids:d.bids,asks:d.asks};}},
+  {key:"OKX",name:"OKX Spot",load:async()=>{const d=await get("https://www.okx.com/api/v5/market/books?instId="+base+"-USDT&sz=100");if(String(d.code)!=="0")throw Error(d.msg||"OKX order book unavailable");return {bids:d.data?.[0]?.bids,asks:d.data?.[0]?.asks};}},
+  {key:"Gate",name:"Gate Spot",load:async()=>{const d=await get("https://api.gateio.ws/api/v4/spot/order_book?currency_pair="+base+"_USDT&limit=100");return {bids:d.bids,asks:d.asks};}},
+  {key:"Bybit",name:"Bybit Spot",load:async()=>{const d=await get("https://api.bybit.eu/v5/market/orderbook?category=spot&symbol="+pair+"&limit=50");if(Number(d.retCode)!==0)throw Error(d.retMsg||"Bybit order book unavailable");return {bids:d.result?.b,asks:d.result?.a};}}
+ ];
+ const preferred=preferredProviders.map(value=>sources.findIndex(x=>String(value||"").toLowerCase().includes(x.key.toLowerCase()))).filter(index=>index>=0);
+ const order=[...new Set([...preferred,...sources.map((_,index)=>index)])].slice(0,4);
+ let best=null,lastError="";
+ for(const index of order){
+  const source=sources[index];
+  try{
+   const book=await source.load(),levels=items=>(Array.isArray(items)?items:[]).map(x=>[Number(Array.isArray(x)?x[0]:x.p),Number(Array.isArray(x)?x[1]:x.s)]).filter(x=>x[0]>0&&x[1]>0);
+   const bids=levels(book.bids).sort((a,b)=>b[0]-a[0]),asks=levels(book.asks).sort((a,b)=>a[0]-b[0]);
+   if(!bids.length||!asks.length)throw Error("Empty order book");
+   const bestBid=bids[0][0],bestAsk=asks[0][0],mid=(bestBid+bestAsk)/2,spreadPct=mid>0?(bestAsk-bestBid)/mid*100:Infinity;
+   const bidUsdt=bids.filter(x=>x[0]>=mid*.99).reduce((sum,x)=>sum+x[0]*x[1],0);
+   const askUsdt=asks.filter(x=>x[0]<=mid*1.01).reduce((sum,x)=>sum+x[0]*x[1],0);
+   const totalDepthUsdt=bidUsdt+askUsdt,confirmed=spreadPct<=.35&&bidUsdt>=5000&&askUsdt>=5000&&totalDepthUsdt>=20000;
+   const result={confirmed,source:source.name,spreadPct:Number(spreadPct.toFixed(4)),bidUsdt:Number(bidUsdt.toFixed(2)),askUsdt:Number(askUsdt.toFixed(2)),totalDepthUsdt:Number(totalDepthUsdt.toFixed(2)),bandPct:1,updatedAt:Date.now(),reason:confirmed?null:spreadPct>.35?"spread_too_wide":bidUsdt<5000||askUsdt<5000?"one_side_depth_too_low":"total_depth_too_low"};
+   if(confirmed)return result;
+   if(!best||result.totalDepthUsdt>best.totalDepthUsdt)best=result;
+  }catch(error){lastError=String(error?.message||error).slice(0,120);}
+ }
+ if(best)return best;
+ throw new Error("Order-book depth unavailable: "+lastError);
+}
 async function scanHunterSymbols(symbols,marketType="spot",assetList=[]){
  const assetMap=new Map((Array.isArray(assetList)?assetList:[]).map(x=>[String(x.symbol||"").toUpperCase(),x]));
  let i=0,failed=0;const candidates=[],errors=[];
