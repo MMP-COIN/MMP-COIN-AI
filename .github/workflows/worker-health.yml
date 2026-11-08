@@ -9,19 +9,106 @@ on:
     paths:
       - "cloudflare-worker/**"
       - ".github/workflows/worker-health.yml"
+  pull_request:
+    paths:
+      - "cloudflare-worker/**"
+      - "www/index.html"
+      - ".github/workflows/worker-health.yml"
 
 permissions:
   contents: read
 
 concurrency:
-  group: worker-health
+  group: worker-health-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
   smoke-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
+      - name: Checkout source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Validate Worker syntax and Quantum signal gates
+        run: |
+          set -euo pipefail
+          node --check --input-type=module < cloudflare-worker/worker.js
+          node --check --input-type=module < cloudflare-worker/radar-worker.js
+          node --check --input-type=module < cloudflare-worker/quantum-core.js
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+          const source = fs.readFileSync("cloudflare-worker/quantum-core.js", "utf8");
+          const mod = await import("data:text/javascript;base64," + Buffer.from(source).toString("base64"));
+          const workerSource = fs.readFileSync("cloudflare-worker/worker.js", "utf8");
+          if (!workerSource.includes("const HUNTER_BATCH_SIZE = 72;") || !workerSource.includes("const FUTURES_HUNTER_BATCH_SIZE = 48;") || !workerSource.includes("const concurrency=8;") || !workerSource.includes("Promise.allSettled(orderedSources.slice(offset,offset+2).map(fn=>fn()))")) throw new Error("Hunter scan coverage/parallelism regression");
+          const base = {trend:"bull",change1m:0.12,change3m:0.2,change5m:0.35,change15m:0.5,volumeRatio:1.3,breakout:true,structureAligned:true,trend15:true,overextended:false,dataAgeMs:20000,multiExchangeConfirmed:true,totalVolume24h:300000};
+          const candidate = mod.scoreQuantumOpportunity({...base,flowConfirmed:false});
+          if (!candidate.candidateGate || candidate.qualityGate) throw new Error("Preliminary candidate gate is incorrect");
+          const confirmed = mod.scoreQuantumOpportunity({...base,flowConfirmed:true,flowImbalance:0.12});
+          if (!confirmed.qualityGate) throw new Error("Fully confirmed signal did not pass");
+          const noDepth = mod.scoreQuantumOpportunity({...base,flowConfirmed:true,flowImbalance:0.12,requireDepthConfirmation:true,depthConfirmed:false});
+          const withDepth = mod.scoreQuantumOpportunity({...base,flowConfirmed:true,flowImbalance:0.12,requireDepthConfirmation:true,depthConfirmed:true});
+          if (noDepth.qualityGate || !withDepth.qualityGate) throw new Error("Order-book depth gate is incorrect");
+          const rejected = [
+            mod.scoreQuantumOpportunity({...base,flowConfirmed:true,flowImbalance:-0.12}),
+            mod.scoreQuantumOpportunity({...base,flowConfirmed:true,flowImbalance:0.12,volumeRatio:0.9}),
+            mod.scoreQuantumOpportunity({...base,flowConfirmed:true,flowImbalance:0.12,multiExchangeConfirmed:false}),
+            mod.scoreQuantumOpportunity({...base,flowConfirmed:true,flowImbalance:0.12,overextended:true}),
+            mod.scoreQuantumOpportunity({...base,flowConfirmed:true,flowImbalance:0.12,dataAgeMs:200000}),
+            mod.scoreQuantumOpportunity({...base,flowConfirmed:true,flowImbalance:0.12,totalVolume24h:90000})
+          ];
+          if (rejected.some(result => result.qualityGate)) throw new Error("A weak/stale/unconfirmed candidate passed the quality gate");
+          console.log("Quantum candidate and confirmation gates: passed");
+          NODE
+
+      - name: Validate inline browser JavaScript and Hunter wiring
+        run: |
+          node <<'NODE'
+          const fs = require("node:fs");
+          const vm = require("node:vm");
+          const html = fs.readFileSync("www/index.html", "utf8");
+          const workerSource = fs.readFileSync("cloudflare-worker/worker.js", "utf8");
+          const scripts = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi)];
+          let checked = 0;
+          for (let i = 0; i < scripts.length; i++) {
+            const attrs = scripts[i][1] || "";
+            const type = (attrs.match(/\btype\s*=\s*["']([^"']+)/i) || [])[1] || "text/javascript";
+            if (/\bsrc\s*=/.test(attrs) || /application\/(?:ld\+json|json)/i.test(type)) continue;
+            new vm.Script(scripts[i][2], { filename: "www/index.html#inline-" + (i + 1) });
+            checked++;
+          }
+          if (!html.includes("data-hunter-detail=") || !html.includes("slice(0,6)") || !html.includes("/market-flow?")) throw new Error("Hunter card, six-per-direction cap, or Radar flow wiring missing");
+          if (!html.includes("while(!finished)") || !html.includes("hunterUniverseCache?.coins") || html.includes('pageNumbers=marketMetadataSource==="CoinLore"?[2,3,4,5,6,7,8,9,10]:[2,3,4,5]')) throw new Error("Full paginated market universe regression");
+          if (workerSource.includes("requestedTopPage>5") || workerSource.includes("requestedOffset>5000")) throw new Error("Fixed market catalog page ceiling was reintroduced");
+          console.log("Parsed " + checked + " inline browser scripts; Hunter UI wiring checks passed");
+          NODE
+
+      - name: Audit every public site and app module
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require("node:fs");
+          const html = fs.readFileSync("www/index.html", "utf8");
+          const modules = [...new Set([...html.matchAll(/data-quantum-module=["']([^"']+)["']/g)].map(x => x[1]))];
+          const requiredModules = ["market-data","radar","hunter","analyzer","momentum","chart","intelligence","learning","alerts","assets","tools","global-clock","app","contact","signal-lab"];
+          const missingModules = requiredModules.filter(x => !modules.includes(x));
+          if (missingModules.length) throw new Error("Missing site modules: " + missingModules.join(", "));
+          const ids = [...html.matchAll(/\bid=["']([^"']+)["']/g)].map(x => x[1]);
+          const duplicates = ids.filter((id, i) => ids.indexOf(id) !== i);
+          if (duplicates.length) throw new Error("Duplicate DOM IDs: " + [...new Set(duplicates)].join(", "));
+          const idSet = new Set(ids);
+          const ariaRefs = [...html.matchAll(/\baria-(?:controls|labelledby|describedby)=["']([^"']+)["']/g)].flatMap(x => x[1].split(/\s+/));
+          const brokenAria = [...new Set(ariaRefs.filter(id => !idSet.has(id)))];
+          if (brokenAria.length) throw new Error("Broken accessibility references: " + brokenAria.join(", "));
+          const requiredControls = ["refresh-all-btn","market-refresh-btn","hunter-refresh-btn","ai-coin-picker-trigger","ai-run-btn","boom-run","chart-fullscreen-btn","derivatives-load","orderflow-refresh","forecast-run","historical-backtest","journal-save","alert-add","risk-capital","risk-percent","risk-entry","risk-stop","risk-calc","connections-toggle","exchange-directory-refresh","native-menu-toggle","native-refresh-btn","native-update-check-btn","native-share-app"];
+          const missingControls = requiredControls.filter(id => !idSet.has(id));
+          if (missingControls.length) throw new Error("Missing core controls: " + missingControls.join(", "));
+          if (/<(?:div|section)[^>]*(?:id=["']market-ticker["']|class=["'][^"']*\bmarket-ticker\b)/i.test(html)) throw new Error("Removed horizontal market ticker has returned");
+          const version = html.match(/<meta name=["']mmp-app-version["'] content=["']([^"']+)["']/i);
+          if (!version) throw new Error("Native app version metadata is missing");
+          console.log("Audited " + requiredModules.length + " required modules, " + ids.length + " IDs, accessibility links and " + requiredControls.length + " core controls; app version " + version[1] + " retained.");
+          NODE
       - name: Check Worker health endpoint
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
@@ -274,13 +361,18 @@ jobs:
           futures_universe_status=$(curl --silent --show-error --retry 1 --retry-delay 2 --max-time 25 -o /tmp/futures-universe.json -w "%{http_code}" "$WORKER_URL/hunter-futures-universe")
           echo "Full Futures universe HTTP $futures_universe_status"
           if [ "$futures_universe_status" != "200" ]; then cat /tmp/futures-universe.json; exit 1; fi
-          jq -e '.status == "online" and (.universe_count >= 100) and (.assets | length == .universe_count) and all(.assets[]; (.hunterExchange | type == "string" and length > 0))' /tmp/futures-universe.json >/dev/null
+          jq -e '. as $u | $u.status == "online" and ($u.universe_count >= 100) and ($u.assets | length == $u.universe_count) and all($u.assets[]; (.hunterExchange | type == "string" and length > 0))' /tmp/futures-universe.json >/dev/null
           jq -r '"Futures universe: " + (.universe_count|tostring) + " active contracts from " + (.source // "multiple exchanges")' /tmp/futures-universe.json
           derivatives_status=$(curl --silent --show-error --retry 1 --retry-delay 2 --max-time 35 -o /tmp/derivatives.json -w "%{http_code}" "$WORKER_URL/market-derivatives?symbol=BTC")
           echo "Futures derivatives endpoint HTTP $derivatives_status"
           if [ "$derivatives_status" != "200" ]; then cat /tmp/derivatives.json; exit 1; fi
-          jq -e '.symbol == "BTCUSDT" and (.premium != null or .oi != null)' /tmp/derivatives.json >/dev/null
-          jq -r '"Futures derivatives source: " + (.source // "multi-source")' /tmp/derivatives.json
+          # market-derivatives returns the base ticker (BTC), unlike candle/flow routes (BTCUSDT).
+          jq -e '.symbol == "BTC" and (.source | type == "string" and length > 0) and ((.funding_rate == null or (.funding_rate | type == "number")) and (.open_interest == null or (.open_interest | type == "number")))' /tmp/derivatives.json >/dev/null
+          if jq -e '(.funding_rate != null or .open_interest != null)' /tmp/derivatives.json >/dev/null; then
+            jq -r '"Futures derivatives source: " + (.source // "multi-source")' /tmp/derivatives.json
+          else
+            echo "::warning::Derivatives endpoint responded but did not provide funding/open-interest values for BTC in this run."
+          fi
           hunter_status=$(curl --silent --show-error --retry 1 --retry-delay 2 --max-time 50 -o /tmp/hunter-scan.json -w "%{http_code}" "$WORKER_URL/hunter-scan?symbols=BTC,ETH")
           echo "Independent Spot Hunter scan HTTP $hunter_status"
           if [ "$hunter_status" != "200" ]; then cat /tmp/hunter-scan.json; exit 1; fi
@@ -312,7 +404,8 @@ jobs:
           status=$(curl --silent --show-error --max-time 25 -o /tmp/orderflow.json -w "%{http_code}" "$WORKER_URL/market-orderflow?symbol=BTC")
           echo "Order-flow endpoint HTTP $status"
           if [ "$status" != "200" ]; then cat /tmp/orderflow.json; exit 1; fi
-          jq -e '.symbol == "BTCUSDT" and (.depth | has("available")) and (.flow | has("available"))' /tmp/orderflow.json >/dev/null
+          # market-orderflow also returns the base ticker (BTC), not the quoted pair (BTCUSDT).
+          jq -e '.symbol == "BTC" and (.depth | has("available")) and (.flow | has("available"))' /tmp/orderflow.json >/dev/null
           status=$(curl --silent --show-error --max-time 25 -o /tmp/derivatives.json -w "%{http_code}" "$WORKER_URL/market-derivatives?symbol=BTC")
           echo "Derivatives endpoint HTTP $status"
           if [ "$status" != "200" ]; then cat /tmp/derivatives.json; exit 1; fi

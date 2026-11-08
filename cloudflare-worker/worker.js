@@ -1,7 +1,7 @@
 // MMP Quantum Intelligence Engine: dynamic market discovery with no fixed asset ceiling
 import { QUANTUM_ENGINE_NAME, QUANTUM_ENGINE_VERSION, normalizeQuantumUniverse, scoreQuantumOpportunity } from "./quantum-core.js";
-const HUNTER_BATCH_SIZE = 18;
-const FUTURES_HUNTER_BATCH_SIZE = 12;
+const HUNTER_BATCH_SIZE = 72;
+const FUTURES_HUNTER_BATCH_SIZE = 48;
 const MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 function extractAIJson(value){
  let raw=typeof value==="string"?value:JSON.stringify(value??"");
@@ -499,29 +499,30 @@ async function loadMarketFlow(symbol,windowMinutes=5){
  let trades=null,provider="",truncated=false,lastError="";
  for(const host of ["https://api.bybit.com"]){
   try{
-   const d=await marketFlowJson(host+"/v5/market/recent-trade?category=spot&symbol="+pair+"&limit=1000");
+   const d=await marketFlowJson(host+"/v5/market/recent-trade?category=spot&symbol="+pair+"&limit=60");
    if(Number(d.retCode)!==0)throw new Error(d.retMsg||"Bybit retCode "+d.retCode);
    const raw=Array.isArray(d.result?.list)?d.result.list:[];
    const oldest=raw.reduce((v,x)=>Math.min(v,Number(x.time)||Infinity),Infinity);
-   truncated=raw.length>=1000&&oldest>cutoff;
+   truncated=raw.length>=60&&oldest>cutoff;
    trades=raw.map(x=>({time:Number(x.time),price:Number(x.price),size:Number(x.size),side:String(x.side||"")})).filter(x=>x.time>=cutoff&&x.time<=now&&x.price>0&&x.size>0&&["Buy","Sell"].includes(x.side));
    provider="Bybit Spot · معاملات واقعی";
    break;
   }catch(error){lastError=String(error?.message||error).slice(0,160);}
  }
- if(!trades){
+ if(!trades?.length||truncated){
   for(const host of ["https://api.binance.com"]){
    try{
     const d=await marketFlowJson(host+"/api/v3/aggTrades?symbol="+pair+"&startTime="+cutoff+"&endTime="+now+"&limit=1000");
     if(!Array.isArray(d))throw new Error("ساختار معاملات Binance نامعتبر است");
-    truncated=d.length>=1000;
-    trades=d.map(x=>({time:Number(x.T),price:Number(x.p),size:Number(x.q),side:x.m?"Sell":"Buy"})).filter(x=>x.time>=cutoff&&x.time<=now&&x.price>0&&x.size>0);
-    provider="Binance Spot · معاملات تجمیعی واقعی";
+    const newest=d.reduce((value,x)=>Math.max(value,Number(x.T)||0),0);
+    const binanceTruncated=d.length>=1000&&newest<now-1500;
+    const binanceTrades=d.map(x=>({time:Number(x.T),price:Number(x.p),size:Number(x.q),side:x.m?"Sell":"Buy"})).filter(x=>x.time>=cutoff&&x.time<=now&&x.price>0&&x.size>0);
+    if(binanceTrades.length&&(!trades||!binanceTruncated||binanceTrades.length>trades.length)){trades=binanceTrades;truncated=binanceTruncated;provider="Binance Spot · معاملات تجمیعی واقعی";}
     break;
    }catch(error){lastError=String(error?.message||error).slice(0,160);}
   }
  }
- if(!trades){
+ if(!trades?.length||truncated){
   try{
    const d=await marketFlowJson("https://www.okx.com/api/v5/market/trades?instId="+encodeURIComponent(pair.replace(/USDT$/,"")+"-USDT")+"&limit=500");
    if(String(d.code)!=="0")throw new Error(d.msg||"OKX trades unavailable");
@@ -532,7 +533,7 @@ async function loadMarketFlow(symbol,windowMinutes=5){
    provider="OKX Spot · معاملات واقعی";
   }catch(error){lastError=String(error?.message||error).slice(0,160);}
  }
- if(!trades||truncated){
+ if(!trades?.length||truncated){
   try{
    const gatePair=pair.replace(/USDT$/,"")+"_USDT";
    const d=await marketFlowJson("https://api.gateio.ws/api/v4/spot/trades?currency_pair="+encodeURIComponent(gatePair)+"&limit=1000");
@@ -543,7 +544,7 @@ async function loadMarketFlow(symbol,windowMinutes=5){
    if(gateTrades.length&&(!trades||!gateTruncated||gateTrades.length>trades.length)){trades=gateTrades;truncated=gateTruncated;provider="Gate Spot · معاملات واقعی";}
   }catch(error){lastError=String(error?.message||error).slice(0,160);}
  }
- if(!trades)throw new Error("داده معاملات از Bybit، Binance، OKX و Gate دریافت نشد: "+lastError);
+ if(!trades?.length)throw new Error("داده معاملات از Bybit، Binance، OKX و Gate دریافت نشد: "+lastError);
  const buckets=new Map();let buy5m=0,sell5m=0;
  for(const trade of trades){
   const quote=trade.price*trade.size;if(!Number.isFinite(quote)||quote<=0)continue;
@@ -585,7 +586,8 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
   async()=>tryHosts("OKX Spot",["https://www.okx.com"],host=>host+"/api/v5/market/candles?instId="+symbol+"-USDT&bar=1m&limit=100",d=>String(d.code)==="0"?d.data:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],(+x[7]||+x[6])]),
   async()=>tryHosts("Gate Spot",["https://api.gateio.ws"],host=>host+"/api/v4/spot/candlesticks?currency_pair="+symbol+"_USDT&interval=1m&limit=100",d=>Array.isArray(d)?d:null,x=>[+x[0]*1000,+x[4],+x[2],+x[3],+x[5],+x[1]]),
   async()=>tryHosts("KuCoin Spot",["https://api.kucoin.com"],host=>host+"/api/v1/market/candles?type=1min&symbol="+symbol+"-USDT",d=>String(d.code)==="200000"?d.data:null,x=>[+x[0]*1000,+x[1],+x[3],+x[4],+x[2],(+x[6]||+x[5])]),
-  async()=>tryHosts("WhiteBIT Spot",["https://whitebit.com"],host=>host+"/api/v1/public/kline?market="+symbol+"_USDT&interval=1m&limit=100",d=>d?.success===true?d.result:null,x=>[+x[0]*1000,+x[1],+x[3],+x[4],+x[2],+x[5]])
+  async()=>tryHosts("WhiteBIT Spot",["https://whitebit.com"],host=>host+"/api/v1/public/kline?market="+symbol+"_USDT&interval=1m&limit=100",d=>d?.success===true?d.result:null,x=>[+x[0]*1000,+x[1],+x[3],+x[4],+x[2],+x[5]]),
+  async()=>tryHosts("Binance.US Spot",["https://api.binance.us"],host=>host+"/api/v3/klines?symbol="+pair+"&interval=1m&limit=100",d=>Array.isArray(d)?d:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],+x[7]])
  ];
  const sources=marketType==="futures"?futuresSources:spotSources,errors=[];
  const unique=values=>[...new Set(values.filter(Number.isInteger))];
@@ -595,17 +597,24 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
   const priority=[3,4,1,2,0],available=unique(String(asset?.hunterExchange||"").split(",").map(indexOf).filter(Number.isInteger)).sort((a,b)=>priority.indexOf(a)-priority.indexOf(b)),primary=indexOf(asset?.hunterPriceExchange),primaryTrusted=primary!==0;
   order=unique([...(primaryTrusted&&available.includes(primary)?[primary]:[]),...available,...(!available.length?priority:[])]);
  }else{
-  const indices={Binance:0,Bybit:1,Bitget:2,OKX:3,Gate:4,"Gate.io":4,KuCoin:5,WhiteBIT:6};
-  const preferred=(Array.isArray(asset?.marketPairs)?asset.marketPairs.slice().sort((a,b)=>Number(b.volume||0)-Number(a.volume||0)):[]).map(x=>indices[String(x.exchange||"")]).filter(Number.isInteger),priority=[2,6,4,5,1,3,0],available=unique(preferred).sort((a,b)=>priority.indexOf(a)-priority.indexOf(b)),primary=preferred[0],primaryTrusted=[2,4,5,6].includes(primary);
+  const indices={Binance:0,Bybit:1,Bitget:2,OKX:3,Gate:4,"Gate.io":4,KuCoin:5,WhiteBIT:6,"Binance.US":7,BinanceUS:7};
+  const preferred=(Array.isArray(asset?.marketPairs)?asset.marketPairs.slice().sort((a,b)=>Number(b.volume||0)-Number(a.volume||0)):[]).map(x=>indices[String(x.exchange||"")]).filter(Number.isInteger),priority=[7,2,6,4,5,1,3,0],available=unique(preferred).sort((a,b)=>priority.indexOf(a)-priority.indexOf(b)),primary=preferred[0],primaryTrusted=[2,4,5,6,7].includes(primary);
   order=unique([...(primaryTrusted?[primary]:[]),...available,...(!available.length?priority:[])]);
  }
- const orderedSources=order.map(index=>sources[index]).filter(Boolean);
- orderedSources.splice(2);
- for(const fn of orderedSources){
-  try{const [provider,rows]=await fn();return {provider,rows,market:marketType};}
-  catch(error){errors.push(String(error?.message||error).slice(0,130));}
+ const fallbackPriority=marketType==="futures"?[3,4,1,2,0]:[7,2,6,4,5,1,3,0];
+ order=unique([...order,...fallbackPriority.filter(index=>!order.includes(index))]);
+ const orderedSources=order.map(index=>sources[index]).filter(Boolean).slice(0,4),verified=[];
+ for(let offset=0;offset<orderedSources.length&&verified.length<2;offset+=2){
+  const attempts=await Promise.allSettled(orderedSources.slice(offset,offset+2).map(fn=>fn()));
+  for(const result of attempts){if(result.status==="fulfilled"){const [provider,rows]=result.value;verified.push({provider,rows});}else errors.push(String(result.reason?.message||result.reason).slice(0,130));}
  }
- throw new Error((marketType==="futures"?"Futures":"Spot")+" candles unavailable: "+errors.join(" | "));
+ if(!verified.length)throw new Error((marketType==="futures"?"Futures":"Spot")+" candles unavailable: "+errors.join(" | "));
+ if(verified.length<2)throw new Error("تأیید دو صرافی برای جفت "+pair+" در دسترس نیست: "+errors.join(" | "));
+ const primary=verified[0],secondary=verified[1],a=primary.rows.slice(0,-1).at(-1),b=secondary.rows.slice(0,-1).at(-1);
+ if(!a||!b)throw new Error("کندل بسته‌شده برای تأیید چندصرافی کافی نیست");
+ const timeDiffMs=Math.abs(a[0]-b[0]),priceDeviationPct=a[4]>0?Math.abs(b[4]/a[4]-1)*100:Infinity;
+ if(timeDiffMs>90000||priceDeviationPct>0.4)throw new Error("تأیید چندصرافی رد شد: اختلاف زمان "+timeDiffMs+"ms، اختلاف قیمت "+priceDeviationPct.toFixed(3)+"٪");
+ return {provider:primary.provider,rows:primary.rows,market:marketType,multiExchangeConfirmed:true,multiExchangeEvidence:{primary:primary.provider,secondary:secondary.provider,timeDiffMs,priceDeviationPct:Number(priceDeviationPct.toFixed(4)),primaryPrice:a[4],secondaryPrice:b[4],candleTime:a[0]}};
 }
 async function analyzeDigitalHunterSymbol(symbol,marketType="spot",asset=null){
  const m=await fetchHunterCandles(symbol,marketType,asset),rows=m.rows.slice(0,-1),now=Date.now();if(rows.length<60)return null;
@@ -614,9 +623,10 @@ async function analyzeDigitalHunterSymbol(symbol,marketType="spot",asset=null){
  if(b.length<18)return null;const x=b.at(-1),m1=(last[4]/last[1]-1)*100,m3=(last[4]/rows.at(-3)[1]-1)*100,m5=(last[4]/rows.at(-5)[1]-1)*100,m15=(last[4]/rows.at(-15)[1]-1)*100,trend=m5>=0?"bull":"bear";
  const aligned=v=>trend==="bull"?v>=-.025:v<=.025;if(!aligned(m1)||!aligned(m3))return null;
  const prior=rows.slice(-10,-5),breakout=trend==="bull"?last[4]>Math.max(...prior.map(q=>q[2])):last[4]<Math.min(...prior.map(q=>q[3])),base=b.slice(-16,-1).map(q=>q.v).filter(v=>v>0);if(base.length<10)return null;
- const avg=base.reduce((p,q)=>p+q,0)/base.length,volumeRatio=avg?x.v/avg:0,trend15=trend==="bull"?m15>.015:m15<-.015,structure=trend==="bull"?last[4]>=last[1]:last[4]<=last[1];
- const quantum=scoreQuantumOpportunity({trend,change1m:m1,change3m:m3,change5m:m5,change15m:m15,volumeRatio,breakout,structureAligned:structure,trend15,overextended:Math.abs(m5)>3.5,dataAgeMs:now-last[0],flowConfirmed:false});const score=quantum.score;if(score<55||!quantum.qualityGate)return null;
- return {symbol,trend,score,change1m:m1,change3m:m3,change5m:m5,change15m:m15,volumeRatio,breakout,price:last[4],provider:m.provider,rows:rows.slice(-30),updatedAt:now,candleTime:last[0],engine:"quantum-hunter-v1",market:marketType,timeframes:{m1,m3,m5,m15},evidence:{volumeRatio:+volumeRatio.toFixed(2),breakout,trend15m:trend15,structure},overextended:Math.abs(m5)>3.5};
+ const avg=base.reduce((p,q)=>p+q,0)/base.length,volumeRatio=avg?x.v/avg:0,trend15=trend==="bull"?m15>.015:m15<-.015,structure=trend==="bull"?last[4]>=last[1]:last[4]<=last[1],coreAligned=Math.sign(m5)===Math.sign(m15)&&Math.abs(m5)>=.05&&Math.abs(m15)>=.08,overextended=Math.abs(m5)>=1.5||Math.abs(m1)>=.8,lowLiquidity=Number(asset?.total_volume)>0&&Number(asset.total_volume)<150000;
+ if(!coreAligned||lowLiquidity)return null;
+ const quantum=scoreQuantumOpportunity({trend,change1m:m1,change3m:m3,change5m:m5,change15m:m15,volumeRatio,breakout,structureAligned:structure&&coreAligned,trend15,overextended,dataAgeMs:now-last[0],flowConfirmed:false,multiExchangeConfirmed:m.multiExchangeConfirmed,totalVolume24h:asset?.total_volume});const score=quantum.score;if(score<55||!quantum.candidateGate||!m.multiExchangeConfirmed)return null;
+ return {symbol,trend,score,change1m:m1,change3m:m3,change5m:m5,change15m:m15,volumeRatio,breakout,price:last[4],provider:m.provider,multiExchangeConfirmed:m.multiExchangeConfirmed,multiExchangeEvidence:m.multiExchangeEvidence,lowLiquidity,rows:rows.slice(-30),updatedAt:now,candleTime:last[0],engine:"quantum-hunter-v1",market:marketType,timeframes:{m1,m3,m5,m15},evidence:{volumeRatio:+volumeRatio.toFixed(2),breakout,trend15m:trend15,structure,coreAligned,multiExchange:m.multiExchangeEvidence},overextended};
 }
 async function loadFuturesMarketFlow(symbol,windowMinutes=5){
  const base=String(symbol||"").toUpperCase().replace(/USDT$/,""),pair=base+"USDT";
@@ -653,7 +663,7 @@ async function loadFuturesMarketFlow(symbol,windowMinutes=5){
    try{
     const rows=await marketFlowJson(host+"/fapi/v1/aggTrades?symbol="+pair+"&startTime="+cutoff+"&endTime="+now+"&limit=1000");
     if(!Array.isArray(rows)||!rows.length)throw Error("Binance Futures trades invalid or empty");
-    const oldest=rows.reduce((v,x)=>Math.min(v,Number(x.T)||Infinity),Infinity),binanceTruncated=rows.length>=1000&&oldest>cutoff;
+    const newest=rows.reduce((v,x)=>Math.max(v,Number(x.T)||0),0),binanceTruncated=rows.length>=1000&&newest<now-1500;
     const binanceTrades=rows.map(x=>({time:Number(x.T),price:Number(x.p),size:Number(x.q),side:x.m?"Sell":"Buy"})).filter(x=>x.time>=cutoff&&x.time<=now&&x.price>0&&x.size>0);
     if(!binanceTrades.length)throw Error("Binance Futures returned no recent trades");
     if(!trades?.length||!binanceTruncated||binanceTrades.length>trades.length){trades=binanceTrades;truncated=binanceTruncated;provider="Binance USD-M Futures · aggregate trades";}
@@ -699,19 +709,58 @@ async function loadFuturesMarketFlow(symbol,windowMinutes=5){
  const rows=[...buckets.values()].sort((a,b)=>a.time-b.time).map(x=>[x.time,x.buy,x.sell,x.buy-x.sell]);
  return {symbol:pair,window_minutes:minutes,buy5m,sell5m,net5m:buy5m-sell5m,trade_count:trades.length,provider,exchange:provider.startsWith("Bybit")?"Bybit":provider.startsWith("Bitget")?"Bitget":provider.startsWith("Binance")?"Binance":provider.startsWith("Gate")?"Gate":"OKX",complete:!truncated,coverage_start:trades.reduce((v,x)=>Math.min(v,x.time),Infinity),window_start:cutoff,window_end:now,updated_at:now,rows};
 }
+async function loadHunterDepth(symbol,marketType="spot",preferredProviders=[]){
+ const base=String(symbol||"").toUpperCase().replace(/USDT$/,""),pair=base+"USDT";
+ if(!/^[A-Z0-9]{2,24}$/.test(pair))throw new Error("Invalid depth symbol");
+ const get=url=>marketFlowJson(url,7500);
+ const sources=marketType==="futures"?[
+  {key:"Binance",name:"Binance USD-M Futures",load:async()=>{const d=await get("https://fapi.binance.com/fapi/v1/depth?symbol="+pair+"&limit=100");return {bids:d.bids,asks:d.asks};}},
+  {key:"Bybit",name:"Bybit Linear Futures",load:async()=>{const d=await get("https://api.bybit.eu/v5/market/orderbook?category=linear&symbol="+pair+"&limit=100");if(Number(d.retCode)!==0)throw Error(d.retMsg||"Bybit order book unavailable");return {bids:d.result?.b,asks:d.result?.a};}},
+  {key:"Gate",name:"Gate USDT Futures",load:async()=>{const contract=base+"_USDT";let details,book;try{[details,book]=await Promise.all([get("https://api.gateio.ws/api/v4/futures/usdt/contracts/"+contract),get("https://api.gateio.ws/api/v4/futures/usdt/order_book?contract="+contract+"&limit=100")]);}catch{[details,book]=await Promise.all([get("https://fx-api.gateio.ws/api/v4/futures/usdt/contracts/"+contract),get("https://fx-api.gateio.ws/api/v4/futures/usdt/order_book?contract="+contract+"&limit=100")]);}const multiplier=Number(details?.quanto_multiplier)||0;if(!multiplier)throw Error("Gate contract multiplier unavailable");return {bids:(book.bids||[]).map(x=>[Number(x.p??x[0]),Number(x.s??x[1])*multiplier]),asks:(book.asks||[]).map(x=>[Number(x.p??x[0]),Number(x.s??x[1])*multiplier])};}}
+ ]:[
+  {key:"Binance.US",name:"Binance.US Spot",load:async()=>{const d=await get("https://api.binance.us/api/v3/depth?symbol="+pair+"&limit=100");return {bids:d.bids,asks:d.asks};}},
+  {key:"Binance",name:"Binance Spot",load:async()=>{const d=await get("https://api.binance.com/api/v3/depth?symbol="+pair+"&limit=100");return {bids:d.bids,asks:d.asks};}},
+  {key:"OKX",name:"OKX Spot",load:async()=>{const d=await get("https://www.okx.com/api/v5/market/books?instId="+base+"-USDT&sz=100");if(String(d.code)!=="0")throw Error(d.msg||"OKX order book unavailable");return {bids:d.data?.[0]?.bids,asks:d.data?.[0]?.asks};}},
+  {key:"Gate",name:"Gate Spot",load:async()=>{const d=await get("https://api.gateio.ws/api/v4/spot/order_book?currency_pair="+base+"_USDT&limit=100");return {bids:d.bids,asks:d.asks};}},
+  {key:"Bybit",name:"Bybit Spot",load:async()=>{const d=await get("https://api.bybit.eu/v5/market/orderbook?category=spot&symbol="+pair+"&limit=50");if(Number(d.retCode)!==0)throw Error(d.retMsg||"Bybit order book unavailable");return {bids:d.result?.b,asks:d.result?.a};}}
+ ];
+ const preferred=preferredProviders.map(value=>sources.findIndex(x=>String(value||"").toLowerCase().includes(x.key.toLowerCase()))).filter(index=>index>=0);
+ const order=[...new Set([...preferred,...sources.map((_,index)=>index)])].slice(0,4);
+ let best=null,lastError="";
+ for(const index of order){
+  const source=sources[index];
+  try{
+   const book=await source.load(),levels=items=>(Array.isArray(items)?items:[]).map(x=>[Number(Array.isArray(x)?x[0]:x.p),Number(Array.isArray(x)?x[1]:x.s)]).filter(x=>x[0]>0&&x[1]>0);
+   const bids=levels(book.bids).sort((a,b)=>b[0]-a[0]),asks=levels(book.asks).sort((a,b)=>a[0]-b[0]);
+   if(!bids.length||!asks.length)throw Error("Empty order book");
+   const bestBid=bids[0][0],bestAsk=asks[0][0],mid=(bestBid+bestAsk)/2,spreadPct=mid>0?(bestAsk-bestBid)/mid*100:Infinity;
+   const bidUsdt=bids.filter(x=>x[0]>=mid*.99).reduce((sum,x)=>sum+x[0]*x[1],0);
+   const askUsdt=asks.filter(x=>x[0]<=mid*1.01).reduce((sum,x)=>sum+x[0]*x[1],0);
+   const totalDepthUsdt=bidUsdt+askUsdt,confirmed=spreadPct<=.35&&bidUsdt>=5000&&askUsdt>=5000&&totalDepthUsdt>=20000;
+   const result={confirmed,source:source.name,spreadPct:Number(spreadPct.toFixed(4)),bidUsdt:Number(bidUsdt.toFixed(2)),askUsdt:Number(askUsdt.toFixed(2)),totalDepthUsdt:Number(totalDepthUsdt.toFixed(2)),bandPct:1,updatedAt:Date.now(),reason:confirmed?null:spreadPct>.35?"spread_too_wide":bidUsdt<5000||askUsdt<5000?"one_side_depth_too_low":"total_depth_too_low"};
+   if(confirmed)return result;
+   if(!best||result.totalDepthUsdt>best.totalDepthUsdt)best=result;
+  }catch(error){lastError=String(error?.message||error).slice(0,120);}
+ }
+ if(best)return best;
+ throw new Error("Order-book depth unavailable: "+lastError);
+}
 async function scanHunterSymbols(symbols,marketType="spot",assetList=[]){
  const assetMap=new Map((Array.isArray(assetList)?assetList:[]).map(x=>[String(x.symbol||"").toUpperCase(),x]));
  let i=0,failed=0;const candidates=[],errors=[];
- const concurrency=2;
+ const concurrency=8;
  await Promise.all(Array.from({length:Math.min(concurrency,symbols.length)},async()=>{while(i<symbols.length){const symbol=symbols[i++];try{const x=await analyzeDigitalHunterSymbol(symbol,marketType,assetMap.get(symbol));if(x)candidates.push(x);}catch(e){failed++;if(errors.length<8)errors.push({symbol,error:String(e?.message||e).slice(0,120)});}}}));
  candidates.sort((a,b)=>b.score-a.score);const signals=[];
- await Promise.all(candidates.filter(x=>x.score>=60).slice(0,Math.min(2,candidates.length)).map(async x=>{
+ const flowCandidates=(marketType==="futures"?[...candidates.filter(x=>x.trend==="bull"&&!x.lowLiquidity).slice(0,3),...candidates.filter(x=>x.trend==="bear"&&!x.lowLiquidity).slice(0,3)]:candidates.filter(x=>x.trend==="bull"&&!x.lowLiquidity).slice(0,3)).filter(x=>x.score>=60);
+ await Promise.all(flowCandidates.map(async x=>{
   try{
-   const f=marketType==="futures"?await loadFuturesMarketFlow(x.symbol,5):await loadMarketFlow(x.symbol,5);
+   let f=marketType==="futures"?await loadFuturesMarketFlow(x.symbol,5):await loadMarketFlow(x.symbol,5);
+   if(f.complete!==true){const shorter=marketType==="futures"?await loadFuturesMarketFlow(x.symbol,1):await loadMarketFlow(x.symbol,1);if(shorter.complete===true&&shorter.trade_count>=8)f=shorter;}
    const gross=f.buy5m+f.sell5m,imb=gross?f.net5m/gross:0,ok=x.trend==="bull"?imb>=.045:imb<=-.045;
    if(f.trade_count<8||!ok||f.complete===false)return;
-   const quantum=scoreQuantumOpportunity({...x,flowImbalance:imb,flowConfirmed:true,dataAgeMs:Date.now()-x.candleTime});if(!quantum.qualityGate)return;x.quantum=quantum;x.score=quantum.score;
-   x.flow={buy5m:f.buy5m,sell5m:f.sell5m,net5m:f.net5m,tradeCount:f.trade_count,provider:f.provider,complete:f.complete,coverageStart:f.coverage_start,rows:f.rows,imbalance:+imb.toFixed(4)};
+   const depth=await loadHunterDepth(x.symbol,marketType,[x.multiExchangeEvidence?.primary,x.multiExchangeEvidence?.secondary]);if(!depth.confirmed)return;
+   const quantum=scoreQuantumOpportunity({...x,flowImbalance:imb,flowConfirmed:true,multiExchangeConfirmed:x.multiExchangeConfirmed,volumeRatio:x.volumeRatio,depthConfirmed:true,requireDepthConfirmation:true,dataAgeMs:Date.now()-x.candleTime});if(!quantum.qualityGate)return;x.quantum=quantum;x.score=quantum.score;x.depth=depth;
+   x.flow={buy5m:f.buy5m,sell5m:f.sell5m,net5m:f.net5m,windowMinutes:f.window_minutes||5,tradeCount:f.trade_count,provider:f.provider,complete:f.complete,coverageStart:f.coverage_start,rows:f.rows,imbalance:+imb.toFixed(4)};
    x.flowSignal=f.net5m>0?"inflow":"outflow";
    const bars=Array.isArray(x.rows)?x.rows.slice(-16):[],ranges=bars.slice(1).map((bar,i)=>Math.max(Number(bar[2])-Number(bar[3]),Math.abs(Number(bar[2])-Number(bars[i][4])),Math.abs(Number(bar[3])-Number(bars[i][4])))).filter(v=>Number.isFinite(v)&&v>0);
    const atr=ranges.length?ranges.reduce((a,b)=>a+b,0)/ranges.length:0,entry=Number(x.price),risk=Math.max(atr*1.25,entry*.002),sign=x.trend==="bull"?1:-1;
@@ -765,7 +814,10 @@ export async function runDigitalHunterMarketCycle(env,marketType="spot"){
  for(const symbol of scanned){const old=map.get(symbol);if(old)old.weakScans=Number(old.weakScans||0)+1;}
  for(const signal of result.signals){const asset=batch.find(x=>x.symbol===signal.symbol)||assets.find(x=>x.symbol===signal.symbol);signal.coin=asset?{...asset,current_price:Number(asset.current_price)||signal.price}:{id:signal.symbol,symbol:signal.symbol,name:signal.symbol,current_price:signal.price};signal.dailyChange24h=Number(asset?.hunterChange24h)||0;signal.weakScans=0;map.set(signal.symbol,signal);}
  for(const symbol of scanned){const old=map.get(symbol);if(old&&!(result.signals||[]).some(x=>x.symbol===symbol)&&Number(old.weakScans||0)>=2)map.delete(symbol);}
- const snapshot={status:"online",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,market:marketType,checked_at:new Date().toISOString(),scanned_at:new Date().toISOString(),universe_count:assets.length,next_cursor:(cursor+batch.length)%assets.length,batch_size:batch.length,scanned_count:result.scanned,candidate_count:result.signals.length,failed_count:result.failed,universe_refreshed:false,signals:[...map.values()].filter(x=>now-Number(x.updatedAt||0)<25*60000&&Number(x.score)>=68&&x.confirmed).sort((a,b)=>b.score-a.score),last_errors:result.errors||[],sources:universeSources,universe_provider:universeProvider,cycle_seconds:60};
+ for(const [symbol,signal] of map){if(now-Number(signal.updatedAt||0)>5*60*1000)map.delete(symbol);}
+ const fresh=[...map.values()].filter(x=>now-Number(x.updatedAt||0)<=5*60*1000&&Number(x.score)>=68&&x.confirmed===true&&x.multiExchangeConfirmed===true&&x.flow?.complete===true&&Number(x.flow?.tradeCount)>=8&&Number(x.volumeRatio)>=1.1&&x.depth?.confirmed===true&&x.quantum?.qualityGate===true).sort((a,b)=>b.score-a.score);
+ const selected=marketType==="futures"?[...fresh.filter(x=>x.trend==="bull").slice(0,6),...fresh.filter(x=>x.trend==="bear").slice(0,6)]:fresh.filter(x=>x.trend==="bull").slice(0,6);
+ const snapshot={status:"online",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,market:marketType,checked_at:new Date().toISOString(),scanned_at:new Date().toISOString(),universe_count:assets.length,next_cursor:(cursor+batch.length)%assets.length,batch_size:batch.length,scanned_count:result.scanned,candidate_count:result.signals.length,failed_count:result.failed,universe_refreshed:false,signals:selected,last_errors:result.errors||[],sources:universeSources,universe_provider:universeProvider,cycle_seconds:60};
  const payload=JSON.stringify({cursor:snapshot.next_cursor,lastRun:now,assets,universeUpdatedAt,universeSources,universeProvider,snapshot});
  await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(stateId,payload,new Date(now).toISOString()).run();
  return snapshot;
@@ -1061,8 +1113,10 @@ async function handle(request,env){
   const url=new URL(request.url),source=url.searchParams.get("source")||"";
   const requestedTopPage=Number(url.searchParams.get("page")||1);
   const requestedOffset=Number(url.searchParams.get("offset")||0);
-  if(source==="coingecko-top"&&(!Number.isInteger(requestedTopPage)||requestedTopPage<1||requestedTopPage>5))return json({error:"Invalid CoinGecko page"},400,request);
-  if(source==="coinlore-top"&&(!Number.isInteger(requestedOffset)||requestedOffset<0||requestedOffset>5000||requestedOffset%100!==0))return json({error:"Invalid CoinLore offset"},400,request);
+  // Pagination is data-driven: callers continue until the provider returns an empty/short page.
+  // Validate safe integers, but do not impose an artificial 100-coin or fixed-page ceiling.
+  if(source==="coingecko-top"&&!Number.isSafeInteger(requestedTopPage)||source==="coingecko-top"&&requestedTopPage<1)return json({error:"Invalid CoinGecko page"},400,request);
+  if(source==="coinlore-top"&&(!Number.isSafeInteger(requestedOffset)||requestedOffset<0||requestedOffset%100!==0))return json({error:"Invalid CoinLore offset"},400,request);
   const urls={
    "binance-tickers":["https://api.binance.com/api/v3/ticker/24hr","https://api.binance.us/api/v3/ticker/24hr","https://api1.binance.com/api/v3/ticker/24hr","https://api2.binance.com/api/v3/ticker/24hr","https://api3.binance.com/api/v3/ticker/24hr","https://data-api.binance.vision/api/v3/ticker/24hr"],
    "coingecko-top":["https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page="+requestedTopPage+"&sparkline=false&price_change_percentage=1h%2C24h%2C7d"],
