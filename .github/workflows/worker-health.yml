@@ -373,6 +373,7 @@ jobs:
           status=$(curl --silent --show-error --max-time 25 -o /tmp/orderflow.json -w "%{http_code}" "$WORKER_URL/market-orderflow?symbol=BTC")
           echo "Order-flow endpoint HTTP $status"
           if [ "$status" != "200" ]; then cat /tmp/orderflow.json; exit 1; fi
+          # market-orderflow also returns the base ticker (BTC), not the quoted pair (BTCUSDT).
           jq -e '.symbol == "BTC" and (.depth | has("available")) and (.flow | has("available"))' /tmp/orderflow.json >/dev/null
           status=$(curl --silent --show-error --max-time 25 -o /tmp/derivatives.json -w "%{http_code}" "$WORKER_URL/market-derivatives?symbol=BTC")
           echo "Derivatives endpoint HTTP $status"
