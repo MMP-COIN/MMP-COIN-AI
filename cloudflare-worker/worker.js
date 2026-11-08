@@ -659,7 +659,7 @@ async function loadFuturesMarketFlow(symbol,windowMinutes=5){
    try{
     const rows=await marketFlowJson(host+"/fapi/v1/aggTrades?symbol="+pair+"&startTime="+cutoff+"&endTime="+now+"&limit=1000");
     if(!Array.isArray(rows)||!rows.length)throw Error("Binance Futures trades invalid or empty");
-    const oldest=rows.reduce((v,x)=>Math.min(v,Number(x.T)||Infinity),Infinity),binanceTruncated=rows.length>=1000&&oldest>cutoff;
+    const newest=rows.reduce((v,x)=>Math.max(v,Number(x.T)||0),0),binanceTruncated=rows.length>=1000&&newest<now-1500;
     const binanceTrades=rows.map(x=>({time:Number(x.T),price:Number(x.p),size:Number(x.q),side:x.m?"Sell":"Buy"})).filter(x=>x.time>=cutoff&&x.time<=now&&x.price>0&&x.size>0);
     if(!binanceTrades.length)throw Error("Binance Futures returned no recent trades");
     if(!trades?.length||!binanceTruncated||binanceTrades.length>trades.length){trades=binanceTrades;truncated=binanceTruncated;provider="Binance USD-M Futures · aggregate trades";}
