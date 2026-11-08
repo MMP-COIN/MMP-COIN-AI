@@ -274,7 +274,7 @@ jobs:
           futures_universe_status=$(curl --silent --show-error --retry 1 --retry-delay 2 --max-time 25 -o /tmp/futures-universe.json -w "%{http_code}" "$WORKER_URL/hunter-futures-universe")
           echo "Full Futures universe HTTP $futures_universe_status"
           if [ "$futures_universe_status" != "200" ]; then cat /tmp/futures-universe.json; exit 1; fi
-          jq -e '.status == "online" and (.universe_count >= 100) and (.assets | length == .universe_count)' /tmp/futures-universe.json >/dev/null
+          jq -e '.status == "online" and (.universe_count >= 100) and (.assets | length == .universe_count) and all(.assets[]; (.hunterExchange | type == "string" and length > 0))' /tmp/futures-universe.json >/dev/null
           jq -r '"Futures universe: " + (.universe_count|tostring) + " active contracts from " + (.source // "multiple exchanges")' /tmp/futures-universe.json
           derivatives_status=$(curl --silent --show-error --retry 1 --retry-delay 2 --max-time 35 -o /tmp/derivatives.json -w "%{http_code}" "$WORKER_URL/market-derivatives?symbol=BTC")
           echo "Futures derivatives endpoint HTTP $derivatives_status"
