@@ -10,7 +10,7 @@ name = "AI_ANALYSIS_LIMITER"
 namespace_id = "2026110401"
 
 [ratelimits.simple]
-limit = 5
+limit = 15
 period = 60
 
 [[ratelimits]]
@@ -18,5 +18,13 @@ name = "PUBLIC_API_LIMITER"
 namespace_id = "2026110402"
 
 [ratelimits.simple]
-limit = 60
+limit = 300
 period = 60
+
+[[kv_namespaces]]
+binding = "HUNTER_KV"
+namespace_id = "312f8ff92567418c9f95635f2c44cef1"
+
+[triggers]
+crons = ["* * * * *"]
+

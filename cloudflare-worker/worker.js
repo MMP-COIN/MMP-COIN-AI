@@ -533,44 +533,47 @@ async function loadMarketFlow(symbol,windowMinutes=5){
  return {symbol:pair,window_minutes:minutes,buy5m,sell5m,net5m:buy5m-sell5m,trade_count:trades.length,provider,exchange:provider.startsWith("Bybit")?"Bybit":provider.startsWith("Binance")?"Binance":provider.startsWith("OKX")?"OKX":"Gate",complete:!truncated,coverage_start:Number.isFinite(oldestTrade)?oldestTrade:null,window_start:cutoff,window_end:now,updated_at:now,rows};
 }
 async function fetchHunterCandles(symbol){
- const pair=symbol+"USDT";
- const get=async url=>marketFlowJson(url,6500);
- const providers=[
-  async()=>{const d=await get("https://api.binance.com/api/v3/klines?symbol="+pair+"&interval=1m&limit=40");if(!Array.isArray(d))throw new Error("Binance response invalid");return {provider:"Binance Spot",rows:d.map(x=>[Number(x[0]),Number(x[1]),Number(x[2]),Number(x[3]),Number(x[4]),Number(x[7])])};},
-  async()=>{let last;for(const host of ["https://api.bybit.eu","https://api.bytick.eu","https://api.bybit.com","https://api.bytick.com"]){try{const d=await get(host+"/v5/market/kline?category=spot&symbol="+pair+"&interval=1&limit=40");if(Number(d.retCode)!==0)throw new Error(d.retMsg||"Bybit unavailable");return {provider:"Bybit Spot",rows:(d.result?.list||[]).map(x=>[Number(x[0]),Number(x[1]),Number(x[2]),Number(x[3]),Number(x[4]),Number(x[6])])};}catch(e){last=e;}}throw last||new Error("Bybit unavailable");},
-  async()=>{const d=await get("https://api.bitget.com/api/v3/market/candles?category=SPOT&symbol="+pair+"&interval=1m&limit=40");if(!["00000","0"].includes(String(d.code)))throw new Error(d.msg||"Bitget unavailable");return {provider:"Bitget Spot",rows:(d.data||[]).map(x=>[Number(x[0]),Number(x[1]),Number(x[2]),Number(x[3]),Number(x[4]),Number(x[6]||x[5])])};},
-  async()=>{const d=await get("https://api.gateio.ws/api/v4/spot/candlesticks?currency_pair="+symbol+"_USDT&interval=1m&limit=40");return {provider:"Gate Spot",rows:(Array.isArray(d)?d:[]).map(x=>[Number(x[0])*1000,Number(x[4]),Number(x[2]),Number(x[3]),Number(x[5]),Number(x[1])])};},
-  async()=>{const d=await get("https://api.kucoin.com/api/v1/market/candles?type=1min&symbol="+symbol+"-USDT");if(String(d.code)!=="200000")throw new Error(d.msg||"KuCoin unavailable");return {provider:"KuCoin Spot",rows:(d.data||[]).map(x=>[Number(x[0])*1000,Number(x[1]),Number(x[3]),Number(x[4]),Number(x[2]),Number(x[6]||x[5])])};},
-  async()=>{const d=await get("https://www.okx.com/api/v5/market/candles?instId="+symbol+"-USDT&bar=1m&limit=40");if(String(d.code)!=="0")throw new Error(d.msg||"OKX unavailable");return {provider:"OKX Spot",rows:(d.data||[]).map(x=>[Number(x[0]),Number(x[1]),Number(x[2]),Number(x[3]),Number(x[4]),Number(x[7]||x[6])])};}
+ const pair=symbol+"USDT",get=url=>marketFlowJson(url,6500),sources=[
+  async()=>{const d=await get("https://api.binance.com/api/v3/klines?symbol="+pair+"&interval=1m&limit=100");if(!Array.isArray(d))throw Error("Binance invalid");return ["Binance Spot",d.map(x=>[+x[0],+x[1],+x[2],+x[3],+x[4],+x[7]])];},
+  async()=>{let e;for(const h of ["https://api.bybit.eu","https://api.bytick.eu","https://api.bybit.com","https://api.bytick.com"])try{const d=await get(h+"/v5/market/kline?category=spot&symbol="+pair+"&interval=1&limit=100");if(+d.retCode)throw Error(d.retMsg);return ["Bybit Spot",(d.result?.list||[]).map(x=>[+x[0],+x[1],+x[2],+x[3],+x[4],+x[6]])];}catch(x){e=x;}throw e||Error("Bybit unavailable");},
+  async()=>{const d=await get("https://api.bitget.com/api/v3/market/candles?category=SPOT&symbol="+pair+"&interval=1m&limit=100");if(!["00000","0"].includes(String(d.code)))throw Error(d.msg);return ["Bitget Spot",(d.data||[]).map(x=>[+x[0],+x[1],+x[2],+x[3],+x[4],+x[6]||+x[5]])];},
+  async()=>{const d=await get("https://api.gateio.ws/api/v4/spot/candlesticks?currency_pair="+symbol+"_USDT&interval=1m&limit=100");return ["Gate Spot",(Array.isArray(d)?d:[]).map(x=>[+x[0]*1000,+x[4],+x[2],+x[3],+x[5],+x[1]])];},
+  async()=>{const d=await get("https://api.kucoin.com/api/v1/market/candles?type=1min&symbol="+symbol+"-USDT");if(String(d.code)!=="200000")throw Error(d.msg);return ["KuCoin Spot",(d.data||[]).map(x=>[+x[0]*1000,+x[1],+x[3],+x[4],+x[2],+x[6]||+x[5]])];},
+  async()=>{const d=await get("https://www.okx.com/api/v5/market/candles?instId="+symbol+"-USDT&bar=1m&limit=100");if(String(d.code)!=="0")throw Error(d.msg);return ["OKX Spot",(d.data||[]).map(x=>[+x[0],+x[1],+x[2],+x[3],+x[4],+x[7]||+x[6]])];}
  ];
- let errors=[];
- for(const provider of providers){
-  try{
-   const result=await provider(),rows=result.rows.filter(r=>r.every(Number.isFinite)&&r[1]>0&&r[2]>=r[3]&&r[3]>0&&r[4]>0&&r[5]>=0).sort((a,b)=>a[0]-b[0]);
-   if(rows.length>=25)return {...result,rows};
-   throw new Error("کندل کافی نیست");
-  }catch(error){errors.push(String(error?.message||error).slice(0,100));}
- }
- throw new Error(errors.join(" | ")||"منبع کندل در دسترس نیست");
+ const errors=[];for(const fn of sources)try{const [provider,data]=await fn(),rows=data.filter(x=>x.every(Number.isFinite)&&x[1]>0&&x[2]>=x[3]&&x[3]>0&&x[4]>0&&x[5]>=0).sort((x,y)=>x[0]-y[0]);if(rows.length>=65)return {provider,rows};throw Error("Insufficient candles");}catch(e){errors.push(String(e?.message||e).slice(0,80));}throw Error(errors.join(" | ")||"No candle provider");
 }
 async function scanIndependentHunterSymbol(symbol){
- const market=await fetchHunterCandles(symbol),rows=market.rows,now=Date.now(),index=rows.length-2;
- if(index<21)return null;
- const last=rows[index],age=now-last[0];
- if(age<0||age>180000)return null;
- const baseline=rows.slice(index-20,index).map(x=>x[5]).filter(x=>x>0);
- if(baseline.length<16)return null;
- const avg=baseline.reduce((a,b)=>a+b,0)/baseline.length,volumeRatio=avg>0?last[5]/avg:0;
- const change1m=(last[4]/last[1]-1)*100,anchor=rows[index-4][1];
- if(!(anchor>0))return null;
- const change5m=(last[4]/anchor-1)*100,prior=rows.slice(index-6,index),high=Math.max(...prior.map(x=>x[2])),low=Math.min(...prior.map(x=>x[3]));
- const breakoutUp=last[4]>high,breakoutDown=last[4]<low;
- const momentum=Math.min(22,Math.abs(change1m)*28)+Math.min(22,Math.abs(change5m)*10);
- const volume=Math.min(24,Math.max(0,volumeRatio-0.7)*12),structure=breakoutUp||breakoutDown?14:0;
- const score=Math.max(0,Math.min(99,Math.round(38+momentum+volume+structure)));
- return {symbol,trend:change5m>=0?"bull":"bear",score,change1m,change5m,volumeRatio,breakout:breakoutUp||breakoutDown,price:last[4],provider:market.provider,rows:rows.slice(-30),updatedAt:now,candleTime:last[0],flow:null,flowSignal:"",engine:"independent-hunter"};
+ const m=await fetchHunterCandles(symbol),rows=m.rows.slice(0,-1),now=Date.now();if(rows.length<60)return null;
+ const last=rows.at(-1);if(now-last[0]>210000)return null;
+ const b=[];for(let i=0;i+2<rows.length;i+=3){const g=rows.slice(i,i+3);if(g.length===3)b.push({o:g[0][1],h:Math.max(...g.map(x=>x[2])),l:Math.min(...g.map(x=>x[3])),c:g[2][4],v:g.reduce((z,x)=>z+x[5],0)});}
+ if(b.length<18)return null;const x=b.at(-1),m1=(last[4]/last[1]-1)*100,m3=(last[4]/rows.at(-3)[1]-1)*100,m5=(last[4]/rows.at(-5)[1]-1)*100,m15=(last[4]/rows.at(-15)[1]-1)*100,trend=m5>=0?"bull":"bear";
+ const aligned=v=>trend==="bull"?v>=-.025:v<=.025;if(!aligned(m1)||!aligned(m3))return null;
+ const prior=rows.slice(-10,-5),breakout=trend==="bull"?last[4]>Math.max(...prior.map(q=>q[2])):last[4]<Math.min(...prior.map(q=>q[3])),base=b.slice(-16,-1).map(q=>q.v).filter(v=>v>0);if(base.length<10)return null;
+ const avg=base.reduce((p,q)=>p+q,0)/base.length,volumeRatio=avg?x.v/avg:0,trend15=trend==="bull"?m15>.015:m15<-.015,structure=trend==="bull"?last[4]>=last[1]:last[4]<=last[1];
+ const score=Math.min(99,Math.round(20+Math.min(18,Math.abs(m1)*18)+Math.min(18,Math.abs(m3)*8)+Math.min(18,Math.abs(m5)*5)+Math.min(22,Math.max(0,volumeRatio-.75)*13)+(breakout?12:0)+(trend15?10:0)+(structure?5:0)));if(score<55)return null;
+ return {symbol,trend,score,change1m:m1,change3m:m3,change5m:m5,change15m:m15,volumeRatio,breakout,price:last[4],provider:m.provider,rows:rows.slice(-30),updatedAt:now,candleTime:last[0],engine:"digital-hunter-v2",timeframes:{m1,m3,m5,m15},evidence:{volumeRatio:+volumeRatio.toFixed(2),breakout,trend15m:trend15,structure},overextended:Math.abs(m5)>3.5};
 }
-
+async function scanHunterSymbols(symbols){
+ let i=0,failed=0;const candidates=[],errors=[];await Promise.all(Array.from({length:Math.min(8,symbols.length)},async()=>{while(i<symbols.length){const symbol=symbols[i++];try{const x=await scanIndependentHunterSymbol(symbol);if(x)candidates.push(x);}catch(e){failed++;if(errors.length<8)errors.push({symbol,error:String(e?.message||e).slice(0,120)});}}}));
+ candidates.sort((a,b)=>b.score-a.score);const signals=[];
+ await Promise.all(candidates.filter(x=>x.score>=60).slice(0,8).map(async x=>{try{const f=await loadMarketFlow(x.symbol,5),gross=f.buy5m+f.sell5m,imb=gross?f.net5m/gross:0,ok=x.trend==="bull"?imb>=.045:imb<=-.045;if(f.trade_count<8||!ok)return;x.score=Math.min(99,x.score+Math.min(18,Math.round(Math.abs(imb)*90)));x.flow={buy5m:f.buy5m,sell5m:f.sell5m,net5m:f.net5m,tradeCount:f.trade_count,provider:f.provider,complete:f.complete,coverageStart:f.coverage_start,rows:f.rows,imbalance:+imb.toFixed(4)};x.flowSignal=f.net5m>0?"inflow":"outflow";x.confirmed=true;if(x.score>=68)signals.push(x);}catch(e){x.flowError=String(e?.message||e).slice(0,90);}}));
+ return {requested:symbols.length,scanned:symbols.length-failed,candidates:candidates.length,failed,errors,signals,checked_at:new Date().toISOString()};
+}
+async function runDigitalHunterCycle(env){
+ if(!env.HUNTER_KV)throw Error("HUNTER_KV binding missing");const lock="hunter:lock:v2",stateKey="hunter:state:v2",snapKey="hunter:snapshot:v2",priorLock=await env.HUNTER_KV.get(lock);
+ if(priorLock&&Date.now()-Number(priorLock)<45000){const cached=await env.HUNTER_KV.get(snapKey,"json");if(cached)return {...cached,cycle_skipped:true};}
+ await env.HUNTER_KV.put(lock,String(Date.now()),{expirationTtl:90});
+ try{
+  const r=await fetch("https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/hunter-universe");if(!r.ok)throw Error("Universe HTTP "+r.status);const u=await r.json(),assets=(u.hunter_assets||[]).filter(x=>x&&/^[A-Z0-9]{2,20}$/.test(String(x.symbol||""))&&+x.current_price>0&&+x.total_volume>=50000).sort((a,b)=>+b.total_volume-+a.total_volume).slice(0,180);if(!assets.length)throw Error("No liquid USDT Spot assets");
+  const st=await env.HUNTER_KV.get(stateKey,"json")||{},cursor=(+st.cursor||0)%assets.length,batch=Array.from({length:Math.min(36,assets.length)},(_,j)=>assets[(cursor+j)%assets.length]),result=await scanHunterSymbols(batch.map(x=>x.symbol)),old=await env.HUNTER_KV.get(snapKey,"json")||{signals:[]},map=new Map((old.signals||[]).map(x=>[x.symbol,x])),scanned=new Set(batch.map(x=>x.symbol));
+  for(const s of scanned){const v=map.get(s);if(v)v.weakScans=(+v.weakScans||0)+1;}
+  for(const x of result.signals){const c=batch.find(y=>y.symbol===x.symbol)||assets.find(y=>y.symbol===x.symbol);x.coin=c?{id:String(c.id||c.symbol),symbol:c.symbol,name:c.name||c.symbol,image:c.image||"",current_price:+c.current_price||x.price,total_volume:+c.total_volume||0,hunterExchange:c.hunterExchange||"",hunterPriceExchange:c.hunterPriceExchange||"",hunterChange24h:+c.hunterChange24h||0,marketPairs:c.marketPairs||[],hunterVenueVolume:c.hunterVenueVolume||{}}:{id:x.symbol,symbol:x.symbol,name:x.symbol,current_price:x.price};x.dailyChange24h=Number(c?.hunterChange24h)||0;x.weakScans=0;map.set(x.symbol,x);}
+  for(const s of scanned){const v=map.get(s);if(v&&!(result.signals||[]).some(x=>x.symbol===s)&&(+v.weakScans||0)>=2)map.delete(s);}
+  const now=Date.now(),snapshot={status:"online",engine:"MMP DIGITAL HUNTER v2",checked_at:new Date().toISOString(),scanned_at:new Date().toISOString(),universe_count:assets.length,next_cursor:(cursor+batch.length)%assets.length,batch_size:batch.length,scanned_count:result.scanned,failed_count:result.failed,candidate_count:result.signals.length,signals:[...map.values()].filter(x=>now-(+x.updatedAt||0)<25*60000&&+x.score>=68&&x.confirmed).sort((a,b)=>b.score-a.score).slice(0,100),last_errors:result.errors||[],sources:u.sources||{},universe_provider:u.metadata_provider||"multi-exchange",cycle_seconds:60};
+  await env.HUNTER_KV.put(stateKey,JSON.stringify({cursor:snapshot.next_cursor,lastRun:now}),{expirationTtl:86400});await env.HUNTER_KV.put(snapKey,JSON.stringify(snapshot),{expirationTtl:3600});return snapshot;
+ }finally{await env.HUNTER_KV.delete(lock);}
+}
 async function handle(request,env){
  if(request.method==="OPTIONS"){
   const origin=request.headers.get("Origin");
@@ -585,18 +588,15 @@ async function handle(request,env){
   try{return json(await loadMarketFlow(symbol,url.searchParams.get("window")||5),200,request);}
   catch(error){return json({error:String(error?.message||"دریافت جریان معاملات ناموفق بود").slice(0,260)},502,request);}
  }
- if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-scan"){
-  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-scan"),request);if(limited)return limited;
-  const url=new URL(request.url),symbols=[...new Set((url.searchParams.get("symbols")||"").split(",").map(x=>x.toUpperCase().replace(/[^A-Z0-9]/g,"")).filter(x=>/^[A-Z0-9]{2,24}$/.test(x)))].slice(0,36);
-  if(!symbols.length)return json({error:"حداقل یک نماد معتبر ارسال کنید."},400,request);
-  let cursor=0,failed=0;const signals=[],errors=[];
-  const workers=Array.from({length:Math.min(8,symbols.length)},async()=>{while(cursor<symbols.length){const symbol=symbols[cursor++];try{const signal=await scanIndependentHunterSymbol(symbol);if(signal)signals.push(signal);}catch(error){failed++;if(errors.length<8)errors.push({symbol,error:String(error?.message||error).slice(0,140)});}}});
-  await Promise.all(workers);
-  signals.sort((a,b)=>b.score-a.score);
-  await Promise.all(signals.slice(0,8).map(async signal=>{try{const flow=await loadMarketFlow(signal.symbol,5);signal.flow={buy5m:flow.buy5m,sell5m:flow.sell5m,net5m:flow.net5m,tradeCount:flow.trade_count,provider:flow.provider,complete:flow.complete,rows:flow.rows};signal.flowSignal=flow.net5m>0?"inflow":flow.net5m<0?"outflow":"";}catch(error){signal.flowError=String(error?.message||error).slice(0,100);}}));
-  return json({engine:"independent-hunter",checked_at:new Date().toISOString(),requested:symbols.length,scanned:signals.length,failed,errors,signals},200,request);
+ if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-snapshot"){
+  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-snapshot"),request);if(limited)return limited;if(!env.HUNTER_KV)return json({status:"offline",error:"HUNTER_KV binding missing"},503,request);return json(await env.HUNTER_KV.get("hunter:snapshot:v2","json")||{status:"warming_up",engine:"MMP DIGITAL HUNTER v2",signals:[],scanned_count:0,universe_count:0},200,request);
  }
-
+ if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-run"){
+  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-run"),request);if(limited)return limited;try{return json(await runDigitalHunterCycle(env),200,request);}catch(e){return json({status:"error",engine:"MMP DIGITAL HUNTER v2",error:String(e?.message||e).slice(0,220)},502,request);}
+ }
+ if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-scan"){
+  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-scan"),request);if(limited)return limited;const url=new URL(request.url),symbols=[...new Set((url.searchParams.get("symbols")||"").split(",").map(x=>x.toUpperCase().replace(/[^A-Z0-9]/g,"")).filter(x=>/^[A-Z0-9]{2,24}$/.test(x)))].slice(0,36);if(!symbols.length)return json({error:"حداقل یک نماد معتبر ارسال کنید."},400,request);try{return json({engine:"MMP DIGITAL HUNTER v2",...await scanHunterSymbols(symbols)},200,request);}catch(e){return json({error:String(e?.message||e).slice(0,220)},502,request);}
+ }
  if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-universe"){
   const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-universe");
   const limited=rateLimitReply(limitResult,request);if(limited)return limited;
@@ -1020,4 +1020,4 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/health"){
   return json({analysis,market:snapshot},200,request);
  }catch(e){return json({error:String(e?.message||"Analysis failed").slice(0,300),stage,symbol:pair,market_mode:mode},502,request)}
 }
-export default {fetch:handle};
+export default {fetch:handle,scheduled(_event,env,ctx){ctx.waitUntil(runDigitalHunterCycle(env).catch(error=>console.error("Digital Hunter scheduled cycle failed:",error?.message||error)));}};
