@@ -1,7 +1,7 @@
 // MMP Quantum Intelligence Engine: dynamic market discovery with no fixed asset ceiling
 import { QUANTUM_ENGINE_NAME, QUANTUM_ENGINE_VERSION, normalizeQuantumUniverse, scoreQuantumOpportunity } from "./quantum-core.js";
 const HUNTER_BATCH_SIZE = 18;
-const FUTURES_HUNTER_BATCH_SIZE = 16;
+const FUTURES_HUNTER_BATCH_SIZE = 12;
 const MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 function extractAIJson(value){
  let raw=typeof value==="string"?value:JSON.stringify(value??"");
@@ -559,7 +559,7 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
   async()=>tryHosts("Bybit Linear",["https://api.bybit.eu"],host=>host+"/v5/market/kline?category=linear&symbol="+pair+"&interval=1&limit=100",d=>Number(d.retCode)===0?d.result?.list:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],(+x[6]||+x[5])]),
   async()=>tryHosts("OKX USDT Swap",["https://www.okx.com"],host=>host+"/api/v5/market/candles?instId="+symbol+"-USDT-SWAP&bar=1m&limit=100",d=>String(d.code)==="0"?d.data:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],(+x[7]||+x[6])]),
   async()=>tryHosts("Bitget USDT Futures",["https://api.bitget.com"],host=>host+"/api/v3/market/candles?category=USDT-FUTURES&symbol="+pair+"&interval=1m&limit=100",d=>String(d.code)==="00000"?d.data:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],(+x[6]||+x[5])]),
-  async()=>tryHosts("Gate USDT Futures",["https://api.gateio.ws"],host=>host+"/api/v4/futures/usdt/candlesticks?contract="+symbol+"_USDT&interval=1m&limit=100",d=>Array.isArray(d)?d:null,x=>[+x.t*1000,+x.o,+x.h,+x.l,+x.c,(+x.sum||+x.v)])
+  async()=>tryHosts("Gate USDT Futures",["https://api.gateio.ws","https://api.gate.us"],host=>host+"/api/v4/futures/usdt/candlesticks?contract="+symbol+"_USDT&interval=1m&limit=100",d=>Array.isArray(d)?d:null,x=>[+x.t*1000,+x.o,+x.h,+x.l,+x.c,(+x.sum||+x.v)])
  ];
  const spotSources=[
   async()=>tryHosts("Binance Spot",["https://api.binance.com"],host=>host+"/api/v3/klines?symbol="+pair+"&interval=1m&limit=100",d=>Array.isArray(d)?d:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],+x[7]]),
