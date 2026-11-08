@@ -71,40 +71,51 @@ jobs:
           }
           const pairParts = pair => {
             const p=String(pair||'').toUpperCase();
-            for (const q of ['USDT','USDC','FDUSD','BUSD','USD','BTC','ETH']) if (p.endsWith(q) && p.length>q.length) return {base:p.slice(0,-q.length),quote:q};
+            if(p.includes('_')){const [base,quote]=p.split('_');if(base&&quote)return {base,quote,compact:base+quote};}
+            if(p.includes('-')){const parts=p.split('-');if(parts.length===2&&parts[0]&&parts[1])return {base:parts[0],quote:parts[1],compact:parts[0]+parts[1]};}
+            for(const q of ['USDT','USDC','FDUSD','BUSD','USD','BTC','ETH'])if(p.endsWith(q)&&p.length>q.length)return {base:p.slice(0,-q.length),quote:q,compact:p};
             return null;
           };
           const rowsArray = x => Array.isArray(x);
-          const spotCandidates = (pair,tf,support) => {
+          const spotCandidates = (pair,tf,support,preferredProvider) => {
             const p=pairParts(pair); if(!p) return [];
-            const {base,quote}=p, bybitTf={'15m':'15','1h':'60','4h':'240','1d':'D'}[tf], okxTf={'15m':'15m','1h':'1H','4h':'4H','1d':'1Dutc'}[tf], bitgetTf={'15m':'15m','1h':'1H','4h':'4H','1d':'1D'}[tf], kucoinTf={'15m':'15min','1h':'1hour','4h':'4hour','1d':'1day'}[tf];
+            const {base,quote,compact}=p, bybitTf={'15m':'15','1h':'60','4h':'240','1d':'D'}[tf], okxTf={'15m':'15m','1h':'1H','4h':'4H','1d':'1Dutc'}[tf], bitgetTf={'15m':'15m','1h':'1H','4h':'4H','1d':'1D'}[tf], kucoinTf={'15m':'15min','1h':'1hour','4h':'4hour','1d':'1day'}[tf];
             const c=[];
-            for(const host of ['https://api.binance.com','https://api1.binance.com','https://api2.binance.com','https://api3.binance.com','https://data-api.binance.vision']) c.push({name:'Binance Spot',url:host+'/api/v3/klines?symbol='+pair+'&interval='+tf+'&limit=250',rows:rowsArray});
-            c.push({name:'Bitget Spot',url:'https://api.bitget.com/api/v3/market/candles?category=SPOT&symbol='+pair+'&interval='+bitgetTf+'&limit=250',rows:d=>(d?.code==='00000'||d?.code==='0')?d.data:null});
+            for(const host of ['https://api.binance.com','https://api1.binance.com','https://api2.binance.com','https://api3.binance.com','https://data-api.binance.vision']) c.push({name:'Binance Spot',url:host+'/api/v3/klines?symbol='+compact+'&interval='+tf+'&limit=250',rows:rowsArray});
+            c.push({name:'Bitget Spot',url:'https://api.bitget.com/api/v3/market/candles?category=SPOT&symbol='+compact+'&interval='+bitgetTf+'&limit=250',rows:d=>(d?.code==='00000'||d?.code==='0')?d.data:null});
             for(const host of ['https://api.kucoin.com','https://api.kucoin.tr']) c.push({name:'KuCoin Spot',url:host+'/api/v1/market/candles?symbol='+base+'-'+quote+'&type='+kucoinTf,rows:d=>d?.code==='200000'?d.data:null});
             for(const host of ['https://api.gateio.ws','https://api.gate.us']) c.push({name:'Gate.io Spot',url:host+'/api/v4/spot/candlesticks?currency_pair='+base+'_'+quote+'&interval='+tf+'&limit=250',rows:rowsArray});
             for(const host of ['https://whitebit.com','https://whitebit.eu','https://whitebit.tr','https://whitebit.ge']) c.push({name:'WhiteBIT Spot',url:host+'/api/v1/public/kline?market='+base+'_'+quote+'&interval='+tf+'&limit=250',rows:d=>d?.success===true?d.result:null});
-            for(const host of ['https://api.bybit.eu','https://api.bytick.eu','https://api.bybit.com','https://api.bytick.com']) c.push({name:'Bybit Spot',url:host+'/v5/market/kline?category=spot&symbol='+pair+'&interval='+bybitTf+'&limit=250',rows:d=>d?.retCode===0?d.result?.list:null});
+            for(const host of ['https://api.bybit.eu','https://api.bytick.eu','https://api.bybit.com','https://api.bytick.com']) c.push({name:'Bybit Spot',url:host+'/v5/market/kline?category=spot&symbol='+compact+'&interval='+bybitTf+'&limit=250',rows:d=>d?.retCode===0?d.result?.list:null});
             for(const host of ['https://www.okx.com','https://us.okx.com','https://openapi.okx.com']) c.push({name:'OKX Spot',url:host+'/api/v5/market/candles?instId='+base+'-'+quote+'&bar='+okxTf+'&limit=250',rows:d=>d?.code==='0'?d.data:null});
-            const supported=new Set(Array.isArray(support?.spot?.providers)?support.spot.providers:[]);
-            return supported.size?c.filter(x=>supported.has(x.name.replace(/ Spot$/,""))).slice(0,2):c.slice(0,4);
+            const normalizeProvider=name=>name==="Gate"||name==="Gate.io"?"Gate.io":String(name||"");
+            const preferred=normalizeProvider(preferredProvider);
+            const supported=new Set([...(Array.isArray(support?.spot?.providers)?support.spot.providers:[]),preferred].filter(Boolean).map(normalizeProvider));
+            if(!supported.size)return c.slice(0,4);
+            const ordered=c.filter(x=>supported.has(x.name.replace(/ Spot$/,""))).sort((a,b)=>(a.name.startsWith(preferred)?-1:0)-(b.name.startsWith(preferred)?-1:0));
+            const result=[],counts=new Map();
+            for(const item of ordered){const name=item.name.replace(/ Spot$/,""),count=counts.get(name)||0;if(count>=2)continue;counts.set(name,count+1);result.push(item);}
+            return result;
           };
           const futuresCandidates = (pair,tf,support) => {
             const p=pairParts(pair); if(!p) return [];
-            const {base,quote}=p, bybitTf={'15m':'15','1h':'60','4h':'240','1d':'D'}[tf], okxTf={'15m':'15m','1h':'1H','4h':'4H','1d':'1Dutc'}[tf];
-            const c=[{name:'Binance Futures',url:'https://fapi.binance.com/fapi/v1/klines?symbol='+pair+'&interval='+tf+'&limit=250',rows:rowsArray}];
-            for(const host of ['https://api.bybit.eu','https://api.bytick.eu','https://api.bybit.com','https://api.bytick.com']) c.push({name:'Bybit Linear',url:host+'/v5/market/kline?category=linear&symbol='+pair+'&interval='+bybitTf+'&limit=250',rows:d=>d?.retCode===0?d.result?.list:null});
+            const {base,quote,compact}=p, bybitTf={'15m':'15','1h':'60','4h':'240','1d':'D'}[tf], okxTf={'15m':'15m','1h':'1H','4h':'4H','1d':'1Dutc'}[tf];
+            const c=[{name:'Binance Futures',url:'https://fapi.binance.com/fapi/v1/klines?symbol='+compact+'&interval='+tf+'&limit=250',rows:rowsArray}];
+            for(const host of ['https://api.bybit.eu','https://api.bytick.eu','https://api.bybit.com','https://api.bytick.com']) c.push({name:'Bybit Linear',url:host+'/v5/market/kline?category=linear&symbol='+compact+'&interval='+bybitTf+'&limit=250',rows:d=>d?.retCode===0?d.result?.list:null});
             for(const host of ['https://www.okx.com','https://us.okx.com','https://openapi.okx.com']) c.push({name:'OKX Swap',url:host+'/api/v5/market/candles?instId='+base+'-'+quote+'-SWAP&bar='+okxTf+'&limit=250',rows:d=>d?.code==='0'?d.data:null});
             const supported=new Set(Array.isArray(support?.futures?.providers)?support.futures.providers:[]);
             return supported.size?c.filter(x=>supported.has(x.name.split(" ")[0])).slice(0,2):c;
           };
           async function checkAsset(asset, support) {
             const symbol=String(asset.symbol).toUpperCase();
-            const spotPair=support?.spot?.pair || symbol+'USDT';
+            const spotMarkets=(Array.isArray(asset.marketPairs)?asset.marketPairs:[]).filter(x=>String(x.quote||"").toUpperCase()==="USDT"&&x.pair&&x.exchange).sort((a,b)=>Number(b.volume||0)-Number(a.volume||0));
+            const preferredSpot=spotMarkets[0]||null;
+            const spotPair=preferredSpot?.pair || support?.spot?.pair || symbol+'USDT';
+            const spotProvider=preferredSpot?.exchange || "";
             const futuresPair=support?.futures?.pair || symbol+'USDT';
             const tests=[];
             for(const tf of intervals) {
-              let result=await firstValid(spotCandidates(spotPair,tf,support),tf);
+              let result=await firstValid(spotCandidates(spotPair,tf,support,spotProvider),tf);
               let market='spot';
               if(!result.ok && support?.futures?.confirmed) {
                 const fut=await firstValid(futuresCandidates(futuresPair,tf,support),tf);
@@ -139,7 +150,8 @@ jobs:
             if(!Object.values(supportSources).some(x=>x?.ok))throw new Error('Exchange catalogs unavailable; cannot verify tradable assets');
             const assets=candidates.filter(x=>{
               const support=supportMap[String(x.symbol||"").toUpperCase()];
-              return !!support?.spot?.confirmed;
+              const hasExactUsdtPair=Array.isArray(x.marketPairs)&&x.marketPairs.some(p=>String(p.quote||"").toUpperCase()==="USDT"&&p.pair);
+              return !!support?.spot?.confirmed&&hasExactUsdtPair;
             });
             if(!assets.length)throw new Error('No instruments have confirmed active Spot USDT markets');
             const results=[];
