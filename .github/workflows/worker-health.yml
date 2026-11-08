@@ -9,6 +9,11 @@ on:
     paths:
       - "cloudflare-worker/**"
       - ".github/workflows/worker-health.yml"
+  pull_request:
+    paths:
+      - "cloudflare-worker/**"
+      - "www/index.html"
+      - ".github/workflows/worker-health.yml"
 
 permissions:
   contents: read
