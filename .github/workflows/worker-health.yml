@@ -45,6 +45,9 @@ jobs:
           if (!candidate.candidateGate || candidate.qualityGate) throw new Error("Preliminary candidate gate is incorrect");
           const confirmed = mod.scoreQuantumOpportunity({...base,flowConfirmed:true,flowImbalance:0.12});
           if (!confirmed.qualityGate) throw new Error("Fully confirmed signal did not pass");
+          const noDepth = mod.scoreQuantumOpportunity({...base,flowConfirmed:true,flowImbalance:0.12,requireDepthConfirmation:true,depthConfirmed:false});
+          const withDepth = mod.scoreQuantumOpportunity({...base,flowConfirmed:true,flowImbalance:0.12,requireDepthConfirmation:true,depthConfirmed:true});
+          if (noDepth.qualityGate || !withDepth.qualityGate) throw new Error("Order-book depth gate is incorrect");
           const rejected = [
             mod.scoreQuantumOpportunity({...base,flowConfirmed:true,flowImbalance:-0.12}),
             mod.scoreQuantumOpportunity({...base,flowConfirmed:true,flowImbalance:0.12,volumeRatio:0.9}),
