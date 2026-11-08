@@ -20,3 +20,11 @@ namespace_id = "2026110402"
 [ratelimits.simple]
 limit = 60
 period = 60
+
+[[kv_namespaces]]
+binding = "HUNTER_KV"
+namespace_id = "312f8ff92567418c9f95635f2c44cef1"
+
+[triggers]
+crons = ["* * * * *"]
+
