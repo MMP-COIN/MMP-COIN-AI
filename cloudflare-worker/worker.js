@@ -590,7 +590,12 @@ async function scanHunterSymbols(symbols,marketType="spot"){
    if(f.trade_count<8||!ok)return;
    x.score=Math.min(99,x.score+Math.min(18,Math.round(Math.abs(imb)*90)));
    x.flow={buy5m:f.buy5m,sell5m:f.sell5m,net5m:f.net5m,tradeCount:f.trade_count,provider:f.provider,complete:f.complete,coverageStart:f.coverage_start,rows:f.rows,imbalance:+imb.toFixed(4)};
-   x.flowSignal=f.net5m>0?"inflow":"outflow";x.confirmed=true;if(x.score>=68)signals.push(x);
+   x.flowSignal=f.net5m>0?"inflow":"outflow";
+   const bars=Array.isArray(x.rows)?x.rows.slice(-16):[],ranges=bars.slice(1).map((bar,i)=>Math.max(Number(bar[2])-Number(bar[3]),Math.abs(Number(bar[2])-Number(bars[i][4])),Math.abs(Number(bar[3])-Number(bars[i][4])))).filter(v=>Number.isFinite(v)&&v>0);
+   const atr=ranges.length?ranges.reduce((a,b)=>a+b,0)/ranges.length:0,entry=Number(x.price),risk=Math.max(atr*1.25,entry*.002),sign=x.trend==="bull"?1:-1;
+   const precision=entry>=1000?2:entry>=1?4:entry>=.01?6:8,round=v=>Number(v.toFixed(precision));
+   x.tradePlan={direction:sign>0?"LONG":"SHORT",entry:round(entry),stopLoss:round(entry-sign*risk),target1:round(entry+sign*risk*1.5),target2:round(entry+sign*risk*2.2),riskPercent:entry>0?Number((risk/entry*100).toFixed(2)):null,method:"1m ATR-based risk model; execution remains conditional"};
+   x.confirmed=true;if(x.score>=68)signals.push(x);
   }catch(e){x.flowError=String(e?.message||e).slice(0,90);}
  }));
  signals.sort((a,b)=>b.score-a.score);
