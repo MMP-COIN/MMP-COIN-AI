@@ -158,45 +158,62 @@ async function candles(symbol,interval,env,marketType="spot"){
   }
   throw new Error("Nobitex Spot data unavailable for "+symbol+": "+(lastError?.message||"no candle response"));
  }
- const okxBar={"15m":"15m","1h":"1H","4h":"4H","1d":"1Dutc"}[interval];
- const bybitInterval={"15m":"15","1h":"60","4h":"240","1d":"D"}[interval];
+ const okxBar={"1m":"1m","3m":"3m","5m":"5m","15m":"15m","1h":"1H","4h":"4H","1d":"1Dutc"}[interval];
+ const bybitInterval={"1m":"1","3m":"3","5m":"5","15m":"15","1h":"60","4h":"240","1d":"D"}[interval];
  const toBybitRows=list=>list.slice().reverse().map(x=>[Number(x[0]),x[1],x[2],x[3],x[4],x[5],x[6]||"0","0","0","0"]);
  const toOkxRows=list=>list.slice().reverse().map(x=>[Number(x[0]),x[1],x[2],x[3],x[4],x[5],x[6]||"0","0","0","0"]);
  const validRows=rows=>Array.isArray(rows)&&rows.length>=minimumCandles;
  if(marketType==="futures"){
-  let binanceError=null,bybitError=null,okxError=null;
+  let errors=[];
+  const pair=splitQuotePair(symbol);
+  if(!pair||pair.quote!=="USDT")throw new Error("Futures market supports USDT perpetual contracts only");
+  const contract=pair.base+"_USDT";
+  for(const host of ["https://api.gateio.ws","https://api.gate.us"]){
+   try{
+    const r=await fetch(host+"/api/v4/futures/usdt/candlesticks?contract="+encodeURIComponent(contract)+"&interval="+interval+"&limit=250",{headers});
+    if(!r.ok)throw new Error("Gate Futures HTTP "+r.status);
+    const raw=await r.json(),rows=Array.isArray(raw)?raw.map(x=>[Number(x.t)<1e12?Number(x.t)*1000:Number(x.t),x.o,x.h,x.l,x.c,x.v,x.sum||"0","0","0","0"]):[];
+    if(!validRows(rows))throw new Error("insufficient Gate Futures candle history");
+    const result=analyzeKlines(rows);result.data_provider="Gate USDT Futures";return result;
+   }catch(e){errors.push("Gate: "+e.message);}
+  }
   try{
-   const url="https://fapi.binance.com/fapi/v1/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250";
-   const r=await fetch(url,{headers});
-   if(!r.ok)throw new Error("Binance Futures HTTP "+r.status);
-   const rows=await r.json();
-   if(!validRows(rows))throw new Error("Binance Futures candle history is insufficient");
-   const result=analyzeKlines(rows);result.data_provider="Binance Futures";return result;
-  }catch(e){binanceError=e;}
-  for(const host of ["https://api.bybit.com"]){
+   const url="https://api.bitget.com/api/v3/market/candles?category=USDT-FUTURES&symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250";
+   const r=await fetch(url,{headers});if(!r.ok)throw new Error("Bitget Futures HTTP "+r.status);
+   const payload=await r.json(),raw=payload?.code==="00000"?payload.data:null;
+   const rows=Array.isArray(raw)?raw.map(x=>[Number(x[0]),x[1],x[2],x[3],x[4],x[5]||"0",x[6]||"0","0","0","0"]):[];
+   if(!validRows(rows))throw new Error(payload?.msg||"insufficient Bitget Futures candle history");
+   const result=analyzeKlines(rows);result.data_provider="Bitget USDT Futures";return result;
+  }catch(e){errors.push("Bitget: "+e.message);}
+  for(const host of ["https://api.bybit.eu","https://api.bybit.com"]){
    try{
     const url=host+"/v5/market/kline?category=linear&symbol="+encodeURIComponent(symbol)+"&interval="+bybitInterval+"&limit=250";
-    const r=await fetch(url,{headers});
-    if(!r.ok)throw new Error("Bybit Linear HTTP "+r.status);
+    const r=await fetch(url,{headers});if(!r.ok)throw new Error("Bybit Linear HTTP "+r.status);
     const payload=await r.json(),list=payload?.retCode===0?payload.result?.list:null;
     if(!validRows(list))throw new Error(payload?.retMsg||"insufficient Bybit linear candle history");
-    const result=analyzeKlines(toBybitRows(list));result.data_provider="Bybit Linear Perpetual (fallback)";return result;
-   }catch(e){bybitError=e;}
+    const result=analyzeKlines(toBybitRows(list));result.data_provider="Bybit Linear Perpetual";return result;
+   }catch(e){errors.push("Bybit: "+e.message);}
   }
-  const pair=splitQuotePair(symbol);
   if(pair){
-   const instId=pair.base+"-"+pair.quote+"-SWAP";
-   for(const host of ["https://www.okx.com"]){
+   for(const host of ["https://www.okx.com","https://us.okx.com"]){
     try{
-     const r=await fetch(host+"/api/v5/market/candles?instId="+encodeURIComponent(instId)+"&bar="+okxBar+"&limit=250",{headers});
+     const instId=pair.base+"-"+pair.quote+"-SWAP",r=await fetch(host+"/api/v5/market/candles?instId="+encodeURIComponent(instId)+"&bar="+okxBar+"&limit=250",{headers});
      if(!r.ok)throw new Error("OKX Swap HTTP "+r.status);
      const payload=await r.json(),list=payload?.code==="0"?payload.data:null;
      if(!validRows(list))throw new Error(payload?.msg||"insufficient OKX swap candle history");
-     const result=analyzeKlines(toOkxRows(list));result.data_provider="OKX Linear Swap (fallback)";return result;
-    }catch(e){okxError=e;}
+     const result=analyzeKlines(toOkxRows(list));result.data_provider="OKX Linear Swap";return result;
+    }catch(e){errors.push("OKX: "+e.message);}
    }
-  }else okxError=new Error("Unsupported quote currency for OKX swap");
-  throw new Error("Futures data unavailable for "+symbol+"; Binance: "+(binanceError?.message||"failed")+"; Bybit: "+(bybitError?.message||"failed")+"; OKX: "+(okxError?.message||"failed"));
+  }
+  for(const host of ["https://fapi.binance.com","https://fapi1.binance.com","https://fapi2.binance.com"]){
+   try{
+    const r=await fetch(host+"/fapi/v1/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250",{headers});
+    if(!r.ok)throw new Error("Binance Futures HTTP "+r.status);
+    const rows=await r.json();if(!validRows(rows))throw new Error("insufficient Binance Futures candle history");
+    const result=analyzeKlines(rows);result.data_provider="Binance USD-M Futures";return result;
+   }catch(e){errors.push("Binance: "+e.message);}
+  }
+  throw new Error("Futures data unavailable for "+symbol+" "+interval+"; "+errors.join(" | ").slice(0,520));
  }
  let lastError=null,bitgetError=null,bybitError=null,okxError=null;
  const spotUrls=[
