@@ -8,6 +8,7 @@ on:
     branches: ["main"]
     paths:
       - "cloudflare-worker/**"
+      - "www/index.html"
       - ".github/workflows/worker-health.yml"
   pull_request:
     paths:
@@ -104,7 +105,7 @@ jobs:
           const requiredControls = ["refresh-all-btn","market-refresh-btn","hunter-refresh-btn","ai-coin-picker-trigger","ai-run-btn","boom-run","chart-fullscreen-btn","derivatives-load","orderflow-refresh","forecast-run","historical-backtest","journal-save","alert-add","risk-capital","risk-percent","risk-entry","risk-stop","risk-calc","connections-toggle","exchange-directory-refresh","native-menu-toggle","native-refresh-btn","native-update-check-btn","native-share-app"];
           const missingControls = requiredControls.filter(id => !idSet.has(id));
           if (missingControls.length) throw new Error("Missing core controls: " + missingControls.join(", "));
-          if (/<(?:div|section)[^>]*(?:id=["']market-ticker["']|class=["'][^"']*\bmarket-ticker\b)/i.test(html)) throw new Error("Removed horizontal market ticker has returned");
+          if (/market-ticker|ticker-item|renderMarketTicker/.test(html)) throw new Error("Removed horizontal market ticker code has returned");
           const version = html.match(/<meta name=["']mmp-app-version["'] content=["']([^"']+)["']/i);
           if (!version) throw new Error("Native app version metadata is missing");
           console.log("Audited " + requiredModules.length + " required modules, " + ids.length + " IDs, accessibility links and " + requiredControls.length + " core controls; app version " + version[1] + " retained.");
