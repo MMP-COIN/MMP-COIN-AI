@@ -1364,6 +1364,7 @@ body.radar-detail-open{overflow:hidden}
 
 
 
+<div class="market-ticker" id="market-ticker" aria-label="قیمت لحظه‌ای رمزارزهای منتخب"></div>
 <section class="grid" id="market-snapshot" data-quantum-module="market-data">
 <div class="card"><div class="stat-label">بیت‌کوین · BTC</div><div class="stat-value" id="btc">$—</div><div class="sub" id="btc-sub">—</div></div>
 <div class="card"><div class="stat-label">اتریوم · ETH</div><div class="stat-value" id="eth">$—</div><div class="sub" id="eth-sub">—</div></div>
@@ -1641,11 +1642,15 @@ async function refreshSiteData(){
  if(button){button.classList.add("is-refreshing");button.disabled=true;}
  $("updated").textContent="در حال بروزرسانی داده‌های اپلیکیشن…";
  try{
-  const jobs=[];
-  if(typeof refreshAll==="function")jobs.push(refreshAll());
-  if(typeof checkConnections==="function")jobs.push(checkConnections());
-  await Promise.allSettled(jobs);
-    $("updated").textContent="بروزرسانی اپ انجام شد · "+new Date().toLocaleTimeString("fa-IR");
+  const marketPromise=typeof refreshAll==="function"?refreshAll():Promise.resolve(false);
+  const connectionPromise=typeof checkConnections==="function"?checkConnections():Promise.resolve([]);
+  const [marketResult,connectionResult]=await Promise.allSettled([marketPromise,connectionPromise]);
+  const marketOk=marketResult.status==="fulfilled"&&marketResult.value===true;
+  const connectionOk=connectionResult.status==="fulfilled"&&Array.isArray(connectionResult.value)&&connectionResult.value.some(item=>item&&item.status!=="down");
+  const stamp=new Date().toLocaleTimeString("fa-IR");
+  if(marketOk&&connectionOk)$("updated").textContent="بازار و اتصال منابع بروزرسانی شد · "+stamp;
+  else if(marketOk||connectionOk)$("updated").textContent="بروزرسانی جزئی انجام شد؛ بعضی منابع پاسخ ندادند · "+stamp;
+  else $("updated").textContent="بروزرسانی ناموفق بود؛ داده جدید تأیید نشد.";
  }catch(error){
   $("updated").textContent="بروزرسانی کامل نشد؛ اتصال اینترنت را بررسی کنید.";
  }finally{
@@ -1915,14 +1920,14 @@ function normalizeCoinLoreAssets(payload){
 
 let refreshInFlight=false;
 async function refreshAll(){
- if(refreshInFlight)return;
+ if(refreshInFlight)return false;
  refreshInFlight=true;
  const refreshButton=$("market-refresh-btn");
  const radarRefreshButton=$("radar-refresh-btn");
  if(refreshButton){refreshButton.disabled=true;refreshButton.textContent="در حال بروزرسانی…";}
  if(radarRefreshButton){radarRefreshButton.disabled=true;radarRefreshButton.classList.add("is-refreshing");radarRefreshButton.querySelector("span").textContent="در حال بروزرسانی";}
  $('updated').textContent='در حال بروزرسانی از مراجع معتبر…';
-
+ let refreshSucceeded=false;
  try{
   const tether=await fetchTetherRate();
   if(tether.price>0){
@@ -2089,8 +2094,10 @@ async function refreshAll(){
   finally{clearTimeout(goldTimer);}
 
   $('updated').textContent='بروزرسانی شد: '+new Date().toLocaleTimeString('fa-IR');
+  refreshSucceeded=true;
  }catch(e){coinGeckoConnectionStatus='down';renderCoinGeckoConnection();$('updated').textContent='خطا در دریافت داده';}
  finally{refreshInFlight=false;const button=$("market-refresh-btn");if(button){button.disabled=false;button.textContent="↻ بروزرسانی بازار";}const radarButton=$("radar-refresh-btn");if(radarButton){radarButton.disabled=false;radarButton.classList.remove("is-refreshing");radarButton.querySelector("span").textContent="بروزرسانی";}}
+ return refreshSucceeded;
 }
 
 function renderHeroCards() {
