@@ -1,7 +1,7 @@
 // MMP Quantum Intelligence Engine: dynamic market discovery with no fixed asset ceiling
 import { QUANTUM_ENGINE_NAME, QUANTUM_ENGINE_VERSION, normalizeQuantumUniverse, scoreQuantumOpportunity } from "./quantum-core.js";
-const HUNTER_BATCH_SIZE = 24;
-const FUTURES_HUNTER_BATCH_SIZE = 16;
+const HUNTER_BATCH_SIZE = 10;
+const FUTURES_HUNTER_BATCH_SIZE = 8;
 const MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 function extractAIJson(value){
  let raw=typeof value==="string"?value:JSON.stringify(value??"");
@@ -603,7 +603,7 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
  }
  const fallbackPriority=marketType==="futures"?[3,4,1,2,0]:[7,2,6,4,5,1,3,0];
  order=unique([...order,...fallbackPriority.filter(index=>!order.includes(index))]);
- const orderedSources=order.map(index=>sources[index]).filter(Boolean),verified=[];
+ const orderedSources=order.map(index=>sources[index]).filter(Boolean).slice(0,3),verified=[];
  for(let offset=0;offset<orderedSources.length&&verified.length<2;offset+=2){
   const attempts=await Promise.allSettled(orderedSources.slice(offset,offset+2).map(fn=>fn()));
   for(const result of attempts){if(result.status==="fulfilled"){const [provider,rows]=result.value;verified.push({provider,rows});}else errors.push(String(result.reason?.message||result.reason).slice(0,130));}
@@ -725,7 +725,7 @@ async function loadHunterDepth(symbol,marketType="spot",preferredProviders=[]){
   {key:"Bybit",name:"Bybit Spot",load:async()=>{const d=await get("https://api.bybit.eu/v5/market/orderbook?category=spot&symbol="+pair+"&limit=50");if(Number(d.retCode)!==0)throw Error(d.retMsg||"Bybit order book unavailable");return {bids:d.result?.b,asks:d.result?.a};}}
  ];
  const preferred=preferredProviders.map(value=>sources.findIndex(x=>String(value||"").toLowerCase().includes(x.key.toLowerCase()))).filter(index=>index>=0);
- const order=[...new Set([...preferred,...sources.map((_,index)=>index)])];
+ const order=[...new Set([...preferred,...sources.map((_,index)=>index)])].slice(0,2);
  let best=null,lastError="";
  for(const index of order){
   const source=sources[index];
@@ -751,7 +751,7 @@ async function scanHunterSymbols(symbols,marketType="spot",assetList=[]){
  const concurrency=4;
  await Promise.all(Array.from({length:Math.min(concurrency,symbols.length)},async()=>{while(i<symbols.length){const symbol=symbols[i++];try{const x=await analyzeDigitalHunterSymbol(symbol,marketType,assetMap.get(symbol));if(x)candidates.push(x);}catch(e){failed++;if(errors.length<8)errors.push({symbol,error:String(e?.message||e).slice(0,120)});}}}));
  candidates.sort((a,b)=>b.score-a.score);const signals=[];
- const flowCandidates=(marketType==="futures"?[...candidates.filter(x=>x.trend==="bull"&&!x.lowLiquidity).slice(0,3),...candidates.filter(x=>x.trend==="bear"&&!x.lowLiquidity).slice(0,3)]:candidates.filter(x=>x.trend==="bull"&&!x.lowLiquidity).slice(0,3)).filter(x=>x.score>=60);
+ const flowCandidates=(marketType==="futures"?[...candidates.filter(x=>x.trend==="bull"&&!x.lowLiquidity).slice(0,1),...candidates.filter(x=>x.trend==="bear"&&!x.lowLiquidity).slice(0,1)]:candidates.filter(x=>x.trend==="bull"&&!x.lowLiquidity).slice(0,2)).filter(x=>x.score>=60);
  await Promise.all(flowCandidates.map(async x=>{
   try{
    let f=marketType==="futures"?await loadFuturesMarketFlow(x.symbol,5):await loadMarketFlow(x.symbol,5);
