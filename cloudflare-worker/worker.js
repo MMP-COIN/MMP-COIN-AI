@@ -519,7 +519,7 @@ async function loadMarketFlow(symbol,windowMinutes=5){
    const raw=d,oldest=raw.reduce((v,x)=>Math.min(v,Number(x.create_time_ms)||Number(x.create_time)*1000||Infinity),Infinity);
    const gateTruncated=raw.length>=1000&&oldest>cutoff;
    const gateTrades=raw.map(x=>({time:Number(x.create_time_ms)||Number(x.create_time)*1000,price:Number(x.price),size:Number(x.amount),side:String(x.side||"").toLowerCase()==="buy"?"Buy":"Sell"})).filter(x=>x.time>=cutoff&&x.time<=now&&x.price>0&&x.size>0);
-   if(!trades||!gateTruncated||gateTrades.length>trades.length){trades=gateTrades;truncated=gateTruncated;provider="Gate Spot · معاملات واقعی";}
+   if(gateTrades.length&&(!trades||!gateTruncated||gateTrades.length>trades.length)){trades=gateTrades;truncated=gateTruncated;provider="Gate Spot · معاملات واقعی";}
   }catch(error){lastError=String(error?.message||error).slice(0,160);}
  }
  if(!trades)throw new Error("داده معاملات از Bybit، Binance، OKX و Gate دریافت نشد: "+lastError);
