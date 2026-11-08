@@ -367,7 +367,7 @@ async function getExchangeCatalogs(){
    "https://api.bytick.com/v5/market/instruments-info?category=linear&limit=1000"
   ]],
   ["bitget_futures","https://api.bitget.com/api/v3/market/tickers?category=USDT-FUTURES"],
-  ["gate_futures","https://api.gateio.ws/api/v4/futures/usdt/tickers"],
+  ["gate_futures",["https://api.gateio.ws/api/v4/futures/usdt/tickers","https://api.gate.us/api/v4/futures/usdt/tickers"]],
   ["bitget_spot","https://api.bitget.com/api/v3/market/instruments?category=SPOT"],
   ["whitebit_spot",["https://whitebit.com/api/v1/public/markets","https://whitebit.eu/api/v1/public/markets","https://whitebit.tr/api/v1/public/markets","https://whitebit.ge/api/v1/public/markets"]],
   ["gate_spot",["https://api.gateio.ws/api/v4/spot/currency_pairs","https://api.gate.us/api/v4/spot/currency_pairs"]],
@@ -661,10 +661,13 @@ async function loadFuturesMarketFlow(symbol,windowMinutes=5){
  if(!trades?.length||truncated){
   try{
    const contract=base+"_USDT";
-   const [details,raw]=await Promise.all([
+   let details,raw;try{[details,raw]=await Promise.all([
     marketFlowJson("https://api.gateio.ws/api/v4/futures/usdt/contracts/"+encodeURIComponent(contract),8500),
     marketFlowJson("https://api.gateio.ws/api/v4/futures/usdt/trades?contract="+encodeURIComponent(contract)+"&limit=1000",8500)
-   ]);
+   ]);}catch{[details,raw]=await Promise.all([
+    marketFlowJson("https://api.gate.us/api/v4/futures/usdt/contracts/"+encodeURIComponent(contract),8500),
+    marketFlowJson("https://api.gate.us/api/v4/futures/usdt/trades?contract="+encodeURIComponent(contract)+"&limit=1000",8500)
+   ]);}
    const multiplier=Number(details?.quanto_multiplier)||0;
    if(!Array.isArray(raw)||!multiplier)throw new Error("Gate Futures contract multiplier or trades unavailable");
    const oldest=raw.reduce((v,x)=>Math.min(v,Number(x.create_time_ms)||Number(x.create_time)*1000||Infinity),Infinity);
@@ -710,7 +713,7 @@ async function loadDigitalHunterFuturesUniverse(){
   async()=>{const d=await get("https://api.bybit.com/v5/market/tickers?category=linear");if(Number(d.retCode)!==0)throw Error(d.retMsg||"Bybit Futures tickers unavailable");return ["Bybit Linear",(d.result?.list||[]).filter(x=>String(x.symbol).endsWith("USDT")&&x.status!=="PreLaunch").map(x=>({symbol:String(x.symbol).replace(/USDT$/,""),pair:x.symbol,price:Number(x.lastPrice)||0,volume:Number(x.turnover24h)||0,change24h:(Number(x.price24hPcnt)||0)*100}))];},
   async()=>{const d=await get("https://www.okx.com/api/v5/market/tickers?instType=SWAP");if(String(d.code)!=="0")throw Error(d.msg||"OKX Swap tickers unavailable");return ["OKX USDT Swap",(d.data||[]).filter(x=>String(x.instId).endsWith("-USDT-SWAP")).map(x=>({symbol:String(x.instId).replace("-USDT-SWAP",""),pair:x.instId,price:Number(x.last)||0,volume:(Number(x.volCcy24h)||0)*(Number(x.last)||0),change24h:Number(x.open24h)>0?(Number(x.last)/Number(x.open24h)-1)*100:0}))];},
   async()=>{const d=await get("https://api.bitget.com/api/v3/market/tickers?category=USDT-FUTURES");if(String(d.code)!=="00000")throw Error(d.msg||"Bitget USDT Futures tickers unavailable");return ["Bitget USDT Futures",(d.data||[]).filter(x=>String(x.symbol||"").endsWith("USDT")&&Number(x.lastPrice)>0).map(x=>({symbol:String(x.symbol).replace(/USDT$/,""),pair:x.symbol,price:Number(x.lastPrice)||0,volume:Number(x.turnover24h)||0,change24h:(Number(x.price24hPcnt)||0)*100}))];},
-  async()=>{const d=await get("https://api.gateio.ws/api/v4/futures/usdt/tickers");if(!Array.isArray(d))throw Error("Gate USDT Futures tickers unavailable");return ["Gate USDT Futures",d.filter(x=>String(x.contract||"").endsWith("_USDT")&&Number(x.last)>0).map(x=>({symbol:String(x.contract).replace(/_USDT$/,""),pair:x.contract,price:Number(x.last)||0,volume:Number(x.volume_24h_quote||x.volume_24h_usd)||0,change24h:Number(x.change_percentage)||0}))];}
+  async()=>{let d;try{d=await get("https://api.gateio.ws/api/v4/futures/usdt/tickers");}catch{d=await get("https://api.gate.us/api/v4/futures/usdt/tickers");}if(!Array.isArray(d))throw Error("Gate USDT Futures tickers unavailable");return ["Gate USDT Futures",d.filter(x=>String(x.contract||"").endsWith("_USDT")&&Number(x.last)>0).map(x=>({symbol:String(x.contract).replace(/_USDT$/,""),pair:x.contract,price:Number(x.last)||0,volume:Number(x.volume_24h_quote||x.volume_24h_usd)||0,change24h:Number(x.change_percentage)||0}))];}
  ];
  const settled=await Promise.allSettled(jobs.map(fn=>fn())),map=new Map(),sources={};let providerCount=0;
  settled.forEach((r,i)=>{const name=["Binance USD-M Futures","Bybit Linear","OKX USDT Swap","Bitget USDT Futures","Gate USDT Futures"][i];if(r.status!=="fulfilled"){sources[name]={ok:false,error:String(r.reason?.message||r.reason).slice(0,130)};return;}providerCount++;sources[name]={ok:true,count:r.value[1].length};for(const q of r.value[1]){if(!/^[A-Z0-9]{2,20}$/.test(q.symbol)||!(q.price>0)||!(q.volume>=50000))continue;const old=map.get(q.symbol)||{symbol:q.symbol,name:q.symbol,id:"futures:"+q.symbol,venues:new Set(),volume:0,price:0,change24h:0,priceExchange:name};old.venues.add(name);if(q.volume>=old.volume){old.volume=q.volume;old.price=q.price;old.change24h=q.change24h;old.priceExchange=name;}map.set(q.symbol,old);}});
