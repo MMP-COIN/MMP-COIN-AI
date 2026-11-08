@@ -138,7 +138,8 @@ async function mapLimit(items,limit,fn){
 async function runRadar(env,scheduledTime=Date.now()){
   if(!env.RADAR_KV)throw new Error("RADAR_KV binding is missing");
   const [state,oldSnapshot]=await Promise.all([env.RADAR_KV.get("radar:state",{type:"json"}),env.RADAR_KV.get("radar:snapshot",{type:"json"})]);
-  const cacheAge=Date.now()-Number(state?.universe_cache_updated_at||state?.updated_at||0);
+  const cacheTimestamp=Date.parse(state?.universe_cache_updated_at||state?.updated_at||"")||Number(state?.universe_cache_updated_at||state?.updated_at||0)||0;
+  const cacheAge=Math.max(0,Date.now()-cacheTimestamp);
   const cachedUniverse=Array.isArray(state?.universe_cache)&&state.universe_cache.length&&cacheAge<=30*60*1000?state.universe_cache:null;
   let source=null,universeSource="live";
   try{
