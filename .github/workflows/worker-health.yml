@@ -58,6 +58,28 @@ jobs:
             echo "- Quantum Futures universe: $(jq -r '.universe_count' /tmp/futures-hunter.json) contracts; last batch $(jq -r '.scanned_count // 0' /tmp/futures-hunter.json) scanned; $(jq -r '.failed_count // 0' /tmp/futures-hunter.json) failures"
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Verify scheduled Spot and Futures hunter cycles
+        env:
+          WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
+        run: |
+          set -euo pipefail
+          ready=false
+          for attempt in 1 2 3 4 5 6; do
+            status=$(curl --silent --show-error --max-time 15 -o /tmp/hunter-cron-status.json -w "%{http_code}" "$WORKER_URL/hunter-cron-status" || true)
+            if [ "$status" = "200" ] && jq -e '.status == "success" and (.markets.spot.universe // 0) > 0 and (.markets.futures.universe // 0) > 0 and (.markets.spot.scanned // 0) > 0 and (.markets.futures.scanned // 0) > 0 and (.errors | length == 0)' /tmp/hunter-cron-status.json >/dev/null; then
+              ready=true
+              break
+            fi
+            sleep 10
+          done
+          if [ "$ready" != "true" ]; then
+            cat /tmp/hunter-cron-status.json || true
+            echo "Scheduled Spot/Futures cycle is not fully healthy." >&2
+            exit 1
+          fi
+          jq -r '"Scheduled Quantum cycle: Spot " + (.markets.spot.scanned|tostring) + "/" + (.markets.spot.universe|tostring) + "; Futures " + (.markets.futures.scanned|tostring) + "/" + (.markets.futures.universe|tostring) + "; status " + .status' /tmp/hunter-cron-status.json
+          echo "- Scheduled Spot and Futures engines: both completed a live scan without cycle errors" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Check independent server-side fast radar
         env:
           RADAR_WORKER_URL: https://mmp-coin-ai-radar.mehrdadmohammadi1988.workers.dev
