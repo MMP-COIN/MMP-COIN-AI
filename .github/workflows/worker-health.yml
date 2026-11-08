@@ -106,6 +106,8 @@ jobs:
           const missingControls = requiredControls.filter(id => !idSet.has(id));
           if (missingControls.length) throw new Error("Missing core controls: " + missingControls.join(", "));
           if (/market-ticker|ticker-item|renderMarketTicker/.test(html)) throw new Error("Removed horizontal market ticker code has returned");
+          if (html.includes("checkNativeApkUpdate") || !html.includes("function checkNativeUpdate(manual){checkLivePageUpdate(!!manual);}")) throw new Error("Native app update must remain internal-only and must not require a new APK");
+          if (!html.includes("params.set('mmp_live_refresh',String(Date.now()))") || !html.includes("mmp_native_version")) throw new Error("Native live-page cache refresh is missing");
           const version = html.match(/<meta name=["']mmp-app-version["'] content=["']([^"']+)["']/i);
           if (!version) throw new Error("Native app version metadata is missing");
           console.log("Audited " + requiredModules.length + " required modules, " + ids.length + " IDs, accessibility links and " + requiredControls.length + " core controls; app version " + version[1] + " retained.");
