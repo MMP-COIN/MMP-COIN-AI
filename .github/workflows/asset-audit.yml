@@ -83,6 +83,7 @@ jobs:
           const fs = require('fs');
           const WORKER = process.env.WORKER_URL;
           const intervals = ['15m','1h','4h','1d'];
+          const fastIntervals = ['1m','3m','5m'];
           const minRows = tf => tf === '1d' ? 20 : 30;
           const html = fs.readFileSync('www/index.html','utf8');
           const nonTradableIds = new Set(['tether','usd-coin','dai','usds','ethena-usde','first-digital-usd','paypal-usd','true-usd','frax','usdd','wrapped-bitcoin','coinbase-wrapped-btc','lido-staked-ether','wrapped-steth','rocket-pool-eth','staked-ether','staked-ether-2','tether-gold']);
@@ -128,7 +129,7 @@ jobs:
           const rowsArray = x => Array.isArray(x);
           const spotCandidates = (pair,tf,support,preferredProvider) => {
             const p=pairParts(pair); if(!p) return [];
-            const {base,quote,compact}=p, bybitTf={'15m':'15','1h':'60','4h':'240','1d':'D'}[tf], okxTf={'15m':'15m','1h':'1H','4h':'4H','1d':'1Dutc'}[tf], bitgetTf={'15m':'15m','1h':'1H','4h':'4H','1d':'1D'}[tf], kucoinTf={'15m':'15min','1h':'1hour','4h':'4hour','1d':'1day'}[tf];
+            const {base,quote,compact}=p, bybitTf={'1m':'1','3m':'3','5m':'5','15m':'15','1h':'60','4h':'240','1d':'D'}[tf], okxTf={'1m':'1m','3m':'3m','5m':'5m','15m':'15m','1h':'1H','4h':'4H','1d':'1Dutc'}[tf], bitgetTf={'1m':'1m','3m':'3m','5m':'5m','15m':'15m','1h':'1H','4h':'4H','1d':'1D'}[tf], kucoinTf={'1m':'1min','3m':'3min','5m':'5min','15m':'15min','1h':'1hour','4h':'4hour','1d':'1day'}[tf];
             const c=[];
             for(const host of ['https://api.binance.com','https://api1.binance.com','https://api2.binance.com','https://api3.binance.com','https://data-api.binance.vision']) c.push({name:'Binance Spot',url:host+'/api/v3/klines?symbol='+compact+'&interval='+tf+'&limit=250',rows:rowsArray});
             c.push({name:'Bitget Spot',url:'https://api.bitget.com/api/v3/market/candles?category=SPOT&symbol='+compact+'&interval='+bitgetTf+'&limit=250',rows:d=>(d?.code==='00000'||d?.code==='0')?d.data:null});
@@ -148,16 +149,17 @@ jobs:
           };
           const futuresCandidates = (pair,tf,support) => {
             const p=pairParts(pair); if(!p) return [];
-            const {base,quote,compact}=p, bybitTf={'15m':'15','1h':'60','4h':'240','1d':'D'}[tf], okxTf={'15m':'15m','1h':'1H','4h':'4H','1d':'1Dutc'}[tf];
-            const c=[{name:'Binance Futures',url:'https://fapi.binance.com/fapi/v1/klines?symbol='+compact+'&interval='+tf+'&limit=250',rows:rowsArray}];
-            for(const host of ['https://api.bybit.eu','https://api.bytick.eu','https://api.bybit.com','https://api.bytick.com']) c.push({name:'Bybit Linear',url:host+'/v5/market/kline?category=linear&symbol='+compact+'&interval='+bybitTf+'&limit=250',rows:d=>d?.retCode===0?d.result?.list:null});
-            for(const host of ['https://www.okx.com','https://us.okx.com','https://openapi.okx.com']) c.push({name:'OKX Swap',url:host+'/api/v5/market/candles?instId='+base+'-'+quote+'-SWAP&bar='+okxTf+'&limit=250',rows:d=>d?.code==='0'?d.data:null});
-            c.push({name:'Bitget Futures',url:'https://api.bitget.com/api/v3/market/candles?category=USDT-FUTURES&symbol='+compact+'&interval='+({'15m':'15m','1h':'1H','4h':'4H','1d':'1D'}[tf])+'&limit=250',rows:d=>d?.code==='00000'?d.data:null});
-            c.push({name:'Gate Futures',url:'https://api.gateio.ws/api/v4/futures/usdt/candlesticks?contract='+base+'_USDT&interval='+tf+'&limit=250',rows:rowsArray});
+            const {base,quote,compact}=p, bybitTf={'1m':'1','3m':'3','5m':'5','15m':'15','1h':'60','4h':'240','1d':'D'}[tf], okxTf={'1m':'1m','3m':'3m','5m':'5m','15m':'15m','1h':'1H','4h':'4H','1d':'1Dutc'}[tf], bitgetTf={'1m':'1m','3m':'3m','5m':'5m','15m':'15m','1h':'1H','4h':'4H','1d':'1D'}[tf];
+            const c=[];
+            for(const host of ['https://api.gateio.ws','https://api.gate.us']) c.push({name:'Gate Futures',url:host+'/api/v4/futures/usdt/candlesticks?contract='+base+'_USDT&interval='+tf+'&limit=250',rows:rowsArray});
+            c.push({name:'Bitget Futures',url:'https://api.bitget.com/api/v3/market/candles?category=USDT-FUTURES&symbol='+compact+'&interval='+bitgetTf+'&limit=250',rows:d=>d?.code==='00000'?d.data:null});
+            for(const host of ['https://api.bybit.eu','https://api.bybit.com']) c.push({name:'Bybit Linear',url:host+'/v5/market/kline?category=linear&symbol='+compact+'&interval='+bybitTf+'&limit=250',rows:d=>d?.retCode===0?d.result?.list:null});
+            for(const host of ['https://www.okx.com','https://us.okx.com']) c.push({name:'OKX Swap',url:host+'/api/v5/market/candles?instId='+base+'-'+quote+'-SWAP&bar='+okxTf+'&limit=250',rows:d=>d?.code==='0'?d.data:null});
+            for(const host of ['https://fapi.binance.com','https://fapi1.binance.com']) c.push({name:'Binance Futures',url:host+'/fapi/v1/klines?symbol='+compact+'&interval='+tf+'&limit=250',rows:rowsArray});
             const supported=new Set(Array.isArray(support?.futures?.providers)?support.futures.providers:[]);
             return supported.size?c.filter(x=>supported.has(x.name.split(" ")[0])).slice(0,3):c;
           };
-          async function checkAsset(asset, support) {
+          async function checkAsset(asset, support, fastAudit=false) {
             const symbol=String(asset.symbol).toUpperCase();
             const spotMarkets=(Array.isArray(asset.marketPairs)?asset.marketPairs:[]).filter(x=>String(x.quote||"").toUpperCase()==="USDT"&&x.pair&&x.exchange).sort((a,b)=>Number(b.volume||0)-Number(a.volume||0));
             const preferredSpot=spotMarkets[0]||null;
@@ -165,7 +167,8 @@ jobs:
             const spotProvider=preferredSpot?.exchange || "";
             const futuresPair=support?.futures?.pair || symbol+'USDT';
             const tests=[];
-            for(const tf of intervals) {
+            const timeframes=[...intervals,...(fastAudit?fastIntervals:[])];
+            for(const tf of timeframes) {
               let result=await firstValid(spotCandidates(spotPair,tf,support,spotProvider),tf);
               let market='spot';
               if(!result.ok && support?.futures?.confirmed) {
@@ -175,14 +178,25 @@ jobs:
               }
               tests.push({timeframe:tf,market,...result});
             }
-            return {id:asset.id,name:asset.name,symbol,rank:asset.market_cap_rank||null,tests,ready:tests.every(x=>x.ok)};
+            return {id:asset.id,name:asset.name,symbol,rank:asset.market_cap_rank||null,tests,ready:tests.every(x=>x.ok),fast_audit:fastAudit};
+          }
+          async function checkFuturesAsset(asset, fastAudit=false) {
+            const symbol=String(asset.symbol||"").toUpperCase();
+            const providers=String(asset.hunterExchange||"").split(",").map(x=>x.trim().split(" ")[0]).filter(Boolean);
+            const support={futures:{confirmed:providers.length>0,providers,pair:symbol+"USDT"}};
+            const timeframes=fastAudit?[...intervals,...fastIntervals]:fastIntervals;
+            const tests=[];
+            for(const tf of timeframes)tests.push({timeframe:tf,market:"futures",...(await firstValid(futuresCandidates(symbol+"USDT",tf,support),tf))});
+            return {id:asset.id||("futures:"+symbol),name:asset.name||symbol,symbol,preferred:asset.hunterPriceExchange||null,venues:asset.hunterExchange||"",volume:Number(asset.volume)||0,tests,ready:tests.every(x=>x.ok),fast_audit:fastAudit};
           }
           (async()=>{
             const universe=await getJson(WORKER+'/hunter-universe',25000);
             const top=Array.isArray(universe.hunter_assets)?universe.hunter_assets:[];
-            const assetSource='MMP Quantum dynamic multi-exchange universe';
-            if(!top.length)throw new Error('Quantum universe returned no eligible USDT instruments');
-            console.log('Asset list source: '+assetSource+'; discovered '+top.length+' instruments');
+            const futuresUniverse=await getJson(WORKER+'/hunter-futures-universe',25000);
+            const futuresTop=Array.isArray(futuresUniverse.assets)?futuresUniverse.assets:[];
+            const assetSource='MMP Quantum multi-exchange Spot and Futures universes';
+            if(!top.length||!futuresTop.length)throw new Error('Spot or Futures universe returned no eligible USDT instruments');
+            console.log('Spot universe: '+top.length+'; Futures universe: '+futuresTop.length);
             const map=new Map();
             top.forEach(c=>{
               if(!c?.id||!c?.symbol)return;
@@ -199,29 +213,59 @@ jobs:
               Object.assign(supportSources,supportPayload.sources||{});
             }
             if(!Object.values(supportSources).some(x=>x?.ok))throw new Error('Exchange catalogs unavailable; cannot verify tradable assets');
-            const assets=candidates.filter(x=>{
+            const spotAssets=candidates.filter(x=>{
               const support=supportMap[String(x.symbol||"").toUpperCase()];
               const hasExactUsdtPair=Array.isArray(x.marketPairs)&&x.marketPairs.some(p=>String(p.quote||"").toUpperCase()==="USDT"&&p.pair);
               return !!support?.spot?.confirmed&&hasExactUsdtPair;
-            });
-            if(!assets.length)throw new Error('No instruments have confirmed active Spot USDT markets');
-            const results=[];
-            const batchSize=8;
-            for(let i=0;i<assets.length;i+=batchSize){
-              const batch=assets.slice(i,i+batchSize);
-              const rows=await Promise.all(batch.map(a=>checkAsset(a,supportMap[String(a.symbol).toUpperCase()])));
-              results.push(...rows);
-              console.log('Checked '+results.length+'/'+assets.length+' dynamic-universe instruments');
+            }).sort((a,b)=>Number(b.volume||0)-Number(a.volume||0));
+            const futuresAssets=futuresTop.filter(x=>{
+              const symbol=String(x.symbol||"").toUpperCase();
+              return /^[A-Z0-9]{2,20}$/.test(symbol)&&!nonTradableSymbols.has(symbol)&&String(x.hunterExchange||"").trim().length>0;
+            }).sort((a,b)=>Number(b.volume||0)-Number(a.volume||0));
+            if(!spotAssets.length||!futuresAssets.length)throw new Error('No confirmed Spot or Futures USDT instruments available for audit');
+            const spotResults=[];
+            for(let i=0;i<spotAssets.length;i+=8){
+              const batch=spotAssets.slice(i,i+8);
+              const rows=await Promise.all(batch.map(a=>checkAsset(a,supportMap[String(a.symbol).toUpperCase()],i<100)));
+              spotResults.push(...rows);
+              console.log('Checked Spot '+spotResults.length+'/'+spotAssets.length+' instruments');
             }
-            const failed=results.filter(x=>!x.ready),limitedHistoryCount=results.filter(x=>x.tests.some(t=>t.limited_history)).length;
-            const report={checked_at:new Date().toISOString(),asset_count:results.length,ready_count:results.length-failed.length,failed_count:failed.length,limited_history_count:limitedHistoryCount,intervals,results,source:assetSource};
+            const futuresResults=[];
+            for(let i=0;i<futuresAssets.length;i+=8){
+              const batch=futuresAssets.slice(i,i+8);
+              const rows=await Promise.all(batch.map(a=>checkFuturesAsset(a,i<100)));
+              futuresResults.push(...rows);
+              console.log('Checked Futures '+futuresResults.length+'/'+futuresAssets.length+' instruments');
+            }
+            const spotFailed=spotResults.filter(x=>!x.ready),futuresFailed=futuresResults.filter(x=>!x.ready);
+            const spotLimited=spotResults.filter(x=>x.tests.some(t=>t.limited_history)).length;
+            const futuresLimited=futuresResults.filter(x=>x.tests.some(t=>t.limited_history)).length;
+            const report={
+              checked_at:new Date().toISOString(),source:assetSource,
+              spot:{asset_count:spotResults.length,ready_count:spotResults.length-spotFailed.length,failed_count:spotFailed.length,limited_history_count:spotLimited,fast_interval_assets:spotResults.filter(x=>x.fast_audit).length,intervals:[...intervals,...fastIntervals],results:spotResults},
+              futures:{asset_count:futuresResults.length,ready_count:futuresResults.length-futuresFailed.length,failed_count:futuresFailed.length,limited_history_count:futuresLimited,fast_interval_assets:futuresResults.filter(x=>x.fast_audit).length,intervals:[...fastIntervals,...intervals],results:futuresResults}
+            };
             fs.writeFileSync('asset-audit.json',JSON.stringify(report,null,2));
-            const md=['# MMP QUANTUM — بررسی کامل یونیورس پویا','', 'منبع: '+assetSource,'زمان بررسی: '+report.checked_at,'', 'نتیجه: '+report.ready_count+'/'+report.asset_count+' دارای پوشش کندل؛ '+report.failed_count+' مورد نیازمند بررسی؛ '+limitedHistoryCount+' مورد با تاریخچه روزانه محدود','', '| ارز | نماد | 15m | 1h | 4h | 1d | نتیجه |','|---|---|---|---|---|---|---|'];
-            for(const x of results)md.push('| '+x.name+' | '+x.symbol+' | '+(x.tests[0].provider||'خطا')+' | '+(x.tests[1].provider||'خطا')+' | '+(x.tests[2].provider||'خطا')+' | '+(x.tests[3].limited_history?('تاریخچه محدود · '+x.tests[3].candles):(x.tests[3].provider||'خطا'))+' | '+(x.ready?'آماده':'نیازمند اصلاح')+' |');
-            fs.writeFileSync('asset-audit.md',md.join('\\n'));
-            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,md.join('\\n')+'\\n');
-            console.log(JSON.stringify({checked:results.length,ready:report.ready_count,failed:report.failed_count,failed_assets:failed.map(x=>({symbol:x.symbol,tests:x.tests.filter(t=>!t.ok)}))},null,2));
-            if(failed.length)process.exitCode=1;
+            const md=['# MMP QUANTUM — ممیزی کامل Spot و Futures','', 'منبع: '+assetSource,'زمان بررسی: '+report.checked_at,'',
+              '## Spot','تعداد: '+report.spot.ready_count+'/'+report.spot.asset_count+' آماده؛ '+report.spot.failed_count+' نیازمند بررسی؛ '+spotLimited+' تاریخچه محدود',
+              '| ارز | نماد | 15m | 1h | 4h | 1d | 1m | 3m | 5m | نتیجه |','|---|---|---|---|---|---|---|---|---|---|'];
+            for(const x of spotResults){
+              const get=tf=>x.tests.find(t=>t.timeframe===tf);
+              const cell=tf=>{const t=get(tf);return t?.limited_history?'محدود '+t.candles:(t?.provider||'—');};
+              md.push('| '+x.name+' | '+x.symbol+' | '+cell('15m')+' | '+cell('1h')+' | '+cell('4h')+' | '+cell('1d')+' | '+cell('1m')+' | '+cell('3m')+' | '+cell('5m')+' | '+(x.ready?'آماده':'نیازمند اصلاح')+' |');
+            }
+            md.push('','## Futures','تعداد: '+report.futures.ready_count+'/'+report.futures.asset_count+' آماده؛ '+report.futures.failed_count+' نیازمند بررسی؛ '+futuresLimited+' تاریخچه محدود',
+              '| ارز | نماد | بازارهای فعال | 1m | 3m | 5m | 15m | 1h | 4h | 1d | نتیجه |','|---|---|---|---|---|---|---|---|---|---|---|');
+            for(const x of futuresResults){
+              const get=tf=>x.tests.find(t=>t.timeframe===tf);
+              const cell=tf=>{const t=get(tf);return t?.limited_history?'محدود '+t.candles:(t?.provider||'—');};
+              md.push('| '+x.name+' | '+x.symbol+' | '+x.venues+' | '+cell('1m')+' | '+cell('3m')+' | '+cell('5m')+' | '+cell('15m')+' | '+cell('1h')+' | '+cell('4h')+' | '+cell('1d')+' | '+(x.ready?'آماده':'نیازمند اصلاح')+' |');
+            }
+            fs.writeFileSync('asset-audit.md',md.join('\n'));
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,md.join('\n')+'\n');
+            console.log(JSON.stringify({spot:{checked:spotResults.length,ready:report.spot.ready_count,failed:report.spot.failed_count,failed_assets:spotFailed.map(x=>({symbol:x.symbol,tests:x.tests.filter(t=>!t.ok)}))},futures:{checked:futuresResults.length,ready:report.futures.ready_count,failed:report.futures.failed_count,failed_assets:futuresFailed.map(x=>({symbol:x.symbol,tests:x.tests.filter(t=>!t.ok)}))}},null,2));
+            if(spotFailed.length||futuresFailed.length)process.exitCode=1;
+          })().catch(e=>{console.error(e);process.exit(1)});
           })().catch(e=>{console.error(e);process.exit(1)});
           NODE
 
