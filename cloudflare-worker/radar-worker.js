@@ -1,8 +1,9 @@
+import { QUANTUM_ENGINE_NAME, QUANTUM_ENGINE_VERSION, normalizeQuantumUniverse, scoreQuantumOpportunity } from "./quantum-core.js";
 const MAIN_UNIVERSE = "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/hunter-universe";
 const MAIN_FLOW = "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-flow";
 const RETENTION_SCORE = 64;
-const BATCH_SIZE = 21;
-const CONCURRENCY = 4;
+const BATCH_SIZE = 24;
+const CONCURRENCY = 6;
 const SUPPORTED = new Set(["Binance","Bybit","OKX","Bitget","Gate","KuCoin"]);
 const JSON_HEADERS = { "Accept":"application/json", "User-Agent":"MMP-COIN-AI-RADAR/1.0" };
 async function getJson(url, timeoutMs = 6500) {
@@ -111,6 +112,8 @@ async function scanCoin(coin){
   const dailyScore=dailyChange24h!==0&&Math.sign(dailyChange24h)===direction?5:0;
   const impulseScore=signs[0]===direction&&Math.abs(change1m)>=0.08?5:0;
   let score=Math.round(10+alignmentScore+momentumScore+volumeScore+breakoutScore+dailyScore+impulseScore);
+  const quantum=scoreQuantumOpportunity({trend,change1m,change3m,change5m,change15m,volumeRatio,breakout,structureAligned:coreAligned,trend15:Math.sign(change15m)===direction,overextended:Math.abs(change5m)>=1.5||Math.abs(change1m)>=0.8,dataAgeMs:now-last[0],flowConfirmed:false});
+  score=Math.round(score*0.55+quantum.score*0.45);
   if(!coreAligned)score=Math.min(score,63);
   if(volumeRatio<0.75)score=Math.min(score,60);
   const lowLiquidity=Number(coin.total_volume||0)<150000;
@@ -118,7 +121,7 @@ async function scanCoin(coin){
   score=Math.max(0,Math.min(99,score));
   const overextended=Math.abs(change5m)>=1.5||Math.abs(change1m)>=0.8||Math.abs(dailyChange24h)>=18;
   return {
-    id:String(coin.id),symbol,trend,score,scoringVersion:2,coreAligned,
+    id:String(coin.id),symbol,trend,score,quantum,scoringVersion:3,coreAligned,
     change1m,change3m,change5m,change15m,change30m,dailyChange24h,
     dailyMover:Math.abs(dailyChange24h)>=8,lowLiquidity,volumeRatio,
     breakout,breakoutDirection:breakout?(trend==="bull"?"up":"down"):"",overextended,
@@ -151,7 +154,7 @@ async function runRadar(env,scheduledTime=Date.now()){
     source=cachedUniverse;universeSource="cached";
   }
   const buildUniverse=items=>{
-    const eligible=items.filter(coin=>{
+    const eligible=normalizeQuantumUniverse(items,"spot").filter(coin=>{
       const venues=Array.isArray(coin.marketPairs)?coin.marketPairs.some(x=>String(x.quote||"").toUpperCase()==="USDT"&&Number(x.volume)>=15000&&SUPPORTED.has(String(x.exchange))):
         Object.entries(coin.hunterVenueVolume||{}).some(([name,volume])=>SUPPORTED.has(name)&&Number(volume)>=15000);
       return venues&&Number(coin.total_volume||0)>=50000&&/^[A-Z0-9]{2,20}$/.test(String(coin.symbol||""));
@@ -172,7 +175,7 @@ async function runRadar(env,scheduledTime=Date.now()){
   const byId=new Map(universe.map(coin=>[String(coin.id),coin]));
   const bySymbol=new Map(universe.map(coin=>[String(coin.symbol).toUpperCase(),coin]));
   const prioritySignals=[...signals.values()]
-    .filter(x=>Number(x?.scoringVersion)===2&&Number(x?.score)>=RETENTION_SCORE)
+    .filter(x=>Number(x?.scoringVersion)===3&&Number(x?.score)>=RETENTION_SCORE)
     .sort((a,b)=>Number(b.score)-Number(a.score)||Number(a.updatedAt||0)-Number(b.updatedAt||0));
   const priorityCoins=[],prioritySymbols=new Set();
   for(const signal of prioritySignals){
@@ -219,7 +222,13 @@ async function runRadar(env,scheduledTime=Date.now()){
       }
     }catch(error){signal.flowError=String(error?.message||error).slice(0,120);}
   });
-  // Only fresh version-2 scores are published. Legacy signals remain stored until their own valid rescan.
+  // Re-score each candidate with the shared Quantum Intelligence core.
+  for(const signal of scannedSignals){
+    const flow=signal.flow||{},gross=Number(flow.buy5m||0)+Number(flow.sell5m||0),imbalance=gross>0?(Number(flow.buy5m||0)-Number(flow.sell5m||0))/gross:0;
+    signal.quantum=scoreQuantumOpportunity({...signal,flowImbalance:imbalance,flowConfirmed:flow.complete===true&&Number(flow.tradeCount)>=10,dataAgeMs:Date.now()-Number(signal.candleTime||Date.now())});
+    signal.score=Math.round(Number(signal.score||0)*0.55+signal.quantum.score*0.45);
+  }
+  // Only fresh Quantum scores are published. Legacy signals remain stored until their own valid rescan.
   for(const signal of scannedSignals){
     signal.score=Math.max(0,Math.min(99,Number(signal.score)+Number(signal.flowAdjustment||0)));
     if(!signal.coreAligned)signal.score=Math.min(signal.score,63);
@@ -244,15 +253,15 @@ async function runRadar(env,scheduledTime=Date.now()){
     signals:(()=>{
       const canonicalIds=new Map(universe.map(coin=>[String(coin.symbol).toUpperCase(),String(coin.id)]));
       const unique=new Map();
-      for(const signal of [...signals.values()].filter(x=>Number(x?.score)>=RETENTION_SCORE&&Number(x?.scoringVersion)===2).sort((a,b)=>b.score-a.score)){
+      for(const signal of [...signals.values()].filter(x=>Number(x?.score)>=RETENTION_SCORE&&Number(x?.scoringVersion)===3).sort((a,b)=>b.score-a.score)){
         const symbol=String(signal.symbol||signal.coin?.symbol||"").toUpperCase();
         if(!symbol||canonicalIds.get(symbol)!==String(signal.id)||unique.has(symbol))continue;
         unique.set(symbol,signal);
       }
-      return [...unique.values()].slice(0,300);
+      return [...unique.values()];
     })(),
-    legacy_signals:[...signals.values()].filter(x=>Number(x?.scoringVersion)!==2)
-      .sort((a,b)=>b.score-a.score).slice(0,300)
+    legacy_signals:[...signals.values()].filter(x=>Number(x?.scoringVersion)!==3)
+       .sort((a,b)=>b.score-a.score)
   };
   // Persist the public snapshot first; advance the cursor only after it is safely stored.
   await env.RADAR_KV.put("radar:snapshot",JSON.stringify(snapshot));
