@@ -83,6 +83,32 @@ jobs:
           if (workerSource.includes("requestedTopPage>5") || workerSource.includes("requestedOffset>5000")) throw new Error("Fixed market catalog page ceiling was reintroduced");
           console.log("Parsed " + checked + " inline browser scripts; Hunter UI wiring checks passed");
           NODE
+
+      - name: Audit every public site and app module
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require("node:fs");
+          const html = fs.readFileSync("www/index.html", "utf8");
+          const modules = [...new Set([...html.matchAll(/data-quantum-module=["']([^"']+)["']/g)].map(x => x[1]))];
+          const requiredModules = ["market-data","radar","hunter","analyzer","momentum","chart","intelligence","learning","alerts","assets","tools","global-clock","app","contact","signal-lab"];
+          const missingModules = requiredModules.filter(x => !modules.includes(x));
+          if (missingModules.length) throw new Error("Missing site modules: " + missingModules.join(", "));
+          const ids = [...html.matchAll(/\\bid=["']([^"']+)["']/g)].map(x => x[1]);
+          const duplicates = ids.filter((id, i) => ids.indexOf(id) !== i);
+          if (duplicates.length) throw new Error("Duplicate DOM IDs: " + [...new Set(duplicates)].join(", "));
+          const idSet = new Set(ids);
+          const ariaRefs = [...html.matchAll(/\\baria-(?:controls|labelledby|describedby)=["']([^"']+)["']/g)].flatMap(x => x[1].split(/\\s+/));
+          const brokenAria = [...new Set(ariaRefs.filter(id => !idSet.has(id)))];
+          if (brokenAria.length) throw new Error("Broken accessibility references: " + brokenAria.join(", "));
+          const requiredControls = ["refresh-all-btn","market-refresh-btn","hunter-refresh-btn","ai-coin-picker-trigger","ai-run-btn","boom-run","chart-fullscreen-btn","derivatives-load","orderflow-refresh","forecast-run","historical-backtest","journal-save","alert-add","risk-capital","risk-percent","risk-entry","risk-stop","risk-calc","connections-toggle","exchange-directory-refresh","native-menu-toggle","native-refresh-btn","native-update-check-btn","native-share-app"];
+          const missingControls = requiredControls.filter(id => !idSet.has(id));
+          if (missingControls.length) throw new Error("Missing core controls: " + missingControls.join(", "));
+          if (/<(?:div|section)[^>]*(?:id=["']market-ticker["']|class=["'][^"']*\\bmarket-ticker\\b)/i.test(html)) throw new Error("Removed horizontal market ticker has returned");
+          const version = html.match(/<meta name=["']mmp-app-version["'] content=["']([^"']+)["']/i);
+          if (!version) throw new Error("Native app version metadata is missing");
+          console.log("Audited " + requiredModules.length + " required modules, " + ids.length + " IDs, accessibility links and " + requiredControls.length + " core controls; app version " + version[1] + " retained.");
+          NODE
       - name: Check Worker health endpoint
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
