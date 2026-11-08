@@ -68,6 +68,7 @@ jobs:
           const fs = require("node:fs");
           const vm = require("node:vm");
           const html = fs.readFileSync("www/index.html", "utf8");
+          const workerSource = fs.readFileSync("cloudflare-worker/worker.js", "utf8");
           const scripts = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi)];
           let checked = 0;
           for (let i = 0; i < scripts.length; i++) {
