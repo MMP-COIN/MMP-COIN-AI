@@ -1023,13 +1023,13 @@ async function handle(request,env){
  if(request.method==="GET"&&new URL(request.url).pathname==="/market-candles"){
   const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"market-candles");
   const limited=rateLimitReply(limitResult,request);if(limited)return limited;
-  const url=new URL(request.url),rawSymbol=String(url.searchParams.get("symbol")||"").toUpperCase();
+  const url=new URL(request.url),rawSymbol=String(url.searchParams.get("symbol")||"").toUpperCase(),marketType=url.searchParams.get("market")==="futures"?"futures":"spot";
   const interval=String(url.searchParams.get("interval")||"15m");
-  if(!/^[A-Z0-9]{2,15}$/.test(rawSymbol)||!["1m","15m","1h","4h","1d"].includes(interval))return json({error:"نماد یا بازه زمانی نامعتبر است."},400,request);
+  if(!/^[A-Z0-9]{2,15}$/.test(rawSymbol)||!["1m","3m","5m","15m","1h","4h","1d"].includes(interval))return json({error:"نماد یا بازه زمانی نامعتبر است."},400,request);
   const symbol=splitQuotePair(rawSymbol)?rawSymbol:rawSymbol+"USDT";
   try{
-   const result=await candles(symbol,interval,env,"spot");
-   return json({symbol,interval,provider:result.data_provider,price:result.price,change_pct:result.change_pct,candles:result.candles.map(c=>({time:Math.floor(c.t/1000),open:c.o,high:c.h,low:c.l,close:c.c,volume:c.v}))},200,request);
+   const result=await candles(symbol,interval,env,marketType);
+   return json({symbol,interval,market:marketType,provider:result.data_provider,price:result.price,change_pct:result.change_pct,candles:result.candles.map(c=>({time:Math.floor(c.t/1000),open:c.o,high:c.h,low:c.l,close:c.c,volume:c.v}))},200,request);
   }catch(error){return json({error:"داده کندلی این ارز فعلاً در دسترس نیست.",detail:String(error?.message||"upstream error").slice(0,220),symbol,interval},502,request);}
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/market-proxy"){
