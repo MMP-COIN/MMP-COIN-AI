@@ -1,4 +1,4 @@
-// Trigger one-by-one 100-asset audit
+// MMP Quantum Intelligence Engine: dynamic market discovery with no fixed asset ceiling
 import { QUANTUM_ENGINE_NAME, QUANTUM_ENGINE_VERSION, normalizeQuantumUniverse, scoreQuantumOpportunity } from "./quantum-core.js";
 const HUNTER_BATCH_SIZE = 24;
 const MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
@@ -632,7 +632,7 @@ async function runDigitalHunterMarketCycle(env,marketType="spot"){
   assets=normalizeQuantumUniverse(universe.assets||[],marketType).map(x=>({id:String(x.id||x.symbol),symbol:x.symbol,name:x.name||x.symbol,image:x.image||"",current_price:Number(x.current_price)||0,total_volume:Number(x.total_volume)||0,hunterExchange:x.hunterExchange||"",hunterPriceExchange:x.hunterPriceExchange||"",hunterChange24h:Number(x.hunterChange24h)||0,marketPairs:(x.marketPairs||[]).slice(0,4),hunterVenueVolume:x.hunterVenueVolume||{}}));
   if(!assets.length)throw Error("No liquid USDT "+(marketType==="futures"?"perpetual":"Spot")+" assets");
   universeUpdatedAt=now;universeSources=universe.sources||{};universeProvider=universe.metadata_provider||"multi-exchange";
-  const prior=previous.snapshot||{},snapshot={...prior,status:"online",engine:"MMP QUANTUM INTELLIGENCE ENGINE",market:marketType,checked_at:new Date(now).toISOString(),universe_count:assets.length,batch_size:HUNTER_BATCH_SIZE,scanned_count:0,failed_count:0,universe_refreshed:true,signals:Array.isArray(prior.signals)?prior.signals:[],sources:universeSources,universe_provider:universeProvider,cycle_seconds:60};
+  const prior=previous.snapshot||{},snapshot={...prior,status:"online",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,market:marketType,checked_at:new Date(now).toISOString(),universe_count:assets.length,batch_size:HUNTER_BATCH_SIZE,scanned_count:0,failed_count:0,universe_refreshed:true,signals:Array.isArray(prior.signals)?prior.signals:[],sources:universeSources,universe_provider:universeProvider,cycle_seconds:60};
   const payload=JSON.stringify({cursor:0,lastRun:now,assets,universeUpdatedAt,universeSources,universeProvider,snapshot});
   await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(stateId,payload,new Date(now).toISOString()).run();
   return snapshot;
@@ -642,7 +642,7 @@ async function runDigitalHunterMarketCycle(env,marketType="spot"){
  for(const symbol of scanned){const old=map.get(symbol);if(old)old.weakScans=Number(old.weakScans||0)+1;}
  for(const signal of result.signals){const asset=batch.find(x=>x.symbol===signal.symbol)||assets.find(x=>x.symbol===signal.symbol);signal.coin=asset?{...asset,current_price:Number(asset.current_price)||signal.price}:{id:signal.symbol,symbol:signal.symbol,name:signal.symbol,current_price:signal.price};signal.dailyChange24h=Number(asset?.hunterChange24h)||0;signal.weakScans=0;map.set(signal.symbol,signal);}
  for(const symbol of scanned){const old=map.get(symbol);if(old&&!(result.signals||[]).some(x=>x.symbol===symbol)&&Number(old.weakScans||0)>=2)map.delete(symbol);}
- const snapshot={status:"online",engine:"MMP QUANTUM INTELLIGENCE ENGINE",market:marketType,checked_at:new Date().toISOString(),scanned_at:new Date().toISOString(),universe_count:assets.length,next_cursor:(cursor+batch.length)%assets.length,batch_size:batch.length,scanned_count:result.scanned,candidate_count:result.signals.length,failed_count:result.failed,universe_refreshed:false,signals:[...map.values()].filter(x=>now-Number(x.updatedAt||0)<25*60000&&Number(x.score)>=68&&x.confirmed).sort((a,b)=>b.score-a.score),last_errors:result.errors||[],sources:universeSources,universe_provider:universeProvider,cycle_seconds:60};
+ const snapshot={status:"online",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,market:marketType,checked_at:new Date().toISOString(),scanned_at:new Date().toISOString(),universe_count:assets.length,next_cursor:(cursor+batch.length)%assets.length,batch_size:batch.length,scanned_count:result.scanned,candidate_count:result.signals.length,failed_count:result.failed,universe_refreshed:false,signals:[...map.values()].filter(x=>now-Number(x.updatedAt||0)<25*60000&&Number(x.score)>=68&&x.confirmed).sort((a,b)=>b.score-a.score),last_errors:result.errors||[],sources:universeSources,universe_provider:universeProvider,cycle_seconds:60};
  const payload=JSON.stringify({cursor:snapshot.next_cursor,lastRun:now,assets,universeUpdatedAt,universeSources,universeProvider,snapshot});
  await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(stateId,payload,new Date(now).toISOString()).run();
  return snapshot;
@@ -666,21 +666,21 @@ async function handle(request,env){
  if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-snapshot"){
   const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-snapshot"),request);if(limited)return limited;if(!env.ADMIN_DB)return json({status:"offline",error:"ADMIN_DB binding missing"},503,request);
   const row=await env.ADMIN_DB.prepare("SELECT payload FROM hunter_engine_state WHERE id = ?").bind("digital-hunter-v2").first();let saved=null;try{saved=row?.payload?JSON.parse(row.payload):null;}catch{}
-  return json(saved?.snapshot||{status:"warming_up",engine:"MMP QUANTUM INTELLIGENCE ENGINE",signals:[],scanned_count:0,universe_count:0},200,request);
+  return json(saved?.snapshot||{status:"warming_up",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,signals:[],scanned_count:0,universe_count:0},200,request);
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-run"){
-  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-run"),request);if(limited)return limited;try{return json(await runDigitalHunterCycle(env),200,request);}catch(e){return json({status:"error",engine:"MMP QUANTUM INTELLIGENCE ENGINE",error:String(e?.message||e).slice(0,220)},502,request);}
+  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-run"),request);if(limited)return limited;try{return json(await runDigitalHunterCycle(env),200,request);}catch(e){return json({status:"error",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,error:String(e?.message||e).slice(0,220)},502,request);}
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-futures-snapshot"){
   const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-futures-snapshot"),request);if(limited)return limited;if(!env.ADMIN_DB)return json({status:"offline",error:"ADMIN_DB binding missing"},503,request);
   const row=await env.ADMIN_DB.prepare("SELECT payload FROM hunter_engine_state WHERE id = ?").bind("digital-hunter-v2-futures").first();let saved=null;try{saved=row?.payload?JSON.parse(row.payload):null;}catch{}
-  return json(saved?.snapshot||{status:"warming_up",engine:"MMP QUANTUM INTELLIGENCE ENGINE",market:"futures",signals:[],scanned_count:0,universe_count:0},200,request);
+  return json(saved?.snapshot||{status:"warming_up",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,market:"futures",signals:[],scanned_count:0,universe_count:0},200,request);
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-futures-run"){
-  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-futures-run"),request);if(limited)return limited;try{return json(await runDigitalHunterMarketCycle(env,"futures"),200,request);}catch(e){return json({status:"error",engine:"MMP QUANTUM INTELLIGENCE ENGINE",market:"futures",error:String(e?.message||e).slice(0,220)},502,request);}
+  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-futures-run"),request);if(limited)return limited;try{return json(await runDigitalHunterMarketCycle(env,"futures"),200,request);}catch(e){return json({status:"error",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,market:"futures",error:String(e?.message||e).slice(0,220)},502,request);}
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-scan"){
-  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-scan"),request);if(limited)return limited;const url=new URL(request.url),symbols=[...new Set((url.searchParams.get("symbols")||"").split(",").map(x=>x.toUpperCase().replace(/[^A-Z0-9]/g,"")).filter(x=>/^[A-Z0-9]{2,24}$/.test(x)))].slice(0,12);if(!symbols.length)return json({error:"حداقل یک نماد معتبر ارسال کنید."},400,request);const marketType=url.searchParams.get("market")==="futures"?"futures":"spot";try{return json({engine:"MMP QUANTUM INTELLIGENCE ENGINE",...await scanHunterSymbols(symbols,marketType)},200,request);}catch(e){return json({error:String(e?.message||e).slice(0,220)},502,request);}
+  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-scan"),request);if(limited)return limited;const url=new URL(request.url),symbols=[...new Set((url.searchParams.get("symbols")||"").split(",").map(x=>x.toUpperCase().replace(/[^A-Z0-9]/g,"")).filter(x=>/^[A-Z0-9]{2,24}$/.test(x)))].slice(0,12);if(!symbols.length)return json({error:"حداقل یک نماد معتبر ارسال کنید."},400,request);const marketType=url.searchParams.get("market")==="futures"?"futures":"spot";try{return json({engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,...await scanHunterSymbols(symbols,marketType)},200,request);}catch(e){return json({error:String(e?.message||e).slice(0,220)},502,request);}
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-universe"){
   const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-universe");
