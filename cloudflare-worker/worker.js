@@ -1100,13 +1100,16 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/health"){
 }
 async function runDigitalHunterCron(event,env){
  const id="digital-hunter-cron-heartbeat",started=Date.now(),stamp=new Date(started).toISOString();
- await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(id,JSON.stringify({status:"started",cron:event?.cron||"* * * * *",scheduledTime:event?.scheduledTime||null}),stamp).run();
- try{
-  const snapshot=await runDigitalHunterCycle(env),finished=Date.now();
-  await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(id,JSON.stringify({status:"success",cron:event?.cron||"* * * * *",scheduledTime:event?.scheduledTime||null,startedAt:stamp,finishedAt:new Date(finished).toISOString(),scanned:snapshot.scanned_count||0,failed:snapshot.failed_count||0,universe:snapshot.universe_count||0,signals:snapshot.signals?.length||0}),new Date(finished).toISOString()).run();
- }catch(error){
-  const finished=Date.now();await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(id,JSON.stringify({status:"error",cron:event?.cron||"* * * * *",scheduledTime:event?.scheduledTime||null,startedAt:stamp,finishedAt:new Date(finished).toISOString(),error:String(error?.message||error).slice(0,240)}),new Date(finished).toISOString()).run();
-  throw error;
- }
+ await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(id,JSON.stringify({status:"started",cron:event?.cron||"* * * * *",scheduledTime:event?.scheduledTime||null,markets:["spot","futures"]}),stamp).run();
+ const results=await Promise.allSettled([runDigitalHunterMarketCycle(env,"spot"),runDigitalHunterMarketCycle(env,"futures")]),finished=Date.now();
+ const spot=results[0].status==="fulfilled"?results[0].value:null,futures=results[1].status==="fulfilled"?results[1].value:null;
+ const errors={};if(results[0].status==="rejected")errors.spot=String(results[0].reason?.message||results[0].reason).slice(0,220);if(results[1].status==="rejected")errors.futures=String(results[1].reason?.message||results[1].reason).slice(0,220);
+ const status=spot&&futures?"success":spot||futures?"partial":"error";
+ const payload={status,cron:event?.cron||"* * * * *",scheduledTime:event?.scheduledTime||null,startedAt:stamp,finishedAt:new Date(finished).toISOString(),markets:{
+  spot:spot?{scanned:spot.scanned_count||0,failed:spot.failed_count||0,universe:spot.universe_count||0,signals:spot.signals?.length||0}:{status:"error",error:errors.spot||"unavailable"},
+  futures:futures?{scanned:futures.scanned_count||0,failed:futures.failed_count||0,universe:futures.universe_count||0,signals:futures.signals?.length||0}:{status:"error",error:errors.futures||"unavailable"}
+ },errors};
+ await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(id,JSON.stringify(payload),new Date(finished).toISOString()).run();
+ if(!spot&&!futures)throw new Error("Digital Hunter Spot and Futures cycles both failed: "+JSON.stringify(errors));
 }
 export default {fetch:handle,scheduled(event,env,ctx){ctx.waitUntil(runDigitalHunterCron(event,env).catch(error=>console.error("Digital Hunter scheduled cycle failed:",error?.message||error)));}};
