@@ -1128,7 +1128,7 @@ async function runDigitalHunterCron(event,env){
  await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(id,JSON.stringify({status:"started",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,cron:event?.cron||"* * * * *",scheduledTime:event?.scheduledTime||null,markets:["spot","futures-service-binding"]}),stamp).run();
  const results=await Promise.allSettled([
   runDigitalHunterMarketCycle(env,"spot"),
-  (async()=>{if(!env.FUTURES_ENGINE)throw new Error("FUTURES_ENGINE service binding missing");const response=await env.FUTURES_ENGINE.fetch(new Request("https://futures-engine/run",{method:"POST",headers:{"Accept":"application/json"}}));if(!response.ok)throw new Error("Futures engine HTTP "+response.status);return await response.json();})()
+  (async()=>{if(!env.FUTURES_ENGINE)throw new Error("FUTURES_ENGINE service binding missing");const response=await env.FUTURES_ENGINE.fetch(new Request("https://futures-engine/run",{method:"POST",headers:{"Accept":"application/json","X-MMP-FUTURES-TOKEN":env.FUTURES_ENGINE_TOKEN||""}}));if(!response.ok)throw new Error("Futures engine HTTP "+response.status);return await response.json();})()
  ]),finished=Date.now();
  const spot=results[0].status==="fulfilled"?results[0].value:null,futures=results[1].status==="fulfilled"?results[1].value:null;
  const errors={};if(results[0].status==="rejected")errors.spot=String(results[0].reason?.message||results[0].reason).slice(0,220);if(results[1].status==="rejected")errors.futures=String(results[1].reason?.message||results[1].reason).slice(0,220);
