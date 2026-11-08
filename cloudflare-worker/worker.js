@@ -396,7 +396,7 @@ function exchangeSupport(symbol,catalogs){
  const binanceFuturesPair=(catalogs.binance_futures?.data?.symbols||[]).filter(x=>x.status==="TRADING"&&(!x.contractType||x.contractType==="PERPETUAL")&&x.baseAsset===base&&quotes.includes(x.quoteAsset)).map(x=>({pair:x.symbol,quote:x.quoteAsset})).sort((a,b)=>quotes.indexOf(a.quote)-quotes.indexOf(b.quote))[0]||null;
  const bybitFuturesPair=(catalogs.bybit_futures?.data?.result?.list||[]).filter(x=>x.status==="Trading"&&(!x.contractType||x.contractType==="LinearPerpetual")&&x.baseCoin===base&&quotes.includes(x.quoteCoin)).map(x=>({pair:x.symbol,quote:x.quoteCoin})).sort((a,b)=>quotes.indexOf(a.quote)-quotes.indexOf(b.quote))[0]||null;
  const okxFuturesPair=(catalogs.okx_futures?.data?.data||[]).filter(x=>x.state==="live"&&(!x.ctType||x.ctType==="linear")&&String(x.instId||"").endsWith("-SWAP")).map(x=>{const p=String(x.instId||"").split("-");return p[0]===base&&quotes.includes(p[1])?{pair:p[0]+p[1],quote:p[1]}:null;}).filter(Boolean).sort((a,b)=>quotes.indexOf(a.quote)-quotes.indexOf(b.quote))[0]||null;
- const bitgetFuturesPair=(catalogs.bitget_futures?.data?.data||[]).filter(x=>String(x.category||"").toUpperCase()==="USDT-FUTURES"&&String(x.symbol||"").toUpperCase()===base+"USDT"&&Number(x.lastPrice)>0).map(x=>({pair:String(x.symbol).toUpperCase(),quote:"USDT"}))[0]||null;
+ const bitgetFuturesPair=(catalogs.bitget_futures?.data?.data||[]).filter(x=>String(x.symbol||"").toUpperCase()===base+"USDT"&&Number(x.lastPrice)>0).map(x=>({pair:String(x.symbol).toUpperCase(),quote:"USDT"}))[0]||null;
  const gateFuturesPair=(Array.isArray(catalogs.gate_futures?.data)?catalogs.gate_futures.data:[]).filter(x=>String(x.contract||"").toUpperCase()===base+"_USDT"&&Number(x.last)>0).map(x=>({pair:String(x.contract).toUpperCase(),quote:"USDT"}))[0]||null;
  const spotEntries=[["Binance",binanceSpotPair,catalogs.binance_spot],["Bybit",bybitSpotPair,catalogs.bybit_spot],["OKX",okxSpotPair,catalogs.okx_spot],["Bitget",bitgetSpotPair,catalogs.bitget_spot],["WhiteBIT",whitebitSpotPair,catalogs.whitebit_spot],["Gate.io",gateSpotPair,catalogs.gate_spot],["KuCoin",kucoinSpotPair,catalogs.kucoin_spot],["Nobitex",nobitexSpotPair,catalogs.nobitex_spot]];
  const futuresEntries=[["Binance",binanceFuturesPair,catalogs.binance_futures],["Bybit",bybitFuturesPair,catalogs.bybit_futures],["OKX",okxFuturesPair,catalogs.okx_futures],["Bitget",bitgetFuturesPair,catalogs.bitget_futures],["Gate",gateFuturesPair,catalogs.gate_futures]];
@@ -658,11 +658,26 @@ async function loadFuturesMarketFlow(symbol,windowMinutes=5){
    }catch(error){lastError=String(error?.message||error).slice(0,140);}
   }
  }
- if(!trades?.length)throw new Error("Futures trade flow unavailable from Bybit, Bitget, Binance and OKX: "+lastError);
+ if(!trades?.length||truncated){
+  try{
+   const contract=base+"_USDT";
+   const [details,raw]=await Promise.all([
+    marketFlowJson("https://api.gateio.ws/api/v4/futures/usdt/contracts/"+encodeURIComponent(contract),8500),
+    marketFlowJson("https://api.gateio.ws/api/v4/futures/usdt/trades?contract="+encodeURIComponent(contract)+"&limit=1000",8500)
+   ]);
+   const multiplier=Number(details?.quanto_multiplier)||0;
+   if(!Array.isArray(raw)||!multiplier)throw new Error("Gate Futures contract multiplier or trades unavailable");
+   const oldest=raw.reduce((v,x)=>Math.min(v,Number(x.create_time_ms)||Number(x.create_time)*1000||Infinity),Infinity);
+   const gateTruncated=raw.length>=1000&&oldest>cutoff;
+   const gateTrades=raw.map(x=>({time:Number(x.create_time_ms)||Number(x.create_time)*1000,price:Number(x.price),size:Math.abs(Number(x.size))*multiplier,side:Number(x.size)>0?"Buy":"Sell"})).filter(x=>x.time>=cutoff&&x.time<=now&&x.price>0&&x.size>0);
+   if(gateTrades.length&&(!trades?.length||!gateTruncated||gateTrades.length>trades.length)){trades=gateTrades;truncated=gateTruncated;provider="Gate USDT Futures · real trades";}
+  }catch(error){lastError=String(error?.message||error).slice(0,160);}
+ }
+ if(!trades?.length)throw new Error("Futures trade flow unavailable from Bybit, Bitget, Binance, OKX and Gate: "+lastError);
  const buckets=new Map();let buy5m=0,sell5m=0;
  for(const trade of trades){const quote=trade.price*trade.size;if(!(quote>0))continue;if(trade.side==="Buy")buy5m+=quote;else sell5m+=quote;const minute=Math.floor(trade.time/60000)*60000,bucket=buckets.get(minute)||{time:minute,buy:0,sell:0,count:0};bucket[trade.side==="Buy"?"buy":"sell"]+=quote;bucket.count++;buckets.set(minute,bucket);}
  const rows=[...buckets.values()].sort((a,b)=>a.time-b.time).map(x=>[x.time,x.buy,x.sell,x.buy-x.sell]);
- return {symbol:pair,window_minutes:minutes,buy5m,sell5m,net5m:buy5m-sell5m,trade_count:trades.length,provider,exchange:provider.startsWith("Bybit")?"Bybit":provider.startsWith("Bitget")?"Bitget":provider.startsWith("Binance")?"Binance":"OKX",complete:!truncated,coverage_start:trades.reduce((v,x)=>Math.min(v,x.time),Infinity),window_start:cutoff,window_end:now,updated_at:now,rows};
+ return {symbol:pair,window_minutes:minutes,buy5m,sell5m,net5m:buy5m-sell5m,trade_count:trades.length,provider,exchange:provider.startsWith("Bybit")?"Bybit":provider.startsWith("Bitget")?"Bitget":provider.startsWith("Binance")?"Binance":provider.startsWith("Gate")?"Gate":"OKX",complete:!truncated,coverage_start:trades.reduce((v,x)=>Math.min(v,x.time),Infinity),window_start:cutoff,window_end:now,updated_at:now,rows};
 }
 async function scanHunterSymbols(symbols,marketType="spot",assetList=[]){
  const assetMap=new Map((Array.isArray(assetList)?assetList:[]).map(x=>[String(x.symbol||"").toUpperCase(),x]));
