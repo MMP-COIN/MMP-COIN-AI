@@ -806,6 +806,15 @@ async function handle(request,env){
   const row=await env.ADMIN_DB.prepare("SELECT payload FROM hunter_engine_state WHERE id = ?").bind("digital-hunter-v2-futures").first();let saved=null;try{saved=row?.payload?JSON.parse(row.payload):null;}catch{}
   return json(saved?.snapshot||{status:"warming_up",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,market:"futures",signals:[],scanned_count:0,universe_count:0},200,request);
  }
+ if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-futures-universe"){
+  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-futures-universe"),request);if(limited)return limited;
+  if(!env.ADMIN_DB)return json({status:"offline",error:"ADMIN_DB binding missing"},503,request);
+  const row=await env.ADMIN_DB.prepare("SELECT payload, updated_at FROM hunter_engine_state WHERE id = ?").bind("digital-hunter-v2-futures").first();
+  let saved=null;try{saved=row?.payload?JSON.parse(row.payload):null;}catch{}
+  const assets=Array.isArray(saved?.assets)?saved.assets:[];
+  if(!assets.length)return json({status:"warming_up",market:"futures",universe_count:0,assets:[]},503,request);
+  return json({status:"online",engine:QUANTUM_ENGINE_NAME,market:"futures",universe_count:assets.length,universe_updated_at:saved.universeUpdatedAt||null,updated_at:row?.updated_at||null,source:saved.universeProvider||"multi-exchange",assets},200,request);
+ }
  if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-futures-run"){
   const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-futures-run"),request);if(limited)return limited;try{return json(await runDigitalHunterMarketCycle(env,"futures"),200,request);}catch(e){return json({status:"error",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,market:"futures",error:String(e?.message||e).slice(0,220)},502,request);}
  }
