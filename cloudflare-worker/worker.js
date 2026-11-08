@@ -1,7 +1,7 @@
 // MMP Quantum Intelligence Engine: dynamic market discovery with no fixed asset ceiling
 import { QUANTUM_ENGINE_NAME, QUANTUM_ENGINE_VERSION, normalizeQuantumUniverse, scoreQuantumOpportunity } from "./quantum-core.js";
 const HUNTER_BATCH_SIZE = 12;
-const FUTURES_HUNTER_BATCH_SIZE = 18;
+const FUTURES_HUNTER_BATCH_SIZE = 16;
 const MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 function extractAIJson(value){
  let raw=typeof value==="string"?value:JSON.stringify(value??"");
@@ -552,8 +552,10 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
  };
  const futuresSources=[
   async()=>tryHosts("Binance Futures",["https://fapi.binance.com"],host=>host+"/fapi/v1/klines?symbol="+pair+"&interval=1m&limit=100",d=>Array.isArray(d)?d:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],+x[7]]),
-  async()=>tryHosts("Bybit Linear",["https://api.bybit.eu"],host=>host+"/v5/market/kline?category=linear&symbol="+pair+"&interval=1&limit=100",d=>Number(d.retCode)===0?d.result?.list:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],(+x[6]||+x[5])]),
-  async()=>tryHosts("OKX USDT Swap",["https://www.okx.com"],host=>host+"/api/v5/market/candles?instId="+symbol+"-USDT-SWAP&bar=1m&limit=100",d=>String(d.code)==="0"?d.data:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],(+x[7]||+x[6])])
+  async()=>tryHosts("Bybit Linear",["https://api.bybit.eu","https://api.bytick.eu","https://api.bybit.com","https://api.bytick.com"],host=>host+"/v5/market/kline?category=linear&symbol="+pair+"&interval=1&limit=100",d=>Number(d.retCode)===0?d.result?.list:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],(+x[6]||+x[5])]),
+  async()=>tryHosts("OKX USDT Swap",["https://www.okx.com","https://us.okx.com","https://openapi.okx.com"],host=>host+"/api/v5/market/candles?instId="+symbol+"-USDT-SWAP&bar=1m&limit=100",d=>String(d.code)==="0"?d.data:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],(+x[7]||+x[6])]),
+  async()=>tryHosts("Bitget USDT Futures",["https://api.bitget.com"],host=>host+"/api/v3/market/candles?category=USDT-FUTURES&symbol="+pair+"&interval=1m&limit=100",d=>String(d.code)==="00000"?d.data:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],(+x[6]||+x[5])]),
+  async()=>tryHosts("Gate USDT Futures",["https://api.gateio.ws","https://api.gate.us"],host=>host+"/api/v4/futures/usdt/candlesticks?contract="+symbol+"_USDT&interval=1m&limit=100",d=>Array.isArray(d)?d:null,x=>[+x.t*1000,+x.o,+x.h,+x.l,+x.c,(+x.sum||+x.v)])
  ];
  const spotSources=[
   async()=>tryHosts("Binance Spot",["https://api.binance.com"],host=>host+"/api/v3/klines?symbol="+pair+"&interval=1m&limit=100",d=>Array.isArray(d)?d:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],+x[7]]),
@@ -568,8 +570,8 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
  const unique=values=>[...new Set(values.filter(Number.isInteger))];
  let order=[];
  if(marketType==="futures"){
-  const indexOf=name=>{const value=String(name||"").trim().toLowerCase();return value.startsWith("binance")?0:value.startsWith("bybit")?1:value.startsWith("okx")?2:null;};
-  order=unique([indexOf(asset?.hunterPriceExchange),...String(asset?.hunterExchange||"").split(",").map(indexOf),2,1,0]);
+  const indexOf=name=>{const value=String(name||"").trim().toLowerCase();return value.startsWith("binance")?0:value.startsWith("bybit")?1:value.startsWith("okx")?2:value.startsWith("bitget")?3:value.startsWith("gate")?4:null;};
+  order=unique([indexOf(asset?.hunterPriceExchange),...String(asset?.hunterExchange||"").split(",").map(indexOf),1,2,3,4,0]);
  }else{
   const indices={Binance:0,Bybit:1,Bitget:2,OKX:3,Gate:4,"Gate.io":4,KuCoin:5,WhiteBIT:6};
   const preferred=(Array.isArray(asset?.marketPairs)?asset.marketPairs.slice().sort((a,b)=>Number(b.volume||0)-Number(a.volume||0)):[]).map(x=>indices[String(x.exchange||"")]);
@@ -643,15 +645,15 @@ async function loadFuturesMarketFlow(symbol,windowMinutes=5){
 async function scanHunterSymbols(symbols,marketType="spot",assetList=[]){
  const assetMap=new Map((Array.isArray(assetList)?assetList:[]).map(x=>[String(x.symbol||"").toUpperCase(),x]));
  let i=0,failed=0;const candidates=[],errors=[];
- const concurrency=marketType==="futures"?4:6;
+ const concurrency=marketType==="futures"?2:4;
  await Promise.all(Array.from({length:Math.min(concurrency,symbols.length)},async()=>{while(i<symbols.length){const symbol=symbols[i++];try{const x=await analyzeDigitalHunterSymbol(symbol,marketType,assetMap.get(symbol));if(x)candidates.push(x);}catch(e){failed++;if(errors.length<8)errors.push({symbol,error:String(e?.message||e).slice(0,120)});}}}));
  candidates.sort((a,b)=>b.score-a.score);const signals=[];
  await Promise.all(candidates.filter(x=>x.score>=60).slice(0,Math.min(2,candidates.length)).map(async x=>{
   try{
    const f=marketType==="futures"?await loadFuturesMarketFlow(x.symbol,5):await loadMarketFlow(x.symbol,5);
    const gross=f.buy5m+f.sell5m,imb=gross?f.net5m/gross:0,ok=x.trend==="bull"?imb>=.045:imb<=-.045;
-   if(f.trade_count<8||!ok)return;
-   const quantum=scoreQuantumOpportunity({...x,flowImbalance:imb,flowConfirmed:f.complete!==false&&f.trade_count>=8,dataAgeMs:Date.now()-x.candleTime});x.quantum=quantum;x.score=quantum.score;
+   if(f.trade_count<8||!ok||f.complete===false)return;
+   const quantum=scoreQuantumOpportunity({...x,flowImbalance:imb,flowConfirmed:true,dataAgeMs:Date.now()-x.candleTime});if(!quantum.qualityGate)return;x.quantum=quantum;x.score=quantum.score;
    x.flow={buy5m:f.buy5m,sell5m:f.sell5m,net5m:f.net5m,tradeCount:f.trade_count,provider:f.provider,complete:f.complete,coverageStart:f.coverage_start,rows:f.rows,imbalance:+imb.toFixed(4)};
    x.flowSignal=f.net5m>0?"inflow":"outflow";
    const bars=Array.isArray(x.rows)?x.rows.slice(-16):[],ranges=bars.slice(1).map((bar,i)=>Math.max(Number(bar[2])-Number(bar[3]),Math.abs(Number(bar[2])-Number(bars[i][4])),Math.abs(Number(bar[3])-Number(bars[i][4])))).filter(v=>Number.isFinite(v)&&v>0);
@@ -669,12 +671,14 @@ async function loadDigitalHunterFuturesUniverse(){
  const get=url=>marketFlowJson(url,9000),jobs=[
   async()=>{const [info,tickers]=await Promise.all([get("https://fapi.binance.com/fapi/v1/exchangeInfo"),get("https://fapi.binance.com/fapi/v1/ticker/24hr")]);const allowed=new Set((info.symbols||[]).filter(x=>x.status==="TRADING"&&x.contractType==="PERPETUAL"&&x.quoteAsset==="USDT").map(x=>x.symbol));return ["Binance USD-M Futures",(Array.isArray(tickers)?tickers:[]).filter(x=>allowed.has(x.symbol)).map(x=>({symbol:String(x.symbol).replace(/USDT$/,""),pair:x.symbol,price:Number(x.lastPrice)||0,volume:Number(x.quoteVolume)||0,change24h:Number(x.priceChangePercent)||0}))];},
   async()=>{const d=await get("https://api.bybit.com/v5/market/tickers?category=linear");if(Number(d.retCode)!==0)throw Error(d.retMsg||"Bybit Futures tickers unavailable");return ["Bybit Linear",(d.result?.list||[]).filter(x=>String(x.symbol).endsWith("USDT")&&x.status!=="PreLaunch").map(x=>({symbol:String(x.symbol).replace(/USDT$/,""),pair:x.symbol,price:Number(x.lastPrice)||0,volume:Number(x.turnover24h)||0,change24h:(Number(x.price24hPcnt)||0)*100}))];},
-  async()=>{const d=await get("https://www.okx.com/api/v5/market/tickers?instType=SWAP");if(String(d.code)!=="0")throw Error(d.msg||"OKX Swap tickers unavailable");return ["OKX USDT Swap",(d.data||[]).filter(x=>String(x.instId).endsWith("-USDT-SWAP")).map(x=>({symbol:String(x.instId).replace("-USDT-SWAP",""),pair:x.instId,price:Number(x.last)||0,volume:(Number(x.volCcy24h)||0)*(Number(x.last)||0),change24h:Number(x.open24h)>0?(Number(x.last)/Number(x.open24h)-1)*100:0}))];}
+  async()=>{const d=await get("https://www.okx.com/api/v5/market/tickers?instType=SWAP");if(String(d.code)!=="0")throw Error(d.msg||"OKX Swap tickers unavailable");return ["OKX USDT Swap",(d.data||[]).filter(x=>String(x.instId).endsWith("-USDT-SWAP")).map(x=>({symbol:String(x.instId).replace("-USDT-SWAP",""),pair:x.instId,price:Number(x.last)||0,volume:(Number(x.volCcy24h)||0)*(Number(x.last)||0),change24h:Number(x.open24h)>0?(Number(x.last)/Number(x.open24h)-1)*100:0}))];},
+  async()=>{const d=await get("https://api.bitget.com/api/v3/market/tickers?category=USDT-FUTURES");if(String(d.code)!=="00000")throw Error(d.msg||"Bitget USDT Futures tickers unavailable");return ["Bitget USDT Futures",(d.data||[]).filter(x=>String(x.symbol||"").endsWith("USDT")&&Number(x.lastPrice)>0).map(x=>({symbol:String(x.symbol).replace(/USDT$/,""),pair:x.symbol,price:Number(x.lastPrice)||0,volume:Number(x.turnover24h)||0,change24h:(Number(x.price24hPcnt)||0)*100}))];},
+  async()=>{const d=await get("https://api.gateio.ws/api/v4/futures/usdt/tickers");if(!Array.isArray(d))throw Error("Gate USDT Futures tickers unavailable");return ["Gate USDT Futures",d.filter(x=>String(x.contract||"").endsWith("_USDT")&&Number(x.last)>0).map(x=>({symbol:String(x.contract).replace(/_USDT$/,""),pair:x.contract,price:Number(x.last)||0,volume:Number(x.volume_24h_quote||x.volume_24h_usd)||0,change24h:Number(x.change_percentage)||0}))];}
  ];
  const settled=await Promise.allSettled(jobs.map(fn=>fn())),map=new Map(),sources={};let providerCount=0;
- settled.forEach((r,i)=>{const name=["Binance USD-M Futures","Bybit Linear","OKX USDT Swap"][i];if(r.status!=="fulfilled"){sources[name]={ok:false,error:String(r.reason?.message||r.reason).slice(0,130)};return;}providerCount++;sources[name]={ok:true,count:r.value[1].length};for(const q of r.value[1]){if(!/^[A-Z0-9]{2,20}$/.test(q.symbol)||!(q.price>0)||!(q.volume>=50000))continue;const old=map.get(q.symbol)||{symbol:q.symbol,name:q.symbol,id:"futures:"+q.symbol,venues:new Set(),volume:0,price:0,change24h:0};old.venues.add(name);if(q.volume>=old.volume){old.volume=q.volume;old.price=q.price;old.change24h=q.change24h;}map.set(q.symbol,old);}});
- const assets=normalizeQuantumUniverse([...map.values()].map(x=>({id:x.id,symbol:x.symbol,name:x.name,current_price:x.price,total_volume:x.volume,hunterExchange:[...x.venues].join(", "),hunterPriceExchange:[...x.venues][0],hunterChange24h:x.change24h,marketPairs:[]})),"futures");
- if(!assets.length||providerCount===0)throw Error("No active USDT perpetual markets from Binance, Bybit or OKX");
+ settled.forEach((r,i)=>{const name=["Binance USD-M Futures","Bybit Linear","OKX USDT Swap","Bitget USDT Futures","Gate USDT Futures"][i];if(r.status!=="fulfilled"){sources[name]={ok:false,error:String(r.reason?.message||r.reason).slice(0,130)};return;}providerCount++;sources[name]={ok:true,count:r.value[1].length};for(const q of r.value[1]){if(!/^[A-Z0-9]{2,20}$/.test(q.symbol)||!(q.price>0)||!(q.volume>=50000))continue;const old=map.get(q.symbol)||{symbol:q.symbol,name:q.symbol,id:"futures:"+q.symbol,venues:new Set(),volume:0,price:0,change24h:0,priceExchange:name};old.venues.add(name);if(q.volume>=old.volume){old.volume=q.volume;old.price=q.price;old.change24h=q.change24h;old.priceExchange=name;}map.set(q.symbol,old);}});
+ const assets=normalizeQuantumUniverse([...map.values()].map(x=>({id:x.id,symbol:x.symbol,name:x.name,current_price:x.price,total_volume:x.volume,hunterExchange:[...x.venues].join(", "),hunterPriceExchange:x.priceExchange||[...x.venues][0],hunterChange24h:x.change24h,marketPairs:[]})),"futures");
+ if(!assets.length||providerCount===0)throw Error("No active USDT perpetual markets from Binance, Bybit, OKX, Bitget or Gate");
  return {assets,sources,metadata_provider:"multi-exchange futures"};
 }
 export async function runDigitalHunterMarketCycle(env,marketType="spot"){
