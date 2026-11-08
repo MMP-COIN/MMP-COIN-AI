@@ -1,6 +1,7 @@
 // MMP Quantum Intelligence Engine: dynamic market discovery with no fixed asset ceiling
 import { QUANTUM_ENGINE_NAME, QUANTUM_ENGINE_VERSION, normalizeQuantumUniverse, scoreQuantumOpportunity } from "./quantum-core.js";
 const HUNTER_BATCH_SIZE = 12;
+const FUTURES_HUNTER_BATCH_SIZE = 18;
 const MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 function extractAIJson(value){
  let raw=typeof value==="string"?value:JSON.stringify(value??"");
@@ -510,15 +511,15 @@ async function loadMarketFlow(symbol,windowMinutes=5){
    provider="OKX Spot · معاملات واقعی";
   }catch(error){lastError=String(error?.message||error).slice(0,160);}
  }
- if(!trades){
+ if(!trades||truncated){
   try{
    const gatePair=pair.replace(/USDT$/,"")+"_USDT";
    const d=await marketFlowJson("https://api.gateio.ws/api/v4/spot/trades?currency_pair="+encodeURIComponent(gatePair)+"&limit=1000");
    if(!Array.isArray(d))throw new Error("Gate trades response invalid");
    const raw=d,oldest=raw.reduce((v,x)=>Math.min(v,Number(x.create_time_ms)||Number(x.create_time)*1000||Infinity),Infinity);
-   truncated=raw.length>=1000&&oldest>cutoff;
-   trades=raw.map(x=>({time:Number(x.create_time_ms)||Number(x.create_time)*1000,price:Number(x.price),size:Number(x.amount),side:String(x.side||"").toLowerCase()==="buy"?"Buy":"Sell"})).filter(x=>x.time>=cutoff&&x.time<=now&&x.price>0&&x.size>0);
-   provider="Gate Spot · معاملات واقعی";
+   const gateTruncated=raw.length>=1000&&oldest>cutoff;
+   const gateTrades=raw.map(x=>({time:Number(x.create_time_ms)||Number(x.create_time)*1000,price:Number(x.price),size:Number(x.amount),side:String(x.side||"").toLowerCase()==="buy"?"Buy":"Sell"})).filter(x=>x.time>=cutoff&&x.time<=now&&x.price>0&&x.size>0);
+   if(!trades||!gateTruncated||gateTrades.length>trades.length){trades=gateTrades;truncated=gateTruncated;provider="Gate Spot · معاملات واقعی";}
   }catch(error){lastError=String(error?.message||error).slice(0,160);}
  }
  if(!trades)throw new Error("داده معاملات از Bybit، Binance، OKX و Gate دریافت نشد: "+lastError);
@@ -560,7 +561,8 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
   async()=>tryHosts("Bitget Spot",["https://api.bitget.com"],host=>host+"/api/v3/market/candles?category=SPOT&symbol="+pair+"&interval=1m&limit=100",d=>["00000","0"].includes(String(d.code))?d.data:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],+x[5]]),
   async()=>tryHosts("OKX Spot",["https://www.okx.com"],host=>host+"/api/v5/market/candles?instId="+symbol+"-USDT&bar=1m&limit=100",d=>String(d.code)==="0"?d.data:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],(+x[7]||+x[6])]),
   async()=>tryHosts("Gate Spot",["https://api.gateio.ws"],host=>host+"/api/v4/spot/candlesticks?currency_pair="+symbol+"_USDT&interval=1m&limit=100",d=>Array.isArray(d)?d:null,x=>[+x[0]*1000,+x[4],+x[2],+x[3],+x[5],+x[1]]),
-  async()=>tryHosts("KuCoin Spot",["https://api.kucoin.com"],host=>host+"/api/v1/market/candles?type=1min&symbol="+symbol+"-USDT",d=>String(d.code)==="200000"?d.data:null,x=>[+x[0]*1000,+x[1],+x[3],+x[4],+x[2],(+x[6]||+x[5])])
+  async()=>tryHosts("KuCoin Spot",["https://api.kucoin.com"],host=>host+"/api/v1/market/candles?type=1min&symbol="+symbol+"-USDT",d=>String(d.code)==="200000"?d.data:null,x=>[+x[0]*1000,+x[1],+x[3],+x[4],+x[2],(+x[6]||+x[5])]),
+  async()=>tryHosts("WhiteBIT Spot",["https://whitebit.com"],host=>host+"/api/v1/public/kline?market="+symbol+"_USDT&interval=1m&limit=100",d=>d?.success===true?d.result:null,x=>[+x[0]*1000,+x[1],+x[3],+x[4],+x[2],+x[5]])
  ];
  const sources=marketType==="futures"?futuresSources:spotSources,errors=[];
  const unique=values=>[...new Set(values.filter(Number.isInteger))];
@@ -569,12 +571,12 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
   const indexOf=name=>{const value=String(name||"").trim().toLowerCase();return value.startsWith("binance")?0:value.startsWith("bybit")?1:value.startsWith("okx")?2:null;};
   order=unique([indexOf(asset?.hunterPriceExchange),...String(asset?.hunterExchange||"").split(",").map(indexOf),2,1,0]);
  }else{
-  const indices={Binance:0,Bybit:1,Bitget:2,OKX:3,Gate:4,"Gate.io":4,KuCoin:5};
+  const indices={Binance:0,Bybit:1,Bitget:2,OKX:3,Gate:4,"Gate.io":4,KuCoin:5,WhiteBIT:6};
   const preferred=(Array.isArray(asset?.marketPairs)?asset.marketPairs.slice().sort((a,b)=>Number(b.volume||0)-Number(a.volume||0)):[]).map(x=>indices[String(x.exchange||"")]);
   order=unique([...preferred,3,4,5,2,1,0]);
  }
  const orderedSources=order.map(index=>sources[index]).filter(Boolean);
- if(marketType!=="futures")orderedSources.splice(2);
+ orderedSources.splice(2);
  for(const fn of orderedSources){
   try{const [provider,rows]=await fn();return {provider,rows,market:marketType};}
   catch(error){errors.push(String(error?.message||error).slice(0,130));}
@@ -679,6 +681,7 @@ export async function runDigitalHunterMarketCycle(env,marketType="spot"){
  if(!env.ADMIN_DB)throw Error("ADMIN_DB binding missing");
  const stateId=marketType==="futures"?"digital-hunter-v2-futures":"digital-hunter-v2",stored=await env.ADMIN_DB.prepare("SELECT payload FROM hunter_engine_state WHERE id = ?").bind(stateId).first(),previous=stored?.payload?JSON.parse(stored.payload):{},now=Date.now();
  if(previous.lastRun&&now-Number(previous.lastRun)<45000&&previous.snapshot)return {...previous.snapshot,cycle_skipped:true};
+ const batchLimit=marketType==="futures"?FUTURES_HUNTER_BATCH_SIZE:HUNTER_BATCH_SIZE;
  let assets=Array.isArray(previous.assets)?previous.assets:[],universeUpdatedAt=Number(previous.universeUpdatedAt)||0,universeSources=previous.universeSources||{},universeProvider=previous.universeProvider||"multi-exchange";
  if(!assets.length||now-universeUpdatedAt>10*60*1000){
   let universe;
@@ -691,12 +694,12 @@ export async function runDigitalHunterMarketCycle(env,marketType="spot"){
   assets=normalizeQuantumUniverse(universe.assets||[],marketType).map(x=>({id:String(x.id||x.symbol),symbol:x.symbol,name:x.name||x.symbol,image:x.image||"",current_price:Number(x.current_price)||0,total_volume:Number(x.total_volume)||0,hunterExchange:x.hunterExchange||"",hunterPriceExchange:x.hunterPriceExchange||"",hunterChange24h:Number(x.hunterChange24h)||0,marketPairs:(x.marketPairs||[]).slice(0,4),hunterVenueVolume:x.hunterVenueVolume||{}}));
   if(!assets.length)throw Error("No liquid USDT "+(marketType==="futures"?"perpetual":"Spot")+" assets");
   universeUpdatedAt=now;universeSources=universe.sources||{};universeProvider=universe.metadata_provider||"multi-exchange";
-  const prior=previous.snapshot||{},snapshot={...prior,status:"online",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,market:marketType,checked_at:new Date(now).toISOString(),universe_count:assets.length,batch_size:HUNTER_BATCH_SIZE,scanned_count:0,failed_count:0,universe_refreshed:true,signals:Array.isArray(prior.signals)?prior.signals:[],sources:universeSources,universe_provider:universeProvider,cycle_seconds:60};
+  const prior=previous.snapshot||{},snapshot={...prior,status:"online",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,market:marketType,checked_at:new Date(now).toISOString(),universe_count:assets.length,batch_size:batchLimit,scanned_count:0,failed_count:0,universe_refreshed:true,signals:Array.isArray(prior.signals)?prior.signals:[],sources:universeSources,universe_provider:universeProvider,cycle_seconds:60};
   const payload=JSON.stringify({cursor:0,lastRun:now,assets,universeUpdatedAt,universeSources,universeProvider,snapshot});
   await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(stateId,payload,new Date(now).toISOString()).run();
   return snapshot;
  }
- const cursor=(Number(previous.cursor)||0)%assets.length,batch=Array.from({length:Math.min(HUNTER_BATCH_SIZE,assets.length)},(_,i)=>assets[(cursor+i)%assets.length]),result=await scanHunterSymbols(batch.map(x=>x.symbol),marketType,batch);
+ const cursor=(Number(previous.cursor)||0)%assets.length,batch=Array.from({length:Math.min(batchLimit,assets.length)},(_,i)=>assets[(cursor+i)%assets.length]),result=await scanHunterSymbols(batch.map(x=>x.symbol),marketType,batch);
  const map=new Map((previous.snapshot?.signals||[]).map(x=>[x.symbol,x])),scanned=new Set(batch.map(x=>x.symbol));
  for(const symbol of scanned){const old=map.get(symbol);if(old)old.weakScans=Number(old.weakScans||0)+1;}
  for(const signal of result.signals){const asset=batch.find(x=>x.symbol===signal.symbol)||assets.find(x=>x.symbol===signal.symbol);signal.coin=asset?{...asset,current_price:Number(asset.current_price)||signal.price}:{id:signal.symbol,symbol:signal.symbol,name:signal.symbol,current_price:signal.price};signal.dailyChange24h=Number(asset?.hunterChange24h)||0;signal.weakScans=0;map.set(signal.symbol,signal);}
