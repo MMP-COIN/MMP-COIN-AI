@@ -575,12 +575,12 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
  let order=[];
  if(marketType==="futures"){
   const indexOf=name=>{const value=String(name||"").trim().toLowerCase();return value.startsWith("binance")?0:value.startsWith("bybit")?1:value.startsWith("okx")?2:value.startsWith("bitget")?3:value.startsWith("gate")?4:null;};
-  const priority=[1,3,4,2,0],available=String(asset?.hunterExchange||"").split(",").map(indexOf).filter(Number.isInteger).sort((a,b)=>priority.indexOf(a)-priority.indexOf(b));
-  order=unique([indexOf(asset?.hunterPriceExchange),...available,...priority]);
+  const priority=[3,4,1,2,0],available=unique(String(asset?.hunterExchange||"").split(",").map(indexOf).filter(Number.isInteger)).sort((a,b)=>priority.indexOf(a)-priority.indexOf(b)),primary=indexOf(asset?.hunterPriceExchange),primaryTrusted=primary!==0;
+  order=unique([...(primaryTrusted&&available.includes(primary)?[primary]:[]),...available,...(!available.length?priority:[])]);
  }else{
   const indices={Binance:0,Bybit:1,Bitget:2,OKX:3,Gate:4,"Gate.io":4,KuCoin:5,WhiteBIT:6};
-  const preferred=(Array.isArray(asset?.marketPairs)?asset.marketPairs.slice().sort((a,b)=>Number(b.volume||0)-Number(a.volume||0)):[]).map(x=>indices[String(x.exchange||"")]);
-  order=unique([...preferred,3,4,5,2,1,0]);
+  const preferred=(Array.isArray(asset?.marketPairs)?asset.marketPairs.slice().sort((a,b)=>Number(b.volume||0)-Number(a.volume||0)):[]).map(x=>indices[String(x.exchange||"")]).filter(Number.isInteger),priority=[2,6,4,5,1,3,0],available=unique(preferred).sort((a,b)=>priority.indexOf(a)-priority.indexOf(b)),primary=preferred[0],primaryTrusted=[2,4,5,6].includes(primary);
+  order=unique([...(primaryTrusted?[primary]:[]),...available,...(!available.length?priority:[])]);
  }
  const orderedSources=order.map(index=>sources[index]).filter(Boolean);
  orderedSources.splice(2);
@@ -667,7 +667,7 @@ async function loadFuturesMarketFlow(symbol,windowMinutes=5){
 async function scanHunterSymbols(symbols,marketType="spot",assetList=[]){
  const assetMap=new Map((Array.isArray(assetList)?assetList:[]).map(x=>[String(x.symbol||"").toUpperCase(),x]));
  let i=0,failed=0;const candidates=[],errors=[];
- const concurrency=marketType==="futures"?2:4;
+ const concurrency=2;
  await Promise.all(Array.from({length:Math.min(concurrency,symbols.length)},async()=>{while(i<symbols.length){const symbol=symbols[i++];try{const x=await analyzeDigitalHunterSymbol(symbol,marketType,assetMap.get(symbol));if(x)candidates.push(x);}catch(e){failed++;if(errors.length<8)errors.push({symbol,error:String(e?.message||e).slice(0,120)});}}}));
  candidates.sort((a,b)=>b.score-a.score);const signals=[];
  await Promise.all(candidates.filter(x=>x.score>=60).slice(0,Math.min(2,candidates.length)).map(async x=>{
