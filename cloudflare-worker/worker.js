@@ -170,7 +170,7 @@ async function candles(symbol,interval,env,marketType="spot"){
    if(!validRows(rows))throw new Error("Binance Futures candle history is insufficient");
    const result=analyzeKlines(rows);result.data_provider="Binance Futures";return result;
   }catch(e){binanceError=e;}
-  for(const host of ["https://api.bybit.eu","https://api.bytick.eu","https://api.bybit.com","https://api.bytick.com"]){
+  for(const host of ["https://api.bybit.com"]){
    try{
     const url=host+"/v5/market/kline?category=linear&symbol="+encodeURIComponent(symbol)+"&interval="+bybitInterval+"&limit=250";
     const r=await fetch(url,{headers});
