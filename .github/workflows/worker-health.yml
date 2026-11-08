@@ -28,11 +28,28 @@ jobs:
         run: |
           set -euo pipefail
           curl --fail --silent --show-error --retry 2 --retry-delay 3 --max-time 25 "$WORKER_URL/health" -o /tmp/health.json
-          jq -e '.worker == "online" and .ai_binding == true' /tmp/health.json >/dev/null
+          jq -e '.worker == "online" and .ai_binding == true and .futures_engine_binding == true' /tmp/health.json >/dev/null
           {
             echo "## Worker health"
             echo "- Worker: online"
             echo "- AI binding: available"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Check Futures service and live Quantum snapshots
+        env:
+          WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
+          FUTURES_URL: https://mmp-coin-ai-futures.mehrdadmohammadi1988.workers.dev
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 2 --retry-delay 3 --max-time 20 "$FUTURES_URL/health" -o /tmp/futures-health.json
+          jq -e '.status == "online" and .market == "futures" and .d1 == true' /tmp/futures-health.json >/dev/null
+          curl --fail --silent --show-error --retry 2 --retry-delay 3 --max-time 20 "$WORKER_URL/hunter-snapshot" -o /tmp/spot-hunter.json
+          curl --fail --silent --show-error --retry 2 --retry-delay 3 --max-time 20 "$WORKER_URL/hunter-futures-snapshot" -o /tmp/futures-hunter.json
+          jq -e '.status == "online" and (.universe_count // 0) > 0' /tmp/spot-hunter.json >/dev/null
+          jq -e '.status == "online" and (.universe_count // 0) > 0' /tmp/futures-hunter.json >/dev/null
+          {
+            echo "- Quantum Spot universe: $(jq -r '.universe_count' /tmp/spot-hunter.json) assets; last batch $(jq -r '.scanned_count // 0' /tmp/spot-hunter.json) scanned"
+            echo "- Quantum Futures universe: $(jq -r '.universe_count' /tmp/futures-hunter.json) contracts; last batch $(jq -r '.scanned_count // 0' /tmp/futures-hunter.json) scanned; $(jq -r '.failed_count // 0' /tmp/futures-hunter.json) failures"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Check independent server-side fast radar
