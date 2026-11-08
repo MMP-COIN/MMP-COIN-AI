@@ -1,8 +1,8 @@
 const MAIN_UNIVERSE = "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/hunter-universe";
 const MAIN_FLOW = "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-flow";
 const RETENTION_SCORE = 64;
-const BATCH_SIZE = 36;
-const CONCURRENCY = 9;
+const BATCH_SIZE = 20;
+const CONCURRENCY = 6;
 const SUPPORTED = new Set(["Binance","Bybit","OKX","Bitget","Gate","KuCoin"]);
 const JSON_HEADERS = { "Accept":"application/json", "User-Agent":"MMP-COIN-AI-RADAR/1.0" };
 async function getJson(url, timeoutMs = 6500) {
@@ -19,7 +19,7 @@ async function loadProvider(symbol,exchange) {
   const pair=symbol+"USDT";
   if(exchange==="Binance"){
     let lastError;
-    for(const host of ["https://api.binance.com","https://data-api.binance.vision","https://api1.binance.com"]){
+    for(const host of ["https://api.binance.com","https://data-api.binance.vision"]){
       try{const rows=normalizeRows(await getJson(host+"/api/v3/klines?symbol="+pair+"&interval=1m&limit=30"));if(rows.length>=25)return {rows,provider:"Binance Spot"};throw new Error("کمبود کندل");}
       catch(error){lastError=error;}
     }
@@ -42,7 +42,12 @@ async function loadProvider(symbol,exchange) {
   }
   if(exchange==="Gate"){
     const d=await getJson("https://api.gateio.ws/api/v4/spot/candlesticks?currency_pair="+symbol+"_USDT&interval=1m&limit=30");
-    const rows=normalizeRows(Array.isArray(d)?d.map(x=>[Number(x[0])*1000,x[5],x[3],x[4],x[2],x[1]]):[]);
+    const raw=Array.isArray(d)?d:[];
+    const points=raw.map(x=>({t:Number(x[0])*1000,c:Number(x[2]),h:Number(x[3]),l:Number(x[4]),v:Number(x[5])}))
+      .filter(x=>[x.t,x.c,x.h,x.l,x.v].every(Number.isFinite)&&x.c>0&&x.h>=x.l&&x.l>0&&x.v>=0)
+      .sort((a,b)=>a.t-b.t);
+    // Gate candles do not provide an open field; derive each candle open from the previous close.
+    const rows=points.slice(1).map((x,i)=>[x.t,points[i].c,x.h,x.l,x.c,x.v]);
     if(rows.length<25)throw new Error("Gate candle history insufficient");return {rows,provider:"Gate Spot"};
   }
   if(exchange==="KuCoin"){
@@ -54,27 +59,71 @@ async function loadProvider(symbol,exchange) {
   throw new Error("Unsupported venue");
 }
 async function scanCoin(coin){
-  const symbol=String(coin?.symbol||"").toUpperCase();if(!/^[A-Z0-9]{2,20}$/.test(symbol))return null;
-  const listed=Array.isArray(coin.marketPairs)?coin.marketPairs.filter(x=>String(x.quote||"").toUpperCase()==="USDT"&&Number(x.volume)>=15000&&SUPPORTED.has(String(x.exchange))):
-    Object.entries(coin.hunterVenueVolume||{}).filter(([name,volume])=>SUPPORTED.has(name)&&Number(volume)>=15000).map(([exchange,volume])=>({exchange,volume,quote:"USDT"}));
+  const symbol=String(coin?.symbol||"").toUpperCase();
+  if(!/^[A-Z0-9]{2,20}$/.test(symbol))return null;
+  const listed=Array.isArray(coin.marketPairs)
+    ?coin.marketPairs.filter(x=>String(x.quote||"").toUpperCase()==="USDT"&&Number(x.volume)>=15000&&SUPPORTED.has(String(x.exchange)))
+    :Object.entries(coin.hunterVenueVolume||{}).filter(([name,volume])=>SUPPORTED.has(name)&&Number(volume)>=15000).map(([exchange,volume])=>({exchange,volume,quote:"USDT"}));
   if(Number(coin.total_volume||0)<50000||!listed.length)return null;
-  const order=[...new Map(listed.sort((a,b)=>Number(b.volume)-Number(a.volume)).map(x=>[x.exchange,x])).values()].map(x=>x.exchange);
+  const order=[...new Map(listed.sort((a,b)=>Number(b.volume)-Number(a.volume)).map(x=>[x.exchange,x])).values()].map(x=>x.exchange).slice(0,2);
   let market=null,errors=[];
-  for(const venue of order){try{market=await loadProvider(symbol,venue);break;}catch(error){errors.push(venue+": "+String(error?.message||error).slice(0,80));}}
+  // At most two venues per symbol: predictable subrequest budget and bounded failover.
+  for(const venue of order){
+    try{market=await loadProvider(symbol,venue);break;}
+    catch(error){errors.push(venue+": "+String(error?.message||error).slice(0,80));}
+  }
   if(!market)throw new Error(errors.join(" | ")||"No candle provider responded");
-  const rows=market.rows,now=Date.now(),index=rows.length-2;if(index<21)return null;
+  const rows=market.rows,now=Date.now(),index=rows.length-2;
+  if(index<30)return null;
   const last=rows[index],candleAge=now-last[0],close=last[4],open=last[1],volume=last[5];
   if(candleAge<60000||candleAge>180000||close<=0||open<=0||volume<=0)return null;
-  const baseline=rows.slice(index-20,index).map(x=>x[5]).filter(x=>x>0);if(baseline.length<16)return null;
-  const avgVolume=baseline.reduce((a,b)=>a+b,0)/baseline.length,volumeRatio=avgVolume>0?volume/avgVolume:0;
-  const change1m=(close/open-1)*100,start5=rows[index-4][1];if(!(start5>0))return null;
-  const change5m=(close/start5-1)*100,dailyChange24h=Number(coin.hunterChange24h)||0,recent=rows.slice(index-7,index);
-  const priorHigh=Math.max(...recent.map(x=>x[2])),priorLow=Math.min(...recent.map(x=>x[3]));
+  const baseline=rows.slice(index-20,index).map(x=>x[5]).filter(x=>x>0);
+  if(baseline.length<16)return null;
+  const avgVolume=baseline.reduce((a,b)=>a+b,0)/baseline.length;
+  const volumeRatio=avgVolume>0?volume/avgVolume:0;
+  const pct=(from,to)=>from>0?(to/from-1)*100:0;
+  const change1m=pct(open,close);
+  const change3m=pct(rows[index-2][1],close);
+  const change5m=pct(rows[index-4][1],close);
+  const change15m=pct(rows[index-14][1],close);
+  const change30m=pct(rows[index-29][1],close);
+  const dailyChange24h=Number(coin.hunterChange24h)||0;
+  const directionWeight=change5m+change15m*0.8+change30m*0.35;
+  const trend=directionWeight>=0?"bull":"bear",direction=trend==="bull"?1:-1;
+  const changes=[change1m,change3m,change5m,change15m,change30m];
+  const signs=changes.map(x=>Math.abs(x)<0.025?0:Math.sign(x));
+  const alignedVotes=signs.filter(x=>x===direction).length;
+  const coreAligned=Math.sign(change5m)===Math.sign(change15m)&&Math.abs(change5m)>=0.05&&Math.abs(change15m)>=0.08;
+  const prior=rows.slice(index-15,index);
+  const priorHigh=Math.max(...prior.map(x=>x[2])),priorLow=Math.min(...prior.map(x=>x[3]));
   const breakoutUp=close>priorHigh,breakoutDown=close<priorLow;
+  const breakout=(trend==="bull"&&breakoutUp)||(trend==="bear"&&breakoutDown);
+  const alignmentScore=alignedVotes/5*30;
+  const momentumScore=Math.min(25,Math.abs(change5m)*7+Math.abs(change15m)*2+Math.abs(change30m)*0.5);
+  const volumeScore=Math.min(15,Math.max(0,volumeRatio-1)*8);
+  const breakoutScore=breakout?10:0;
+  const dailyScore=dailyChange24h!==0&&Math.sign(dailyChange24h)===direction?5:0;
+  const impulseScore=signs[0]===direction&&Math.abs(change1m)>=0.08?5:0;
+  let score=Math.round(10+alignmentScore+momentumScore+volumeScore+breakoutScore+dailyScore+impulseScore);
+  if(!coreAligned)score=Math.min(score,63);
+  if(volumeRatio<0.75)score=Math.min(score,60);
+  const lowLiquidity=Number(coin.total_volume||0)<150000;
+  if(lowLiquidity)score-=5;
+  score=Math.max(0,Math.min(99,score));
   const overextended=Math.abs(change5m)>=1.5||Math.abs(change1m)>=0.8||Math.abs(dailyChange24h)>=18;
-  const bullDaily=dailyChange24h>=8&&change5m>=-0.15&&volumeRatio>=0.9,bearDaily=dailyChange24h<=-8&&change5m<=0.15&&volumeRatio>=0.9;
-  const score=Math.min(99,Math.max((bullDaily||bearDaily)?72:0,Math.round(55+Math.min(16,Math.abs(change1m)*30)+Math.min(14,Math.abs(change5m)*8)+Math.min(16,Math.max(0,volumeRatio-1)*8)+((breakoutUp||breakoutDown)?8:0))));
-  return {id:String(coin.id),symbol,trend:change5m>=0?"bull":"bear",score,change1m,change5m,dailyChange24h,dailyMover:Math.abs(dailyChange24h)>=8,lowLiquidity:Number(coin.total_volume||0)<150000,volumeRatio,breakout:breakoutUp||breakoutDown,overextended,price:close,provider:market.provider,flow:null,flowSignal:"",updatedAt:now,candleTime:last[0],rows:rows.map(x=>x.slice(0,6)),serverScanned:true,coin:{id:String(coin.id),symbol,name:coin.name||symbol,image:coin.image||"",current_price:close,total_volume:Number(coin.total_volume)||0,market_cap:coin.market_cap||null,market_cap_rank:coin.market_cap_rank||null,hunterExchange:coin.hunterExchange||"",hunterPriceExchange:coin.hunterPriceExchange||"",hunterChange24h:dailyChange24h,hunterVenueVolume:coin.hunterVenueVolume||{},marketPairs:Array.isArray(coin.marketPairs)?coin.marketPairs:[]}};
+  return {
+    id:String(coin.id),symbol,trend,score,scoringVersion:2,coreAligned,
+    change1m,change3m,change5m,change15m,change30m,dailyChange24h,
+    dailyMover:Math.abs(dailyChange24h)>=8,lowLiquidity,volumeRatio,
+    breakout,breakoutDirection:breakout?(trend==="bull"?"up":"down"):"",overextended,
+    price:close,provider:market.provider,flow:null,flowSignal:"",flowAdjustment:0,
+    updatedAt:now,candleTime:last[0],rows:rows.map(x=>x.slice(0,6)),serverScanned:true,
+    coin:{id:String(coin.id),symbol,name:coin.name||symbol,image:coin.image||"",
+      current_price:close,total_volume:Number(coin.total_volume)||0,market_cap:coin.market_cap||null,
+      market_cap_rank:coin.market_cap_rank||null,hunterExchange:coin.hunterExchange||"",
+      hunterPriceExchange:coin.hunterPriceExchange||"",hunterChange24h:dailyChange24h,
+      hunterVenueVolume:coin.hunterVenueVolume||{},marketPairs:Array.isArray(coin.marketPairs)?coin.marketPairs:[]}
+  };
 }
 async function mapLimit(items,limit,fn){
   let cursor=0;const workers=Array.from({length:Math.min(limit,items.length)},async()=>{while(cursor<items.length){const i=cursor++;await fn(items[i],i);}});
@@ -93,26 +142,59 @@ async function runRadar(env,scheduledTime=Date.now()){
   if(!universe.length)throw new Error("No eligible USDT spot symbols; previous snapshot retained");
   const [state,oldSnapshot]=await Promise.all([env.RADAR_KV.get("radar:state",{type:"json"}),env.RADAR_KV.get("radar:snapshot",{type:"json"})]);
   const signals=new Map((Array.isArray(oldSnapshot?.signals)?oldSnapshot.signals:[]).filter(x=>Number(x?.score)>=RETENTION_SCORE).map(x=>[String(x.id),x]));
-  const start=Math.max(0,Number(state?.cursor)||0)%universe.length,batch=Array.from({length:Math.min(BATCH_SIZE,universe.length)},(_,i)=>universe[(start+i)%universe.length]);
+  const start=Math.max(0,Number(state?.cursor)||0)%universe.length;
+  const batch=Array.from({length:Math.min(BATCH_SIZE,universe.length)},(_,i)=>universe[(start+i)%universe.length]);
   let completed=0,failed=0,valid=0,removed=0,failedSamples=[],scannedSignals=[],removedSignals={...(state?.removed_signals||{})};
-  // Keep removal tombstones for 24 hours so clients that miss one snapshot still receive removals.
   const tombstoneCutoff=Date.now()-24*60*60*1000;
   for(const [id,item] of Object.entries(removedSignals)){if(Number(item?.removedAt||0)<tombstoneCutoff)delete removedSignals[id];}
   await mapLimit(batch,CONCURRENCY,async coin=>{
-    try{const signal=await scanCoin(coin);if(signal){valid++;scannedSignals.push(signal);if(signal.score>=RETENTION_SCORE){signals.set(signal.id,signal);delete removedSignals[signal.id];}else if(signals.delete(signal.id)){removed++;removedSignals[signal.id]={symbol:signal.symbol,score:signal.score,scannedAt:signal.updatedAt,removedAt:Date.now(),reason:"below_retention_threshold"};}}}
-    catch(error){failed++;if(failedSamples.length<8)failedSamples.push({symbol:String(coin.symbol||""),error:String(error?.message||error).slice(0,220)});}finally{completed++;}
+    try{const signal=await scanCoin(coin);if(signal){valid++;scannedSignals.push(signal);}}
+    catch(error){failed++;if(failedSamples.length<8)failedSamples.push({symbol:String(coin.symbol||""),error:String(error?.message||error).slice(0,220)});}
+    finally{completed++;}
   });
-  // Shared real-trade flow enriches a small set of strongest fresh candidates; it never changes radar scores or retention decisions.
-  await mapLimit(scannedSignals.filter(x=>Number(x.score)>=RETENTION_SCORE).sort((a,b)=>b.score-a.score).slice(0,8),2,async signal=>{
+  // Validate the strongest fresh candidates with real executed trades, not candle volume alone.
+  const flowCandidates=scannedSignals.filter(x=>x.coreAligned&&!x.lowLiquidity&&Number(x.score)>=48).sort((a,b)=>b.score-a.score).slice(0,2);
+  await mapLimit(flowCandidates,2,async signal=>{
     try{
       const flow=await getJson(MAIN_FLOW+"?symbol="+encodeURIComponent(signal.symbol)+"&window=5",8500);
-      signal.flow={buy5m:Number(flow.buy5m)||0,sell5m:Number(flow.sell5m)||0,net5m:Number(flow.net5m)||0,tradeCount:Number(flow.trade_count)||0,provider:flow.provider||"",complete:flow.complete!==false,rows:Array.isArray(flow.rows)?flow.rows:[]};
+      signal.flow={buy5m:Number(flow.buy5m)||0,sell5m:Number(flow.sell5m)||0,net5m:Number(flow.net5m)||0,
+        tradeCount:Number(flow.trade_count)||0,provider:flow.provider||"",complete:flow.complete===true,rows:Array.isArray(flow.rows)?flow.rows:[]};
       signal.flowSignal=signal.flow.net5m>0?"inflow":signal.flow.net5m<0?"outflow":"";
+      const total=signal.flow.buy5m+signal.flow.sell5m;
+      if(signal.flow.complete&&signal.flow.tradeCount>=10&&total>0){
+        const buyPressure=signal.flow.buy5m/total;
+        const aligned=signal.trend==="bull"?buyPressure>=0.56:buyPressure<=0.44;
+        const opposed=signal.trend==="bull"?buyPressure<=0.44:buyPressure>=0.56;
+        signal.flowAdjustment=aligned?8:opposed?-10:0;
+        signal.flowPressure=Number((buyPressure*100).toFixed(1));
+      }
     }catch(error){signal.flowError=String(error?.message||error).slice(0,120);}
-    const current=signals.get(signal.id);if(current&&Number(current.updatedAt)<=Number(signal.updatedAt))signals.set(signal.id,signal);
   });
-  const nextCursor=(start+batch.length)%universe.length,snapshot={status:"online",source:"Cloudflare scheduled radar",retention_score:RETENTION_SCORE,scanned_at:new Date().toISOString(),scheduled_at:new Date(Number(scheduledTime)||Date.now()).toISOString(),universe_count:universe.length,scanned_count:completed,valid_count:valid,failed_count:failed,failed_samples:failedSamples,removed_count:removed,removed_signals:removedSignals,batch_size:BATCH_SIZE,next_cursor:nextCursor,signals:[...signals.values()].filter(x=>Number(x?.score)>=RETENTION_SCORE).sort((a,b)=>b.score-a.score).slice(0,300)};
-  await Promise.all([env.RADAR_KV.put("radar:snapshot",JSON.stringify(snapshot)),env.RADAR_KV.put("radar:state",JSON.stringify({cursor:nextCursor,updated_at:snapshot.scanned_at,universe_count:universe.length,removed_signals:removedSignals}))]);
+  // Only fresh version-2 scores are published. Legacy signals remain stored until their own valid rescan.
+  for(const signal of scannedSignals){
+    signal.score=Math.max(0,Math.min(99,Number(signal.score)+Number(signal.flowAdjustment||0)));
+    if(!signal.coreAligned)signal.score=Math.min(signal.score,63);
+    if(signal.score>=RETENTION_SCORE){
+      signals.set(signal.id,signal);
+      delete removedSignals[signal.id];
+    }else if(signals.delete(signal.id)){
+      removed++;
+      removedSignals[signal.id]={symbol:signal.symbol,score:signal.score,scannedAt:signal.updatedAt,removedAt:Date.now(),reason:"below_retention_threshold"};
+    }
+  }
+  const nextCursor=(start+batch.length)%universe.length;
+  const snapshot={
+    status:"online",source:"Cloudflare scheduled radar",scoring_version:2,retention_score:RETENTION_SCORE,
+    scanned_at:new Date().toISOString(),scheduled_at:new Date(Number(scheduledTime)||Date.now()).toISOString(),
+    universe_count:universe.length,scanned_count:completed,valid_count:valid,failed_count:failed,failed_samples:failedSamples,
+    removed_count:removed,removed_signals:removedSignals,batch_size:BATCH_SIZE,next_cursor:nextCursor,
+    signals:[...signals.values()].filter(x=>Number(x?.score)>=RETENTION_SCORE&&Number(x?.scoringVersion)===2)
+      .sort((a,b)=>b.score-a.score).slice(0,300)
+  };
+  await Promise.all([
+    env.RADAR_KV.put("radar:snapshot",JSON.stringify(snapshot)),
+    env.RADAR_KV.put("radar:state",JSON.stringify({cursor:nextCursor,updated_at:snapshot.scanned_at,universe_count:universe.length,removed_signals:removedSignals}))
+  ]);
   return snapshot;
 }
 function json(data,status=200){return new Response(JSON.stringify(data),{status,headers:{"Content-Type":"application/json; charset=utf-8","Access-Control-Allow-Origin":"*","Access-Control-Allow-Methods":"GET, OPTIONS","Access-Control-Allow-Headers":"Content-Type","Cache-Control":"no-store","X-Content-Type-Options":"nosniff"}});}
