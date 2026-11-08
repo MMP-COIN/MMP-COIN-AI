@@ -32,6 +32,7 @@ jobs:
       contents: read
     outputs:
       signing_ready: ${{ steps.prepare_signing.outputs.signing_ready }}
+      app_version: ${{ steps.app_version.outputs.version }}
     steps:
       - name: Checkout source
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -40,6 +41,13 @@ jobs:
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 20
+
+      - name: Read and preserve the current app version
+        id: app_version
+        run: |
+          VERSION=$(node -e 'const fs=require("fs");const h=fs.readFileSync("www/index.html","utf8");const m=h.match(/<meta name="mmp-app-version" content="([^"]+)"/);if(!m)process.exit(1);process.stdout.write(m[1]);')
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Visible app version remains $VERSION"
 
       - name: Set up Java 17
         uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
@@ -52,7 +60,7 @@ jobs:
 
       - name: Configure secure live dashboard and native build version
         env:
-          BUILD_VERSION: 1.0.${{ github.run_number }}
+          BUILD_VERSION: ${{ steps.app_version.outputs.version }}
         run: |
           node <<'NODE'
           const fs = require('fs');
@@ -83,7 +91,7 @@ jobs:
 
       - name: Stamp app version into the bundled dashboard
         env:
-          BUILD_VERSION: 1.0.${{ github.run_number }}
+          BUILD_VERSION: ${{ steps.app_version.outputs.version }}
         run: |
           node <<'NODE'
           const fs = require('fs');
@@ -143,6 +151,7 @@ jobs:
       - name: Configure Android version and release signing
         env:
           BUILD_NUMBER: ${{ github.run_number }}
+          BUILD_VERSION: ${{ steps.app_version.outputs.version }}
           SIGNING_READY: ${{ steps.prepare_signing.outputs.signing_ready }}
         run: |
           node <<'NODE'
@@ -150,7 +159,7 @@ jobs:
           const file = 'android/app/build.gradle';
           let gradle = fs.readFileSync(file, 'utf8');
           gradle = gradle.replace(/versionCode\s+\d+/, `versionCode ${process.env.BUILD_NUMBER}`);
-          gradle = gradle.replace(/versionName\s+"[^"]+"/, `versionName "1.0.${process.env.BUILD_NUMBER}"`);
+          gradle = gradle.replace(/versionName\s+"[^"]+"/, `versionName "${process.env.BUILD_VERSION}"`);
           if (process.env.SIGNING_READY === 'true') {
             gradle = gradle.replace(/buildTypes\s*\{\s*release\s*\{/, `signingConfigs {
                   release {
@@ -219,8 +228,8 @@ jobs:
       - name: Publish signed update release
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
-          tag_name: app-v1.0.${{ github.run_number }}
+          tag_name: app-v${{ needs.build-android.outputs.app_version }}-build-${{ github.run_number }}
           target_commitish: main
-          name: MMP COIN AI Android v1.0.${{ github.run_number }}
+          name: MMP COIN AI Android v${{ needs.build-android.outputs.app_version }} (build ${{ github.run_number }})
           files: dist/app-release.apk
           generate_release_notes: true
