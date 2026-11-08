@@ -931,38 +931,42 @@ async function handle(request,env){
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/market-orderflow"){
   const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"market-orderflow"),request);if(limited)return limited;
-  const url=new URL(request.url),raw=String(url.searchParams.get("symbol")||"BTC").toUpperCase();
+  const url=new URL(request.url),raw=String(url.searchParams.get("symbol")||"BTC").toUpperCase(),marketType=url.searchParams.get("market")==="futures"?"futures":"spot";
   if(!/^[A-Z0-9]{2,15}$/.test(raw))return json({error:"نماد نامعتبر است."},400,request);
-  const symbol=raw.endsWith("USDT")?raw:raw+"USDT",base=symbol.replace(/USDT$/,"");
-  const get=async(u,ms=8500)=>{const c=new AbortController(),t=setTimeout(()=>c.abort(),ms);try{const r=await fetch(u,{signal:c.signal,headers:{"Accept":"application/json"}});if(!r.ok)throw new Error("HTTP "+r.status);return await r.json();}finally{clearTimeout(t);}};
-  const depthUrls=[
-   "https://api.binance.com/api/v3/depth?symbol="+symbol+"&limit=100",
-   "https://api.binance.us/api/v3/depth?symbol="+symbol+"&limit=100",
-   "https://api1.binance.com/api/v3/depth?symbol="+symbol+"&limit=100",
-   "https://data-api.binance.vision/api/v3/depth?symbol="+symbol+"&limit=100"
+  const base=raw.replace(/USDT$/,""),symbol=base+"USDT";
+  const get=async(u,ms=7500)=>{const c=new AbortController(),t=setTimeout(()=>c.abort(),ms);try{const r=await fetch(u,{signal:c.signal,headers:{"Accept":"application/json","User-Agent":"MMP-COIN-AI/1.0"}});if(!r.ok)throw new Error("HTTP "+r.status);return await r.json();}finally{clearTimeout(t);}};
+  const spotDepthSources=[
+   ["Binance Spot",()=>get("https://api.binance.com/api/v3/depth?symbol="+symbol+"&limit=100"),d=>Array.isArray(d?.bids)&&Array.isArray(d?.asks)?d:null],
+   ["OKX Spot",()=>get("https://www.okx.com/api/v5/market/books?instId="+base+"-USDT&sz=100"),d=>d?.code==="0"&&d.data?.[0]?{bids:d.data[0].bids,asks:d.data[0].asks}:null],
+   ["Bitget Spot",()=>get("https://api.bitget.com/api/v3/market/orderbook?category=SPOT&symbol="+symbol+"&limit=100"),d=>d?.code==="00000"?{bids:d.data?.b,asks:d.data?.a}:null],
+   ["Gate Spot",()=>get("https://api.gateio.ws/api/v4/spot/order_book?currency_pair="+base+"_USDT&limit=100"),d=>Array.isArray(d?.bids)&&Array.isArray(d?.asks)?d:null]
   ];
+  const futuresDepthSources=[
+   ["Bitget USDT Futures",()=>get("https://api.bitget.com/api/v3/market/orderbook?category=USDT-FUTURES&symbol="+symbol+"&limit=100"),d=>d?.code==="00000"?{bids:d.data?.b,asks:d.data?.a}:null],
+   ["Bybit Linear Futures",()=>get("https://api.bybit.eu/v5/market/orderbook?category=linear&symbol="+symbol+"&limit=100"),d=>d?.retCode===0?{bids:d.result?.b,asks:d.result?.a}:null],
+   ["Bybit Global Futures",()=>get("https://api.bybit.com/v5/market/orderbook?category=linear&symbol="+symbol+"&limit=100"),d=>d?.retCode===0?{bids:d.result?.b,asks:d.result?.a}:null]
+  ];
+  const depthSources=marketType==="futures"?futuresDepthSources:spotDepthSources;
   let depth=null,depthSource=null,depthError=null;
-  const depthAttempts=await Promise.allSettled(depthUrls.map(u=>get(u)));
-  for(const attempt of depthAttempts){if(attempt.status==="fulfilled"&&Array.isArray(attempt.value.bids)&&Array.isArray(attempt.value.asks)){depth=attempt.value;depthSource="Binance Spot";break;}if(attempt.status==="rejected")depthError=String(attempt.reason?.message||attempt.reason);}
-  if(!depth){try{const d=await get("https://www.okx.com/api/v5/market/books?instId="+base+"-USDT&sz=100");const b=d?.data?.[0];if(b?.bids&&b?.asks){depth={bids:b.bids,asks:b.asks};depthSource="OKX Spot";}}catch(e){depthError=String(e?.message||e);}}
+  for(const [name,load,normalize] of depthSources){
+   try{const data=await load(),book=normalize(data);if(!book||!Array.isArray(book.bids)||!Array.isArray(book.asks)||!book.bids.length||!book.asks.length)throw new Error(name+" order book invalid");depth=book;depthSource=name;break;}
+   catch(error){depthError=String(error?.message||error).slice(0,180);}
+  }
   let bid=0,ask=0,mid=0;
   if(depth){const bp=Number(depth.bids?.[0]?.[0]||0),ap=Number(depth.asks?.[0]?.[0]||0);mid=(bp+ap)/2;
    for(const [p,q] of depth.bids||[])if(mid&&Number(p)>=mid*.99)bid+=Number(p)*Number(q);
    for(const [p,q] of depth.asks||[])if(mid&&Number(p)<=mid*1.01)ask+=Number(p)*Number(q);
   }
-  let klines=null,candleSource=null,candleError=null;
-  const klineUrls=[
-   "https://api.binance.com/api/v3/klines?symbol="+symbol+"&interval=1m&limit=60",
-   "https://api.binance.us/api/v3/klines?symbol="+symbol+"&interval=1m&limit=60",
-   "https://api1.binance.com/api/v3/klines?symbol="+symbol+"&interval=1m&limit=60",
-   "https://data-api.binance.vision/api/v3/klines?symbol="+symbol+"&interval=1m&limit=60"
-  ];
-  const candleAttempts=await Promise.allSettled(klineUrls.map(u=>get(u)));
-  for(const attempt of candleAttempts){if(attempt.status==="fulfilled"&&Array.isArray(attempt.value)&&attempt.value.length>=10){klines=attempt.value;candleSource="Binance Spot";break;}if(attempt.status==="rejected")candleError=String(attempt.reason?.message||attempt.reason);}
-  let buy=null,sell=null,cvd=null;
-  if(klines){buy=0;sell=0;for(const k of klines){const quote=Number(k[7])||0,takerBuy=Number(k[10])||0;buy+=takerBuy;sell+=Math.max(0,quote-takerBuy);}cvd=buy-sell;}
+  let flowData=null,flowError=null;
+  try{flowData=marketType==="futures"?await loadFuturesMarketFlow(base,5):await loadMarketFlow(base,5);}
+  catch(error){flowError=String(error?.message||error).slice(0,220);}
   const imbalance=bid+ask?(bid-ask)/(bid+ask)*100:null;
-  return json({symbol,depth:{available:!!depth,source:depthSource,bid_usdt:depth?bid:null,ask_usdt:depth?ask:null,imbalance_pct:imbalance},flow:{available:!!klines,source:candleSource,buy_usdt:buy,sell_usdt:sell,cvd_usdt:cvd,minutes:klines?klines.length:0},errors:{depth:depth?null:depthError,candles:klines?null:candleError},checked_at:new Date().toISOString()},200,request);
+  return json({
+   symbol:base,market:marketType,
+   depth:{available:!!depth,source:depthSource,bid_usdt:depth?bid:null,ask_usdt:depth?ask:null,imbalance_pct:imbalance,updated_at:depth?new Date().toISOString():null},
+   flow:{available:!!flowData&&Number(flowData.trade_count)>0,source:flowData?.provider||null,buy_usdt:flowData?.buy5m??null,sell_usdt:flowData?.sell5m??null,cvd_usdt:flowData?.net5m??null,trade_count:flowData?.trade_count||0,complete:flowData?.complete===true,coverage_start:flowData?.coverage_start||null,window_minutes:flowData?.window_minutes||5,updated_at:flowData?.updated_at||null},
+   errors:{depth:depth?null:depthError,flow:flowData?null:flowError},checked_at:new Date().toISOString()
+  },200,request);
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/whale-watch"){
   const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"whale-watch"),request);if(limited)return limited;
