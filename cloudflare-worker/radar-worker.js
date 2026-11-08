@@ -20,28 +20,28 @@ async function loadProvider(symbol,exchange) {
   if(exchange==="Binance"){
     let lastError;
     for(const host of ["https://api.binance.com","https://data-api.binance.vision"]){
-      try{const rows=normalizeRows(await getJson(host+"/api/v3/klines?symbol="+pair+"&interval=1m&limit=30"));if(rows.length>=25)return {rows,provider:"Binance Spot"};throw new Error("کمبود کندل");}
+      try{const rows=normalizeRows(await getJson(host+"/api/v3/klines?symbol="+pair+"&interval=1m&limit=40"));if(rows.length>=25)return {rows,provider:"Binance Spot"};throw new Error("کمبود کندل");}
       catch(error){lastError=error;}
     }
     throw lastError||new Error("Binance unavailable");
   }
   if(exchange==="Bybit"){
-    const d=await getJson("https://api.bybit.com/v5/market/kline?category=spot&symbol="+pair+"&interval=1&limit=30");
+    const d=await getJson("https://api.bybit.com/v5/market/kline?category=spot&symbol="+pair+"&interval=1&limit=40");
     if(String(d.retCode)!=="0")throw new Error(d.retMsg||"Bybit unavailable");
     const rows=normalizeRows(d.result?.list);if(rows.length<25)throw new Error("Bybit candle history insufficient");return {rows,provider:"Bybit Spot"};
   }
   if(exchange==="OKX"){
-    const d=await getJson("https://www.okx.com/api/v5/market/candles?instId="+symbol+"-USDT&bar=1m&limit=30");
+    const d=await getJson("https://www.okx.com/api/v5/market/candles?instId="+symbol+"-USDT&bar=1m&limit=40");
     if(String(d.code)!=="0")throw new Error(d.msg||"OKX unavailable");
     const rows=normalizeRows(d.data);if(rows.length<25)throw new Error("OKX candle history insufficient");return {rows,provider:"OKX Spot"};
   }
   if(exchange==="Bitget"){
-    const d=await getJson("https://api.bitget.com/api/v3/market/candles?category=SPOT&symbol="+pair+"&interval=1m&limit=30");
+    const d=await getJson("https://api.bitget.com/api/v3/market/candles?category=SPOT&symbol="+pair+"&interval=1m&limit=40");
     if(!["00000","0"].includes(String(d.code)))throw new Error(d.msg||"Bitget unavailable");
     const rows=normalizeRows(d.data);if(rows.length<25)throw new Error("Bitget candle history insufficient");return {rows,provider:"Bitget Spot"};
   }
   if(exchange==="Gate"){
-    const d=await getJson("https://api.gateio.ws/api/v4/spot/candlesticks?currency_pair="+symbol+"_USDT&interval=1m&limit=30");
+    const d=await getJson("https://api.gateio.ws/api/v4/spot/candlesticks?currency_pair="+symbol+"_USDT&interval=1m&limit=40");
     const raw=Array.isArray(d)?d:[];
     const points=raw.map(x=>({t:Number(x[0])*1000,c:Number(x[2]),h:Number(x[3]),l:Number(x[4]),v:Number(x[5])}))
       .filter(x=>[x.t,x.c,x.h,x.l,x.v].every(Number.isFinite)&&x.c>0&&x.h>=x.l&&x.l>0&&x.v>=0)
@@ -141,7 +141,8 @@ async function runRadar(env,scheduledTime=Date.now()){
   }).sort((a,b)=>Number(b.total_volume||0)-Number(a.total_volume||0));
   if(!universe.length)throw new Error("No eligible USDT spot symbols; previous snapshot retained");
   const [state,oldSnapshot]=await Promise.all([env.RADAR_KV.get("radar:state",{type:"json"}),env.RADAR_KV.get("radar:snapshot",{type:"json"})]);
-  const signals=new Map((Array.isArray(oldSnapshot?.signals)?oldSnapshot.signals:[]).filter(x=>Number(x?.score)>=RETENTION_SCORE).map(x=>[String(x.id),x]));
+  const previousSignals=[...(Array.isArray(oldSnapshot?.signals)?oldSnapshot.signals:[]),...(Array.isArray(oldSnapshot?.legacy_signals)?oldSnapshot.legacy_signals:[])];
+  const signals=new Map(previousSignals.filter(x=>Number(x?.score)>=RETENTION_SCORE).map(x=>[String(x.id),x]));
   const start=Math.max(0,Number(state?.cursor)||0)%universe.length;
   const batch=Array.from({length:Math.min(BATCH_SIZE,universe.length)},(_,i)=>universe[(start+i)%universe.length]);
   let completed=0,failed=0,valid=0,removed=0,failedSamples=[],scannedSignals=[],removedSignals={...(state?.removed_signals||{})};
@@ -189,6 +190,8 @@ async function runRadar(env,scheduledTime=Date.now()){
     universe_count:universe.length,scanned_count:completed,valid_count:valid,failed_count:failed,failed_samples:failedSamples,
     removed_count:removed,removed_signals:removedSignals,batch_size:BATCH_SIZE,next_cursor:nextCursor,
     signals:[...signals.values()].filter(x=>Number(x?.score)>=RETENTION_SCORE&&Number(x?.scoringVersion)===2)
+      .sort((a,b)=>b.score-a.score).slice(0,300),
+    legacy_signals:[...signals.values()].filter(x=>Number(x?.scoringVersion)!==2)
       .sort((a,b)=>b.score-a.score).slice(0,300)
   };
   await Promise.all([
