@@ -746,9 +746,9 @@ async function handle(request,env){
 
  if(request.method==="GET"&&new URL(request.url).pathname==="/market-flow"){
   const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"market-flow"),request);if(limited)return limited;
-  const url=new URL(request.url),symbol=String(url.searchParams.get("symbol")||"").toUpperCase();
+  const url=new URL(request.url),symbol=String(url.searchParams.get("symbol")||"").toUpperCase(),marketType=url.searchParams.get("market")==="futures"?"futures":"spot";
   if(!/^[A-Z0-9]{2,24}(USDT)?$/.test(symbol))return json({error:"نماد نامعتبر است."},400,request);
-  try{return json(await loadMarketFlow(symbol,url.searchParams.get("window")||5),200,request);}
+  try{return json(marketType==="futures"?await loadFuturesMarketFlow(symbol,url.searchParams.get("window")||5):await loadMarketFlow(symbol,url.searchParams.get("window")||5),200,request);}
   catch(error){return json({error:String(error?.message||"دریافت جریان معاملات ناموفق بود").slice(0,260)},502,request);}
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-snapshot"){
