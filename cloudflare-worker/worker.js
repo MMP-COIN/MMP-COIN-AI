@@ -141,7 +141,7 @@ async function candles(symbol,interval,env,marketType="spot"){
  const headers={"Accept":"application/json, text/plain, */*","User-Agent":"MMP-COIN-AI/1.0","Accept-Language":"en-US,en;q=0.9"};
  const minimumCandles=interval==="1d"?20:30;
  if(marketType==="spot"&&String(symbol).toUpperCase().endsWith("IRT")){
-  const base=String(symbol).toUpperCase().slice(0,-3),resolution={"1m":"1","15m":"15","1h":"60","4h":"240","1d":"D"}[interval],seconds={"1m":60,"15m":900,"1h":3600,"4h":14400,"1d":86400}[interval];
+  const base=String(symbol).toUpperCase().slice(0,-3),resolution={"1m":"1","3m":"3","5m":"5","15m":"15","1h":"60","4h":"240","1d":"D"}[interval],seconds={"1m":60,"3m":180,"5m":300,"15m":900,"1h":3600,"4h":14400,"1d":86400}[interval];
   if(!base||!resolution||!seconds)throw new Error("Unsupported Nobitex candle interval or pair");
   const to=Math.floor(Date.now()/1000),from=to-seconds*260;let lastError=null;
   for(const host of ["https://apiv2.nobitex.ir","https://api.nobitex.ir"]){
@@ -236,7 +236,7 @@ async function candles(symbol,interval,env,marketType="spot"){
   }catch(e){lastError=e;}
  }
  try{
-  const bitgetInterval={"15m":"15m","1h":"1H","4h":"4H","1d":"1D"}[interval];
+  const bitgetInterval={"1m":"1m","3m":"3m","5m":"5m","15m":"15m","1h":"1H","4h":"4H","1d":"1D"}[interval];
   const url="https://api.bitget.com/api/v3/market/candles?category=SPOT&symbol="+encodeURIComponent(symbol)+"&interval="+bitgetInterval+"&limit=250";
   const r=await fetch(url,{headers});
   if(!r.ok)throw new Error("Bitget Spot HTTP "+r.status);
@@ -248,7 +248,7 @@ async function candles(symbol,interval,env,marketType="spot"){
  const pairInfo=splitQuotePair(symbol);
  if(pairInfo){
   try{
-   const kucoinInterval={"15m":"15min","1h":"1hour","4h":"4hour","1d":"1day"}[interval];
+   const kucoinInterval={"1m":"1min","3m":"3min","5m":"5min","15m":"15min","1h":"1hour","4h":"4hour","1d":"1day"}[interval];
    const url="https://api.kucoin.com/api/v1/market/candles?symbol="+encodeURIComponent(pairInfo.base+"-"+pairInfo.quote)+"&type="+kucoinInterval;
    const r=await fetch(url,{headers});
    if(!r.ok)throw new Error("KuCoin Spot HTTP "+r.status);
@@ -258,7 +258,7 @@ async function candles(symbol,interval,env,marketType="spot"){
    const result=analyzeKlines(normalized);result.data_provider="KuCoin Spot (fallback)";return result;
   }catch(e){lastError=new Error((lastError?.message||"Binance unavailable")+"; "+e.message);}
   try{
-   const gateInterval={"15m":"15m","1h":"1h","4h":"4h","1d":"1d"}[interval];
+   const gateInterval={"1m":"1m","3m":"3m","5m":"5m","15m":"15m","1h":"1h","4h":"4h","1d":"1d"}[interval];
    const gatePair=pairInfo.base+"_"+pairInfo.quote;
    const url="https://api.gateio.ws/api/v4/spot/candlesticks?currency_pair="+encodeURIComponent(gatePair)+"&interval="+gateInterval+"&limit=250";
    const r=await fetch(url,{headers});
@@ -273,7 +273,7 @@ async function candles(symbol,interval,env,marketType="spot"){
  if(whitebitPair){
   let whitebitError=null;
   const market=whitebitPair.base+"_"+whitebitPair.quote;
-  const whitebitInterval={"15m":"15m","1h":"1h","4h":"4h","1d":"1d"}[interval];
+  const whitebitInterval={"1m":"1m","3m":"3m","5m":"5m","15m":"15m","1h":"1h","4h":"4h","1d":"1d"}[interval];
   for(const host of ["https://whitebit.com","https://whitebit.eu","https://whitebit.tr","https://whitebit.ge"]){
    try{
     const url=host+"/api/v1/public/kline?market="+encodeURIComponent(market)+"&interval="+whitebitInterval+"&limit=250";
