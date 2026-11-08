@@ -2460,6 +2460,7 @@ async function loadUnifiedRadarSnapshot(){
    });
    const removed=snapshot.removed_signals&&typeof snapshot.removed_signals==="object"?snapshot.removed_signals:{};
    Object.keys(removed).forEach(id=>unifiedRadarSignals.delete(String(id)));
+   for(const [id,signal] of unifiedRadarSignals){if(Date.now()-Number(signal.updatedAt||0)>5*60*1000)unifiedRadarSignals.delete(id);}
    renderOpportunities();
   }
   const total=Number(snapshot.universe_count)||0,done=Number(snapshot.next_cursor)||0;
@@ -3314,7 +3315,7 @@ function closeRadarSignalPage(fromPopState=false){
 }
 function renderOpportunities(){
  const el=$("opportunity-list");if(!el)return;
- const active=[...unifiedRadarSignals.entries()].filter(([,signal])=>radarSignalPassesDisplayThreshold(signal)).map(([id,signal])=>{
+ const active=[...unifiedRadarSignals.entries()].filter(([,signal])=>Date.now()-Number(signal.updatedAt||0)<=5*60*1000&&radarSignalPassesDisplayThreshold(signal)).map(([id,signal])=>{
   const cached=cachedCoinsData.find(x=>String(x.id)===String(id));
   const coin={...(cached||{}),...(signal.coin||{}),id:String(id),symbol:signal.symbol||signal.coin?.symbol||cached?.symbol||""};
   return {id:String(id),coin,signal};
