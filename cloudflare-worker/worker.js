@@ -746,7 +746,7 @@ async function scanHunterSymbols(symbols,marketType="spot",assetList=[]){
  const concurrency=2;
  await Promise.all(Array.from({length:Math.min(concurrency,symbols.length)},async()=>{while(i<symbols.length){const symbol=symbols[i++];try{const x=await analyzeDigitalHunterSymbol(symbol,marketType,assetMap.get(symbol));if(x)candidates.push(x);}catch(e){failed++;if(errors.length<8)errors.push({symbol,error:String(e?.message||e).slice(0,120)});}}}));
  candidates.sort((a,b)=>b.score-a.score);const signals=[];
- const flowCandidates=[...candidates.filter(x=>x.trend==="bull"&&!x.lowLiquidity).slice(0,3),...candidates.filter(x=>x.trend==="bear"&&!x.lowLiquidity).slice(0,3)].filter(x=>x.score>=60);
+ const flowCandidates=(marketType==="futures"?[...candidates.filter(x=>x.trend==="bull"&&!x.lowLiquidity).slice(0,3),...candidates.filter(x=>x.trend==="bear"&&!x.lowLiquidity).slice(0,3)]:candidates.filter(x=>x.trend==="bull"&&!x.lowLiquidity).slice(0,3)).filter(x=>x.score>=60);
  await Promise.all(flowCandidates.map(async x=>{
   try{
    let f=marketType==="futures"?await loadFuturesMarketFlow(x.symbol,5):await loadMarketFlow(x.symbol,5);
