@@ -335,7 +335,7 @@ jobs:
           derivatives_status=$(curl --silent --show-error --retry 1 --retry-delay 2 --max-time 35 -o /tmp/derivatives.json -w "%{http_code}" "$WORKER_URL/market-derivatives?symbol=BTC")
           echo "Futures derivatives endpoint HTTP $derivatives_status"
           if [ "$derivatives_status" != "200" ]; then cat /tmp/derivatives.json; exit 1; fi
-          jq -e '.symbol == "BTCUSDT" and (.source | type == "string" and length > 0) and ((.funding_rate == null or (.funding_rate | type == "number")) and (.open_interest == null or (.open_interest | type == "number")))' /tmp/derivatives.json >/dev/null
+          jq -e '.symbol == "BTC" and (.source | type == "string" and length > 0) and ((.funding_rate == null or (.funding_rate | type == "number")) and (.open_interest == null or (.open_interest | type == "number")))' /tmp/derivatives.json >/dev/null
           if jq -e '(.funding_rate != null or .open_interest != null)' /tmp/derivatives.json >/dev/null; then
             jq -r '"Futures derivatives source: " + (.source // "multi-source")' /tmp/derivatives.json
           else
