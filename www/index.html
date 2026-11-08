@@ -1855,8 +1855,8 @@ function toggleFullCoinsList() {
 }
 
 const LAYERZERO_COIN_ID = 'layerzero';
-// ۴۰ دارایی پیش‌فرض برای تحلیل کامل؛ سایر دارایی‌های فهرست ۱۰۰تایی نیز قابل انتخاب‌اند.
-// اولویت تحلیل فقط بر اساس رتبه واقعی ارزش بازار است؛ نه فهرست ثابت نمادها.
+// همه دارایی‌های دارای بازار معتبر و قابل معامله در یونیورس مرکزی برای تحلیل و انتخاب در دسترس‌اند.
+// اولویت نمایش و تحلیل فقط بر اساس رتبه واقعی ارزش بازار است؛ نه فهرست ثابت یا سقف تعداد نمادها.
 function orderPrimaryCoins(coins){
  return [...coins].sort((a,b)=>{
   const rankA=Number(a.market_cap_rank)||999999;
@@ -2091,41 +2091,61 @@ async function refreshAll(){
   let verifiedCoins=await verifyCoinBatch(candidateCoins);
   // If exchange audit returns no usable matches, retain market-provider prices instead of blanking the board.
   if(!verifiedCoins.length)verifiedCoins=candidateCoins;
-  // دریافت چند صفحه از مرجع بازار، بدون سقف ۱۰۰تایی؛ تمام صفحات پیش از ادغام، با بازارهای واقعی صرافی‌ها اعتبارسنجی می‌شوند.
+  // صفحه‌بندی پویا تا پایان واقعی کاتالوگ؛ هیچ سقف ثابت ۱۰۰/۵۰۰/۱۰۰۰ دارایی وجود ندارد.
   {
-   const pageNumbers=marketMetadataSource==="CoinLore"?[2,3,4,5,6,7,8,9,10]:[2,3,4,5];
-   const pageResults=await Promise.allSettled(pageNumbers.map(async pageNumber=>{
-    const url=marketMetadataSource==="CoinLore"
-     ?AI_ANALYSIS_ENDPOINT+"/market-proxy?source=coinlore-top&offset="+((pageNumber-1)*100)
-     :AI_ANALYSIS_ENDPOINT+"/market-proxy?source=coingecko-top&page="+pageNumber;
-    const response=await fetch(url,{cache:"no-store"});
-    if(!response.ok)throw new Error("صفحه "+pageNumber+" · HTTP "+response.status);
-    const payload=await response.json();
-    return marketMetadataSource==="CoinLore"?normalizeCoinLoreAssets(payload):payload;
-   }));
+   const pageSize=marketMetadataSource==="CoinLore"||marketMetadataSource==="CoinGecko Direct"?100:250;
+   let nextPage=2,finished=false,emptyBatches=0;
    const knownIds=new Set(candidateCoins.map(c=>c.id));
    const knownSymbols=new Set(candidateCoins.map(c=>String(c.symbol||"").toUpperCase()));
    const extraCandidates=[];
-   pageResults.forEach((result,index)=>{
-    if(result.status!=="fulfilled"||!Array.isArray(result.value))return;
-    result.value.forEach(coin=>{
-     const symbol=String(coin?.symbol||"").toUpperCase();
-     if(!coin?.id||!symbol||!passesMarketQualityFilter(coin)||NON_TRADABLE_COIN_IDS.has(coin.id)||NON_TRADABLE_SYMBOLS.has(symbol)||knownIds.has(coin.id)||knownSymbols.has(symbol))return;
-     knownIds.add(coin.id);knownSymbols.add(symbol);extraCandidates.push(coin);
+   while(!finished){
+    const pageNumbers=[nextPage,nextPage+1,nextPage+2,nextPage+3];
+    const pageResults=await Promise.allSettled(pageNumbers.map(async pageNumber=>{
+     let lastError=null;
+     for(let attempt=0;attempt<2;attempt++){
+      try{
+       const url=marketMetadataSource==="CoinLore"
+        ?AI_ANALYSIS_ENDPOINT+"/market-proxy?source=coinlore-top&offset="+((pageNumber-1)*100)
+        :marketMetadataSource==="CoinGecko Direct"
+         ?"https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page="+pageNumber+"&sparkline=false&price_change_percentage=1h%2C24h%2C7d"
+         :AI_ANALYSIS_ENDPOINT+"/market-proxy?source=coingecko-top&page="+pageNumber;
+       const response=await fetch(url,{cache:"no-store"});
+       if(!response.ok)throw new Error("HTTP "+response.status);
+       const payload=await response.json();
+       return marketMetadataSource==="CoinLore"?normalizeCoinLoreAssets(payload):payload;
+      }catch(error){lastError=error;}
+     }
+     throw lastError||new Error("Market page unavailable");
+    }));
+    let successfulPages=0,addedThisBatch=0,shortPage=false;
+    pageResults.forEach((result,index)=>{
+     if(result.status!=="fulfilled"||!Array.isArray(result.value)){
+      if(result.status==="rejected")console.warn("Market page "+pageNumbers[index]+" unavailable:",result.reason);
+      return;
+     }
+     successfulPages++;
+     if(result.value.length<pageSize)shortPage=true;
+     result.value.forEach(coin=>{
+      const symbol=String(coin?.symbol||"").toUpperCase();
+      if(!coin?.id||!symbol||!passesMarketQualityFilter(coin)||NON_TRADABLE_COIN_IDS.has(coin.id)||NON_TRADABLE_SYMBOLS.has(symbol)||knownIds.has(coin.id)||knownSymbols.has(symbol))return;
+      knownIds.add(coin.id);knownSymbols.add(symbol);extraCandidates.push(coin);addedThisBatch++;
+     });
     });
-    if(result.status==="rejected")console.warn("Market page "+(index+2)+" unavailable:",result.reason);
-   });
+    if(!successfulPages||!addedThisBatch)emptyBatches++;else emptyBatches=0;
+    nextPage+=pageNumbers.length;
+    finished=shortPage||emptyBatches>=2;
+   }
    if(extraCandidates.length){
     const extraVerified=await verifyCoinBatch(extraCandidates);
     verifiedCoins=verifiedCoins.concat(extraVerified);
    }
   }
-  // همگام‌سازی فهرست مرکزی با کاتالوگ تجمیع‌شده صرافی‌ها؛ بدون سقف ۱۰۰تایی.
+  // همگام‌سازی فهرست مرکزی با تمام بازارهای کشف‌شده در صرافی‌ها؛ بدون سقف تعداد دارایی.
   try{
    if(!unifiedAssetCatalogCache.length){hunterUniverseCache.expires=0;await fetchHunterUniverse();}
   }catch(catalogError){console.warn("Unified exchange catalog unavailable; keeping market-provider assets:",catalogError);}
   const catalogBySymbol=new Map();
-  [...verifiedCoins,...(Array.isArray(unifiedAssetCatalogCache)?unifiedAssetCatalogCache:[])].forEach(coin=>{
+  [...verifiedCoins,...(Array.isArray(unifiedAssetCatalogCache)?unifiedAssetCatalogCache:[]),...(Array.isArray(hunterUniverseCache?.coins)?hunterUniverseCache.coins:[])].forEach(coin=>{
    const symbol=String(coin?.symbol||"").toUpperCase();
    if(!coin?.id||!symbol||!/^[A-Z0-9_]{2,30}$/.test(symbol)||NON_TRADABLE_COIN_IDS.has(coin.id)||NON_TRADABLE_SYMBOLS.has(symbol))return;
    const previous=catalogBySymbol.get(symbol);
