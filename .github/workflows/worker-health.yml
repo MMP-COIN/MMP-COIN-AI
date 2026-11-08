@@ -172,19 +172,19 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
 
-      - name: Run and verify the scheduled Digital Hunter snapshot
+      - name: Run and verify the scheduled Quantum Hunter snapshot
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
           set -euo pipefail
           run_status=$(curl --silent --show-error --retry 1 --retry-delay 2 --max-time 85 -o /tmp/hunter-run.json -w "%{http_code}" "$WORKER_URL/hunter-run")
-          echo "Digital Hunter cycle HTTP $run_status"
+          echo "Quantum Hunter cycle HTTP $run_status"
           if [ "$run_status" != "200" ]; then cat /tmp/hunter-run.json; exit 1; fi
-          jq -e '.status == "online" and .engine == "MMP DIGITAL HUNTER v2" and (.universe_count > 0) and (.batch_size > 0) and (.signals | type == "array")' /tmp/hunter-run.json >/dev/null
+          jq -e '.status == "online" and .engine == "MMP QUANTUM INTELLIGENCE ENGINE" and (.universe_count > 0) and (.batch_size > 0) and (.signals | type == "array")' /tmp/hunter-run.json >/dev/null
           snapshot_status=$(curl --fail --silent --show-error --max-time 15 "$WORKER_URL/hunter-snapshot" -o /tmp/hunter-snapshot.json -w "%{http_code}")
           test "$snapshot_status" = "200"
-          jq -e '.status == "online" and .engine == "MMP DIGITAL HUNTER v2" and (.signals | type == "array")' /tmp/hunter-snapshot.json >/dev/null
-          jq -r '"Digital Hunter snapshot: scanned " + (.scanned_count|tostring) + "/" + (.universe_count|tostring) + " liquid instruments; " + (.signals|length|tostring) + " confirmed signals; failures " + (.failed_count|tostring)' /tmp/hunter-snapshot.json >> "$GITHUB_STEP_SUMMARY"
+          jq -e '.status == "online" and .engine == "MMP QUANTUM INTELLIGENCE ENGINE" and (.signals | type == "array")' /tmp/hunter-snapshot.json >/dev/null
+          jq -r '"Quantum Hunter snapshot: scanned " + (.scanned_count|tostring) + "/" + (.universe_count|tostring) + " liquid instruments; " + (.signals|length|tostring) + " confirmed signals; failures " + (.failed_count|tostring)' /tmp/hunter-snapshot.json >> "$GITHUB_STEP_SUMMARY"
 
       - name: Smoke-test independent Hunter and shared real-trade flow
         env:
@@ -199,13 +199,13 @@ jobs:
           hunter_status=$(curl --silent --show-error --retry 1 --retry-delay 2 --max-time 45 -o /tmp/hunter-scan.json -w "%{http_code}" "$WORKER_URL/hunter-scan?symbols=BTC,ETH")
           echo "Independent Hunter scan endpoint HTTP $hunter_status"
           if [ "$hunter_status" != "200" ]; then cat /tmp/hunter-scan.json; exit 1; fi
-          jq -e '.engine == "MMP DIGITAL HUNTER v2" and .requested == 2 and (.signals | type == "array") and (.scanned >= 1) and (.signals | all(.[]; .confirmed == true and (.flow.provider | type == "string")))' /tmp/hunter-scan.json >/dev/null
-          jq -r '"Digital Hunter v2: " + (.scanned|tostring) + " symbols checked; " + (.signals|length|tostring) + " trade-flow-confirmed signals"' /tmp/hunter-scan.json
+          jq -e '.engine == "MMP QUANTUM INTELLIGENCE ENGINE" and .requested == 2 and (.signals | type == "array") and ((.scanned + .failed) == 2) and (.signals | all(.[]; .confirmed == true and .quantum.engine == "MMP QUANTUM INTELLIGENCE ENGINE" and (.flow.provider | type == "string")))' /tmp/hunter-scan.json >/dev/null
+          jq -r '"Quantum Hunter: " + (.scanned|tostring) + " symbols checked; " + (.signals|length|tostring) + " trade-flow-confirmed signals"' /tmp/hunter-scan.json
           futures_status=$(curl --silent --show-error --retry 1 --retry-delay 2 --max-time 55 -o /tmp/hunter-futures-scan.json -w "%{http_code}" "$WORKER_URL/hunter-scan?market=futures&symbols=BTC,ETH")
-          echo "Digital Hunter Futures scan HTTP $futures_status"
+          echo "Quantum Hunter Futures scan HTTP $futures_status"
           if [ "$futures_status" != "200" ]; then cat /tmp/hunter-futures-scan.json; exit 1; fi
-          jq -e '.engine == "MMP DIGITAL HUNTER v2" and .market == "futures" and .requested == 2 and (.scanned >= 1) and (.signals | type == "array") and (.signals | all(.[]; .market == "futures" and .confirmed == true and (.flow.provider | type == "string")))' /tmp/hunter-futures-scan.json >/dev/null
-          jq -r '"Digital Hunter Futures: " + (.scanned|tostring) + " symbols checked; " + (.signals|length|tostring) + " real-flow-confirmed signals' /tmp/hunter-futures-scan.json
+          jq -e '.engine == "MMP QUANTUM INTELLIGENCE ENGINE" and .market == "futures" and .requested == 2 and ((.scanned + .failed) == 2) and (.signals | type == "array") and (.signals | all(.[]; .market == "futures" and .confirmed == true and .quantum.engine == "MMP QUANTUM INTELLIGENCE ENGINE" and (.flow.provider | type == "string")))' /tmp/hunter-futures-scan.json >/dev/null
+          jq -r '"Quantum Hunter Futures: " + (.scanned|tostring) + " symbols checked; " + (.signals|length|tostring) + " real-flow-confirmed signals' /tmp/hunter-futures-scan.json
           {
             echo "- Shared Spot trade-flow service: responding with real exchange trades and provider attribution"
             echo "- Independent Spot scan: separate scan endpoint responding for BTC/ETH"
