@@ -245,7 +245,7 @@ async function runRadar(env,scheduledTime=Date.now()){
   }
   const nextCursor=cursor;
   const snapshot={
-    status:"online",source:"Cloudflare scheduled radar",scoring_version:2,retention_score:RETENTION_SCORE,
+    status:"online",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,source:"Cloudflare scheduled radar",scoring_version:3,retention_score:RETENTION_SCORE,
     universe_source:universeSource,universe_cache_age_ms:universeSource==="cached"?cacheAge:0,
     scanned_at:new Date().toISOString(),scheduled_at:new Date(Number(scheduledTime)||Date.now()).toISOString(),
     universe_count:universe.length,scanned_count:completed,valid_count:valid,failed_count:failed,failed_samples:failedSamples,
@@ -283,11 +283,11 @@ export default {
     const url=new URL(request.url);
     if(request.method==="OPTIONS")return json({},204);
     if(request.method!=="GET")return json({error:"Method not allowed"},405);
-    if(url.pathname==="/health")return json({worker:"online",scheduled_scan:"every minute",kv:!!env.RADAR_KV,checked_at:new Date().toISOString()});
+    if(url.pathname==="/health")return json({worker:"online",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,scheduled_scan:"every minute",kv:!!env.RADAR_KV,checked_at:new Date().toISOString()});
     if(url.pathname==="/fast-radar-snapshot"||url.pathname==="/snapshot"){
       if(!env.RADAR_KV)return json({status:"not_configured",signals:[]},503);
       const snapshot=await env.RADAR_KV.get("radar:snapshot",{type:"json"});
-      return json(snapshot||{status:"warming_up",signals:[],message:"اولین اسکن زمان‌بندی‌شده هنوز کامل نشده است."});
+      return json(snapshot||{status:"warming_up",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,signals:[],message:"اولین اسکن زمان‌بندی‌شده هنوز کامل نشده است."});
     }
     return json({error:"Not found"},404);
   },
