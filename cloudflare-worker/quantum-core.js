@@ -25,7 +25,8 @@ export function scoreQuantumOpportunity(input={}){
  const flowAligned=input.flowConfirmed===true&&flowImbalance*trend>=0.045;
  const volumeConfirmed=finite(input.volumeRatio)>=1.1;
  const multiExchangeConfirmed=input.multiExchangeConfirmed===true;
- return {engine:QUANTUM_ENGINE_NAME,version:QUANTUM_ENGINE_VERSION,score:clamp(score,0,99),confidence,components:Object.fromEntries(Object.entries(parts).map(([key,value])=>[key,Math.round(value)])),weights:QUANTUM_SCORE_WEIGHTS,dataAgeMs:age,flowValidated:input.flowConfirmed===true,flowAligned,volumeConfirmed,multiExchangeConfirmed,candidateGate,qualityGate:candidateGate&&flowAligned&&volumeConfirmed&&multiExchangeConfirmed};
+ const depthConfirmed=input.requireDepthConfirmation!==true||input.depthConfirmed===true;
+ return {engine:QUANTUM_ENGINE_NAME,version:QUANTUM_ENGINE_VERSION,score:clamp(score,0,99),confidence,components:Object.fromEntries(Object.entries(parts).map(([key,value])=>[key,Math.round(value)])),weights:QUANTUM_SCORE_WEIGHTS,dataAgeMs:age,flowValidated:input.flowConfirmed===true,flowAligned,volumeConfirmed,multiExchangeConfirmed,depthConfirmed,candidateGate,qualityGate:candidateGate&&flowAligned&&volumeConfirmed&&multiExchangeConfirmed&&depthConfirmed};
 }
 export function normalizeQuantumUniverse(items,marketType="spot"){
  if(!Array.isArray(items))return [];
