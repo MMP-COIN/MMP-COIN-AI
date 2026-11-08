@@ -52,15 +52,15 @@ jobs:
             console.log('JavaScript syntax OK: ' + file);
           }
           const html = fs.readFileSync('www/index.html', 'utf8');
-          const ids = [...html.matchAll(/\\bid=["']([^"']+)["']/g)].map(x => x[1]);
+          const ids = [...html.matchAll(/\bid=["']([^"']+)["']/g)].map(x => x[1]);
           const duplicates = [...new Set(ids.filter((id, i) => ids.indexOf(id) !== i))];
           if (duplicates.length) throw new Error('Duplicate HTML IDs: ' + duplicates.join(', '));
           if (!ids.includes('market-ticker')) throw new Error('Live market ticker container is missing');
-          const scripts = [...html.matchAll(/<script\\b([^>]*)>([\\s\\S]*?)<\\/script>/gi)];
+          const scripts = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)];
           let parsed = 0;
           for (let i = 0; i < scripts.length; i++) {
             const attrs = scripts[i][1], code = scripts[i][2];
-            if (/\\bsrc\\s*=/.test(attrs) || !code.trim()) continue;
+            if (/\bsrc\s*=/.test(attrs) || !code.trim()) continue;
             new vm.Script(code, { filename: 'www/index.html:inline-script-' + i });
             parsed++;
           }
