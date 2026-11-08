@@ -509,7 +509,7 @@ async function loadMarketFlow(symbol,windowMinutes=5){
    break;
   }catch(error){lastError=String(error?.message||error).slice(0,160);}
  }
- if(!trades||truncated){
+ if(!trades?.length||truncated){
   for(const host of ["https://api.binance.com"]){
    try{
     const d=await marketFlowJson(host+"/api/v3/aggTrades?symbol="+pair+"&startTime="+cutoff+"&endTime="+now+"&limit=1000");
@@ -522,7 +522,7 @@ async function loadMarketFlow(symbol,windowMinutes=5){
    }catch(error){lastError=String(error?.message||error).slice(0,160);}
   }
  }
- if(!trades||truncated){
+ if(!trades?.length||truncated){
   try{
    const d=await marketFlowJson("https://www.okx.com/api/v5/market/trades?instId="+encodeURIComponent(pair.replace(/USDT$/,"")+"-USDT")+"&limit=500");
    if(String(d.code)!=="0")throw new Error(d.msg||"OKX trades unavailable");
@@ -533,7 +533,7 @@ async function loadMarketFlow(symbol,windowMinutes=5){
    provider="OKX Spot · معاملات واقعی";
   }catch(error){lastError=String(error?.message||error).slice(0,160);}
  }
- if(!trades||truncated){
+ if(!trades?.length||truncated){
   try{
    const gatePair=pair.replace(/USDT$/,"")+"_USDT";
    const d=await marketFlowJson("https://api.gateio.ws/api/v4/spot/trades?currency_pair="+encodeURIComponent(gatePair)+"&limit=1000");
@@ -544,7 +544,7 @@ async function loadMarketFlow(symbol,windowMinutes=5){
    if(gateTrades.length&&(!trades||!gateTruncated||gateTrades.length>trades.length)){trades=gateTrades;truncated=gateTruncated;provider="Gate Spot · معاملات واقعی";}
   }catch(error){lastError=String(error?.message||error).slice(0,160);}
  }
- if(!trades)throw new Error("داده معاملات از Bybit، Binance، OKX و Gate دریافت نشد: "+lastError);
+ if(!trades?.length)throw new Error("داده معاملات از Bybit، Binance، OKX و Gate دریافت نشد: "+lastError);
  const buckets=new Map();let buy5m=0,sell5m=0;
  for(const trade of trades){
   const quote=trade.price*trade.size;if(!Number.isFinite(quote)||quote<=0)continue;
