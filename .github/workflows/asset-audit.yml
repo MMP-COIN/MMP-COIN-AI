@@ -109,7 +109,7 @@ jobs:
                 const rows=c.rows(data);
                 if (!Array.isArray(rows)) throw new Error('ساختار کندل نامعتبر است');
                 if (rows.length < minRows(tf)) {
-                  if (tf==='1d' && rows.length>=7 && (!limitedHistory || rows.length>limitedHistory.candles)) {
+                  if ((tf==='1d'||fastIntervals.includes(tf)) && rows.length>=7 && (!limitedHistory || rows.length>limitedHistory.candles)) {
                     limitedHistory={ok:true,provider:c.name,candles:rows.length,limited_history:true,note:'تاریخچه روزانه کمتر از ۲۰ کندل است'};
                   }
                   throw new Error('کندل ناکافی: '+rows.length);
