@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#08090d">
 <meta name="mmp-app-version" content="2.0.0">
+<meta name="mmp-quantum-engine" content="QIE-1.1.0">
 <!-- Native app: bypass stale WebView HTML cache on every cold launch without requiring an APK rebuild. -->
 <script>
 (function(){
@@ -21,7 +22,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="icon" type="image/svg+xml" href="assets/mmp-coin-ai-icon.svg?v=20261108-quantum1">
 <link rel="manifest" href="manifest.webmanifest?v=20261108-quantum1">
-<title>MMP COIN AI | ترمینال جامع و هوشمند ارز دیجیتال</title>
+<title>MMP QUANTUM | ترمینال جامع و هوشمند بازارهای مالی</title>
 <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
 <style>
 :root{--bg:#08090d;--panel:#11131b;--panel2:#171a24;--line:#282c38;--gold:#d9b66d;--gold2:#f2d99b;--text:#f4f1e9;--muted:#9a9eaa;--green:#25d695;--red:#ff5e6c;--yellow:#f4c45e;--blue:#78a9ff}
@@ -1268,6 +1269,33 @@ body.radar-detail-open{overflow:hidden}
 @keyframes quantumOrbitPulse{0%,100%{box-shadow:0 0 5px #d9b66d22;transform:rotate(0deg)}50%{box-shadow:0 0 13px #d9b66d66;transform:rotate(18deg)}}
 @media(prefers-reduced-motion:reduce){.quantum-engine-chip span,[data-quantum-module] .section-kicker:before{animation:none!important}}
 </style>
+<style id="mmp-quantum-module-identity">
+:root{--q-gold:#e4c47d;--q-glow:rgba(220,177,91,.22)}
+[data-quantum-module]{--q-accent:var(--q-gold);position:relative}
+[data-quantum-module] .section-kicker{display:flex;align-items:center;gap:7px;color:var(--q-accent)!important;letter-spacing:.12em}
+[data-quantum-module] .section-kicker:before{content:"◈";display:inline-grid;place-items:center;flex:0 0 19px;width:19px;height:19px;border:1px solid color-mix(in srgb,var(--q-accent) 62%,transparent);border-radius:6px;background:linear-gradient(145deg,color-mix(in srgb,var(--q-accent) 18%,transparent),transparent);box-shadow:0 0 13px var(--q-glow);font-size:12px;line-height:1}
+[data-quantum-module="radar"]{--q-accent:#f1cf7d}
+[data-quantum-module="hunter"]{--q-accent:#e8bd68}
+[data-quantum-module="analyzer"]{--q-accent:#d9b6ff}
+[data-quantum-module="momentum"]{--q-accent:#65dfc1}
+[data-quantum-module="chart"]{--q-accent:#8fc5ef}
+[data-quantum-module="learning"]{--q-accent:#d7a8ef}
+[data-quantum-module="assets"]{--q-accent:#e4c47d}
+[data-quantum-module="app"]{--q-accent:#f0d58f}
+[data-quantum-module="intelligence"]{--q-accent:#8bd7e8}
+[data-quantum-module="alerts"]{--q-accent:#f09ca8}
+[data-quantum-module="tools"]{--q-accent:#cbb88a}
+[data-quantum-module="global-clock"]{--q-accent:#9db9e9}
+[data-quantum-module="signal-lab"]{--q-accent:#b8a0f0}
+[data-quantum-module="market-data"]{--q-accent:#e8c77c}
+[data-quantum-module="contact"]{--q-accent:#d6b56f}
+[data-quantum-module] .section-head h2,[data-quantum-module] .intel-suite-head h2{text-shadow:0 0 18px color-mix(in srgb,var(--q-accent) 13%,transparent)}
+#market-snapshot .stat-label:before{content:"✧";display:inline-block;margin-left:6px;color:#e8c77c;text-shadow:0 0 10px #d9b66d88}
+#market-snapshot .card{border-color:#d9b66d30;box-shadow:inset 0 1px #ffffff08,0 8px 24px #0004}
+#contact-us{border-color:#d9b66d66!important;box-shadow:0 0 28px #d9b66d13,inset 0 1px #ffffff08}
+#contact-us:before{content:"✧ QUANTUM SUPPORT";display:block;margin-bottom:10px;color:#d9b66d;font-size:9px;letter-spacing:.18em}
+@media(prefers-reduced-motion:no-preference){[data-quantum-module] .section-kicker:before{animation:qModulePulse 4s ease-in-out infinite}@keyframes qModulePulse{0%,100%{box-shadow:0 0 7px var(--q-glow)}50%{box-shadow:0 0 17px var(--q-glow)}}}
+</style>
 </head>
 <body class="mmp-app-mode">
 
@@ -1328,7 +1356,7 @@ body.radar-detail-open{overflow:hidden}
 <section class="hero">
 <div>
   <div class="eyebrow">MMP QUANTUM INTELLIGENCE NETWORK</div>
-  <div class="quantum-engine-chip"><span></span> QUANTUM CORE · QIE-1.0.0 · LIVE INTELLIGENCE</div><h1 class="hero-title"><span>ترمینال جامع و هوشمند</span><span>بازارهای مالی</span></h1>
+  <div class="quantum-engine-chip"><span></span> QUANTUM CORE · QIE-1.1.0 · LIVE INTELLIGENCE</div><h1 class="hero-title"><span>ترمینال جامع و هوشمند</span><span>بازارهای مالی</span></h1>
   <p>داده‌های زنده بازار، رادار فرصت‌ها و تحلیل چندلایه هوش مصنوعی؛ برای تصمیم‌گیری آگاهانه، نه دنبال‌کردن سیگنال‌های کور.</p>
 </div>
 <div class="hero-visual"><div class="hero-orbit orbit-a"></div><div class="hero-orbit orbit-b"></div><div class="hero-coin"><img src="assets/mmp-coin-mark.svg?v=20261108-quantum1" alt="سکه طلایی M برجسته MMP COIN AI"></div><div class="hero-spark spark-a"></div><div class="hero-spark spark-b"></div><div class="hero-visual-label">MARKET INTELLIGENCE <span>● LIVE</span></div></div><div class="hero-refresh-group"><span class="badge" id="updated">در حال دریافت داده…</span><button class="btn primary hero-refresh-btn" id="market-refresh-btn" type="button">↻ بروزرسانی بازار</button></div>
@@ -1336,7 +1364,7 @@ body.radar-detail-open{overflow:hidden}
 
 
 
-<section class="grid" id="market-snapshot">
+<section class="grid" id="market-snapshot" data-quantum-module="market-data">
 <div class="card"><div class="stat-label">بیت‌کوین · BTC</div><div class="stat-value" id="btc">$—</div><div class="sub" id="btc-sub">—</div></div>
 <div class="card"><div class="stat-label">اتریوم · ETH</div><div class="stat-value" id="eth">$—</div><div class="sub" id="eth-sub">—</div></div>
 <div class="card"><div class="stat-label">تتر به تومان · USDT/IRT</div><div class="stat-value" id="usdt">—</div><div class="sub" id="usdt-source">منبع: Nobitex & Wallex</div></div>
@@ -1579,7 +1607,7 @@ body.radar-detail-open{overflow:hidden}
  <div class="sub" style="margin-top:12px">نسخه رسمی · دریافت از مخزن انتشار MMP COIN AI</div>
 </section>
 
-<section id="contact-us" aria-label="ارتباط با ما" style="margin:24px auto 22px;max-width:760px;padding:22px 18px;border:1px solid #80683f;border-radius:20px;background:linear-gradient(135deg,#171b24,#10131a 62%,#211b12);box-shadow:0 14px 34px #0006;text-align:center;scroll-margin-top:24px">
+<section id="contact-us" data-quantum-module="contact" aria-label="ارتباط با ما" style="margin:24px auto 22px;max-width:760px;padding:22px 18px;border:1px solid #80683f;border-radius:20px;background:linear-gradient(135deg,#171b24,#10131a 62%,#211b12);box-shadow:0 14px 34px #0006;text-align:center;scroll-margin-top:24px">
  <div style="color:var(--gold2);font-size:16px;font-weight:900;margin-bottom:12px">ارتباط با ما</div>
  <a href="mailto:mmp.coin.ai@gmail.com" dir="ltr" style="display:inline-block;color:var(--gold2);font-size:14px;font-weight:900;text-decoration:none;border:1px solid #80683f;border-radius:11px;padding:10px 14px">mmp.coin.ai@gmail.com</a>
 </section>
@@ -3347,7 +3375,7 @@ html.mmp-native-app .native-refresh-label{font:700 9px Tahoma,Arial,sans-serif!i
   document.addEventListener("DOMContentLoaded",function(){
    if(document.querySelector(".native-appbar"))return;
    var header=document.createElement("header");header.className="native-appbar";
-   header.innerHTML='<div class="native-brand"><div class="native-mark"><img src="assets/mmp-coin-ai-icon.svg" alt="MMP COIN AI"></div><div><b>MMP COIN AI</b><small>SMART MARKET TERMINAL</small></div></div><div class="native-appbar-actions"><div class="native-currency-switch" role="group" aria-label="واحد نمایش قیمت"><button type="button" id="native-currency-irt" class="active" aria-pressed="true" onclick="setCurrency(\'IRT\')">تومان</button><button type="button" id="native-currency-usdt" aria-pressed="false" onclick="setCurrency(\'USDT\')">تتر</button></div><button type="button" class="native-update-check-btn" id="native-update-check-btn" aria-label="بررسی نسخه جدید" title="بررسی نسخه جدید">⇧</button><button type="button" class="native-refresh-btn" id="native-refresh-btn" aria-label="بروزرسانی بازار" title="دریافت دوباره قیمت‌ها و وضعیت اتصال منابع داده">⟳<span class="native-refresh-label">تازه‌سازی داده‌ها</span></button><button type="button" class="native-menu-toggle" id="native-menu-toggle" aria-label="منوی اپلیکیشن" aria-expanded="false">☰</button></div><nav class="native-app-menu" id="native-app-menu" aria-label="منوی اپلیکیشن"><a href="#opportunities">📡 رادار هوشمند بازار</a><a href="#market-hunter">🎯 شکارچی بازار</a><a href="#ai-section">✧ تحلیلگر هوشمند AI</a><a href="#boom-hunter">◉ آزمایشگاه Boom Hunter</a><a href="#chart-section">▥ نمودار تریدینگ‌ویو</a><a href="#trading-tools">⌗ ابزارهای معامله</a><a class="native-admin-link" href="https://mmp-coin.github.io/admin.html">⚙ ورود به پنل مدیریت</a><div class="native-menu-version" id="native-menu-version">نسخه فعلی اپ · 1.0.0</div><button type="button" id="native-share-app">↗ ارسال اپلیکیشن برای دوستان</button></nav>';
+   header.innerHTML='<div class="native-brand"><div class="native-mark"><img src="assets/mmp-coin-ai-icon.svg" alt="MMP QUANTUM"></div><div><b>MMP QUANTUM</b><small>QUANTUM INTELLIGENCE</small></div></div><div class="native-appbar-actions"><div class="native-currency-switch" role="group" aria-label="واحد نمایش قیمت"><button type="button" id="native-currency-irt" class="active" aria-pressed="true" onclick="setCurrency(\'IRT\')">تومان</button><button type="button" id="native-currency-usdt" aria-pressed="false" onclick="setCurrency(\'USDT\')">تتر</button></div><button type="button" class="native-update-check-btn" id="native-update-check-btn" aria-label="بررسی نسخه جدید" title="بررسی نسخه جدید">⇧</button><button type="button" class="native-refresh-btn" id="native-refresh-btn" aria-label="بروزرسانی بازار" title="دریافت دوباره قیمت‌ها و وضعیت اتصال منابع داده">⟳<span class="native-refresh-label">تازه‌سازی داده‌ها</span></button><button type="button" class="native-menu-toggle" id="native-menu-toggle" aria-label="منوی اپلیکیشن" aria-expanded="false">☰</button></div><nav class="native-app-menu" id="native-app-menu" aria-label="منوی اپلیکیشن"><a href="#opportunities">📡 رادار هوشمند بازار</a><a href="#market-hunter">🎯 شکارچی بازار</a><a href="#ai-section">✧ تحلیلگر هوشمند AI</a><a href="#boom-hunter">◉ آزمایشگاه Boom Hunter</a><a href="#chart-section">▥ نمودار تریدینگ‌ویو</a><a href="#trading-tools">⌗ ابزارهای معامله</a><a class="native-admin-link" href="https://mmp-coin.github.io/admin.html">⚙ ورود به پنل مدیریت</a><div class="native-menu-version" id="native-menu-version">نسخه فعلی اپ · 1.0.0</div><button type="button" id="native-share-app">↗ ارسال اپلیکیشن برای دوستان</button></nav>';
    document.body.insertBefore(header,document.body.firstChild);
    var menuToggle=header.querySelector("#native-menu-toggle"),appMenu=header.querySelector("#native-app-menu");
    var nativeVersionLabel=header.querySelector("#native-menu-version");if(nativeVersionLabel)nativeVersionLabel.textContent="نسخه فعلی اپ · "+(document.querySelector('meta[name="mmp-app-version"]')?.content||"1.0.0");
