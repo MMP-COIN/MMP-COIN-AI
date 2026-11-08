@@ -74,9 +74,9 @@ async function scanCoin(coin){
   if(Number(coin.total_volume||0)<50000||!listed.length)return null;
   const order=[...new Map(listed.sort((a,b)=>Number(b.volume)-Number(a.volume)).map(x=>[x.exchange,x])).values()].map(x=>x.exchange);
   const fallback=["Binance","OKX","Gate","KuCoin","WhiteBIT","Bitget","Bybit"].filter(name=>!order.includes(name));
-  const verificationOrder=[...order,...fallback].slice(0,2);
+  const verificationOrder=[...order,...fallback].slice(0,4);
   let market=null,corroboration=null,errors=[];
-  for(const venue of verificationOrder){try{const candidate=await loadProvider(symbol,venue);if(!market)market=candidate;else corroboration=candidate;}catch(error){errors.push(venue+": "+String(error?.message||error).slice(0,80));}}
+  for(const venue of verificationOrder){if(corroboration)break;try{const candidate=await loadProvider(symbol,venue);if(!market)market=candidate;else corroboration=candidate;}catch(error){errors.push(venue+": "+String(error?.message||error).slice(0,80));}}
   if(!market)throw new Error(errors.join(" | ")||"No candle provider responded");
   if(!corroboration)throw new Error("تأیید دو صرافی برای "+symbol+"USDT در دسترس نیست: "+errors.join(" | "));
   const rows=market.rows,now=Date.now(),index=rows.length-2,other=corroboration.rows.slice(0,-1).at(-1),primary=rows.slice(0,-1).at(-1);
