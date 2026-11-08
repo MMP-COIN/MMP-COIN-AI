@@ -632,6 +632,8 @@ body:after{content:"";position:fixed;width:42vw;height:42vw;max-width:620px;max-
 .coin-risk-note{color:#d7b778!important;font-size:10px!important}
 /* High-energy hunter: compact animated candlestick ticker */
 .hunter-card{border-radius:16px;box-shadow:0 8px 26px #0005;transition:transform .2s,border-color .2s,box-shadow .2s}
+.hunter-card[role="button"]{cursor:pointer}
+.hunter-card[role="button"]:focus-visible{outline:2px solid var(--gold2);outline-offset:3px}
 .hunter-card.up{background:radial-gradient(ellipse at 74% 0%,#0bc48b1b,transparent 45%),linear-gradient(120deg,#10251f,#0c151b 66%,#101923);border-color:#1d9d7766;animation:hunterRiseGlow 2.8s ease-in-out infinite}
 .hunter-card.down{background:radial-gradient(ellipse at 74% 0%,#ff536d1b,transparent 45%),linear-gradient(120deg,#2a151d,#10151d 66%,#17131b);border-color:#c4475d66;animation:hunterFallGlow 2.8s ease-in-out infinite}
 @keyframes hunterRiseGlow{0%,100%{box-shadow:0 0 0 #20e0a000,0 8px 24px #0005}50%{box-shadow:0 0 22px #20e0a022,0 8px 28px #0007}}
