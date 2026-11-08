@@ -212,6 +212,9 @@ async function runRadar(env,scheduledTime=Date.now()){
   for(const signal of scannedSignals){
     signal.score=Math.max(0,Math.min(99,Number(signal.score)+Number(signal.flowAdjustment||0)));
     if(!signal.coreAligned)signal.score=Math.min(signal.score,63);
+    // A below-average candle volume is accepted only when executed trades independently confirm direction.
+    signal.volumeConfirmed=Number(signal.volumeRatio)>=1||Number(signal.flowAdjustment)===8;
+    if(!signal.volumeConfirmed)signal.score=Math.min(signal.score,RETENTION_SCORE-1);
     if(signal.score>=RETENTION_SCORE){
       signals.set(signal.id,signal);
       delete removedSignals[signal.id];
