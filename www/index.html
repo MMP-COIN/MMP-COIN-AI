@@ -3499,7 +3499,7 @@ html.mmp-native-app .native-refresh-label{font:700 9px Tahoma,Arial,sans-serif!i
     fetch("https://api.github.com/repos/MMP-COIN/MMP-COIN-AI/releases/latest",{cache:"no-store",headers:{Accept:"application/vnd.github+json"},signal:controller.signal})
      .then(function(response){if(!response.ok)throw new Error("HTTP "+response.status);return response.json();})
      .then(function(release){
-      var version=String(release&&release.tag_name||"").replace(/^app-v/i,"").replace(/-build-\\d+$/i,"");
+      var version=String(release&&release.tag_name||"").replace(/^app-v/i,"").replace(/-build-\d+$/i,"");
       var apk=(release&&Array.isArray(release.assets)?release.assets:[]).find(function(asset){return String(asset.name||"").toLowerCase()==="app-release.apk";});
       if(!version||!apk||!apk.browser_download_url)throw new Error("APK release unavailable");
       if(compareVersions(version,currentNativeVersion)<=0){
