@@ -72,21 +72,18 @@ async function scanCoin(coin){
     ?coin.marketPairs.filter(x=>String(x.quote||"").toUpperCase()==="USDT"&&Number(x.volume)>=5000&&SUPPORTED.has(String(x.exchange)))
     :Object.entries(coin.hunterVenueVolume||{}).filter(([name,volume])=>SUPPORTED.has(name)&&Number(volume)>=5000).map(([exchange,volume])=>({exchange,volume,quote:"USDT"}));
   if(Number(coin.total_volume||0)<50000||!listed.length)return null;
-  const order=[...new Map(listed.sort((a,b)=>Number(b.volume)-Number(a.volume)).map(x=>[x.exchange,x])).values()].map(x=>x.exchange).slice(0,2);
-  let market=null,errors=[];
-  // At most two venues per symbol: predictable subrequest budget and bounded failover.
-  for(const venue of order){
-    try{market=await loadProvider(symbol,venue);break;}
-    catch(error){errors.push(venue+": "+String(error?.message||error).slice(0,80));}
-  }
-  // If the catalog exposes only one non-Binance venue and it is rate-limited/unavailable,
-  // make one bounded Binance attempt as a universal fallback. Total candle attempts stay <= 2.
-  if(!market&&order.length===1&&order[0]!=="Binance"){
-    try{market=await loadProvider(symbol,"Binance");}
-    catch(error){errors.push("Binance fallback: "+String(error?.message||error).slice(0,80));}
-  }
+  const order=[...new Map(listed.sort((a,b)=>Number(b.volume)-Number(a.volume)).map(x=>[x.exchange,x])).values()].map(x=>x.exchange);
+  const fallback=["Binance","OKX","Gate","KuCoin","WhiteBIT","Bitget","Bybit"].filter(name=>!order.includes(name));
+  const verificationOrder=[...order,...fallback].slice(0,2);
+  let market=null,corroboration=null,errors=[];
+  for(const venue of verificationOrder){try{const candidate=await loadProvider(symbol,venue);if(!market)market=candidate;else corroboration=candidate;}catch(error){errors.push(venue+": "+String(error?.message||error).slice(0,80));}}
   if(!market)throw new Error(errors.join(" | ")||"No candle provider responded");
-  const rows=market.rows,now=Date.now(),index=rows.length-2;
+  if(!corroboration)throw new Error("تأیید دو صرافی برای "+symbol+"USDT در دسترس نیست: "+errors.join(" | "));
+  const rows=market.rows,now=Date.now(),index=rows.length-2,other=corroboration.rows.slice(0,-1).at(-1),primary=rows.slice(0,-1).at(-1);
+  if(!primary||!other)throw new Error("کندل بسته‌شده برای تأیید چندصرافی کافی نیست");
+  const exchangeTimeDiffMs=Math.abs(primary[0]-other[0]),exchangePriceDeviationPct=primary[4]>0?Math.abs(other[4]/primary[4]-1)*100:Infinity;
+  const multiExchangeConfirmed=exchangeTimeDiffMs<=90000&&exchangePriceDeviationPct<=0.4;
+  if(!multiExchangeConfirmed)throw new Error("اختلاف چندصرافی خارج از حد مجاز: "+exchangeTimeDiffMs+"ms / "+exchangePriceDeviationPct.toFixed(3)+"٪");
   if(index<30)return null;
   const last=rows[index],candleAge=now-last[0],close=last[4],open=last[1],volume=last[5];
   if(candleAge<60000||candleAge>180000||close<=0||open<=0||volume<=0)return null;
@@ -118,7 +115,7 @@ async function scanCoin(coin){
   const dailyScore=dailyChange24h!==0&&Math.sign(dailyChange24h)===direction?5:0;
   const impulseScore=signs[0]===direction&&Math.abs(change1m)>=0.08?5:0;
   let score=Math.round(10+alignmentScore+momentumScore+volumeScore+breakoutScore+dailyScore+impulseScore);
-  const quantum=scoreQuantumOpportunity({trend,change1m,change3m,change5m,change15m,volumeRatio,breakout,structureAligned:coreAligned,trend15:Math.sign(change15m)===direction,overextended:Math.abs(change5m)>=1.5||Math.abs(change1m)>=0.8,dataAgeMs:now-last[0],flowConfirmed:false});
+  const quantum=scoreQuantumOpportunity({trend,change1m,change3m,change5m,change15m,volumeRatio,breakout,structureAligned:coreAligned,trend15:Math.sign(change15m)===direction,overextended:Math.abs(change5m)>=1.5||Math.abs(change1m)>=0.8,dataAgeMs:now-last[0],flowConfirmed:false,multiExchangeConfirmed});
   score=Math.round(score*0.55+quantum.score*0.45);
   if(!coreAligned)score=Math.min(score,63);
   if(volumeRatio<0.75)score=Math.min(score,60);
@@ -127,7 +124,7 @@ async function scanCoin(coin){
   score=Math.max(0,Math.min(99,score));
   const overextended=Math.abs(change5m)>=1.5||Math.abs(change1m)>=0.8||Math.abs(dailyChange24h)>=18;
   return {
-    id:String(coin.id),symbol,trend,score,quantum,scoringVersion:3,coreAligned,
+    id:String(coin.id),symbol,trend,score,quantum,scoringVersion:3,coreAligned,multiExchangeConfirmed,multiExchangeEvidence:{primary:market.provider,secondary:corroboration.provider,timeDiffMs:exchangeTimeDiffMs,priceDeviationPct:Number(exchangePriceDeviationPct.toFixed(4)),primaryPrice:primary[4],secondaryPrice:other[4],candleTime:primary[0]},
     change1m,change3m,change5m,change15m,change30m,dailyChange24h,
     dailyMover:Math.abs(dailyChange24h)>=8,lowLiquidity,volumeRatio,
     breakout,breakoutDirection:breakout?(trend==="bull"?"up":"down"):"",overextended,
@@ -176,7 +173,8 @@ async function runRadar(env,scheduledTime=Date.now()){
   if(!universe.length&&universeSource==="live"&&cachedUniverse){universe=buildUniverse(cachedUniverse);universeSource="cached";}
   if(!universe.length)throw new Error("No eligible USDT spot symbols; previous snapshot retained");
   const previousSignals=[...(Array.isArray(oldSnapshot?.signals)?oldSnapshot.signals:[]),...(Array.isArray(oldSnapshot?.legacy_signals)?oldSnapshot.legacy_signals:[])];
-  const signals=new Map(previousSignals.filter(x=>Number(x?.score)>=RETENTION_SCORE).map(x=>[String(x.id),x]));
+  const retentionNow=Date.now();
+  const signals=new Map(previousSignals.filter(x=>Number(x?.score)>=RETENTION_SCORE&&retentionNow-Number(x?.updatedAt||0)<=5*60*1000).map(x=>[String(x.id),x]));
   const start=Math.max(0,Number(state?.cursor)||0)%universe.length;
   const byId=new Map(universe.map(coin=>[String(coin.id),coin]));
   const bySymbol=new Map(universe.map(coin=>[String(coin.symbol).toUpperCase(),coin]));
@@ -211,7 +209,7 @@ async function runRadar(env,scheduledTime=Date.now()){
     finally{completed++;}
   });
   // Validate the strongest fresh candidates with real executed trades, not candle volume alone.
-  const flowCandidates=scannedSignals.filter(x=>x.coreAligned&&!x.lowLiquidity&&Number(x.score)>=48).sort((a,b)=>b.score-a.score).slice(0,2);
+  const flowCandidates=[...scannedSignals.filter(x=>x.trend==="bull"&&x.coreAligned&&!x.lowLiquidity&&x.multiExchangeConfirmed&&Number(x.score)>=48).sort((a,b)=>b.score-a.score).slice(0,2),...scannedSignals.filter(x=>x.trend==="bear"&&x.coreAligned&&!x.lowLiquidity&&x.multiExchangeConfirmed&&Number(x.score)>=48).sort((a,b)=>b.score-a.score).slice(0,2)];
   await mapLimit(flowCandidates,2,async signal=>{
     try{
       const flow=await getJson(MAIN_FLOW+"?symbol="+encodeURIComponent(signal.symbol)+"&window=5",8500);
@@ -231,7 +229,8 @@ async function runRadar(env,scheduledTime=Date.now()){
   // Re-score each candidate with the shared Quantum Intelligence core.
   for(const signal of scannedSignals){
     const flow=signal.flow||{},gross=Number(flow.buy5m||0)+Number(flow.sell5m||0),imbalance=gross>0?(Number(flow.buy5m||0)-Number(flow.sell5m||0))/gross:0;
-    signal.quantum=scoreQuantumOpportunity({...signal,flowImbalance:imbalance,flowConfirmed:flow.complete===true&&Number(flow.tradeCount)>=10,dataAgeMs:Date.now()-Number(signal.candleTime||Date.now())});
+    signal.flowConfirmed=flow.complete===true&&Number(flow.tradeCount)>=10&&(signal.trend==="bull"?imbalance>=0.045:imbalance<=-0.045);
+    signal.quantum=scoreQuantumOpportunity({...signal,flowImbalance:imbalance,flowConfirmed:signal.flowConfirmed,multiExchangeConfirmed:signal.multiExchangeConfirmed,volumeRatio:signal.volumeRatio,dataAgeMs:Date.now()-Number(signal.candleTime||Date.now())});
     signal.score=Math.round(Number(signal.score||0)*0.55+signal.quantum.score*0.45);
   }
   // Only fresh Quantum scores are published. Legacy signals remain stored until their own valid rescan.
@@ -239,10 +238,10 @@ async function runRadar(env,scheduledTime=Date.now()){
     signal.score=Math.max(0,Math.min(99,Number(signal.score)+Number(signal.flowAdjustment||0)));
     if(!signal.coreAligned)signal.score=Math.min(signal.score,63);
     // A below-average candle volume is accepted only when executed trades independently confirm direction.
-    signal.volumeConfirmed=Number(signal.volumeRatio)>=1||Number(signal.flowAdjustment)===8;
+    const flow=signal.flow||{};
+    signal.volumeConfirmed=Number(signal.volumeRatio)>=1.1;
     if(!signal.volumeConfirmed)signal.score=Math.min(signal.score,RETENTION_SCORE-1);
-    signal.flowConfirmed=flow.complete===true&&Number(flow.tradeCount)>=10;
-    if(!signal.flowConfirmed||Number(signal.flowAdjustment)<0)signal.score=Math.min(signal.score,RETENTION_SCORE-1);
+    if(!signal.flowConfirmed||!signal.multiExchangeConfirmed||!signal.quantum?.qualityGate||Number(signal.flowAdjustment)<0)signal.score=Math.min(signal.score,RETENTION_SCORE-1);
     if(signal.score>=RETENTION_SCORE){
       signals.set(signal.id,signal);
       delete removedSignals[signal.id];
@@ -261,7 +260,7 @@ async function runRadar(env,scheduledTime=Date.now()){
     signals:(()=>{
       const canonicalIds=new Map(universe.map(coin=>[String(coin.symbol).toUpperCase(),String(coin.id)]));
       const unique=new Map();
-      for(const signal of [...signals.values()].filter(x=>Number(x?.score)>=RETENTION_SCORE&&Number(x?.scoringVersion)===3).sort((a,b)=>b.score-a.score)){
+      for(const signal of [...signals.values()].filter(x=>Number(x?.score)>=RETENTION_SCORE&&Number(x?.scoringVersion)===3&&Date.now()-Number(x?.updatedAt||0)<=5*60*1000&&x.multiExchangeConfirmed===true&&x.flowConfirmed===true&&x.volumeConfirmed===true&&x.quantum?.qualityGate===true).sort((a,b)=>b.score-a.score)){
         const symbol=String(signal.symbol||signal.coin?.symbol||"").toUpperCase();
         if(!symbol||canonicalIds.get(symbol)!==String(signal.id)||unique.has(symbol))continue;
         unique.set(symbol,signal);
