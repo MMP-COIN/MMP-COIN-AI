@@ -94,9 +94,12 @@ async function runRadar(env,scheduledTime=Date.now()){
   const [state,oldSnapshot]=await Promise.all([env.RADAR_KV.get("radar:state",{type:"json"}),env.RADAR_KV.get("radar:snapshot",{type:"json"})]);
   const signals=new Map((Array.isArray(oldSnapshot?.signals)?oldSnapshot.signals:[]).filter(x=>Number(x?.score)>=RETENTION_SCORE).map(x=>[String(x.id),x]));
   const start=Math.max(0,Number(state?.cursor)||0)%universe.length,batch=Array.from({length:Math.min(BATCH_SIZE,universe.length)},(_,i)=>universe[(start+i)%universe.length]);
-  let completed=0,failed=0,valid=0,removed=0,failedSamples=[],scannedSignals=[],removedSignals={};
+  let completed=0,failed=0,valid=0,removed=0,failedSamples=[],scannedSignals=[],removedSignals={...(state?.removed_signals||{})};
+  // Keep removal tombstones for 24 hours so clients that miss one snapshot still receive removals.
+  const tombstoneCutoff=Date.now()-24*60*60*1000;
+  for(const [id,item] of Object.entries(removedSignals)){if(Number(item?.removedAt||0)<tombstoneCutoff)delete removedSignals[id];}
   await mapLimit(batch,CONCURRENCY,async coin=>{
-    try{const signal=await scanCoin(coin);if(signal){valid++;scannedSignals.push(signal);if(signal.score>=RETENTION_SCORE)signals.set(signal.id,signal);else if(signals.delete(signal.id)){removed++;removedSignals[signal.id]={symbol:signal.symbol,score:signal.score,scannedAt:signal.updatedAt,reason:"below_retention_threshold"};}}}
+    try{const signal=await scanCoin(coin);if(signal){valid++;scannedSignals.push(signal);if(signal.score>=RETENTION_SCORE){signals.set(signal.id,signal);delete removedSignals[signal.id];}else if(signals.delete(signal.id)){removed++;removedSignals[signal.id]={symbol:signal.symbol,score:signal.score,scannedAt:signal.updatedAt,removedAt:Date.now(),reason:"below_retention_threshold"};}}}
     catch(error){failed++;if(failedSamples.length<8)failedSamples.push({symbol:String(coin.symbol||""),error:String(error?.message||error).slice(0,220)});}finally{completed++;}
   });
   // Shared real-trade flow enriches a small set of strongest fresh candidates; it never changes radar scores or retention decisions.
@@ -109,7 +112,7 @@ async function runRadar(env,scheduledTime=Date.now()){
     const current=signals.get(signal.id);if(current&&Number(current.updatedAt)<=Number(signal.updatedAt))signals.set(signal.id,signal);
   });
   const nextCursor=(start+batch.length)%universe.length,snapshot={status:"online",source:"Cloudflare scheduled radar",retention_score:RETENTION_SCORE,scanned_at:new Date().toISOString(),scheduled_at:new Date(Number(scheduledTime)||Date.now()).toISOString(),universe_count:universe.length,scanned_count:completed,valid_count:valid,failed_count:failed,failed_samples:failedSamples,removed_count:removed,removed_signals:removedSignals,batch_size:BATCH_SIZE,next_cursor:nextCursor,signals:[...signals.values()].filter(x=>Number(x?.score)>=RETENTION_SCORE).sort((a,b)=>b.score-a.score).slice(0,300)};
-  await Promise.all([env.RADAR_KV.put("radar:snapshot",JSON.stringify(snapshot)),env.RADAR_KV.put("radar:state",JSON.stringify({cursor:nextCursor,updated_at:snapshot.scanned_at,universe_count:universe.length}))]);
+  await Promise.all([env.RADAR_KV.put("radar:snapshot",JSON.stringify(snapshot)),env.RADAR_KV.put("radar:state",JSON.stringify({cursor:nextCursor,updated_at:snapshot.scanned_at,universe_count:universe.length,removed_signals:removedSignals}))]);
   return snapshot;
 }
 function json(data,status=200){return new Response(JSON.stringify(data),{status,headers:{"Content-Type":"application/json; charset=utf-8","Access-Control-Allow-Origin":"*","Access-Control-Allow-Methods":"GET, OPTIONS","Access-Control-Allow-Headers":"Content-Type","Cache-Control":"no-store","X-Content-Type-Options":"nosniff"}});}
