@@ -1,4 +1,6 @@
 // Trigger one-by-one 100-asset audit
+import { QUANTUM_ENGINE_NAME, QUANTUM_ENGINE_VERSION, normalizeQuantumUniverse, scoreQuantumOpportunity } from "./quantum-core.js";
+const HUNTER_BATCH_SIZE = 24;
 const MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 function extractAIJson(value){
  let raw=typeof value==="string"?value:JSON.stringify(value??"");
@@ -12,7 +14,7 @@ function extractAIJson(value){
 }
 async function runAIWithFallback(env,prompt){
  const messages=[
-  {role:"system",content:"Return one valid JSON object only. Never give guaranteed financial advice."},
+  {role:"system",content:"You are MMP Quantum Intelligence Engine. Evaluate market evidence across momentum, structure, liquidity, multi-timeframe alignment, order flow, data quality and risk. Return one valid JSON object only. Clearly state uncertainty and invalidation conditions. Never give guaranteed financial advice."},
   {role:"user",content:prompt}
  ];
  const failures=[];
@@ -558,8 +560,8 @@ async function analyzeDigitalHunterSymbol(symbol,marketType="spot"){
  const aligned=v=>trend==="bull"?v>=-.025:v<=.025;if(!aligned(m1)||!aligned(m3))return null;
  const prior=rows.slice(-10,-5),breakout=trend==="bull"?last[4]>Math.max(...prior.map(q=>q[2])):last[4]<Math.min(...prior.map(q=>q[3])),base=b.slice(-16,-1).map(q=>q.v).filter(v=>v>0);if(base.length<10)return null;
  const avg=base.reduce((p,q)=>p+q,0)/base.length,volumeRatio=avg?x.v/avg:0,trend15=trend==="bull"?m15>.015:m15<-.015,structure=trend==="bull"?last[4]>=last[1]:last[4]<=last[1];
- const score=Math.min(99,Math.round(20+Math.min(18,Math.abs(m1)*18)+Math.min(18,Math.abs(m3)*8)+Math.min(18,Math.abs(m5)*5)+Math.min(22,Math.max(0,volumeRatio-.75)*13)+(breakout?12:0)+(trend15?10:0)+(structure?5:0)));if(score<55)return null;
- return {symbol,trend,score,change1m:m1,change3m:m3,change5m:m5,change15m:m15,volumeRatio,breakout,price:last[4],provider:m.provider,rows:rows.slice(-30),updatedAt:now,candleTime:last[0],engine:"digital-hunter-v2",market:marketType,timeframes:{m1,m3,m5,m15},evidence:{volumeRatio:+volumeRatio.toFixed(2),breakout,trend15m:trend15,structure},overextended:Math.abs(m5)>3.5};
+ const quantum=scoreQuantumOpportunity({trend,change1m:m1,change3m:m3,change5m:m5,change15m:m15,volumeRatio,breakout,structureAligned:structure,trend15,overextended:Math.abs(m5)>3.5,dataAgeMs:now-last[0],flowConfirmed:false});const score=quantum.score;if(score<55||!quantum.qualityGate)return null;
+ return {symbol,trend,score,change1m:m1,change3m:m3,change5m:m5,change15m:m15,volumeRatio,breakout,price:last[4],provider:m.provider,rows:rows.slice(-30),updatedAt:now,candleTime:last[0],engine:"quantum-hunter-v1",market:marketType,timeframes:{m1,m3,m5,m15},evidence:{volumeRatio:+volumeRatio.toFixed(2),breakout,trend15m:trend15,structure},overextended:Math.abs(m5)>3.5};
 }
 async function loadFuturesMarketFlow(symbol,windowMinutes=5){
  const pair=String(symbol||"").toUpperCase().replace(/USDT$/,"")+"USDT";
@@ -588,7 +590,7 @@ async function scanHunterSymbols(symbols,marketType="spot"){
    const f=marketType==="futures"?await loadFuturesMarketFlow(x.symbol,5):await loadMarketFlow(x.symbol,5);
    const gross=f.buy5m+f.sell5m,imb=gross?f.net5m/gross:0,ok=x.trend==="bull"?imb>=.045:imb<=-.045;
    if(f.trade_count<8||!ok)return;
-   x.score=Math.min(99,x.score+Math.min(18,Math.round(Math.abs(imb)*90)));
+   const quantum=scoreQuantumOpportunity({...x,flowImbalance:imb,flowConfirmed:f.complete!==false&&f.trade_count>=8,dataAgeMs:Date.now()-x.candleTime});x.quantum=quantum;x.score=quantum.score;
    x.flow={buy5m:f.buy5m,sell5m:f.sell5m,net5m:f.net5m,tradeCount:f.trade_count,provider:f.provider,complete:f.complete,coverageStart:f.coverage_start,rows:f.rows,imbalance:+imb.toFixed(4)};
    x.flowSignal=f.net5m>0?"inflow":"outflow";
    const bars=Array.isArray(x.rows)?x.rows.slice(-16):[],ranges=bars.slice(1).map((bar,i)=>Math.max(Number(bar[2])-Number(bar[3]),Math.abs(Number(bar[2])-Number(bars[i][4])),Math.abs(Number(bar[3])-Number(bars[i][4])))).filter(v=>Number.isFinite(v)&&v>0);
@@ -610,7 +612,7 @@ async function loadDigitalHunterFuturesUniverse(){
  ];
  const settled=await Promise.allSettled(jobs.map(fn=>fn())),map=new Map(),sources={};let providerCount=0;
  settled.forEach((r,i)=>{const name=["Binance USD-M Futures","Bybit Linear","OKX USDT Swap"][i];if(r.status!=="fulfilled"){sources[name]={ok:false,error:String(r.reason?.message||r.reason).slice(0,130)};return;}providerCount++;sources[name]={ok:true,count:r.value[1].length};for(const q of r.value[1]){if(!/^[A-Z0-9]{2,20}$/.test(q.symbol)||!(q.price>0)||!(q.volume>=50000))continue;const old=map.get(q.symbol)||{symbol:q.symbol,name:q.symbol,id:"futures:"+q.symbol,venues:new Set(),volume:0,price:0,change24h:0};old.venues.add(name);if(q.volume>=old.volume){old.volume=q.volume;old.price=q.price;old.change24h=q.change24h;}map.set(q.symbol,old);}});
- const assets=[...map.values()].map(x=>({id:x.id,symbol:x.symbol,name:x.name,current_price:x.price,total_volume:x.volume,hunterExchange:[...x.venues].join(", "),hunterPriceExchange:[...x.venues][0],hunterChange24h:x.change24h,marketPairs:[]})).sort((a,b)=>b.total_volume-a.total_volume).slice(0,96);
+ const assets=normalizeQuantumUniverse([...map.values()].map(x=>({id:x.id,symbol:x.symbol,name:x.name,current_price:x.price,total_volume:x.volume,hunterExchange:[...x.venues].join(", "),hunterPriceExchange:[...x.venues][0],hunterChange24h:x.change24h,marketPairs:[]})),"futures");
  if(!assets.length||providerCount===0)throw Error("No active USDT perpetual markets from Binance, Bybit or OKX");
  return {assets,sources,metadata_provider:"multi-exchange futures"};
 }
@@ -627,20 +629,20 @@ async function runDigitalHunterMarketCycle(env,marketType="spot"){
    if(!response.ok)throw Error("Universe HTTP "+response.status);const data=await response.json();
    universe={assets:data.hunter_assets||[],sources:data.sources||{},metadata_provider:data.metadata_provider||"multi-exchange"};
   }
-  assets=(universe.assets||[]).filter(x=>x&&/^[A-Z0-9]{2,20}$/.test(String(x.symbol||""))&&Number(x.current_price)>0&&Number(x.total_volume)>=50000).sort((a,b)=>Number(b.total_volume)-Number(a.total_volume)).slice(0,96).map(x=>({id:String(x.id||x.symbol),symbol:x.symbol,name:x.name||x.symbol,image:x.image||"",current_price:Number(x.current_price)||0,total_volume:Number(x.total_volume)||0,hunterExchange:x.hunterExchange||"",hunterPriceExchange:x.hunterPriceExchange||"",hunterChange24h:Number(x.hunterChange24h)||0,marketPairs:(x.marketPairs||[]).slice(0,4),hunterVenueVolume:x.hunterVenueVolume||{}}));
+  assets=normalizeQuantumUniverse(universe.assets||[],marketType).map(x=>({id:String(x.id||x.symbol),symbol:x.symbol,name:x.name||x.symbol,image:x.image||"",current_price:Number(x.current_price)||0,total_volume:Number(x.total_volume)||0,hunterExchange:x.hunterExchange||"",hunterPriceExchange:x.hunterPriceExchange||"",hunterChange24h:Number(x.hunterChange24h)||0,marketPairs:(x.marketPairs||[]).slice(0,4),hunterVenueVolume:x.hunterVenueVolume||{}}));
   if(!assets.length)throw Error("No liquid USDT "+(marketType==="futures"?"perpetual":"Spot")+" assets");
   universeUpdatedAt=now;universeSources=universe.sources||{};universeProvider=universe.metadata_provider||"multi-exchange";
-  const prior=previous.snapshot||{},snapshot={...prior,status:"online",engine:"MMP DIGITAL HUNTER v2",market:marketType,checked_at:new Date(now).toISOString(),universe_count:assets.length,batch_size:8,scanned_count:0,failed_count:0,universe_refreshed:true,signals:Array.isArray(prior.signals)?prior.signals:[],sources:universeSources,universe_provider:universeProvider,cycle_seconds:60};
+  const prior=previous.snapshot||{},snapshot={...prior,status:"online",engine:"MMP QUANTUM INTELLIGENCE ENGINE",market:marketType,checked_at:new Date(now).toISOString(),universe_count:assets.length,batch_size:HUNTER_BATCH_SIZE,scanned_count:0,failed_count:0,universe_refreshed:true,signals:Array.isArray(prior.signals)?prior.signals:[],sources:universeSources,universe_provider:universeProvider,cycle_seconds:60};
   const payload=JSON.stringify({cursor:0,lastRun:now,assets,universeUpdatedAt,universeSources,universeProvider,snapshot});
   await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(stateId,payload,new Date(now).toISOString()).run();
   return snapshot;
  }
- const cursor=(Number(previous.cursor)||0)%assets.length,batch=Array.from({length:Math.min(8,assets.length)},(_,i)=>assets[(cursor+i)%assets.length]),result=await scanHunterSymbols(batch.map(x=>x.symbol),marketType);
+ const cursor=(Number(previous.cursor)||0)%assets.length,batch=Array.from({length:Math.min(HUNTER_BATCH_SIZE,assets.length)},(_,i)=>assets[(cursor+i)%assets.length]),result=await scanHunterSymbols(batch.map(x=>x.symbol),marketType);
  const map=new Map((previous.snapshot?.signals||[]).map(x=>[x.symbol,x])),scanned=new Set(batch.map(x=>x.symbol));
  for(const symbol of scanned){const old=map.get(symbol);if(old)old.weakScans=Number(old.weakScans||0)+1;}
  for(const signal of result.signals){const asset=batch.find(x=>x.symbol===signal.symbol)||assets.find(x=>x.symbol===signal.symbol);signal.coin=asset?{...asset,current_price:Number(asset.current_price)||signal.price}:{id:signal.symbol,symbol:signal.symbol,name:signal.symbol,current_price:signal.price};signal.dailyChange24h=Number(asset?.hunterChange24h)||0;signal.weakScans=0;map.set(signal.symbol,signal);}
  for(const symbol of scanned){const old=map.get(symbol);if(old&&!(result.signals||[]).some(x=>x.symbol===symbol)&&Number(old.weakScans||0)>=2)map.delete(symbol);}
- const snapshot={status:"online",engine:"MMP DIGITAL HUNTER v2",market:marketType,checked_at:new Date().toISOString(),scanned_at:new Date().toISOString(),universe_count:assets.length,next_cursor:(cursor+batch.length)%assets.length,batch_size:batch.length,scanned_count:result.scanned,candidate_count:result.signals.length,failed_count:result.failed,universe_refreshed:false,signals:[...map.values()].filter(x=>now-Number(x.updatedAt||0)<25*60000&&Number(x.score)>=68&&x.confirmed).sort((a,b)=>b.score-a.score).slice(0,100),last_errors:result.errors||[],sources:universeSources,universe_provider:universeProvider,cycle_seconds:60};
+ const snapshot={status:"online",engine:"MMP QUANTUM INTELLIGENCE ENGINE",market:marketType,checked_at:new Date().toISOString(),scanned_at:new Date().toISOString(),universe_count:assets.length,next_cursor:(cursor+batch.length)%assets.length,batch_size:batch.length,scanned_count:result.scanned,candidate_count:result.signals.length,failed_count:result.failed,universe_refreshed:false,signals:[...map.values()].filter(x=>now-Number(x.updatedAt||0)<25*60000&&Number(x.score)>=68&&x.confirmed).sort((a,b)=>b.score-a.score),last_errors:result.errors||[],sources:universeSources,universe_provider:universeProvider,cycle_seconds:60};
  const payload=JSON.stringify({cursor:snapshot.next_cursor,lastRun:now,assets,universeUpdatedAt,universeSources,universeProvider,snapshot});
  await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(stateId,payload,new Date(now).toISOString()).run();
  return snapshot;
@@ -664,21 +666,21 @@ async function handle(request,env){
  if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-snapshot"){
   const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-snapshot"),request);if(limited)return limited;if(!env.ADMIN_DB)return json({status:"offline",error:"ADMIN_DB binding missing"},503,request);
   const row=await env.ADMIN_DB.prepare("SELECT payload FROM hunter_engine_state WHERE id = ?").bind("digital-hunter-v2").first();let saved=null;try{saved=row?.payload?JSON.parse(row.payload):null;}catch{}
-  return json(saved?.snapshot||{status:"warming_up",engine:"MMP DIGITAL HUNTER v2",signals:[],scanned_count:0,universe_count:0},200,request);
+  return json(saved?.snapshot||{status:"warming_up",engine:"MMP QUANTUM INTELLIGENCE ENGINE",signals:[],scanned_count:0,universe_count:0},200,request);
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-run"){
-  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-run"),request);if(limited)return limited;try{return json(await runDigitalHunterCycle(env),200,request);}catch(e){return json({status:"error",engine:"MMP DIGITAL HUNTER v2",error:String(e?.message||e).slice(0,220)},502,request);}
+  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-run"),request);if(limited)return limited;try{return json(await runDigitalHunterCycle(env),200,request);}catch(e){return json({status:"error",engine:"MMP QUANTUM INTELLIGENCE ENGINE",error:String(e?.message||e).slice(0,220)},502,request);}
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-futures-snapshot"){
   const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-futures-snapshot"),request);if(limited)return limited;if(!env.ADMIN_DB)return json({status:"offline",error:"ADMIN_DB binding missing"},503,request);
   const row=await env.ADMIN_DB.prepare("SELECT payload FROM hunter_engine_state WHERE id = ?").bind("digital-hunter-v2-futures").first();let saved=null;try{saved=row?.payload?JSON.parse(row.payload):null;}catch{}
-  return json(saved?.snapshot||{status:"warming_up",engine:"MMP DIGITAL HUNTER v2",market:"futures",signals:[],scanned_count:0,universe_count:0},200,request);
+  return json(saved?.snapshot||{status:"warming_up",engine:"MMP QUANTUM INTELLIGENCE ENGINE",market:"futures",signals:[],scanned_count:0,universe_count:0},200,request);
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-futures-run"){
-  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-futures-run"),request);if(limited)return limited;try{return json(await runDigitalHunterMarketCycle(env,"futures"),200,request);}catch(e){return json({status:"error",engine:"MMP DIGITAL HUNTER v2",market:"futures",error:String(e?.message||e).slice(0,220)},502,request);}
+  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-futures-run"),request);if(limited)return limited;try{return json(await runDigitalHunterMarketCycle(env,"futures"),200,request);}catch(e){return json({status:"error",engine:"MMP QUANTUM INTELLIGENCE ENGINE",market:"futures",error:String(e?.message||e).slice(0,220)},502,request);}
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-scan"){
-  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-scan"),request);if(limited)return limited;const url=new URL(request.url),symbols=[...new Set((url.searchParams.get("symbols")||"").split(",").map(x=>x.toUpperCase().replace(/[^A-Z0-9]/g,"")).filter(x=>/^[A-Z0-9]{2,24}$/.test(x)))].slice(0,12);if(!symbols.length)return json({error:"حداقل یک نماد معتبر ارسال کنید."},400,request);const marketType=url.searchParams.get("market")==="futures"?"futures":"spot";try{return json({engine:"MMP DIGITAL HUNTER v2",...await scanHunterSymbols(symbols,marketType)},200,request);}catch(e){return json({error:String(e?.message||e).slice(0,220)},502,request);}
+  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-scan"),request);if(limited)return limited;const url=new URL(request.url),symbols=[...new Set((url.searchParams.get("symbols")||"").split(",").map(x=>x.toUpperCase().replace(/[^A-Z0-9]/g,"")).filter(x=>/^[A-Z0-9]{2,24}$/.test(x)))].slice(0,12);if(!symbols.length)return json({error:"حداقل یک نماد معتبر ارسال کنید."},400,request);const marketType=url.searchParams.get("market")==="futures"?"futures":"spot";try{return json({engine:"MMP QUANTUM INTELLIGENCE ENGINE",...await scanHunterSymbols(symbols,marketType)},200,request);}catch(e){return json({error:String(e?.message||e).slice(0,220)},502,request);}
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-universe"){
   const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-universe");
