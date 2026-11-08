@@ -174,6 +174,7 @@ async function runRadar(env,scheduledTime=Date.now()){
   if(!universe.length)throw new Error("No eligible USDT spot symbols; previous snapshot retained");
   const previousSignals=[...(Array.isArray(oldSnapshot?.signals)?oldSnapshot.signals:[]),...(Array.isArray(oldSnapshot?.legacy_signals)?oldSnapshot.legacy_signals:[])];
   const retentionNow=Date.now();
+  const expiredSignals=previousSignals.filter(x=>retentionNow-Number(x?.updatedAt||0)>5*60*1000);
   const signals=new Map(previousSignals.filter(x=>Number(x?.score)>=RETENTION_SCORE&&retentionNow-Number(x?.updatedAt||0)<=5*60*1000).map(x=>[String(x.id),x]));
   const start=Math.max(0,Number(state?.cursor)||0)%universe.length;
   const byId=new Map(universe.map(coin=>[String(coin.id),coin]));
@@ -201,6 +202,7 @@ async function runRadar(env,scheduledTime=Date.now()){
   }
   const batch=[...priorityCoins,...rotatingCoins];
   let completed=0,failed=0,valid=0,removed=0,failedSamples=[],scannedSignals=[],removedSignals={...(state?.removed_signals||{})};
+  for(const signal of expiredSignals){const id=String(signal.id||"");if(id)removedSignals[id]={symbol:signal.symbol||signal.coin?.symbol||"",score:Number(signal.score)||0,scannedAt:Number(signal.updatedAt)||null,removedAt:retentionNow,reason:"signal_expired_stale"};}
   const tombstoneCutoff=Date.now()-24*60*60*1000;
   for(const [id,item] of Object.entries(removedSignals)){if(Number(item?.removedAt||0)<tombstoneCutoff)delete removedSignals[id];}
   await mapLimit(batch,CONCURRENCY,async coin=>{
