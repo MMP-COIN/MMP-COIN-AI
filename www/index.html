@@ -3491,7 +3491,7 @@ html.mmp-native-app .native-refresh-label{font:700 9px Tahoma,Arial,sans-serif!i
   document.addEventListener("DOMContentLoaded",function(){
    if(document.querySelector(".native-appbar"))return;
    var header=document.createElement("header");header.className="native-appbar";
-   header.innerHTML='<div class="native-brand"><div class="native-mark"><img src="assets/mmp-coin-mark.svg?v=20261108-qcoin2" alt="MMP QUANTUM"></div><div><b>MMP QUANTUM</b><small>QUANTUM INTELLIGENCE</small></div></div><div class="native-appbar-actions"><div class="native-currency-switch" role="group" aria-label="واحد نمایش قیمت"><button type="button" id="native-currency-irt" class="active" aria-pressed="true" onclick="setCurrency(\'IRT\')">تومان</button><button type="button" id="native-currency-usdt" aria-pressed="false" onclick="setCurrency(\'USDT\')">تتر</button></div><button type="button" class="native-update-check-btn" id="native-update-check-btn" aria-label="بررسی نسخه جدید" title="بررسی نسخه جدید">⇧</button><button type="button" class="native-refresh-btn" id="native-refresh-btn" aria-label="بروزرسانی بازار" title="دریافت دوباره قیمت‌ها و وضعیت اتصال منابع داده">⟳<span class="native-refresh-label">تازه‌سازی داده‌ها</span></button><button type="button" class="native-menu-toggle" id="native-menu-toggle" aria-label="منوی اپلیکیشن" aria-expanded="false">☰</button></div><nav class="native-app-menu" id="native-app-menu" aria-label="منوی اپلیکیشن"><a href="#opportunities">📡 رادار هوشمند بازار</a><a href="#market-hunter">🎯 شکارچی بازار</a><a href="#ai-section">✧ تحلیلگر هوشمند AI</a><a href="#boom-hunter">◉ آزمایشگاه Boom Hunter</a><a href="#chart-section">▥ نمودار تریدینگ‌ویو</a><a href="#trading-tools">⌗ ابزارهای معامله</a><a class="native-admin-link" href="https://mmp-coin.github.io/admin.html">⚙ ورود به پنل مدیریت</a><div class="native-menu-version" id="native-menu-version">نسخه فعلی اپ · 1.0.0</div><button type="button" id="native-share-app">↗ ارسال اپلیکیشن برای دوستان</button></nav>';
+   header.innerHTML='<div class="native-brand"><div class="native-mark"><img src="assets/mmp-coin-mark.svg?v=20261108-qcoin2" alt="MMP QUANTUM"></div><div><b>MMP QUANTUM</b><small>QUANTUM INTELLIGENCE</small></div></div><div class="native-appbar-actions"><div class="native-currency-switch" role="group" aria-label="واحد نمایش قیمت"><button type="button" id="native-currency-irt" class="active" aria-pressed="true" onclick="setCurrency(\'IRT\')">تومان</button><button type="button" id="native-currency-usdt" aria-pressed="false" onclick="setCurrency(\'USDT\')">تتر</button></div><button type="button" class="native-update-check-btn" id="native-update-check-btn" aria-label="بررسی به‌روزرسانی داخلی" title="بررسی نسخه جدید">⇧</button><button type="button" class="native-refresh-btn" id="native-refresh-btn" aria-label="بروزرسانی بازار" title="دریافت دوباره قیمت‌ها و وضعیت اتصال منابع داده">⟳<span class="native-refresh-label">تازه‌سازی داده‌ها</span></button><button type="button" class="native-menu-toggle" id="native-menu-toggle" aria-label="منوی اپلیکیشن" aria-expanded="false">☰</button></div><nav class="native-app-menu" id="native-app-menu" aria-label="منوی اپلیکیشن"><a href="#opportunities">📡 رادار هوشمند بازار</a><a href="#market-hunter">🎯 شکارچی بازار</a><a href="#ai-section">✧ تحلیلگر هوشمند AI</a><a href="#boom-hunter">◉ آزمایشگاه Boom Hunter</a><a href="#chart-section">▥ نمودار تریدینگ‌ویو</a><a href="#trading-tools">⌗ ابزارهای معامله</a><a class="native-admin-link" href="https://mmp-coin.github.io/admin.html">⚙ ورود به پنل مدیریت</a><div class="native-menu-version" id="native-menu-version">نسخه فعلی اپ · 1.0.0</div><button type="button" id="native-share-app">↗ ارسال اپلیکیشن برای دوستان</button></nav>';
    document.body.insertBefore(header,document.body.firstChild);
    var menuToggle=header.querySelector("#native-menu-toggle"),appMenu=header.querySelector("#native-app-menu");
    var nativeVersionLabel=header.querySelector("#native-menu-version");if(nativeVersionLabel)nativeVersionLabel.textContent="نسخه فعلی اپ · "+(document.querySelector('meta[name="mmp-app-version"]')?.content||"1.0.0");
@@ -3532,43 +3532,6 @@ html.mmp-native-app .native-refresh-label{font:700 9px Tahoma,Arial,sans-serif!i
     var toast=document.createElement("div");toast.className="mmp-share-toast mmp-update-toast";toast.textContent=message;document.body.appendChild(toast);
     setTimeout(function(){if(toast.parentNode)toast.remove();},3200);
    }
-   function versionParts(value){return String(value||"").replace(/^app-v/i,"").split(".").map(function(part){var n=parseInt(part,10);return Number.isFinite(n)?n:0;});}
-   function compareVersions(a,b){
-    var aa=versionParts(a),bb=versionParts(b),length=Math.max(aa.length,bb.length);
-    for(var i=0;i<length;i++){var x=aa[i]||0,y=bb[i]||0;if(x>y)return 1;if(x<y)return -1;}
-    return 0;
-   }
-   function openNativeApk(url,sizeBytes){
-    if(!/^https:\/\/github\.com\/MMP-COIN\/MMP-COIN-AI\/releases\/(?:download\/|latest\/download\/)/.test(url)){showNativeUpdateMessage("پیوند بروزرسانی معتبر نیست.");return;}
-    var browser=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.Browser;
-    if(browser&&typeof browser.open==="function"){browser.open({url:url}).catch(function(){window.open(url,"_blank");});}
-    else{window.open(url,"_blank");}
-    showNativeUpdateMessage("دانلود نسخه جدید در مرورگر آغاز می‌شود؛ پس از دانلود، فایل را اجرا و روی نسخه فعلی نصب کنید. برنامه را حذف نکنید.");
-   }
-   function showNativeUpdateBanner(version,url,sizeBytes){
-    var existing=document.querySelector(".native-update-banner");if(existing)existing.remove();
-    var banner=document.createElement("div");banner.className="native-update-banner";
-    var panel=document.createElement("section");panel.className="native-update-panel";panel.setAttribute("role","alertdialog");panel.setAttribute("aria-modal","true");panel.setAttribute("aria-labelledby","native-update-title");
-    var icon=document.createElement("div");icon.className="native-update-icon";icon.textContent="↻";
-    var copy=document.createElement("div");copy.className="native-update-copy";
-    var title=document.createElement("strong");title.id="native-update-title";title.textContent="به‌روزرسانی ضروری MMP COIN AI";
-    var sizeText=sizeBytes>0?(sizeBytes/1048576).toFixed(1)+" مگابایت":"حجم نامشخص";
-    var detail=document.createElement("small");detail.textContent="نسخه نصب‌شده "+currentNativeVersion+" · نسخه جدید "+version+" · "+sizeText;
-    copy.appendChild(title);copy.appendChild(detail);
-    var note=document.createElement("p");note.className="native-update-note";note.textContent="برای ادامه استفاده، نسخه جدید را از سایت رسمی دانلود و روی همین نسخه نصب کنید. نیازی به حذف اپ فعلی نیست.";
-    var actions=document.createElement("div");actions.className="native-update-actions";
-    var download=document.createElement("button");download.type="button";download.textContent="رفتن به سایت و دانلود نسخه جدید";
-    download.addEventListener("click",function(){openNativeApk(url,sizeBytes);});
-    var retry=document.createElement("button");retry.type="button";retry.className="native-update-retry";retry.textContent="بررسی دوباره نسخه";
-    retry.addEventListener("click",function(){checkNativeApkUpdate(true);});
-    actions.appendChild(download);actions.appendChild(retry);
-    panel.appendChild(icon);panel.appendChild(copy);panel.appendChild(note);panel.appendChild(actions);banner.appendChild(panel);document.body.appendChild(banner);
-    document.body.style.overflow="hidden";
-   }
-   var nativeVersionFromUrl="";try{nativeVersionFromUrl=new URLSearchParams(location.search).get("mmp_native_version")||"";}catch(e){}
-   var currentNativeVersion=nativeVersionFromUrl||document.querySelector('meta[name="mmp-app-version"]')?.content||"1.0.0";
-   document.querySelectorAll("#site-menu-version").forEach(function(node){node.textContent=currentNativeVersion;});
-   var liveUpdateChecking=false,lastLiveCheck=0,liveUpdateInitialCheck=true;
    function hashLiveHtml(value){
     if(window.crypto&&crypto.subtle&&window.TextEncoder){return crypto.subtle.digest("SHA-256",new TextEncoder().encode(value)).then(function(buffer){return Array.from(new Uint8Array(buffer)).map(function(x){return x.toString(16).padStart(2,"0")}).join("");});}
     var hash=2166136261;for(var i=0;i<value.length;i++){hash^=value.charCodeAt(i);hash=Math.imul(hash,16777619);}return Promise.resolve(String(hash>>>0));
@@ -3599,36 +3562,12 @@ html.mmp-native-app .native-refresh-label{font:700 9px Tahoma,Arial,sans-serif!i
      .catch(function(){if(manual)showNativeUpdateMessage("بررسی به‌روزرسانی زنده انجام نشد؛ اتصال اینترنت را بررسی کنید.");})
      .finally(function(){clearTimeout(timer);liveUpdateChecking=false;liveUpdateInitialCheck=false;});
    }
-   function checkNativeApkUpdate(manual){
-    if(nativeUpdateChecking)return;
-    nativeUpdateChecking=true;
-    var checkButton=document.getElementById("native-update-check-btn");
-    if(checkButton){checkButton.disabled=true;checkButton.classList.add("is-checking");}
-    var controller=new AbortController();var timeout=setTimeout(function(){controller.abort();},12000);
-    fetch("https://api.github.com/repos/MMP-COIN/MMP-COIN-AI/releases/latest",{cache:"no-store",headers:{Accept:"application/vnd.github+json"},signal:controller.signal})
-     .then(function(response){if(!response.ok)throw new Error("HTTP "+response.status);return response.json();})
-     .then(function(release){
-      var version=String(release&&release.tag_name||"").replace(/^app-v/i,"").replace(/-build-\d+$/i,"");
-      var apk=(release&&Array.isArray(release.assets)?release.assets:[]).find(function(asset){return String(asset.name||"").toLowerCase()==="app-release.apk";});
-      if(!version||!apk||!apk.browser_download_url)throw new Error("APK release unavailable");
-      if(compareVersions(version,currentNativeVersion)<=0){
-       if(manual)showNativeUpdateMessage("نسخه اندروید به‌روز است · "+currentNativeVersion);
-       return;
-      }
-      showNativeUpdateBanner(version,apk.browser_download_url,Number(apk.size)||0);
-     })
-     .catch(function(){if(manual)showNativeUpdateMessage("بررسی نسخه جدید انجام نشد؛ اتصال اینترنت را بررسی کنید.");})
-     .finally(function(){
-      clearTimeout(timeout);nativeUpdateChecking=false;
-      if(checkButton){checkButton.disabled=false;checkButton.classList.remove("is-checking");}
-     });
-   }
-   function checkNativeUpdate(manual){checkLivePageUpdate(!!manual);checkNativeApkUpdate(false);}
+   function checkNativeUpdate(manual){checkLivePageUpdate(!!manual);}
    // Bottom app actions: share and check/download the latest signed Android APK without changing the installed app version.
    var nativeAppDownload=document.createElement("section");
    nativeAppDownload.id="native-app-download";
    nativeAppDownload.className="native-app-download card";
-   nativeAppDownload.innerHTML='<div class="section-kicker">MMP QUANTUM · ANDROID UPDATE</div><h2>اشتراک‌گذاری و به‌روزرسانی اپلیکیشن</h2><p>اپ را برای دوستانتان بفرستید یا نسخه جدید را بررسی و روی همین نسخه نصب کنید؛ نیازی به حذف برنامه نیست.</p><div class="native-app-download-actions"><button type="button" id="native-bottom-share">↗ ارسال اپ برای دوستان</button><button type="button" id="native-bottom-update">⇧ بررسی و دریافت نسخه جدید</button></div><small id="native-bottom-version">نسخه نصب‌شده · '+currentNativeVersion+'</small>';
+   nativeAppDownload.innerHTML='<div class="section-kicker">MMP QUANTUM · ANDROID UPDATE</div><h2>اشتراک‌گذاری و به‌روزرسانی اپلیکیشن</h2><p>اپ را برای دوستانتان بفرستید یا محتوای اپ را به‌صورت داخلی به‌روزرسانی کنید؛ نیازی به دانلود APK یا نصب مجدد نیست.</p><div class="native-app-download-actions"><button type="button" id="native-bottom-share">↗ ارسال اپ برای دوستان</button><button type="button" id="native-bottom-update">⇧ بررسی به‌روزرسانی داخلی</button></div><small id="native-bottom-version">نسخه نصب‌شده · '+currentNativeVersion+'</small>';
    var nativeAppDownloadStyle=document.createElement("style");
    nativeAppDownloadStyle.textContent='html.mmp-native-app .native-app-download{display:block!important;max-width:760px;margin:18px auto 30px!important;padding:19px!important;text-align:center;border:1px solid #80683f;background:linear-gradient(135deg,#171b24,#10131a 62%,#211b12);border-radius:18px}html.mmp-native-app .native-app-download h2{margin:7px 0 8px;color:#f2d99b;font-size:16px}html.mmp-native-app .native-app-download p{margin:0 auto 13px;max-width:560px;color:#aeb7c2;font-size:11px;line-height:2}html.mmp-native-app .native-app-download-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}html.mmp-native-app .native-app-download-actions button{min-height:43px;padding:9px;border:1px solid #a8874c;border-radius:11px;background:linear-gradient(120deg,#26384a,#172331);color:#f3d99f;font:700 11px Tahoma,Arial,sans-serif}html.mmp-native-app .native-app-download-actions button:last-child{background:linear-gradient(145deg,#f1d48f,#a77a38);color:#15120b;border:0}html.mmp-native-app .native-app-download>small{display:block;margin-top:11px;color:#9ca8b6;font-size:10px}@media(max-width:430px){html.mmp-native-app .native-app-download-actions{grid-template-columns:1fr}}';
    document.head.appendChild(nativeAppDownloadStyle);
@@ -3650,7 +3589,6 @@ html.mmp-native-app .native-refresh-label{font:700 9px Tahoma,Arial,sans-serif!i
    document.addEventListener("visibilitychange",function(){if(document.visibilityState==="visible")checkNativeUpdate(false);});
    window.addEventListener("focus",function(){checkNativeUpdate(false);});
    setInterval(function(){if(document.visibilityState==="visible")checkLivePageUpdate(false);},5*60*1000);
-   setInterval(function(){if(document.visibilityState==="visible")checkNativeApkUpdate(false);},6*60*60*1000);
    checkNativeUpdate(false);
    document.querySelectorAll("#chart-section,#ai-section,#opportunities,#trading-tools,#coins-section").forEach(function(el){
     if(!el.querySelector(".native-section-label")){
