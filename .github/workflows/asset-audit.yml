@@ -33,6 +33,48 @@ jobs:
         with:
           node-version: 20
 
+      - name: Validate Worker syntax and live interface integrity
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('fs');
+          const vm = require('vm');
+          const { execFileSync } = require('child_process');
+          const workers = [
+            'cloudflare-worker/worker.js',
+            'cloudflare-worker/radar-worker.js',
+            'cloudflare-worker/futures-worker.js',
+            'cloudflare-worker/quantum-core.js',
+            'cloudflare-worker/admin-worker.js'
+          ];
+          for (const file of workers) {
+            execFileSync(process.execPath, ['--input-type=module', '--check'], { input: fs.readFileSync(file, 'utf8') });
+            console.log('JavaScript syntax OK: ' + file);
+          }
+          const html = fs.readFileSync('www/index.html', 'utf8');
+          const ids = [...html.matchAll(/\\bid=["']([^"']+)["']/g)].map(x => x[1]);
+          const duplicates = [...new Set(ids.filter((id, i) => ids.indexOf(id) !== i))];
+          if (duplicates.length) throw new Error('Duplicate HTML IDs: ' + duplicates.join(', '));
+          if (!ids.includes('market-ticker')) throw new Error('Live market ticker container is missing');
+          const scripts = [...html.matchAll(/<script\\b([^>]*)>([\\s\\S]*?)<\\/script>/gi)];
+          let parsed = 0;
+          for (let i = 0; i < scripts.length; i++) {
+            const attrs = scripts[i][1], code = scripts[i][2];
+            if (/\\bsrc\\s*=/.test(attrs) || !code.trim()) continue;
+            new vm.Script(code, { filename: 'www/index.html:inline-script-' + i });
+            parsed++;
+          }
+          if (parsed < 10) throw new Error('Too few inline scripts were syntax-checked: ' + parsed);
+          const version = html.match(/name=["']mmp-app-version["'] content=["']([^"']+)["']/i);
+          const capacitor = JSON.parse(fs.readFileSync('capacitor.config.json', 'utf8'));
+          if (!version || version[1] !== '2.0.0') throw new Error('App web version metadata changed unexpectedly');
+          if (capacitor.appId !== 'com.mmpcoinai.app' || capacitor.server?.url !== 'https://mmp-coin.github.io/?mmp_native_version=1.0.307') {
+            throw new Error('Native app identity or live-update URL changed unexpectedly');
+          }
+          console.log('HTML IDs unique: ' + ids.length + '; inline scripts parsed: ' + parsed);
+          console.log('App version, package identity and live-update URL preserved');
+          NODE
+
       - name: Test every asset on all analysis timeframes
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
@@ -42,7 +84,7 @@ jobs:
           const WORKER = process.env.WORKER_URL;
           const intervals = ['15m','1h','4h','1d'];
           const minRows = tf => tf === '1d' ? 20 : 30;
-          const html = fs.readFileSync('index.html','utf8');
+          const html = fs.readFileSync('www/index.html','utf8');
           const nonTradableIds = new Set(['tether','usd-coin','dai','usds','ethena-usde','first-digital-usd','paypal-usd','true-usd','frax','usdd','wrapped-bitcoin','coinbase-wrapped-btc','lido-staked-ether','wrapped-steth','rocket-pool-eth','staked-ether','staked-ether-2','tether-gold']);
           const nonTradableSymbols = new Set(['USDT','USDC','DAI','USDS','USDE','FDUSD','PYUSD','TUSD','FRAX','USDD','WBTC','CBBTC','STETH','WSTETH','RETH','XAUT','USDY','GT','PEARL','DRV']);
 
