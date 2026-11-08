@@ -547,10 +547,10 @@ async function scanIndependentHunterSymbol(symbol){
  const m=await fetchHunterCandles(symbol),rows=m.rows.slice(0,-1),now=Date.now();if(rows.length<60)return null;
  const last=rows.at(-1);if(now-last[0]>210000)return null;
  const b=[];for(let i=0;i+2<rows.length;i+=3){const g=rows.slice(i,i+3);if(g.length===3)b.push({o:g[0][1],h:Math.max(...g.map(x=>x[2])),l:Math.min(...g.map(x=>x[3])),c:g[2][4],v:g.reduce((z,x)=>z+x[5],0)});}
- if(b.length<18)return null;const x=b.at(-1),x3=b.at(-2),x5=b.at(-3),x15=b.at(-6),m1=(last[4]/last[1]-1)*100,m3=(x.c/x3.o-1)*100,m5=(x.c/x5.o-1)*100,m15=(x.c/x15.o-1)*100,trend=m5>=0?"bull":"bear";
+ if(b.length<18)return null;const x=b.at(-1),m1=(last[4]/last[1]-1)*100,m3=(last[4]/rows.at(-3)[1]-1)*100,m5=(last[4]/rows.at(-5)[1]-1)*100,m15=(last[4]/rows.at(-15)[1]-1)*100,trend=m5>=0?"bull":"bear";
  const aligned=v=>trend==="bull"?v>=-.025:v<=.025;if(!aligned(m1)||!aligned(m3))return null;
- const prior=b.slice(-7,-2),breakout=trend==="bull"?x.c>Math.max(...prior.map(q=>q.h)):x.c<Math.min(...prior.map(q=>q.l)),base=b.slice(-16,-1).map(q=>q.v).filter(v=>v>0);if(base.length<10)return null;
- const avg=base.reduce((p,q)=>p+q,0)/base.length,volumeRatio=avg?x.v/avg:0,trend15=trend==="bull"?m15>.015:m15<-.015,structure=trend==="bull"?x.c>=x.o:x.c<=x.o;
+ const prior=rows.slice(-10,-5),breakout=trend==="bull"?last[4]>Math.max(...prior.map(q=>q[2])):last[4]<Math.min(...prior.map(q=>q[3])),base=b.slice(-16,-1).map(q=>q.v).filter(v=>v>0);if(base.length<10)return null;
+ const avg=base.reduce((p,q)=>p+q,0)/base.length,volumeRatio=avg?x.v/avg:0,trend15=trend==="bull"?m15>.015:m15<-.015,structure=trend==="bull"?last[4]>=last[1]:last[4]<=last[1];
  const score=Math.min(99,Math.round(20+Math.min(18,Math.abs(m1)*18)+Math.min(18,Math.abs(m3)*8)+Math.min(18,Math.abs(m5)*5)+Math.min(22,Math.max(0,volumeRatio-.75)*13)+(breakout?12:0)+(trend15?10:0)+(structure?5:0)));if(score<55)return null;
  return {symbol,trend,score,change1m:m1,change3m:m3,change5m:m5,change15m:m15,volumeRatio,breakout,price:last[4],provider:m.provider,rows:rows.slice(-30),updatedAt:now,candleTime:last[0],engine:"digital-hunter-v2",timeframes:{m1,m3,m5,m15},evidence:{volumeRatio:+volumeRatio.toFixed(2),breakout,trend15m:trend15,structure},overextended:Math.abs(m5)>3.5};
 }
