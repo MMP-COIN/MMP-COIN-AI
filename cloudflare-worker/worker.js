@@ -541,7 +541,7 @@ async function fetchHunterCandles(symbol){
  ];
  const errors=[];for(const fn of sources)try{const [provider,data]=await fn(),rows=data.filter(x=>x.every(Number.isFinite)&&x[1]>0&&x[2]>=x[3]&&x[3]>0&&x[4]>0&&x[5]>=0).sort((x,y)=>x[0]-y[0]);if(rows.length>=65)return {provider,rows};throw Error("Insufficient candles");}catch(e){errors.push(String(e?.message||e).slice(0,80));}throw Error(errors.join(" | ")||"No candle provider");
 }
-async function scanIndependentHunterSymbol(symbol){
+async function analyzeDigitalHunterSymbol(symbol){
  const m=await fetchHunterCandles(symbol),rows=m.rows.slice(0,-1),now=Date.now();if(rows.length<60)return null;
  const last=rows.at(-1);if(now-last[0]>210000)return null;
  const b=[];for(let i=0;i+2<rows.length;i+=3){const g=rows.slice(i,i+3);if(g.length===3)b.push({o:g[0][1],h:Math.max(...g.map(x=>x[2])),l:Math.min(...g.map(x=>x[3])),c:g[2][4],v:g.reduce((z,x)=>z+x[5],0)});}
@@ -553,7 +553,7 @@ async function scanIndependentHunterSymbol(symbol){
  return {symbol,trend,score,change1m:m1,change3m:m3,change5m:m5,change15m:m15,volumeRatio,breakout,price:last[4],provider:m.provider,rows:rows.slice(-30),updatedAt:now,candleTime:last[0],engine:"digital-hunter-v2",timeframes:{m1,m3,m5,m15},evidence:{volumeRatio:+volumeRatio.toFixed(2),breakout,trend15m:trend15,structure},overextended:Math.abs(m5)>3.5};
 }
 async function scanHunterSymbols(symbols){
- let i=0,failed=0;const candidates=[],errors=[];await Promise.all(Array.from({length:Math.min(8,symbols.length)},async()=>{while(i<symbols.length){const symbol=symbols[i++];try{const x=await scanIndependentHunterSymbol(symbol);if(x)candidates.push(x);}catch(e){failed++;if(errors.length<8)errors.push({symbol,error:String(e?.message||e).slice(0,120)});}}}));
+ let i=0,failed=0;const candidates=[],errors=[];await Promise.all(Array.from({length:Math.min(8,symbols.length)},async()=>{while(i<symbols.length){const symbol=symbols[i++];try{const x=await analyzeDigitalHunterSymbol(symbol);if(x)candidates.push(x);}catch(e){failed++;if(errors.length<8)errors.push({symbol,error:String(e?.message||e).slice(0,120)});}}}));
  candidates.sort((a,b)=>b.score-a.score);const signals=[];
  await Promise.all(candidates.filter(x=>x.score>=60).slice(0,1).map(async x=>{try{const f=await loadMarketFlow(x.symbol,5),gross=f.buy5m+f.sell5m,imb=gross?f.net5m/gross:0,ok=x.trend==="bull"?imb>=.045:imb<=-.045;if(f.trade_count<8||!ok)return;x.score=Math.min(99,x.score+Math.min(18,Math.round(Math.abs(imb)*90)));x.flow={buy5m:f.buy5m,sell5m:f.sell5m,net5m:f.net5m,tradeCount:f.trade_count,provider:f.provider,complete:f.complete,coverageStart:f.coverage_start,rows:f.rows,imbalance:+imb.toFixed(4)};x.flowSignal=f.net5m>0?"inflow":"outflow";x.confirmed=true;if(x.score>=68)signals.push(x);}catch(e){x.flowError=String(e?.message||e).slice(0,90);}}));
  return {requested:symbols.length,scanned:symbols.length-failed,candidates:candidates.length,failed,errors,signals,checked_at:new Date().toISOString()};
