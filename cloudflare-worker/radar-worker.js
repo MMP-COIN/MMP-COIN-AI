@@ -62,8 +62,8 @@ async function scanCoin(coin){
   const symbol=String(coin?.symbol||"").toUpperCase();
   if(!/^[A-Z0-9]{2,20}$/.test(symbol))return null;
   const listed=Array.isArray(coin.marketPairs)
-    ?coin.marketPairs.filter(x=>String(x.quote||"").toUpperCase()==="USDT"&&Number(x.volume)>=15000&&SUPPORTED.has(String(x.exchange)))
-    :Object.entries(coin.hunterVenueVolume||{}).filter(([name,volume])=>SUPPORTED.has(name)&&Number(volume)>=15000).map(([exchange,volume])=>({exchange,volume,quote:"USDT"}));
+    ?coin.marketPairs.filter(x=>String(x.quote||"").toUpperCase()==="USDT"&&Number(x.volume)>=5000&&SUPPORTED.has(String(x.exchange)))
+    :Object.entries(coin.hunterVenueVolume||{}).filter(([name,volume])=>SUPPORTED.has(name)&&Number(volume)>=5000).map(([exchange,volume])=>({exchange,volume,quote:"USDT"}));
   if(Number(coin.total_volume||0)<50000||!listed.length)return null;
   const order=[...new Map(listed.sort((a,b)=>Number(b.volume)-Number(a.volume)).map(x=>[x.exchange,x])).values()].map(x=>x.exchange).slice(0,2);
   let market=null,errors=[];
@@ -220,8 +220,16 @@ async function runRadar(env,scheduledTime=Date.now()){
     scanned_at:new Date().toISOString(),scheduled_at:new Date(Number(scheduledTime)||Date.now()).toISOString(),
     universe_count:universe.length,scanned_count:completed,valid_count:valid,failed_count:failed,failed_samples:failedSamples,
     removed_count:removed,removed_signals:removedSignals,batch_size:BATCH_SIZE,priority_scanned_count:priorityCoins.length,next_cursor:nextCursor,
-    signals:[...signals.values()].filter(x=>Number(x?.score)>=RETENTION_SCORE&&Number(x?.scoringVersion)===2)
-      .sort((a,b)=>b.score-a.score).slice(0,300),
+    signals:(()=>{
+      const canonicalIds=new Map(universe.map(coin=>[String(coin.symbol).toUpperCase(),String(coin.id)]));
+      const unique=new Map();
+      for(const signal of [...signals.values()].filter(x=>Number(x?.score)>=RETENTION_SCORE&&Number(x?.scoringVersion)===2).sort((a,b)=>b.score-a.score)){
+        const symbol=String(signal.symbol||signal.coin?.symbol||"").toUpperCase();
+        if(!symbol||canonicalIds.get(symbol)!==String(signal.id)||unique.has(symbol))continue;
+        unique.set(symbol,signal);
+      }
+      return [...unique.values()].slice(0,300);
+    })(),
     legacy_signals:[...signals.values()].filter(x=>Number(x?.scoringVersion)!==2)
       .sort((a,b)=>b.score-a.score).slice(0,300)
   };
