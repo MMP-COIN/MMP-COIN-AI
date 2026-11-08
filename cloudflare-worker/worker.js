@@ -678,19 +678,19 @@ async function loadFuturesMarketFlow(symbol,windowMinutes=5){
  if(!trades?.length||truncated){
   try{
    const contract=base+"_USDT";
-   let details,raw;try{[details,raw]=await Promise.all([
-    marketFlowJson("https://api.gateio.ws/api/v4/futures/usdt/contracts/"+encodeURIComponent(contract),8500),
-    marketFlowJson("https://api.gateio.ws/api/v4/futures/usdt/trades?contract="+encodeURIComponent(contract)+"&limit=1000",8500)
-   ]);}catch{[details,raw]=await Promise.all([
-    marketFlowJson("https://api.gate.us/api/v4/futures/usdt/contracts/"+encodeURIComponent(contract),8500),
-    marketFlowJson("https://api.gate.us/api/v4/futures/usdt/trades?contract="+encodeURIComponent(contract)+"&limit=1000",8500)
-   ]);}
-   const multiplier=Number(details?.quanto_multiplier)||0;
-   if(!Array.isArray(raw)||!multiplier)throw new Error("Gate Futures contract multiplier or trades unavailable");
-   const oldest=raw.reduce((v,x)=>Math.min(v,Number(x.create_time_ms)||Number(x.create_time)*1000||Infinity),Infinity);
-   const gateTruncated=raw.length>=1000&&oldest>cutoff;
+   const loadGate=async host=>{
+    const [details,...pages]=await Promise.all([
+     marketFlowJson(host+"/api/v4/futures/usdt/contracts/"+encodeURIComponent(contract),8500),
+     ...[0,1000,2000].map(offset=>marketFlowJson(host+"/api/v4/futures/usdt/trades?contract="+encodeURIComponent(contract)+"&from="+Math.floor(cutoff/1000)+"&to="+Math.floor(now/1000)+"&limit=1000&offset="+offset,8500))
+    ]);
+    return {details,pages};
+   };
+   let gateData;try{gateData=await loadGate("https://api.gateio.ws");}catch{gateData=await loadGate("https://fx-api.gateio.ws");}
+   const multiplier=Number(gateData.details?.quanto_multiplier)||0,raw=gateData.pages.flat();
+   if(!raw.length||!multiplier)throw new Error("Gate Futures contract multiplier or paged trades unavailable");
+   const gateTruncated=gateData.pages[2].length>=1000;
    const gateTrades=raw.map(x=>({time:Number(x.create_time_ms)||Number(x.create_time)*1000,price:Number(x.price),size:Math.abs(Number(x.size))*multiplier,side:Number(x.size)>0?"Buy":"Sell"})).filter(x=>x.time>=cutoff&&x.time<=now&&x.price>0&&x.size>0);
-   if(gateTrades.length&&(!trades?.length||!gateTruncated||gateTrades.length>trades.length)){trades=gateTrades;truncated=gateTruncated;provider="Gate USDT Futures · real trades";}
+   if(gateTrades.length&&(!trades?.length||!gateTruncated||gateTrades.length>trades.length)){trades=gateTrades;truncated=gateTruncated;provider="Gate USDT Futures · paged real trades";}
   }catch(error){lastError=String(error?.message||error).slice(0,160);}
  }
  if(!trades?.length)throw new Error("Futures trade flow unavailable from Bybit, Bitget, Binance, OKX and Gate: "+lastError);
