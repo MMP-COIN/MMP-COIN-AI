@@ -59,6 +59,25 @@ jobs:
           if (rejected.some(result => result.qualityGate)) throw new Error("A weak/stale/unconfirmed candidate passed the quality gate");
           console.log("Quantum candidate and confirmation gates: passed");
           NODE
+
+      - name: Validate inline browser JavaScript and Hunter wiring
+        run: |
+          node <<'NODE'
+          const fs = require("node:fs");
+          const vm = require("node:vm");
+          const html = fs.readFileSync("www/index.html", "utf8");
+          const scripts = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi)];
+          let checked = 0;
+          for (let i = 0; i < scripts.length; i++) {
+            const attrs = scripts[i][1] || "";
+            const type = (attrs.match(/\btype\s*=\s*["']([^"']+)/i) || [])[1] || "text/javascript";
+            if (/\bsrc\s*=/.test(attrs) || /application\/(?:ld\+json|json)/i.test(type)) continue;
+            new vm.Script(scripts[i][2], { filename: "www/index.html#inline-" + (i + 1) });
+            checked++;
+          }
+          if (!html.includes("data-hunter-detail=") || !html.includes("slice(0,6)") || !html.includes("/market-flow?")) throw new Error("Hunter card, six-per-direction cap, or Radar flow wiring missing");
+          console.log("Parsed " + checked + " inline browser scripts; Hunter UI wiring checks passed");
+          NODE
       - name: Check Worker health endpoint
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
