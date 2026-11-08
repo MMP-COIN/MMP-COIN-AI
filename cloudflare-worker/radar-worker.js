@@ -214,9 +214,10 @@ async function runRadar(env,scheduledTime=Date.now()){
   const flowCandidates=[...scannedSignals.filter(x=>x.trend==="bull"&&x.coreAligned&&!x.lowLiquidity&&x.multiExchangeConfirmed&&Number(x.score)>=48).sort((a,b)=>b.score-a.score).slice(0,2),...scannedSignals.filter(x=>x.trend==="bear"&&x.coreAligned&&!x.lowLiquidity&&x.multiExchangeConfirmed&&Number(x.score)>=48).sort((a,b)=>b.score-a.score).slice(0,2)];
   await mapLimit(flowCandidates,2,async signal=>{
     try{
-      const flow=await getJson(MAIN_FLOW+"?symbol="+encodeURIComponent(signal.symbol)+"&window=5",8500);
+      let flow=await getJson(MAIN_FLOW+"?symbol="+encodeURIComponent(signal.symbol)+"&window=5",8500);
+      if(flow.complete!==true){const shorter=await getJson(MAIN_FLOW+"?symbol="+encodeURIComponent(signal.symbol)+"&window=1",8500);if(shorter.complete===true&&Number(shorter.trade_count)>=10)flow=shorter;}
       signal.flow={buy5m:Number(flow.buy5m)||0,sell5m:Number(flow.sell5m)||0,net5m:Number(flow.net5m)||0,
-        tradeCount:Number(flow.trade_count)||0,provider:flow.provider||"",complete:flow.complete===true,rows:Array.isArray(flow.rows)?flow.rows:[]};
+        windowMinutes:Number(flow.window_minutes)||5,tradeCount:Number(flow.trade_count)||0,provider:flow.provider||"",complete:flow.complete===true,rows:Array.isArray(flow.rows)?flow.rows:[]};
       signal.flowSignal=signal.flow.net5m>0?"inflow":signal.flow.net5m<0?"outflow":"";
       const total=signal.flow.buy5m+signal.flow.sell5m;
       if(signal.flow.complete&&signal.flow.tradeCount>=10&&total>0){
