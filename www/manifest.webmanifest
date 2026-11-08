@@ -10,13 +10,13 @@
   "theme_color": "#08090d",
   "icons": [
     {
-      "src": "assets/mmp-coin-ai-icon.svg?v=20261108-quantum1",
+      "src": "assets/mmp-coin-ai-icon.svg?v=20261108-qcoin2",
       "sizes": "192x192",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "assets/mmp-coin-ai-icon.svg?v=20261108-quantum1",
+      "src": "assets/mmp-coin-ai-icon.svg?v=20261108-qcoin2",
       "sizes": "512x512",
       "type": "image/svg+xml",
       "purpose": "any"
