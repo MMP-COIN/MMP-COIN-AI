@@ -152,8 +152,10 @@ jobs:
             const c=[{name:'Binance Futures',url:'https://fapi.binance.com/fapi/v1/klines?symbol='+compact+'&interval='+tf+'&limit=250',rows:rowsArray}];
             for(const host of ['https://api.bybit.eu','https://api.bytick.eu','https://api.bybit.com','https://api.bytick.com']) c.push({name:'Bybit Linear',url:host+'/v5/market/kline?category=linear&symbol='+compact+'&interval='+bybitTf+'&limit=250',rows:d=>d?.retCode===0?d.result?.list:null});
             for(const host of ['https://www.okx.com','https://us.okx.com','https://openapi.okx.com']) c.push({name:'OKX Swap',url:host+'/api/v5/market/candles?instId='+base+'-'+quote+'-SWAP&bar='+okxTf+'&limit=250',rows:d=>d?.code==='0'?d.data:null});
+            c.push({name:'Bitget Futures',url:'https://api.bitget.com/api/v3/market/candles?category=USDT-FUTURES&symbol='+compact+'&interval='+({'15m':'15m','1h':'1H','4h':'4H','1d':'1D'}[tf])+'&limit=250',rows:d=>d?.code==='00000'?d.data:null});
+            c.push({name:'Gate Futures',url:'https://api.gateio.ws/api/v4/futures/usdt/candlesticks?contract='+base+'_USDT&interval='+tf+'&limit=250',rows:rowsArray});
             const supported=new Set(Array.isArray(support?.futures?.providers)?support.futures.providers:[]);
-            return supported.size?c.filter(x=>supported.has(x.name.split(" ")[0])).slice(0,2):c;
+            return supported.size?c.filter(x=>supported.has(x.name.split(" ")[0])).slice(0,3):c;
           };
           async function checkAsset(asset, support) {
             const symbol=String(asset.symbol).toUpperCase();
