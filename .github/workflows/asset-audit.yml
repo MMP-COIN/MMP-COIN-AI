@@ -155,7 +155,7 @@ jobs:
             });
             if(!assets.length)throw new Error('No instruments have confirmed active Spot USDT markets');
             const results=[];
-            const batchSize=24;
+            const batchSize=8;
             for(let i=0;i<assets.length;i+=batchSize){
               const batch=assets.slice(i,i+batchSize);
               const rows=await Promise.all(batch.map(a=>checkAsset(a,supportMap[String(a.symbol).toUpperCase()])));
