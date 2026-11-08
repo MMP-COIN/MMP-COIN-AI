@@ -561,18 +561,29 @@ async function scanHunterSymbols(symbols){
  return {requested:symbols.length,scanned:symbols.length-failed,candidates:candidates.length,failed,errors,signals,checked_at:new Date().toISOString()};
 }
 async function runDigitalHunterCycle(env){
- if(!env.HUNTER_KV)throw Error("HUNTER_KV binding missing");const lock="hunter:lock:v2",stateKey="hunter:state:v2",snapKey="hunter:snapshot:v2",priorLock=await env.HUNTER_KV.get(lock);
- if(priorLock&&Date.now()-Number(priorLock)<45000){const cached=await env.HUNTER_KV.get(snapKey,"json");if(cached)return {...cached,cycle_skipped:true};}
- await env.HUNTER_KV.put(lock,String(Date.now()),{expirationTtl:90});
- try{
-  const r=await handle(new Request("https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/hunter-universe",{headers:{"Accept":"application/json","User-Agent":"MMP-Digital-Hunter/2.0"}}),env);if(!r.ok)throw Error("Universe HTTP "+r.status);const u=await r.json(),assets=(u.hunter_assets||[]).filter(x=>x&&/^[A-Z0-9]{2,20}$/.test(String(x.symbol||""))&&+x.current_price>0&&+x.total_volume>=50000).sort((a,b)=>+b.total_volume-+a.total_volume).slice(0,180);if(!assets.length)throw Error("No liquid USDT Spot assets");
-  const st=await env.HUNTER_KV.get(stateKey,"json")||{},cursor=(+st.cursor||0)%assets.length,batch=Array.from({length:Math.min(36,assets.length)},(_,j)=>assets[(cursor+j)%assets.length]),result=await scanHunterSymbols(batch.map(x=>x.symbol)),old=await env.HUNTER_KV.get(snapKey,"json")||{signals:[]},map=new Map((old.signals||[]).map(x=>[x.symbol,x])),scanned=new Set(batch.map(x=>x.symbol));
-  for(const s of scanned){const v=map.get(s);if(v)v.weakScans=(+v.weakScans||0)+1;}
-  for(const x of result.signals){const c=batch.find(y=>y.symbol===x.symbol)||assets.find(y=>y.symbol===x.symbol);x.coin=c?{id:String(c.id||c.symbol),symbol:c.symbol,name:c.name||c.symbol,image:c.image||"",current_price:+c.current_price||x.price,total_volume:+c.total_volume||0,hunterExchange:c.hunterExchange||"",hunterPriceExchange:c.hunterPriceExchange||"",hunterChange24h:+c.hunterChange24h||0,marketPairs:c.marketPairs||[],hunterVenueVolume:c.hunterVenueVolume||{}}:{id:x.symbol,symbol:x.symbol,name:x.symbol,current_price:x.price};x.dailyChange24h=Number(c?.hunterChange24h)||0;x.weakScans=0;map.set(x.symbol,x);}
-  for(const s of scanned){const v=map.get(s);if(v&&!(result.signals||[]).some(x=>x.symbol===s)&&(+v.weakScans||0)>=2)map.delete(s);}
-  const now=Date.now(),snapshot={status:"online",engine:"MMP DIGITAL HUNTER v2",checked_at:new Date().toISOString(),scanned_at:new Date().toISOString(),universe_count:assets.length,next_cursor:(cursor+batch.length)%assets.length,batch_size:batch.length,scanned_count:result.scanned,failed_count:result.failed,candidate_count:result.signals.length,signals:[...map.values()].filter(x=>now-(+x.updatedAt||0)<25*60000&&+x.score>=68&&x.confirmed).sort((a,b)=>b.score-a.score).slice(0,100),last_errors:result.errors||[],sources:u.sources||{},universe_provider:u.metadata_provider||"multi-exchange",cycle_seconds:60};
-  await env.HUNTER_KV.put(stateKey,JSON.stringify({cursor:snapshot.next_cursor,lastRun:now}),{expirationTtl:86400});await env.HUNTER_KV.put(snapKey,JSON.stringify(snapshot),{expirationTtl:3600});return snapshot;
- }finally{await env.HUNTER_KV.delete(lock);}
+ if(!env.ADMIN_DB)throw Error("ADMIN_DB binding missing");
+ const stateId="digital-hunter-v2";
+ const stored=await env.ADMIN_DB.prepare("SELECT payload FROM hunter_engine_state WHERE id = ?").bind(stateId).first();
+ const previous=stored?.payload?JSON.parse(stored.payload):{},now=Date.now();
+ if(previous.lastRun&&now-Number(previous.lastRun)<45000&&previous.snapshot)return {...previous.snapshot,cycle_skipped:true};
+ const universeResponse=await handle(new Request("https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/hunter-universe",{headers:{"Accept":"application/json","User-Agent":"MMP-Digital-Hunter/2.0"}}),env);
+ if(!universeResponse.ok)throw Error("Universe HTTP "+universeResponse.status);
+ const universe=await universeResponse.json();
+ const assets=(universe.hunter_assets||[]).filter(x=>x&&/^[A-Z0-9]{2,20}$/.test(String(x.symbol||""))&&Number(x.current_price)>0&&Number(x.total_volume)>=50000).sort((a,b)=>Number(b.total_volume)-Number(a.total_volume)).slice(0,180);
+ if(!assets.length)throw Error("No liquid USDT Spot assets");
+ const cursor=(Number(previous.cursor)||0)%assets.length,batch=Array.from({length:Math.min(36,assets.length)},(_,i)=>assets[(cursor+i)%assets.length]),result=await scanHunterSymbols(batch.map(x=>x.symbol));
+ const map=new Map((previous.snapshot?.signals||[]).map(x=>[x.symbol,x])),scanned=new Set(batch.map(x=>x.symbol));
+ for(const symbol of scanned){const old=map.get(symbol);if(old)old.weakScans=Number(old.weakScans||0)+1;}
+ for(const signal of result.signals){
+  const asset=batch.find(x=>x.symbol===signal.symbol)||assets.find(x=>x.symbol===signal.symbol);
+  signal.coin=asset?{id:String(asset.id||signal.symbol),symbol:asset.symbol,name:asset.name||asset.symbol,image:asset.image||"",current_price:Number(asset.current_price)||signal.price,total_volume:Number(asset.total_volume)||0,hunterExchange:asset.hunterExchange||"",hunterPriceExchange:asset.hunterPriceExchange||"",hunterChange24h:Number(asset.hunterChange24h)||0,marketPairs:asset.marketPairs||[],hunterVenueVolume:asset.hunterVenueVolume||{}}:{id:signal.symbol,symbol:signal.symbol,name:signal.symbol,current_price:signal.price};
+  signal.dailyChange24h=Number(asset?.hunterChange24h)||0;signal.weakScans=0;map.set(signal.symbol,signal);
+ }
+ for(const symbol of scanned){const old=map.get(symbol);if(old&&!(result.signals||[]).some(x=>x.symbol===symbol)&&Number(old.weakScans||0)>=2)map.delete(symbol);}
+ const snapshot={status:"online",engine:"MMP DIGITAL HUNTER v2",checked_at:new Date().toISOString(),scanned_at:new Date().toISOString(),universe_count:assets.length,next_cursor:(cursor+batch.length)%assets.length,batch_size:batch.length,scanned_count:result.scanned,candidate_count:result.signals.length,failed_count:result.failed,signals:[...map.values()].filter(x=>now-Number(x.updatedAt||0)<25*60000&&Number(x.score)>=68&&x.confirmed).sort((a,b)=>b.score-a.score).slice(0,100),last_errors:result.errors||[],sources:universe.sources||{},universe_provider:universe.metadata_provider||"multi-exchange",cycle_seconds:60};
+ const payload=JSON.stringify({cursor:snapshot.next_cursor,lastRun:now,snapshot});
+ await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(stateId,payload,new Date(now).toISOString()).run();
+ return snapshot;
 }
 async function handle(request,env){
  if(request.method==="OPTIONS"){
@@ -589,7 +600,9 @@ async function handle(request,env){
   catch(error){return json({error:String(error?.message||"دریافت جریان معاملات ناموفق بود").slice(0,260)},502,request);}
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-snapshot"){
-  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-snapshot"),request);if(limited)return limited;if(!env.HUNTER_KV)return json({status:"offline",error:"HUNTER_KV binding missing"},503,request);return json(await env.HUNTER_KV.get("hunter:snapshot:v2","json")||{status:"warming_up",engine:"MMP DIGITAL HUNTER v2",signals:[],scanned_count:0,universe_count:0},200,request);
+  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-snapshot"),request);if(limited)return limited;if(!env.ADMIN_DB)return json({status:"offline",error:"ADMIN_DB binding missing"},503,request);
+  const row=await env.ADMIN_DB.prepare("SELECT payload FROM hunter_engine_state WHERE id = ?").bind("digital-hunter-v2").first();let saved=null;try{saved=row?.payload?JSON.parse(row.payload):null;}catch{}
+  return json(saved?.snapshot||{status:"warming_up",engine:"MMP DIGITAL HUNTER v2",signals:[],scanned_count:0,universe_count:0},200,request);
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-run"){
   const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-run"),request);if(limited)return limited;try{return json(await runDigitalHunterCycle(env),200,request);}catch(e){return json({status:"error",engine:"MMP DIGITAL HUNTER v2",error:String(e?.message||e).slice(0,220)},502,request);}
