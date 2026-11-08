@@ -20,7 +20,8 @@ export function scoreQuantumOpportunity(input={}){
  const parts={momentum,flow,structure,liquidity,multiTimeframe,regime,dataQuality};
  const score=Math.round(Object.entries(QUANTUM_SCORE_WEIGHTS).reduce((sum,[key,weight])=>sum+parts[key]*weight,0));
  const confidence=Math.round(clamp(dataQuality*.35+multiTimeframe*.25+liquidity*.20+(input.flowConfirmed===true?20:8)));
- const candidateGate=dataQuality>=80&&multiTimeframe>=50&&liquidity>=25;
+ const liquidityConfirmed=input.totalVolume24h==null||finite(input.totalVolume24h)>=150000;
+ const candidateGate=dataQuality>=80&&multiTimeframe>=50&&liquidity>=25&&liquidityConfirmed&&input.overextended!==true;
  const flowAligned=input.flowConfirmed===true&&flowImbalance*trend>=0.045;
  const volumeConfirmed=finite(input.volumeRatio)>=1.1;
  const multiExchangeConfirmed=input.multiExchangeConfirmed===true;
