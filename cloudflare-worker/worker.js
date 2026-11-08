@@ -366,6 +366,8 @@ async function getExchangeCatalogs(){
    "https://api.bybit.com/v5/market/instruments-info?category=linear&limit=1000",
    "https://api.bytick.com/v5/market/instruments-info?category=linear&limit=1000"
   ]],
+  ["bitget_futures","https://api.bitget.com/api/v3/market/tickers?category=USDT-FUTURES"],
+  ["gate_futures","https://api.gateio.ws/api/v4/futures/usdt/tickers"],
   ["bitget_spot","https://api.bitget.com/api/v3/market/instruments?category=SPOT"],
   ["whitebit_spot",["https://whitebit.com/api/v1/public/markets","https://whitebit.eu/api/v1/public/markets","https://whitebit.tr/api/v1/public/markets","https://whitebit.ge/api/v1/public/markets"]],
   ["gate_spot",["https://api.gateio.ws/api/v4/spot/currency_pairs","https://api.gate.us/api/v4/spot/currency_pairs"]],
@@ -394,8 +396,10 @@ function exchangeSupport(symbol,catalogs){
  const binanceFuturesPair=(catalogs.binance_futures?.data?.symbols||[]).filter(x=>x.status==="TRADING"&&(!x.contractType||x.contractType==="PERPETUAL")&&x.baseAsset===base&&quotes.includes(x.quoteAsset)).map(x=>({pair:x.symbol,quote:x.quoteAsset})).sort((a,b)=>quotes.indexOf(a.quote)-quotes.indexOf(b.quote))[0]||null;
  const bybitFuturesPair=(catalogs.bybit_futures?.data?.result?.list||[]).filter(x=>x.status==="Trading"&&(!x.contractType||x.contractType==="LinearPerpetual")&&x.baseCoin===base&&quotes.includes(x.quoteCoin)).map(x=>({pair:x.symbol,quote:x.quoteCoin})).sort((a,b)=>quotes.indexOf(a.quote)-quotes.indexOf(b.quote))[0]||null;
  const okxFuturesPair=(catalogs.okx_futures?.data?.data||[]).filter(x=>x.state==="live"&&(!x.ctType||x.ctType==="linear")&&String(x.instId||"").endsWith("-SWAP")).map(x=>{const p=String(x.instId||"").split("-");return p[0]===base&&quotes.includes(p[1])?{pair:p[0]+p[1],quote:p[1]}:null;}).filter(Boolean).sort((a,b)=>quotes.indexOf(a.quote)-quotes.indexOf(b.quote))[0]||null;
+ const bitgetFuturesPair=(catalogs.bitget_futures?.data?.data||[]).filter(x=>String(x.category||"").toUpperCase()==="USDT-FUTURES"&&String(x.symbol||"").toUpperCase()===base+"USDT"&&Number(x.lastPrice)>0).map(x=>({pair:String(x.symbol).toUpperCase(),quote:"USDT"}))[0]||null;
+ const gateFuturesPair=(Array.isArray(catalogs.gate_futures?.data)?catalogs.gate_futures.data:[]).filter(x=>String(x.contract||"").toUpperCase()===base+"_USDT"&&Number(x.last)>0).map(x=>({pair:String(x.contract).toUpperCase(),quote:"USDT"}))[0]||null;
  const spotEntries=[["Binance",binanceSpotPair,catalogs.binance_spot],["Bybit",bybitSpotPair,catalogs.bybit_spot],["OKX",okxSpotPair,catalogs.okx_spot],["Bitget",bitgetSpotPair,catalogs.bitget_spot],["WhiteBIT",whitebitSpotPair,catalogs.whitebit_spot],["Gate.io",gateSpotPair,catalogs.gate_spot],["KuCoin",kucoinSpotPair,catalogs.kucoin_spot],["Nobitex",nobitexSpotPair,catalogs.nobitex_spot]];
- const futuresEntries=[["Binance",binanceFuturesPair,catalogs.binance_futures],["Bybit",bybitFuturesPair,catalogs.bybit_futures],["OKX",okxFuturesPair,catalogs.okx_futures]];
+ const futuresEntries=[["Binance",binanceFuturesPair,catalogs.binance_futures],["Bybit",bybitFuturesPair,catalogs.bybit_futures],["OKX",okxFuturesPair,catalogs.okx_futures],["Bitget",bitgetFuturesPair,catalogs.bitget_futures],["Gate",gateFuturesPair,catalogs.gate_futures]];
  const spot=choose(spotEntries.map(x=>x[1])),futures=choose(futuresEntries.map(x=>x[1]));
  const providerStates=entries=>Object.fromEntries(entries.map(([name,pair,source])=>[name,!source?.ok?(source?.error||"تأیید نشد"):pair?"فعال":"جفت فعال پیدا نشد"]));
  return {
