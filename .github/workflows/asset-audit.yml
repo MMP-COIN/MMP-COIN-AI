@@ -266,7 +266,6 @@ jobs:
             console.log(JSON.stringify({spot:{checked:spotResults.length,ready:report.spot.ready_count,failed:report.spot.failed_count,failed_assets:spotFailed.map(x=>({symbol:x.symbol,tests:x.tests.filter(t=>!t.ok)}))},futures:{checked:futuresResults.length,ready:report.futures.ready_count,failed:report.futures.failed_count,failed_assets:futuresFailed.map(x=>({symbol:x.symbol,tests:x.tests.filter(t=>!t.ok)}))}},null,2));
             if(spotFailed.length||futuresFailed.length)process.exitCode=1;
           })().catch(e=>{console.error(e);process.exit(1)});
-          })().catch(e=>{console.error(e);process.exit(1)});
           NODE
 
       - name: Upload full per-asset audit report
