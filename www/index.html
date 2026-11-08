@@ -3187,7 +3187,7 @@ function renderMarketHunter(){
  if($("hunter-dh-errors"))$("hunter-dh-errors").textContent=n(Number(spotSnap.failed_count||0)+Number(futuresSnap.failed_count||0),0);
  if($("hunter-feed-status"))$("hunter-feed-status").textContent="Quantum Hunter · Spot: "+n(spotSnap.scanned_count,0)+"/"+n(spotSnap.universe_count,0)+" · Futures: "+n(futuresSnap.scanned_count,0)+"/"+n(futuresSnap.universe_count,0)+" · خطاها: "+n(Number(spotSnap.failed_count||0)+Number(futuresSnap.failed_count||0),0);
 }
-async function runDedicatedHunterScan(force=false){async function runDedicatedHunterScan(force=false){
+async function runDedicatedHunterScan(force=false){
  if(dualHunterState.busy)return;
  if(!force&&Date.now()-dualHunterState.lastScan<4*60*1000)return;
  dualHunterState.busy=true;const status=$("hunter-feed-status"),button=$("hunter-refresh-btn");
