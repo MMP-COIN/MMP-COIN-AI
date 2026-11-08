@@ -185,8 +185,8 @@ jobs:
           hunter_status=$(curl --silent --show-error --retry 1 --retry-delay 2 --max-time 45 -o /tmp/hunter-scan.json -w "%{http_code}" "$WORKER_URL/hunter-scan?symbols=BTC,ETH")
           echo "Independent Hunter scan endpoint HTTP $hunter_status"
           if [ "$hunter_status" != "200" ]; then cat /tmp/hunter-scan.json; exit 1; fi
-          jq -e '.engine == "independent-hunter" and .requested == 2 and (.signals | type == "array") and (.scanned >= 1)' /tmp/hunter-scan.json >/dev/null
-          jq -r '"Hunter scan: " + (.scanned|tostring) + " valid symbols; trade-flow providers: " + ([.signals[].flow.provider // empty] | unique | join(", "))' /tmp/hunter-scan.json
+          jq -e '.engine == "MMP DIGITAL HUNTER v2" and .requested == 2 and (.signals | type == "array") and (.scanned >= 1) and (.signals | all(.[]; .confirmed == true and (.flow.provider | type == "string")))' /tmp/hunter-scan.json >/dev/null
+          jq -r '"Digital Hunter v2: " + (.scanned|tostring) + " symbols checked; " + (.signals|length|tostring) + " trade-flow-confirmed signals"' /tmp/hunter-scan.json
           {
             echo "- Shared trade-flow service: responding with real exchange trades and provider attribution"
             echo "- Independent Hunter scan: separate scan endpoint responding for BTC/ETH"
