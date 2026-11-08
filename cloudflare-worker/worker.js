@@ -714,11 +714,12 @@ async function scanHunterSymbols(symbols,marketType="spot",assetList=[]){
  const flowCandidates=[...candidates.filter(x=>x.trend==="bull"&&!x.lowLiquidity).slice(0,3),...candidates.filter(x=>x.trend==="bear"&&!x.lowLiquidity).slice(0,3)].filter(x=>x.score>=60);
  await Promise.all(flowCandidates.map(async x=>{
   try{
-   const f=marketType==="futures"?await loadFuturesMarketFlow(x.symbol,5):await loadMarketFlow(x.symbol,5);
+   let f=marketType==="futures"?await loadFuturesMarketFlow(x.symbol,5):await loadMarketFlow(x.symbol,5);
+   if(f.complete!==true){const shorter=marketType==="futures"?await loadFuturesMarketFlow(x.symbol,1):await loadMarketFlow(x.symbol,1);if(shorter.complete===true&&shorter.trade_count>=8)f=shorter;}
    const gross=f.buy5m+f.sell5m,imb=gross?f.net5m/gross:0,ok=x.trend==="bull"?imb>=.045:imb<=-.045;
    if(f.trade_count<8||!ok||f.complete===false)return;
    const quantum=scoreQuantumOpportunity({...x,flowImbalance:imb,flowConfirmed:true,multiExchangeConfirmed:x.multiExchangeConfirmed,volumeRatio:x.volumeRatio,dataAgeMs:Date.now()-x.candleTime});if(!quantum.qualityGate)return;x.quantum=quantum;x.score=quantum.score;
-   x.flow={buy5m:f.buy5m,sell5m:f.sell5m,net5m:f.net5m,tradeCount:f.trade_count,provider:f.provider,complete:f.complete,coverageStart:f.coverage_start,rows:f.rows,imbalance:+imb.toFixed(4)};
+   x.flow={buy5m:f.buy5m,sell5m:f.sell5m,net5m:f.net5m,windowMinutes:f.window_minutes||5,tradeCount:f.trade_count,provider:f.provider,complete:f.complete,coverageStart:f.coverage_start,rows:f.rows,imbalance:+imb.toFixed(4)};
    x.flowSignal=f.net5m>0?"inflow":"outflow";
    const bars=Array.isArray(x.rows)?x.rows.slice(-16):[],ranges=bars.slice(1).map((bar,i)=>Math.max(Number(bar[2])-Number(bar[3]),Math.abs(Number(bar[2])-Number(bars[i][4])),Math.abs(Number(bar[3])-Number(bars[i][4])))).filter(v=>Number.isFinite(v)&&v>0);
    const atr=ranges.length?ranges.reduce((a,b)=>a+b,0)/ranges.length:0,entry=Number(x.price),risk=Math.max(atr*1.25,entry*.002),sign=x.trend==="bull"?1:-1;
