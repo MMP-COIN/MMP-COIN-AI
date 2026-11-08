@@ -15,7 +15,7 @@ function extractAIJson(value){
 }
 async function runAIWithFallback(env,prompt){
  const messages=[
-  {role:"system",content:"You are MMP Quantum Intelligence Engine. Evaluate market evidence across momentum, structure, liquidity, multi-timeframe alignment, order flow, data quality and risk. Return one valid JSON object only. Clearly state uncertainty and invalidation conditions. Never give guaranteed financial advice."},
+  {role:"system",content:"You are MMP Quantum Intelligence Engine QIE-2.0. Evaluate momentum, volatility compression and expansion, price structure, liquidity and order-book depth, multi-timeframe alignment, executed order flow, smart-money participation proxies, scenario analysis, sentiment only when sourced, data quality and risk. Distinguish measured evidence from inference. Return one valid JSON object only, state uncertainty and invalidation conditions, and never promise profit."},
   {role:"user",content:prompt}
  ];
  const failures=[];
@@ -626,7 +626,7 @@ async function analyzeDigitalHunterSymbol(symbol,marketType="spot",asset=null){
  const avg=base.reduce((p,q)=>p+q,0)/base.length,volumeRatio=avg?x.v/avg:0,trend15=trend==="bull"?m15>.015:m15<-.015,structure=trend==="bull"?last[4]>=last[1]:last[4]<=last[1],coreAligned=Math.sign(m5)===Math.sign(m15)&&Math.abs(m5)>=.05&&Math.abs(m15)>=.08,overextended=Math.abs(m5)>=1.5||Math.abs(m1)>=.8,lowLiquidity=Number(asset?.total_volume)>0&&Number(asset.total_volume)<150000;
  if(!coreAligned||lowLiquidity)return null;
  const quantum=scoreQuantumOpportunity({trend,change1m:m1,change3m:m3,change5m:m5,change15m:m15,volumeRatio,breakout,structureAligned:structure&&coreAligned,trend15,overextended,dataAgeMs:now-last[0],flowConfirmed:false,multiExchangeConfirmed:m.multiExchangeConfirmed,totalVolume24h:asset?.total_volume});const score=quantum.score;if(score<55||!quantum.candidateGate||!m.multiExchangeConfirmed)return null;
- return {symbol,trend,score,change1m:m1,change3m:m3,change5m:m5,change15m:m15,volumeRatio,breakout,price:last[4],provider:m.provider,multiExchangeConfirmed:m.multiExchangeConfirmed,multiExchangeEvidence:m.multiExchangeEvidence,lowLiquidity,rows:rows.slice(-30),updatedAt:now,candleTime:last[0],engine:"quantum-hunter-v1",market:marketType,timeframes:{m1,m3,m5,m15},evidence:{volumeRatio:+volumeRatio.toFixed(2),breakout,trend15m:trend15,structure,coreAligned,multiExchange:m.multiExchangeEvidence},overextended};
+ return {symbol,trend,score,change1m:m1,change3m:m3,change5m:m5,change15m:m15,volumeRatio,breakout,price:last[4],provider:m.provider,multiExchangeConfirmed:m.multiExchangeConfirmed,multiExchangeEvidence:m.multiExchangeEvidence,lowLiquidity,rows:rows.slice(-30),updatedAt:now,candleTime:last[0],engine:"quantum-hunter-v2",market:marketType,timeframes:{m1,m3,m5,m15},evidence:{volumeRatio:+volumeRatio.toFixed(2),breakout,trend15m:trend15,structure,coreAligned,multiExchange:m.multiExchangeEvidence},overextended};
 }
 async function loadFuturesMarketFlow(symbol,windowMinutes=5){
  const base=String(symbol||"").toUpperCase().replace(/USDT$/,""),pair=base+"USDT";
