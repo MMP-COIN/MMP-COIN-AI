@@ -2534,14 +2534,12 @@ function renderOpportunities(){
  }
 }
 renderOpportunities();renderFastRadarProgress();
-// موتور WebSocket رادار زنده مستقل از اسکن کندلی، خودکار در سایت و اپ فعال می‌شود.
-setTimeout(startHunterLiveRadar,1200);
-setInterval(startHunterLiveRadar,300000);
+// اسکن مستقل مرورگر و WebSocket خودکار عمداً غیرفعال است؛
+ // رادار اصلی فقط Snapshot زمان‌بندی‌شده Cloudflare Worker را مصرف می‌کند.
 loadServerFastRadarSnapshot();
 setTimeout(()=>{renderMarketHunter();if(!fastRadarServerReady){fastRadarProgress={...fastRadarProgress,state:"اتصال به رادار سرور برقرار نیست · تلاش مجدد خودکار فعال است"};renderFastRadarProgress();const status=$("radar-updated");if(status)status.textContent="اتصال به سرویس رادار برقرار نشد؛ هر ۳۰ ثانیه دوباره تلاش می‌کنیم.";const note=$("radar-scan-persistence");if(note)note.textContent="اسکن خودکار روی سرور انجام می‌شود؛ این صفحه فقط نتایج را دریافت می‌کند."; }},5000);
 setInterval(loadServerFastRadarSnapshot,30000);
-setTimeout(runIndependentHunterScan,3500);
-setInterval(runIndependentHunterScan,30000);
+// اسکن مستقل Hunter در مرورگر فعلاً غیرفعال است؛ اجرای مجدد فقط با تأیید جداگانه انجام می‌شود.
 </script>
 </body>
 </html>
