@@ -1865,6 +1865,7 @@ function orderPrimaryCoins(coins){
   return (Number(b.market_cap)||0)-(Number(a.market_cap)||0);
  });
 }
+const MARKET_CATALOG_PAGE_BATCH_SIZE = 4;
 const EXTRA_COIN_IDS = [
  LAYERZERO_COIN_ID,'near','sui','aptos','arbitrum','optimism','injective-protocol','celestia','sei-network','filecoin','render-token','bittensor','artificial-superintelligence-alliance','ondo-finance','jupiter-exchange-solana','dogwifcoin','pepe','bonk','polygon-ecosystem-token','cosmos','internet-computer','uniswap','aave','chainlink','avalanche-2','polkadot','stellar','hedera-hashgraph','litecoin','bitcoin-cash','ethereum-classic','the-graph','decentraland','the-sandbox','thorchain','immutable-x','algorand','quant-network','curve-dao-token','pancakeswap-token','flare-networks','worldcoin-wld','gala','chiliz','eos','dash','zcash','compound-governance-token','yearn-finance','dydx'
 ];
@@ -2099,7 +2100,7 @@ async function refreshAll(){
    const knownSymbols=new Set(candidateCoins.map(c=>String(c.symbol||"").toUpperCase()));
    const extraCandidates=[];
    while(!finished){
-    const pageNumbers=[nextPage,nextPage+1,nextPage+2,nextPage+3];
+    const pageNumbers=Array.from({length:MARKET_CATALOG_PAGE_BATCH_SIZE},(_,index)=>nextPage+index);
     const pageResults=await Promise.allSettled(pageNumbers.map(async pageNumber=>{
      let lastError=null;
      for(let attempt=0;attempt<2;attempt++){
