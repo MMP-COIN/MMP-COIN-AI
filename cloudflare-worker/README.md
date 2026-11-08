@@ -9,7 +9,7 @@ This folder contains the secure backend for the market-analysis section on GitHu
 - Adds Fear & Greed sentiment and CoinGecko global market context when those public endpoints respond.
 - Sends the structured snapshot to Cloudflare Workers AI (Llama 3.3 70B) for a Persian BUY / SELL / WAIT report.
 - Exposes `/market-flow?symbol=BTC&window=5` as a shared real-trade flow service. It aggregates actual Bybit Spot public trades first, then Binance aggregate trades as fallback; it reports trade count, provider, and whether the 1,000-record window may be truncated.
-- Digital Hunter v2 runs independently on the analyzer Worker every minute, using a dedicated KV namespace and a rotating liquid-Spot universe. It derives 1m/3m/5m/15m momentum and structure from real 1m OHLCV candles across Binance, Bybit, Bitget, Gate, KuCoin and OKX; only candidates confirmed by real aggressive-buy/sell trade flow are published.
+- Digital Hunter v2 runs independently on the analyzer Worker every minute, using the existing private D1 database and a rotating liquid-Spot universe. It writes one compact state/snapshot row per completed cycle, avoiding the daily Workers KV write quota. It derives 1m/3m/5m/15m momentum and structure from real 1m OHLCV candles across Binance, Bybit, Bitget, Gate, KuCoin and OKX; only candidates confirmed by real aggressive-buy/sell trade flow are published.
 - `/hunter-snapshot` serves the persistent Hunter results; `/hunter-run` triggers a bounded manual cycle; `/hunter-scan?symbols=BTC,ETH` is the direct diagnostic scan endpoint. The browser only renders server snapshots and does not run its own scanner or ticker WebSockets.
 - The scheduled Radar Worker remains independent and only consumes the shared flow service as supplemental evidence. Flow data does not change Radar scores or retention decisions.
 - Never shows a fabricated fallback signal when data or AI is unavailable.
@@ -20,7 +20,7 @@ This folder contains the secure backend for the market-analysis section on GitHu
 3. Open the Worker editor and paste the contents of `worker.js` from this folder, then deploy.
 4. In the Worker settings, open **Bindings** → **Add binding** → **Workers AI**. Set the variable name to exactly `AI`, save, and deploy again.
    Also add Rate Limiting bindings `AI_ANALYSIS_LIMITER` (15 requests per 60 seconds) and `PUBLIC_API_LIMITER` (300 requests per 60 seconds). The matching configuration is already in `wrangler.toml`.
-5. Bind the dedicated Workers KV namespace `MMP-COIN-AI-Digital-Hunter` as `HUNTER_KV` and configure the `* * * * *` Cron trigger from `wrangler.toml`. The Radar Worker and its KV namespace remain separate.
+5. Keep the existing D1 binding `ADMIN_DB` connected to `mmp_coin_ai_private_admin`; Hunter stores its cursor and snapshot in the isolated `hunter_engine_state` table. Configure the `* * * * *` Cron trigger from `wrangler.toml`. The Radar Worker and its KV namespace remain separate.
 6. Copy the Worker URL. The endpoint is the same URL with `/analyze` appended only if you later add a route; for this code the root URL itself handles POST requests.
 7. In `index.html`, set `AI_ANALYSIS_ENDPOINT` to the deployed Worker root URL (including https://), commit, and wait for GitHub Pages deployment.
 
