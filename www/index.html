@@ -3526,7 +3526,6 @@ html.mmp-native-app .native-refresh-label{font:700 9px Tahoma,Arial,sans-serif!i
     }
     links.forEach(function(a){a.addEventListener("click",function(e){var target=document.querySelector(a.getAttribute("href"));if(target){e.preventDefault();target.scrollIntoView({behavior:"smooth",block:"start"});history.replaceState(null,"",a.getAttribute("href"))}})});
    }
-   var nativeUpdateChecking=false;
    function showNativeUpdateMessage(message){
     var old=document.querySelector(".mmp-update-toast");if(old)old.remove();
     var toast=document.createElement("div");toast.className="mmp-share-toast mmp-update-toast";toast.textContent=message;document.body.appendChild(toast);
