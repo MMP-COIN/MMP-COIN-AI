@@ -2,8 +2,8 @@ import { QUANTUM_ENGINE_NAME, QUANTUM_ENGINE_VERSION, normalizeQuantumUniverse, 
 const MAIN_UNIVERSE = "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/hunter-universe";
 const MAIN_FLOW = "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-flow";
 const RETENTION_SCORE = 64;
-const BATCH_SIZE = 16;
-const CONCURRENCY = 4;
+const BATCH_SIZE = 12;
+const CONCURRENCY = 2;
 const SUPPORTED = new Set(["Binance","Bybit","OKX","Bitget","Gate","KuCoin","WhiteBIT"]);
 const JSON_HEADERS = { "Accept":"application/json", "User-Agent":"MMP-COIN-AI-RADAR/1.0" };
 async function getJson(url, timeoutMs = 6500) {
@@ -73,7 +73,7 @@ async function scanCoin(coin){
   if(Number(coin.total_volume||0)<50000||!listed.length)return null;
   const order=[...new Map(listed.sort((a,b)=>Number(b.volume)-Number(a.volume)).map(x=>[x.exchange,x])).values()].map(x=>x.exchange);
   const fallback=["Binance","OKX","Gate","KuCoin","WhiteBIT","Bitget","Bybit"].filter(name=>!order.includes(name));
-  const verificationOrder=[...order,...fallback];
+  const verificationOrder=[...new Set([...order,...fallback])].slice(0,3);
   let market=null,corroboration=null,errors=[];
   for(const venue of verificationOrder){if(corroboration)break;try{const candidate=await loadProvider(symbol,venue);if(!market)market=candidate;else corroboration=candidate;}catch(error){errors.push(venue+": "+String(error?.message||error).slice(0,80));}}
   if(!market)throw new Error(errors.join(" | ")||"No candle provider responded");
@@ -123,7 +123,7 @@ async function scanCoin(coin){
   score=Math.max(0,Math.min(99,score));
   const overextended=Math.abs(change5m)>=1.5||Math.abs(change1m)>=0.8||Math.abs(dailyChange24h)>=18;
   return {
-    id:String(coin.id),symbol,trend,score,quantum,scoringVersion:3,coreAligned,multiExchangeConfirmed,multiExchangeEvidence:{primary:market.provider,secondary:corroboration.provider,timeDiffMs:exchangeTimeDiffMs,priceDeviationPct:Number(exchangePriceDeviationPct.toFixed(4)),primaryPrice:primary[4],secondaryPrice:other[4],candleTime:primary[0]},
+    id:String(coin.id),symbol,trend,score,quantum,scoringVersion:4,coreAligned,multiExchangeConfirmed,multiExchangeEvidence:{primary:market.provider,secondary:corroboration.provider,timeDiffMs:exchangeTimeDiffMs,priceDeviationPct:Number(exchangePriceDeviationPct.toFixed(4)),primaryPrice:primary[4],secondaryPrice:other[4],candleTime:primary[0]},
     change1m,change3m,change5m,change15m,change30m,dailyChange24h,
     dailyMover:Math.abs(dailyChange24h)>=8,lowLiquidity,volumeRatio,
     breakout,breakoutDirection:breakout?(trend==="bull"?"up":"down"):"",overextended,
@@ -179,7 +179,7 @@ async function runRadar(env,scheduledTime=Date.now()){
   const byId=new Map(universe.map(coin=>[String(coin.id),coin]));
   const bySymbol=new Map(universe.map(coin=>[String(coin.symbol).toUpperCase(),coin]));
   const prioritySignals=[...signals.values()]
-    .filter(x=>Number(x?.scoringVersion)===3&&Number(x?.score)>=RETENTION_SCORE)
+    .filter(x=>Number(x?.scoringVersion)===4&&Number(x?.score)>=RETENTION_SCORE)
     .sort((a,b)=>Number(b.score)-Number(a.score)||Number(a.updatedAt||0)-Number(b.updatedAt||0));
   const priorityCoins=[],prioritySymbols=new Set();
   for(const signal of prioritySignals){
@@ -255,7 +255,7 @@ async function runRadar(env,scheduledTime=Date.now()){
   }
   const nextCursor=cursor;
   const snapshot={
-    status:"online",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,source:"Cloudflare scheduled radar",scoring_version:3,retention_score:RETENTION_SCORE,
+    status:"online",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,source:"Cloudflare scheduled radar",scoring_version:4,retention_score:RETENTION_SCORE,
     universe_source:universeSource,universe_cache_age_ms:universeSource==="cached"?cacheAge:0,
     scanned_at:new Date().toISOString(),scheduled_at:new Date(Number(scheduledTime)||Date.now()).toISOString(),
     universe_count:universe.length,scanned_count:completed,valid_count:valid,failed_count:failed,failed_samples:failedSamples,
@@ -263,14 +263,14 @@ async function runRadar(env,scheduledTime=Date.now()){
     signals:(()=>{
       const canonicalIds=new Map(universe.map(coin=>[String(coin.symbol).toUpperCase(),String(coin.id)]));
       const unique=new Map();
-      for(const signal of [...signals.values()].filter(x=>Number(x?.score)>=RETENTION_SCORE&&Number(x?.scoringVersion)===3&&Date.now()-Number(x?.updatedAt||0)<=5*60*1000&&x.multiExchangeConfirmed===true&&x.flowConfirmed===true&&x.volumeConfirmed===true&&x.quantum?.qualityGate===true).sort((a,b)=>b.score-a.score)){
+      for(const signal of [...signals.values()].filter(x=>Number(x?.score)>=RETENTION_SCORE&&Number(x?.scoringVersion)===4&&Date.now()-Number(x?.updatedAt||0)<=5*60*1000&&x.multiExchangeConfirmed===true&&x.flowConfirmed===true&&x.volumeConfirmed===true&&x.quantum?.qualityGate===true).sort((a,b)=>b.score-a.score)){
         const symbol=String(signal.symbol||signal.coin?.symbol||"").toUpperCase();
         if(!symbol||canonicalIds.get(symbol)!==String(signal.id)||unique.has(symbol))continue;
         unique.set(symbol,signal);
       }
       return [...unique.values()];
     })(),
-    legacy_signals:[...signals.values()].filter(x=>Number(x?.scoringVersion)!==3)
+    legacy_signals:[...signals.values()].filter(x=>Number(x?.scoringVersion)!==4)
        .sort((a,b)=>b.score-a.score)
   };
   // Persist the public snapshot first; advance the cursor only after it is safely stored.
