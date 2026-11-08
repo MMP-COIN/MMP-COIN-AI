@@ -3146,7 +3146,11 @@ function hunterDetailRender(){
  modal.innerHTML='<div class="hunter-chart-backdrop" data-hunter-chart-close="1"></div><section class="hunter-chart-dialog hunter-detail-dialog '+(s.signal?.direction==="short"?"down":"up")+'" role="dialog" aria-modal="true" aria-labelledby="hunter-detail-title"><header class="hunter-chart-header"><div><small>اتاق تحلیل اختصاصی شکار · '+(s.market==="spot"?"SPOT":"FUTURES")+'</small><h3 id="hunter-detail-title">'+aiEscape(s.coin.name||s.symbol)+' ('+aiEscape(s.symbol)+'/USDT)</h3></div><button type="button" class="hunter-chart-close" data-hunter-chart-close="1" aria-label="بستن">×</button></header><div class="hunter-detail-summary"><b>قدرت شکار '+Number(s.signal?.score||0)+'/100</b><span>تایم‌فریم انتخابی: '+(tf.find(x=>x[0]===s.interval)?.[1]||s.interval)+'</span><strong>'+fmt(ind.last.c)+'</strong></div>'+body+'</section>';
 }
 async function openHunterDetail(symbol,market){
- const item=(market==="spot"?dualHunterState.spot:dualHunterState.futures).find(x=>String(x.coin.symbol||"").toUpperCase()===String(symbol).toUpperCase());
+ const legacyList=typeof dualHunterState!=="undefined"?(market==="spot"?dualHunterState.spot:dualHunterState.futures):[];
+ const snapshot=market==="spot"?(window.__mmpDigitalHunterSnapshot||{}):(window.__mmpDigitalHunterFuturesSnapshot||{});
+ const liveSignal=(Array.isArray(snapshot.signals)?snapshot.signals:[]).find(x=>String(x.symbol||"").toUpperCase()===String(symbol).toUpperCase());
+ const legacyItem=(Array.isArray(legacyList)?legacyList:[]).find(x=>String(x.coin?.symbol||"").toUpperCase()===String(symbol).toUpperCase());
+ const item=legacyItem||(liveSignal?{coin:liveSignal.coin||{symbol:liveSignal.symbol,name:liveSignal.name||liveSignal.symbol,current_price:liveSignal.price},signal:{...liveSignal,direction:liveSignal.trend==="bear"?"short":"long"}}:null);
  if(!item)return;
  hunterDetailState={symbol:String(symbol).toUpperCase(),market,coin:item.coin,signal:item.signal,interval:"60",busy:true,rows:[]};
  const modal=document.getElementById("hunter-chart-modal");if(!modal)return;
