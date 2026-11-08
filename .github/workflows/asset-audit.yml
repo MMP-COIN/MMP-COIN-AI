@@ -161,22 +161,34 @@ jobs:
             const supported=new Set(Array.isArray(support?.futures?.providers)?support.futures.providers:[]);
             return supported.size?c.filter(x=>supported.has(x.name.split(" ")[0])).slice(0,3):c;
           };
+          async function checkWorkerCandles(pair, timeframe, market) {
+            const parsed = pairParts(pair);
+            if (!parsed) return {ok:false,error:"Invalid "+market+" pair: "+String(pair||"")};
+            const url = WORKER + "/market-candles?symbol=" + encodeURIComponent(parsed.compact) + "&interval=" + encodeURIComponent(timeframe) + "&market=" + encodeURIComponent(market);
+            try {
+              const data = await getJson(url, 15000);
+              const rows = Array.isArray(data.candles) ? data.candles : [];
+              if (rows.length < minRows(timeframe)) throw new Error("Worker returned only " + rows.length + " candles");
+              return {ok:true,provider:data.provider||"MMP Worker",candles:rows.length};
+            } catch (error) {
+              return {ok:false,error:String(error?.message||error).slice(0,180)};
+            }
+          }
           async function checkAsset(asset, support, fastAudit=false) {
             const symbol=String(asset.symbol).toUpperCase();
             const spotMarkets=(Array.isArray(asset.marketPairs)?asset.marketPairs:[]).filter(x=>String(x.quote||"").toUpperCase()==="USDT"&&x.pair&&x.exchange).sort((a,b)=>Number(b.volume||0)-Number(a.volume||0));
             const preferredSpot=spotMarkets[0]||null;
-            const spotPair=preferredSpot?.pair || support?.spot?.pair || symbol+'USDT';
-            const spotProvider=preferredSpot?.exchange || "";
-            const futuresPair=support?.futures?.pair || symbol+'USDT';
+            const spotPair=preferredSpot?.pair || support?.spot?.pair || symbol+"USDT";
+            const futuresPair=support?.futures?.pair || symbol+"USDT";
             const tests=[];
             const timeframes=[...intervals,...(fastAudit?fastIntervals:[])];
             for(const tf of timeframes) {
-              let result=await firstValid(spotCandidates(spotPair,tf,support,spotProvider),tf);
-              let market='spot';
+              let result=await checkWorkerCandles(spotPair,tf,"spot");
+              let market="spot";
               if(!result.ok && support?.futures?.confirmed) {
-                const fut=await firstValid(futuresCandidates(futuresPair,tf,support),tf);
-                if(fut.ok){result=fut;market='futures';}
-                else result.error='Spot: '+result.error+' || Futures: '+fut.error;
+                const fut=await checkWorkerCandles(futuresPair,tf,"futures");
+                if(fut.ok){result=fut;market="futures";}
+                else result.error="Spot: "+result.error+" || Futures: "+fut.error;
               }
               tests.push({timeframe:tf,market,...result});
             }
@@ -184,11 +196,9 @@ jobs:
           }
           async function checkFuturesAsset(asset, fastAudit=false) {
             const symbol=String(asset.symbol||"").toUpperCase();
-            const providers=String(asset.hunterExchange||"").split(",").map(x=>x.trim().split(" ")[0]).filter(Boolean);
-            const support={futures:{confirmed:providers.length>0,providers,pair:symbol+"USDT"}};
             const timeframes=fastAudit?[...intervals,...fastIntervals]:fastIntervals;
             const tests=[];
-            for(const tf of timeframes)tests.push({timeframe:tf,market:"futures",...(await firstValid(futuresCandidates(symbol+"USDT",tf,support),tf))});
+            for(const tf of timeframes)tests.push({timeframe:tf,market:"futures",...(await checkWorkerCandles(symbol+"USDT",tf,"futures"))});
             return {id:asset.id||("futures:"+symbol),name:asset.name||symbol,symbol,preferred:asset.hunterPriceExchange||null,venues:asset.hunterExchange||"",volume:Number(asset.volume)||0,tests,ready:tests.every(x=>x.ok),fast_audit:fastAudit};
           }
           (async()=>{
@@ -226,15 +236,15 @@ jobs:
             }).sort((a,b)=>Number(b.volume||0)-Number(a.volume||0));
             if(!spotAssets.length||!futuresAssets.length)throw new Error('No confirmed Spot or Futures USDT instruments available for audit');
             const spotResults=[];
-            for(let i=0;i<spotAssets.length;i+=8){
-              const batch=spotAssets.slice(i,i+8);
+            for(let i=0;i<spotAssets.length;i+=4){
+              const batch=spotAssets.slice(i,i+4);
               const rows=await Promise.all(batch.map(a=>checkAsset(a,supportMap[String(a.symbol).toUpperCase()],i<100)));
               spotResults.push(...rows);
               console.log('Checked Spot '+spotResults.length+'/'+spotAssets.length+' instruments');
             }
             const futuresResults=[];
-            for(let i=0;i<futuresAssets.length;i+=8){
-              const batch=futuresAssets.slice(i,i+8);
+            for(let i=0;i<futuresAssets.length;i+=4){
+              const batch=futuresAssets.slice(i,i+4);
               const rows=await Promise.all(batch.map(a=>checkFuturesAsset(a,i<100)));
               futuresResults.push(...rows);
               console.log('Checked Futures '+futuresResults.length+'/'+futuresAssets.length+' instruments');
