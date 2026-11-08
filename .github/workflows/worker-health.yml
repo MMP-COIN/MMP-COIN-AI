@@ -205,7 +205,7 @@ jobs:
           echo "Quantum Hunter Futures scan HTTP $futures_status"
           if [ "$futures_status" != "200" ]; then cat /tmp/hunter-futures-scan.json; exit 1; fi
           jq -e '.engine == "MMP QUANTUM INTELLIGENCE ENGINE" and .market == "futures" and .requested == 2 and ((.scanned + .failed) == 2) and (.signals | type == "array") and (.signals | all(.[]; .market == "futures" and .confirmed == true and .quantum.engine == "MMP QUANTUM INTELLIGENCE ENGINE" and (.flow.provider | type == "string")))' /tmp/hunter-futures-scan.json >/dev/null
-          jq -r '"Quantum Hunter Futures: " + (.scanned|tostring) + " symbols checked; " + (.signals|length|tostring) + " real-flow-confirmed signals' /tmp/hunter-futures-scan.json
+          jq -r '"Quantum Hunter Futures: " + (.scanned|tostring) + " symbols checked; " + (.signals|length|tostring) + " real-flow-confirmed signals"' /tmp/hunter-futures-scan.json
           {
             echo "- Shared Spot trade-flow service: responding with real exchange trades and provider attribution"
             echo "- Independent Spot scan: separate scan endpoint responding for BTC/ETH"
