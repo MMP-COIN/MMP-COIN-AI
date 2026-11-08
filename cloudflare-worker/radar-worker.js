@@ -72,6 +72,12 @@ async function scanCoin(coin){
     try{market=await loadProvider(symbol,venue);break;}
     catch(error){errors.push(venue+": "+String(error?.message||error).slice(0,80));}
   }
+  // If the catalog exposes only one non-Binance venue and it is rate-limited/unavailable,
+  // make one bounded Binance attempt as a universal fallback. Total candle attempts stay <= 2.
+  if(!market&&order.length===1&&order[0]!=="Binance"){
+    try{market=await loadProvider(symbol,"Binance");}
+    catch(error){errors.push("Binance fallback: "+String(error?.message||error).slice(0,80));}
+  }
   if(!market)throw new Error(errors.join(" | ")||"No candle provider responded");
   const rows=market.rows,now=Date.now(),index=rows.length-2;
   if(index<30)return null;
