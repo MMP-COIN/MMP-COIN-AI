@@ -44,11 +44,10 @@ async function loadProvider(symbol,exchange) {
   if(exchange==="Gate"){
     const d=await getJson("https://api.gateio.ws/api/v4/spot/candlesticks?currency_pair="+symbol+"_USDT&interval=1m&limit=40");
     const raw=Array.isArray(d)?d:[];
-    const points=raw.map(x=>({t:Number(x[0])*1000,c:Number(x[2]),h:Number(x[3]),l:Number(x[4]),v:Number(x[5])}))
-      .filter(x=>[x.t,x.c,x.h,x.l,x.v].every(Number.isFinite)&&x.c>0&&x.h>=x.l&&x.l>0&&x.v>=0)
-      .sort((a,b)=>a.t-b.t);
-    // Gate candles do not provide an open field; derive each candle open from the previous close.
-    const rows=points.slice(1).map((x,i)=>[x.t,points[i].c,x.h,x.l,x.c,x.v]);
+    // Gate Spot rows are [timestamp, volume, close, high, low, open].
+    const rows=raw.map(x=>[Number(x[0])*1000,Number(x[5]),Number(x[3]),Number(x[4]),Number(x[2]),Number(x[1])])
+      .filter(x=>x.every(Number.isFinite)&&x[1]>0&&x[2]>=x[3]&&x[3]>0&&x[4]>0&&x[5]>=0)
+      .sort((a,b)=>a[0]-b[0]);
     if(rows.length<25)throw new Error("Gate candle history insufficient");return {rows,provider:"Gate Spot"};
   }
   if(exchange==="KuCoin"){
@@ -74,7 +73,7 @@ async function scanCoin(coin){
   if(Number(coin.total_volume||0)<50000||!listed.length)return null;
   const order=[...new Map(listed.sort((a,b)=>Number(b.volume)-Number(a.volume)).map(x=>[x.exchange,x])).values()].map(x=>x.exchange);
   const fallback=["Binance","OKX","Gate","KuCoin","WhiteBIT","Bitget","Bybit"].filter(name=>!order.includes(name));
-  const verificationOrder=[...order,...fallback].slice(0,4);
+  const verificationOrder=[...order,...fallback];
   let market=null,corroboration=null,errors=[];
   for(const venue of verificationOrder){if(corroboration)break;try{const candidate=await loadProvider(symbol,venue);if(!market)market=candidate;else corroboration=candidate;}catch(error){errors.push(venue+": "+String(error?.message||error).slice(0,80));}}
   if(!market)throw new Error(errors.join(" | ")||"No candle provider responded");
