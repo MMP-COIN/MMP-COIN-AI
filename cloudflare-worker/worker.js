@@ -602,8 +602,8 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
  }
  const fallbackPriority=marketType==="futures"?[3,4,1,2,0]:[2,6,4,5,1,3,0];
  order=unique([...order,...fallbackPriority.filter(index=>!order.includes(index))]);
- const orderedSources=order.map(index=>sources[index]).filter(Boolean).slice(0,2),verified=[];
- for(const fn of orderedSources){try{const [provider,rows]=await fn();verified.push({provider,rows});}catch(error){errors.push(String(error?.message||error).slice(0,130));}}
+ const orderedSources=order.map(index=>sources[index]).filter(Boolean).slice(0,4),verified=[];
+ for(const fn of orderedSources){if(verified.length>=2)break;try{const [provider,rows]=await fn();verified.push({provider,rows});}catch(error){errors.push(String(error?.message||error).slice(0,130));}}
  if(!verified.length)throw new Error((marketType==="futures"?"Futures":"Spot")+" candles unavailable: "+errors.join(" | "));
  if(verified.length<2)throw new Error("تأیید دو صرافی برای جفت "+pair+" در دسترس نیست: "+errors.join(" | "));
  const primary=verified[0],secondary=verified[1],a=primary.rows.slice(0,-1).at(-1),b=secondary.rows.slice(0,-1).at(-1);
