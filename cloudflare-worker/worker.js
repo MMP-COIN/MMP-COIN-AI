@@ -748,7 +748,7 @@ async function loadHunterDepth(symbol,marketType="spot",preferredProviders=[]){
 async function scanHunterSymbols(symbols,marketType="spot",assetList=[]){
  const assetMap=new Map((Array.isArray(assetList)?assetList:[]).map(x=>[String(x.symbol||"").toUpperCase(),x]));
  let i=0,failed=0;const candidates=[],errors=[];
- const concurrency=4;
+ const concurrency=2;
  await Promise.all(Array.from({length:Math.min(concurrency,symbols.length)},async()=>{while(i<symbols.length){const symbol=symbols[i++];try{const x=await analyzeDigitalHunterSymbol(symbol,marketType,assetMap.get(symbol));if(x)candidates.push(x);}catch(e){failed++;if(errors.length<8)errors.push({symbol,error:String(e?.message||e).slice(0,120)});}}}));
  candidates.sort((a,b)=>b.score-a.score);const signals=[];
  const flowCandidates=(marketType==="futures"?[...candidates.filter(x=>x.trend==="bull"&&!x.lowLiquidity).slice(0,1),...candidates.filter(x=>x.trend==="bear"&&!x.lowLiquidity).slice(0,1)]:candidates.filter(x=>x.trend==="bull"&&!x.lowLiquidity).slice(0,2)).filter(x=>x.score>=60);
