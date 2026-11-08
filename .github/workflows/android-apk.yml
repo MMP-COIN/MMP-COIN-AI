@@ -4,12 +4,13 @@ on:
   push:
     branches: ["main"]
     paths:
-      # Build an APK only for native shell/dependency changes or the Android launcher icon.
-      # Website UI, analysis logic, coin images and manifest updates deploy through GitHub Pages.
+      # Build an installable Android release for canonical Quantum UI, engine integration or brand changes.
       - "package.json"
       - "package-lock.json"
       - "capacitor.config.json"
       - "assets/mmp-coin-ai-icon.svg"
+      - "www/index.html"
+      - "manifest.webmanifest"
       - ".github/workflows/android-apk.yml"
   workflow_dispatch:
 
@@ -70,6 +71,8 @@ jobs:
           test -s www/index.html
           grep -q 'id="mmp-sidebar"' www/index.html
           grep -q 'id="boom-hunter"' www/index.html
+          grep -q 'MMP QUANTUM INTELLIGENCE NETWORK' www/index.html
+          grep -q 'data-quantum-module="hunter"' www/index.html
           mkdir -p www/assets
           cp -R assets/. www/assets/
           cp manifest.webmanifest www/manifest.webmanifest
