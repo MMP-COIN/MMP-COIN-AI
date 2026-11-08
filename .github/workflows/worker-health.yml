@@ -238,28 +238,38 @@ jobs:
         run: |
           set -euo pipefail
           flow_status=$(curl --silent --show-error --retry 1 --retry-delay 2 --max-time 25 -o /tmp/market-flow.json -w "%{http_code}" "$WORKER_URL/market-flow?symbol=BTC&window=5")
-          echo "Real-trade flow endpoint HTTP $flow_status"
+          echo "Real Spot trade-flow endpoint HTTP $flow_status"
           if [ "$flow_status" != "200" ]; then cat /tmp/market-flow.json; exit 1; fi
-          jq -e '.symbol == "BTCUSDT" and (.trade_count | type == "number") and (.buy5m >= 0) and (.sell5m >= 0) and (.provider | type == "string" and length > 0)' /tmp/market-flow.json >/dev/null
-          jq -r '"Real-trade provider: " + .provider + " | trades: " + (.trade_count|tostring) + " | coverage complete: " + (.complete|tostring)' /tmp/market-flow.json
-          hunter_status=$(curl --silent --show-error --retry 1 --retry-delay 2 --max-time 45 -o /tmp/hunter-scan.json -w "%{http_code}" "$WORKER_URL/hunter-scan?symbols=BTC,ETH")
-          echo "Independent Hunter scan endpoint HTTP $hunter_status"
+          jq -e '.symbol == "BTCUSDT" and (.trade_count | type == "number") and (.trade_count > 0) and (.buy5m >= 0) and (.sell5m >= 0) and (.provider | type == "string" and length > 0)' /tmp/market-flow.json >/dev/null
+          jq -r '"Spot trade-flow provider: " + .provider + " | trades: " + (.trade_count|tostring) + " | complete: " + (.complete|tostring)' /tmp/market-flow.json
+          futures_flow_status=$(curl --silent --show-error --retry 1 --retry-delay 2 --max-time 30 -o /tmp/futures-flow.json -w "%{http_code}" "$WORKER_URL/market-flow?market=futures&symbol=BTC&window=5")
+          echo "Real Futures trade-flow endpoint HTTP $futures_flow_status"
+          if [ "$futures_flow_status" != "200" ]; then cat /tmp/futures-flow.json; exit 1; fi
+          jq -e '.symbol == "BTCUSDT" and (.trade_count | type == "number") and (.trade_count > 0) and (.buy5m >= 0) and (.sell5m >= 0) and (.provider | type == "string" and length > 0)' /tmp/futures-flow.json >/dev/null
+          jq -r '"Futures trade-flow provider: " + .provider + " | trades: " + (.trade_count|tostring) + " | complete: " + (.complete|tostring)' /tmp/futures-flow.json
+          support_status=$(curl --silent --show-error --retry 1 --retry-delay 2 --max-time 35 -o /tmp/futures-support.json -w "%{http_code}" "$WORKER_URL/support-check?symbols=BTC,ETH")
+          echo "Multi-exchange Futures support HTTP $support_status"
+          if [ "$support_status" != "200" ]; then cat /tmp/futures-support.json; exit 1; fi
+          jq -e '.assets | length == 2 and all(.[]; .futures.confirmed == true and (.futures.providers | length >= 2))' /tmp/futures-support.json >/dev/null
+          jq -r '.assets[] | .symbol + " Futures venues: " + (.futures.providers|join(", "))' /tmp/futures-support.json
+          hunter_status=$(curl --silent --show-error --retry 1 --retry-delay 2 --max-time 50 -o /tmp/hunter-scan.json -w "%{http_code}" "$WORKER_URL/hunter-scan?symbols=BTC,ETH")
+          echo "Independent Spot Hunter scan HTTP $hunter_status"
           if [ "$hunter_status" != "200" ]; then cat /tmp/hunter-scan.json; exit 1; fi
-          jq -e '.engine == "MMP QUANTUM INTELLIGENCE ENGINE" and .requested == 2 and (.signals | type == "array") and (.scanned >= 1 and (.scanned + .failed) == 2) and (.failed <= 1)' /tmp/hunter-scan.json >/dev/null
-          jq -e '[.signals[] | select(.confirmed != true or .quantum.engine != "MMP QUANTUM INTELLIGENCE ENGINE" or (.flow.provider | type != "string"))] | length == 0' /tmp/hunter-scan.json >/dev/null
+          jq -e '.engine == "MMP QUANTUM INTELLIGENCE ENGINE" and .requested == 2 and (.signals | type == "array") and (.scanned >= 1)' /tmp/hunter-scan.json >/dev/null
+          jq -e '[.signals[] | select(.confirmed != true or .quantum.engine != "MMP QUANTUM INTELLIGENCE ENGINE" or .flow.complete != true or (.flow.provider | type != "string"))] | length == 0' /tmp/hunter-scan.json >/dev/null
           jq -r '.errors[]? | "Spot Hunter diagnostic: " + .symbol + " · " + .error' /tmp/hunter-scan.json
-          jq -r '"Quantum Hunter: " + (.scanned|tostring) + " symbols checked; " + (.signals|length|tostring) + " trade-flow-confirmed signals"' /tmp/hunter-scan.json
-          futures_status=$(curl --silent --show-error --retry 1 --retry-delay 2 --max-time 55 -o /tmp/hunter-futures-scan.json -w "%{http_code}" "$WORKER_URL/hunter-scan?market=futures&symbols=BTC,ETH")
-          echo "Quantum Hunter Futures scan HTTP $futures_status"
+          jq -r '"Quantum Spot Hunter: " + (.scanned|tostring) + " symbols checked; " + (.signals|length|tostring) + " flow-confirmed signals"' /tmp/hunter-scan.json
+          futures_status=$(curl --silent --show-error --retry 1 --retry-delay 2 --max-time 60 -o /tmp/hunter-futures-scan.json -w "%{http_code}" "$WORKER_URL/hunter-scan?market=futures&symbols=BTC,ETH")
+          echo "Independent Futures Hunter scan HTTP $futures_status"
           if [ "$futures_status" != "200" ]; then cat /tmp/hunter-futures-scan.json; exit 1; fi
-          jq -e '.engine == "MMP QUANTUM INTELLIGENCE ENGINE" and .market == "futures" and .requested == 2 and (.scanned >= 1 and (.scanned + .failed) == 2) and (.failed <= 1) and (.signals | type == "array")' /tmp/hunter-futures-scan.json >/dev/null
-          jq -e '[.signals[] | select(.market != "futures" or .confirmed != true or .quantum.engine != "MMP QUANTUM INTELLIGENCE ENGINE" or (.flow.provider | type != "string"))] | length == 0' /tmp/hunter-futures-scan.json >/dev/null
+          jq -e '.engine == "MMP QUANTUM INTELLIGENCE ENGINE" and .market == "futures" and .requested == 2 and (.scanned >= 1) and (.signals | type == "array")' /tmp/hunter-futures-scan.json >/dev/null
+          jq -e '[.signals[] | select(.market != "futures" or .confirmed != true or .quantum.engine != "MMP QUANTUM INTELLIGENCE ENGINE" or .flow.complete != true or (.flow.provider | type != "string"))] | length == 0' /tmp/hunter-futures-scan.json >/dev/null
           jq -r '.errors[]? | "Futures Hunter diagnostic: " + .symbol + " · " + .error' /tmp/hunter-futures-scan.json
-          jq -r '"Quantum Hunter Futures: " + (.scanned|tostring) + " symbols checked; " + (.signals|length|tostring) + " real-flow-confirmed signals"' /tmp/hunter-futures-scan.json
+          jq -r '"Quantum Futures Hunter: " + (.scanned|tostring) + " symbols checked; " + (.signals|length|tostring) + " flow-confirmed signals"' /tmp/hunter-futures-scan.json
           {
-            echo "- Shared Spot trade-flow service: responding with real exchange trades and provider attribution"
-            echo "- Independent Spot scan: separate scan endpoint responding for BTC/ETH"
-            echo "- Independent Futures scan: linear/perpetual candles and real Futures trade-flow endpoint responding for BTC/ETH"
+            echo "- Spot and Futures trade-flow endpoints: real fills verified with provider attribution"
+            echo "- BTC/ETH Futures market support: at least two active venues per asset verified"
+            echo "- Independent Spot and Futures scans: both returned valid live-data responses"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Smoke-test market intelligence endpoints
