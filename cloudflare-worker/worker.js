@@ -613,45 +613,48 @@ async function loadFuturesMarketFlow(symbol,windowMinutes=5){
    if(Number(d.retCode)!==0)throw Error(d.retMsg||"Bybit Linear trades unavailable");
    const rows=d.result?.list||[],normalized=normalize(rows,x=>({time:Number(x.time),price:Number(x.price),size:Number(x.size),side:String(x.side||"")}),x=>Number(x.time),1000);
    if(!normalized.length)throw Error("Bybit Futures returned no recent trades");
-   trades=normalized;provider="Bybit Linear · real trades";break;
+   trades=normalized;provider="Bybit Linear · real trades";if(!truncated)break;
   }catch(error){lastError=String(error?.message||error).slice(0,140);}
  }
- if(!trades?.length){
+ if(!trades?.length||truncated){
   for(const host of ["https://api.bitget.com"]){
    try{
     const d=await marketFlowJson(host+"/api/v3/market/fills?category=USDT-FUTURES&symbol="+pair+"&limit=100");
     if(String(d.code)!=="00000")throw Error(d.msg||"Bitget Futures fills unavailable");
     const raw=Array.isArray(d.data)?d.data:[];
     const oldest=raw.reduce((v,x)=>Math.min(v,Number(x.ts)||Infinity),Infinity);
-    truncated=raw.length>=100&&oldest>cutoff;
-    trades=raw.map(x=>({time:Number(x.ts),price:Number(x.price),size:Number(x.size),side:String(x.side||"").toLowerCase()==="buy"?"Buy":"Sell"})).filter(x=>x.time>=cutoff&&x.time<=now&&x.price>0&&x.size>0);
-    if(!trades.length)throw Error("Bitget returned no recent Futures fills");
-    provider="Bitget USDT Futures · real fills";break;
+    const bitgetTruncated=raw.length>=100&&oldest>cutoff;
+    const bitgetTrades=raw.map(x=>({time:Number(x.ts),price:Number(x.price),size:Number(x.size),side:String(x.side||"").toLowerCase()==="buy"?"Buy":"Sell"})).filter(x=>x.time>=cutoff&&x.time<=now&&x.price>0&&x.size>0);
+    if(!bitgetTrades.length)throw Error("Bitget returned no recent Futures fills");
+    if(!trades?.length||!bitgetTruncated||bitgetTrades.length>trades.length){trades=bitgetTrades;truncated=bitgetTruncated;provider="Bitget USDT Futures · real fills";}
+    if(!truncated)break;
    }catch(error){lastError=String(error?.message||error).slice(0,140);}
   }
  }
- if(!trades?.length){
+ if(!trades?.length||truncated){
   for(const host of ["https://fapi.binance.com"]){
    try{
     const rows=await marketFlowJson(host+"/fapi/v1/aggTrades?symbol="+pair+"&startTime="+cutoff+"&endTime="+now+"&limit=1000");
     if(!Array.isArray(rows)||!rows.length)throw Error("Binance Futures trades invalid or empty");
-    truncated=rows.length>=1000;
-    trades=rows.map(x=>({time:Number(x.T),price:Number(x.p),size:Number(x.q),side:x.m?"Sell":"Buy"})).filter(x=>x.time>=cutoff&&x.time<=now&&x.price>0&&x.size>0);
-    if(!trades.length)throw Error("Binance Futures returned no recent trades");
-    provider="Binance USD-M Futures · aggregate trades";break;
+    const oldest=rows.reduce((v,x)=>Math.min(v,Number(x.T)||Infinity),Infinity),binanceTruncated=rows.length>=1000&&oldest>cutoff;
+    const binanceTrades=rows.map(x=>({time:Number(x.T),price:Number(x.p),size:Number(x.q),side:x.m?"Sell":"Buy"})).filter(x=>x.time>=cutoff&&x.time<=now&&x.price>0&&x.size>0);
+    if(!binanceTrades.length)throw Error("Binance Futures returned no recent trades");
+    if(!trades?.length||!binanceTruncated||binanceTrades.length>trades.length){trades=binanceTrades;truncated=binanceTruncated;provider="Binance USD-M Futures · aggregate trades";}
+    if(!truncated)break;
    }catch(error){lastError=String(error?.message||error).slice(0,140);}
   }
  }
- if(!trades?.length){
+ if(!trades?.length||truncated){
   for(const host of ["https://www.okx.com"]){
    try{
     const d=await marketFlowJson(host+"/api/v5/market/trades?instId="+base+"-USDT-SWAP&limit=500");
     if(String(d.code)!=="0")throw Error(d.msg||"OKX Swap trades unavailable");
     const rows=d.data||[],oldest=rows.reduce((v,x)=>Math.min(v,Number(x.ts)||Infinity),Infinity);
-    truncated=rows.length>=500&&oldest>cutoff;
-    trades=rows.map(x=>({time:Number(x.ts),price:Number(x.px),size:Number(x.sz),side:String(x.side||"").toLowerCase()==="buy"?"Buy":"Sell"})).filter(x=>x.time>=cutoff&&x.time<=now&&x.price>0&&x.size>0);
-    if(!trades.length)throw Error("OKX returned no recent Futures trades");
-    provider="OKX USDT Swap · recent trades";break;
+    const okxTruncated=rows.length>=500&&oldest>cutoff;
+    const okxTrades=rows.map(x=>({time:Number(x.ts),price:Number(x.px),size:Number(x.sz),side:String(x.side||"").toLowerCase()==="buy"?"Buy":"Sell"})).filter(x=>x.time>=cutoff&&x.time<=now&&x.price>0&&x.size>0);
+    if(!okxTrades.length)throw Error("OKX returned no recent Futures trades");
+    if(!trades?.length||!okxTruncated||okxTrades.length>trades.length){trades=okxTrades;truncated=okxTruncated;provider="OKX USDT Swap · recent trades";}
+    if(!truncated)break;
    }catch(error){lastError=String(error?.message||error).slice(0,140);}
   }
  }
