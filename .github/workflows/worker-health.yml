@@ -232,6 +232,21 @@ jobs:
           jq -e '.status == "online" and .engine == "MMP QUANTUM INTELLIGENCE ENGINE" and (.signals | type == "array")' /tmp/hunter-snapshot.json >/dev/null
           jq -r '"Quantum Hunter snapshot: scanned " + (.scanned_count|tostring) + "/" + (.universe_count|tostring) + " liquid instruments; " + (.signals|length|tostring) + " confirmed signals; failures " + (.failed_count|tostring)' /tmp/hunter-snapshot.json >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Verify 1m/3m/5m and Futures candle endpoints
+        env:
+          WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
+        run: |
+          set -euo pipefail
+          for spec in "spot 3m" "spot 5m" "futures 15m"; do
+            read -r market interval <<< "$spec"
+            status=$(curl --silent --show-error --retry 1 --retry-delay 2 --max-time 35 -o "/tmp/candles-$market-$interval.json" -w "%{http_code}" "$WORKER_URL/market-candles?market=$market&symbol=BTC&interval=$interval")
+            echo "$market $interval candles HTTP $status"
+            if [ "$status" != "200" ]; then cat "/tmp/candles-$market-$interval.json"; exit 1; fi
+            jq -e '.symbol == "BTCUSDT" and .market == "'$market'" and .interval == "'$interval'" and (.candles | length >= 30) and (.provider | type == "string" and length > 0) and (.candles[0].open > 0)' "/tmp/candles-$market-$interval.json" >/dev/null
+            jq -r '"$market $interval provider: " + .provider + " | candles: " + (.candles|length|tostring)' "/tmp/candles-$market-$interval.json"
+          done
+          echo "- Spot 3m/5m and Futures 15m OHLCV endpoints: verified" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Smoke-test Spot/Futures trade flow, order book and analysis
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
