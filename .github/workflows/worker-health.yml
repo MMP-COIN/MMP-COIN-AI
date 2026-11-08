@@ -201,9 +201,15 @@ jobs:
           if [ "$hunter_status" != "200" ]; then cat /tmp/hunter-scan.json; exit 1; fi
           jq -e '.engine == "MMP DIGITAL HUNTER v2" and .requested == 2 and (.signals | type == "array") and (.scanned >= 1) and (.signals | all(.[]; .confirmed == true and (.flow.provider | type == "string")))' /tmp/hunter-scan.json >/dev/null
           jq -r '"Digital Hunter v2: " + (.scanned|tostring) + " symbols checked; " + (.signals|length|tostring) + " trade-flow-confirmed signals"' /tmp/hunter-scan.json
+          futures_status=$(curl --silent --show-error --retry 1 --retry-delay 2 --max-time 55 -o /tmp/hunter-futures-scan.json -w "%{http_code}" "$WORKER_URL/hunter-scan?market=futures&symbols=BTC,ETH")
+          echo "Digital Hunter Futures scan HTTP $futures_status"
+          if [ "$futures_status" != "200" ]; then cat /tmp/hunter-futures-scan.json; exit 1; fi
+          jq -e '.engine == "MMP DIGITAL HUNTER v2" and .market == "futures" and .requested == 2 and (.scanned >= 1) and (.signals | type == "array") and (.signals | all(.[]; .market == "futures" and .confirmed == true and (.flow.provider | type == "string")))' /tmp/hunter-futures-scan.json >/dev/null
+          jq -r '"Digital Hunter Futures: " + (.scanned|tostring) + " symbols checked; " + (.signals|length|tostring) + " real-flow-confirmed signals' /tmp/hunter-futures-scan.json
           {
-            echo "- Shared trade-flow service: responding with real exchange trades and provider attribution"
-            echo "- Independent Hunter scan: separate scan endpoint responding for BTC/ETH"
+            echo "- Shared Spot trade-flow service: responding with real exchange trades and provider attribution"
+            echo "- Independent Spot scan: separate scan endpoint responding for BTC/ETH"
+            echo "- Independent Futures scan: linear/perpetual candles and real Futures trade-flow endpoint responding for BTC/ETH"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Smoke-test market intelligence endpoints
