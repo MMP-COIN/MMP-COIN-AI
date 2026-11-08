@@ -1499,11 +1499,12 @@ body.radar-detail-open{overflow:hidden}
   </article>
   <article class="intel-panel" id="orderflow-panel">
    <div class="intel-panel-head"><div><small>ORDER FLOW · LIQUIDITY</small><h3>جریان سفارش و نقدشوندگی</h3></div><button class="intel-refresh" id="orderflow-refresh" type="button">↻ تازه‌سازی</button></div>
+   <div class="intel-symbol-row"><label for="orderflow-market">بازار داده</label><select id="orderflow-market" aria-label="انتخاب بازار جریان سفارش"><option value="spot">Spot · اسپات</option><option value="futures">Futures · فیوچرز</option></select></div>
    <div class="intel-metrics two" id="orderflow-metrics">
-    <div><small>عمق خرید ۱٪</small><b>—</b><em>Bid liquidity</em></div><div><small>عمق فروش ۱٪</small><b>—</b><em>Ask liquidity</em></div><div><small>عدم‌تعادل دفتر سفارش</small><b>—</b><em>Order-book imbalance</em></div><div><small>جریان تجمعی خرید/فروش</small><b>—</b><em>CVD · 1m</em></div>
+    <div><small>عمق خرید ۱٪</small><b>—</b><em>Bid liquidity</em></div><div><small>عمق فروش ۱٪</small><b>—</b><em>Ask liquidity</em></div><div><small>عدم‌تعادل دفتر سفارش</small><b>—</b><em>Order-book imbalance</em></div><div><small>جریان خالص معاملات ۵ دقیقه</small><b>—</b><em>Executed Trade Flow · 5m</em></div>
    </div>
    <div class="intel-flow-track"><span id="orderflow-buy-bar"></span><span id="orderflow-sell-bar"></span></div>
-   <div class="intel-foot" id="orderflow-status">در انتظار دریافت دفتر سفارش و کندل‌های یک‌دقیقه‌ای…</div>
+   <div class="intel-foot" id="orderflow-status">در انتظار دریافت دفتر سفارش و معاملات واقعی…</div>
   </article>
   <article class="intel-panel" id="candle-intelligence">
    <div class="intel-panel-head"><div><small>CANDLE INTELLIGENCE · 15M</small><h3>آزمایشگاه سناریوهای کندلی</h3></div><button class="intel-refresh" id="forecast-run" type="button">تحلیل کندل‌ها</button></div>
@@ -4034,8 +4035,8 @@ body:before{opacity:.23;background-size:34px 34px}
 .intel-refresh{border:1px solid #476278;border-radius:9px;padding:7px 10px;background:#1a2c3d;color:#e7d39d;font-size:10px;white-space:nowrap;cursor:pointer}
 .intel-symbol-row,.watchlist-form{display:flex;align-items:center;gap:8px;margin-bottom:12px}
 .intel-symbol-row label{font-size:10px;color:var(--muted)}
-.intel-symbol-row input,.journal-form input,.journal-form select,.watchlist-form input,.watchlist-form select{width:100%;min-width:0;padding:10px 11px;background:#08121d;border:1px solid #344d62;border-radius:9px;color:#f4e7c7;outline:none;font-size:11px}
-.intel-symbol-row input{max-width:130px;direction:ltr;text-align:left}
+.intel-symbol-row input,.intel-symbol-row select,.journal-form input,.journal-form select,.watchlist-form input,.watchlist-form select{width:100%;min-width:0;padding:10px 11px;background:#08121d;border:1px solid #344d62;border-radius:9px;color:#f4e7c7;outline:none;font-size:11px}
+.intel-symbol-row input{max-width:130px;direction:ltr;text-align:left}.intel-symbol-row select{max-width:145px;min-width:110px;cursor:pointer}
 .intel-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
 .intel-metrics.two{grid-template-columns:repeat(2,minmax(0,1fr))}
 .intel-metrics>div,.journal-stats>div{padding:10px 9px;border:1px solid #2b4357;border-radius:11px;background:linear-gradient(145deg,#1a2b3c,#101b28);min-width:0}
@@ -4465,23 +4466,24 @@ body:before{opacity:.23;background-size:34px 34px}
  $("derivatives-refresh")?.addEventListener("click",loadDerivativesViaWorker);
  $("intel-symbol")?.addEventListener("change",loadDerivativesViaWorker);
  async function loadOrderflowViaWorker(){
-  const symbol=safe($("intel-symbol")?.value||"BTC")||"BTC",status=$("orderflow-status"),box=$("orderflow-metrics");
-  if(status)status.textContent="در حال دریافت دفتر سفارش و جریان معاملات از سرویس واسط امن…";
+  const symbol=safe($("intel-symbol")?.value||"BTC")||"BTC",market=$("orderflow-market")?.value==="futures"?"futures":"spot",status=$("orderflow-status"),box=$("orderflow-metrics");
+  if(status)status.textContent="در حال دریافت دفتر سفارش و معاملات واقعی "+(market==="futures"?"Futures":"Spot")+"…";
   if(orderButton){orderButton.disabled=true;orderButton.textContent="در حال دریافت…";}
   try{
-   const d=await get(api()+"/market-orderflow?symbol="+encodeURIComponent(symbol),15000),depth=d.depth||{},flow=d.flow||{};
-   const values=[depth.available?usd(depth.bid_usdt):"دریافت نشد",depth.available?usd(depth.ask_usdt):"دریافت نشد",depth.imbalance_pct==null?"دریافت نشد":fmt(depth.imbalance_pct,1)+"٪",flow.available?(flow.cvd_usdt>=0?"+":"")+usd(flow.cvd_usdt):"دریافت نشد"];
-   if(box)box.innerHTML=values.map((v,i)=>'<div><small>'+["عمق خرید ۱٪","عمق فروش ۱٪","عدم‌تعادل دفتر سفارش","جریان خالص خرید/فروش ۶۰ دقیقه"][i]+'</small><b>'+v+'</b><em>'+["Bid liquidity","Ask liquidity","Order-book imbalance","CVD · 1m"][i]+'</em></div>').join("");
+   const d=await get(api()+"/market-orderflow?symbol="+encodeURIComponent(symbol)+"&market="+market,15000),depth=d.depth||{},flow=d.flow||{};
+   const values=[depth.available?usd(depth.bid_usdt):"دریافت نشد",depth.available?usd(depth.ask_usdt):"دریافت نشد",depth.imbalance_pct==null?"دریافت نشد":fmt(depth.imbalance_pct,1)+"٪",flow.available&&flow.cvd_usdt!=null?(flow.cvd_usdt>=0?"+":"")+usd(flow.cvd_usdt):"دریافت نشد"];
+   if(box)box.innerHTML=values.map((v,i)=>'<div><small>'+["عمق خرید ۱٪","عمق فروش ۱٪","عدم‌تعادل دفتر سفارش","جریان خالص معاملات ۵ دقیقه"][i]+'</small><b>'+v+'</b><em>'+["Bid liquidity","Ask liquidity","Order-book imbalance","Executed Trade Flow · 5m"][i]+'</em></div>').join("");
    const total=(Number(flow.buy_usdt)||0)+(Number(flow.sell_usdt)||0),bp=total?Number(flow.buy_usdt)/total*100:50;
    if($("orderflow-buy-bar"))$("orderflow-buy-bar").style.width=bp+"%";if($("orderflow-sell-bar"))$("orderflow-sell-bar").style.width=(100-bp)+"%";
-   const parts=[];if(depth.available)parts.push("دفتر سفارش "+depth.source);if(flow.available)parts.push("جریان معاملات "+flow.source);
-   if(status)status.textContent=parts.length?"نماد "+symbol+" · "+parts.join(" · ")+" · CVD بر اساس حجم خرید تهاجمی؛ آخرین بررسی "+new Date(d.checked_at).toLocaleTimeString("fa-IR"):"داده دریافت نشد؛ "+[d.errors?.depth,d.errors?.candles].filter(Boolean).join(" | ");
+   const parts=[];if(depth.available)parts.push("دفتر سفارش "+depth.source);if(flow.available)parts.push("جریان واقعی "+flow.source+" · "+fmt(flow.trade_count||0,0)+" معامله · "+(flow.complete?"پوشش کامل":"پوشش ناقص"));
+   if(status)status.textContent=parts.length?"بازار "+(market==="futures"?"Futures":"Spot")+" · نماد "+symbol+" · "+parts.join(" · ")+" · پنجره "+(flow.window_minutes||5)+" دقیقه · بررسی "+new Date(d.checked_at).toLocaleTimeString("fa-IR"):"داده دریافت نشد؛ "+[d.errors?.depth,d.errors?.flow].filter(Boolean).join(" | ");
   }catch(e){if(status)status.textContent="جریان سفارش دریافت نشد: "+(e.message||"خطای اتصال");}
   finally{if(orderButton){orderButton.disabled=false;orderButton.textContent="↻ تازه‌سازی";}}
  }
  orderButton?.addEventListener("click",loadOrderflowViaWorker);
  derivButton?.addEventListener("click",loadOrderflowViaWorker);
  $("intel-symbol")?.addEventListener("change",loadOrderflowViaWorker);
+ $("orderflow-market")?.addEventListener("change",loadOrderflowViaWorker);
  loadOrderflowViaWorker();loadDerivativesViaWorker();
 
  // The original intelligence engine remains authoritative for futures; this adds a working BTC large-transfer feed without inventing exchange labels.
