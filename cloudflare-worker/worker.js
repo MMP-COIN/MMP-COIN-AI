@@ -260,6 +260,12 @@ async function candles(symbol,interval,env,marketType="spot"){
   }catch(e){lastError=e;}
  }
  try{
+  const r=await fetch("https://api.mexc.com/api/v3/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250",{headers});
+  if(!r.ok)throw new Error("MEXC Spot HTTP "+r.status);
+  const rows=await r.json();if(!validRows(rows))throw new Error("insufficient MEXC spot candle history");
+  const result=analyzeKlines(rows);result.data_provider="MEXC Spot";return result;
+ }catch(e){lastError=new Error((lastError?.message||"Binance unavailable")+"; "+e.message);}
+ try{
   const bitgetInterval={"1m":"1m","3m":"3m","5m":"5m","15m":"15m","1h":"1H","4h":"4H","1d":"1D"}[interval];
   const url="https://api.bitget.com/api/v3/market/candles?category=SPOT&symbol="+encodeURIComponent(symbol)+"&interval="+bitgetInterval+"&limit=250";
   const r=await fetch(url,{headers});
@@ -613,23 +619,24 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
   async()=>tryHosts("Gate Spot",["https://api.gateio.ws"],host=>host+"/api/v4/spot/candlesticks?currency_pair="+symbol+"_USDT&interval=1m&limit=100",d=>Array.isArray(d)?d:null,x=>[+x[0]*1000,+x[5],+x[3],+x[4],+x[2],+x[1]]),
   async()=>tryHosts("KuCoin Spot",["https://api.kucoin.com"],host=>host+"/api/v1/market/candles?type=1min&symbol="+symbol+"-USDT",d=>String(d.code)==="200000"?d.data:null,x=>[+x[0]*1000,+x[1],+x[3],+x[4],+x[2],(+x[6]||+x[5])]),
   async()=>tryHosts("WhiteBIT Spot",["https://whitebit.com"],host=>host+"/api/v1/public/kline?market="+symbol+"_USDT&interval=1m&limit=100",d=>d?.success===true?d.result:null,x=>[+x[0]*1000,+x[1],+x[3],+x[4],+x[2],+x[5]]),
-  async()=>tryHosts("Binance.US Spot",["https://api.binance.us"],host=>host+"/api/v3/klines?symbol="+pair+"&interval=1m&limit=100",d=>Array.isArray(d)?d:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],+x[7]])
+  async()=>tryHosts("Binance.US Spot",["https://api.binance.us"],host=>host+"/api/v3/klines?symbol="+pair+"&interval=1m&limit=100",d=>Array.isArray(d)?d:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],+x[7]]),
+  async()=>tryHosts("MEXC Spot",["https://api.mexc.com"],host=>host+"/api/v3/klines?symbol="+pair+"&interval=1m&limit=100",d=>Array.isArray(d)?d:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],+x[7]])
  ];
  const sources=marketType==="futures"?futuresSources:spotSources,errors=[];
  const unique=values=>[...new Set(values.filter(Number.isInteger))];
  let order=[];
  if(marketType==="futures"){
-  const indexOf=name=>{const value=String(name||"").trim().toLowerCase();return value.startsWith("binance")?0:value.startsWith("bybit")?1:value.startsWith("okx")?2:value.startsWith("bitget")?3:value.startsWith("gate")?4:null;};
+  const indexOf=name=>{const value=String(name||"").trim().toLowerCase();return value.startsWith("binance")?0:value.startsWith("bybit")?1:value.startsWith("okx")?2:value.startsWith("bitget")?3:value.startsWith("gate")?4:value.startsWith("mexc")?8:null;};
   const priority=[3,4,1,2,0],available=unique(String(asset?.hunterExchange||"").split(",").map(indexOf).filter(Number.isInteger)).sort((a,b)=>priority.indexOf(a)-priority.indexOf(b)),primary=indexOf(asset?.hunterPriceExchange),primaryTrusted=primary!==0;
   order=unique([...(primaryTrusted&&available.includes(primary)?[primary]:[]),...available,...(!available.length?priority:[])]);
  }else{
-  const indices={Binance:0,Bybit:1,Bitget:2,OKX:3,Gate:4,"Gate.io":4,KuCoin:5,WhiteBIT:6,"Binance.US":7,BinanceUS:7};
-  const preferred=(Array.isArray(asset?.marketPairs)?asset.marketPairs.slice().sort((a,b)=>Number(b.volume||0)-Number(a.volume||0)):[]).map(x=>indices[String(x.exchange||"")]).filter(Number.isInteger),priority=[7,2,6,4,5,1,3,0],available=unique(preferred).sort((a,b)=>priority.indexOf(a)-priority.indexOf(b)),primary=preferred[0],primaryTrusted=[2,4,5,6,7].includes(primary);
+  const indices={Binance:0,Bybit:1,Bitget:2,OKX:3,Gate:4,"Gate.io":4,KuCoin:5,WhiteBIT:6,"Binance.US":7,BinanceUS:7,MEXC:8};
+  const preferred=(Array.isArray(asset?.marketPairs)?asset.marketPairs.slice().sort((a,b)=>Number(b.volume||0)-Number(a.volume||0)):[]).map(x=>indices[String(x.exchange||"")]).filter(Number.isInteger),priority=[7,2,6,4,5,8,1,3,0],available=unique(preferred).sort((a,b)=>priority.indexOf(a)-priority.indexOf(b)),primary=preferred[0],primaryTrusted=[2,4,5,6,7,8].includes(primary);
   order=unique([...(primaryTrusted?[primary]:[]),...available,...(!available.length?priority:[])]);
  }
- const fallbackPriority=marketType==="futures"?[3,4,5,6,1,2,0]:[7,2,6,4,5,1,3,0];
+ const fallbackPriority=marketType==="futures"?[3,4,5,6,1,2,0]:[7,2,6,4,5,8,1,3,0];
  order=unique([...order,...fallbackPriority.filter(index=>!order.includes(index))]);
- const orderedSources=order.map(index=>sources[index]).filter(Boolean).slice(0,7),verified=[];
+ const sourceLimit=marketType==="futures"?7:9,orderedSources=order.map(index=>sources[index]).filter(Boolean).slice(0,sourceLimit),verified=[];
  for(let offset=0;offset<orderedSources.length&&verified.length<2;offset+=2){
   const attempts=await Promise.allSettled(orderedSources.slice(offset,offset+2).map(fn=>fn()));
   for(const result of attempts){if(result.status==="fulfilled"){const [provider,rows]=result.value;verified.push({provider,rows});}else errors.push(String(result.reason?.message||result.reason).slice(0,130));}
