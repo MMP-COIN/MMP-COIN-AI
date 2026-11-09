@@ -4145,7 +4145,9 @@ try{renderMarketHours();setInterval(renderMarketHours,15000);}catch(error){conso
 checkConnections();setInterval(()=>{if(document.visibilityState!=="hidden")checkConnections();},60000);window.addEventListener("online",()=>checkConnections());document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"){checkConnections();loadUnifiedRadarSnapshot();}});
 try{initTradingView("BINANCE:BTCUSDT");}catch(error){console.error("TradingView initialization failed:",error);}
 setInterval(refreshAll, 60000);
-setInterval(()=>{if(document.visibilityState!=="hidden")refreshLiveQuotes();},15000);
+setInterval(()=>{if(document.visibilityState!=="hidden")refreshBenchmarkQuotes();},15000);
+setInterval(()=>{if(document.visibilityState!=="hidden")refreshLiveQuotes();},60000);
+setInterval(()=>{if(document.visibilityState!=="hidden")refreshGoldQuote();},30000);
 setTimeout(()=>loadUnifiedRadarSnapshot(),12000);
 setInterval(()=>{if(document.visibilityState!=="hidden")loadUnifiedRadarSnapshot();},30000);
 setTimeout(()=>runFastRadarScan(),12000);
