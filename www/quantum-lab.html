@@ -183,22 +183,23 @@ function renderEngines(statuses=null){
   const m=engineEvidence(i),n=String(i+1).padStart(2,"0");
   return '<details class="engine-drawer" id="engine-detail-'+n+'"><summary><span>'+n+'. '+e[0]+'</span><span class="state '+status+'">'+label+'</span><span class="drawer-meta">'+m.value.toLocaleString("fa-IR")+' / '+m.total.toLocaleString("fa-IR")+'</span></summary><div class="engine-more"><p>'+e[1]+'</p><div class="engine-live-meter"><span style="width:'+m.pct+'%"></span></div><div class="engine-live-meta"><b>'+m.label+'</b><strong>'+m.pct.toLocaleString("fa-IR")+'٪</strong></div><p class="engine-proof">این شاخص از snapshot مرکزی و داده‌های ثبت‌شده محاسبه شده است؛ نمایش آن به معنی وجود الگوریتم مستقل جداگانه نیست.</p><a class="engine-result-link" href="#quantum-opportunities">مشاهده خروجی‌ها و فرصت‌های مرتبط ←</a></div></details>';
  }).join("");
- // Force a true horizontal rail on the actual generated <details> cards.
+ // Use CSS Grid column-flow for a reliable horizontal rail (not stacked rows).
  const rail=$("engines");
- rail.style.setProperty("display","flex","important");
- rail.style.setProperty("flex-direction","row","important");
- rail.style.setProperty("flex-wrap","nowrap","important");
+ rail.style.setProperty("display","grid","important");
+ rail.style.setProperty("grid-auto-flow","column","important");
+ rail.style.setProperty("grid-template-rows","auto","important");
+ rail.style.setProperty("grid-template-columns","repeat(12,minmax(min(310px,86vw),360px))","important");
  rail.style.setProperty("align-items","stretch","important");
+ rail.style.setProperty("justify-content","start","important");
  rail.style.setProperty("overflow-x","auto","important");
  rail.style.setProperty("overflow-y","hidden","important");
  rail.style.setProperty("width","100%","important");
  rail.style.setProperty("max-width","100%","important");
  rail.querySelectorAll(".engine-drawer").forEach(card=>{
-  card.style.setProperty("display","flex","important");
-  card.style.setProperty("flex-direction","column","important");
-  card.style.setProperty("flex","0 0 min(360px,82vw)","important");
-  card.style.setProperty("width","min(360px,82vw)","important");
+  card.style.setProperty("display","block","important");
+  card.style.setProperty("width","100%","important");
   card.style.setProperty("min-width","0","important");
+  card.style.setProperty("max-width","none","important");
  });
  const target=decodeURIComponent(location.hash.slice(1));
  if(/^engine-detail-\d{2}$/.test(target)){const el=$(target);if(el){el.open=true;setTimeout(()=>el.scrollIntoView({behavior:"smooth",block:"center"}),100)}}
@@ -451,4 +452,44 @@ renderEngines(null);renderLedger();renderQuantumCharts();loadIndependentCatalog(
 @media(max-width:560px){#quantum-engines #engines>.engine-drawer{flex-basis:min(310px,86vw)!important;width:min(310px,86vw)!important}}
 </style>
 
+
+<style id="mmp-quantum-engine-horizontal-grid-final">
+#quantum-engines{display:block!important;max-width:100%!important;min-width:0!important;overflow:hidden!important}
+#quantum-engines>#engines,
+#quantum-engines .engines#engines{
+ display:grid!important;
+ grid-auto-flow:column!important;
+ grid-template-rows:minmax(0,auto)!important;
+ grid-template-columns:repeat(12,minmax(min(310px,86vw),360px))!important;
+ grid-auto-columns:minmax(min(310px,86vw),360px)!important;
+ justify-content:start!important;
+ align-items:stretch!important;
+ gap:10px!important;
+ width:100%!important;
+ max-width:100%!important;
+ min-width:0!important;
+ overflow-x:auto!important;
+ overflow-y:hidden!important;
+ overscroll-behavior-x:contain;
+ -webkit-overflow-scrolling:touch;
+ scroll-snap-type:x mandatory;
+ padding:5px 3px 14px!important;
+}
+#quantum-engines>#engines>.engine-drawer,
+#quantum-engines .engines#engines>.engine-drawer{
+ display:block!important;
+ width:100%!important;
+ min-width:0!important;
+ max-width:none!important;
+ margin:0!important;
+ scroll-snap-align:start;
+}
+#quantum-engines .engine-drawer summary{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:center!important}
+@media(max-width:560px){
+ #quantum-engines>#engines,#quantum-engines .engines#engines{
+  grid-template-columns:repeat(12,minmax(86vw,86vw))!important;
+  grid-auto-columns:86vw!important;
+ }
+}
+</style>
 </body></html>
