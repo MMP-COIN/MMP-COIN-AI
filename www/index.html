@@ -492,7 +492,7 @@ body:after{content:"";position:fixed;width:42vw;height:42vw;max-width:620px;max-
 .radar-refresh-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:42px;padding:8px 12px;border:1px solid #8b713f;border-radius:12px;background:linear-gradient(145deg,#292315,#171b23);color:#f5dda2;font-size:11px;font-weight:800;white-space:nowrap;box-shadow:0 5px 16px #0004;transition:border-color .2s,transform .2s,opacity .2s;flex:none}.radar-refresh-btn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}.radar-refresh-btn:hover{border-color:#e5c477;transform:translateY(-1px)}.radar-refresh-btn:disabled{opacity:.6;cursor:wait}.radar-refresh-btn.is-refreshing svg{animation:radarRefreshSpin 1s linear infinite}@keyframes radarRefreshSpin{to{transform:rotate(360deg)}}@media(max-width:420px){.radar-refresh-btn{min-height:38px;padding:7px 9px}.radar-refresh-btn span{font-size:10px}}
 #opportunities .radar-card .section-head>.radar-refresh-btn{display:inline-flex!important;visibility:visible!important;opacity:1!important;position:relative;z-index:2;align-self:center;flex-shrink:0}
 .radar-live-note .sub{margin-right:auto;font-size:10px}
-.radar-live-dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 12px var(--green);flex:none}
+.radar-live-dot{width:8px;height:8px;border-radius:50%;background:#8d96a5;box-shadow:0 0 0 3px #8d96a522;flex:none}
 .radar-groups{display:grid;gap:16px}
 /* Keep all radar candidates inside one bounded, internally scrollable frame */
 #opportunity-list.radar-groups{max-height:560px;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding:8px;border:1px solid #8b714255;border-radius:16px;background:linear-gradient(145deg,#101925,#0a111a)}
@@ -1382,6 +1382,17 @@ body.radar-detail-open{overflow:hidden}
 #quantum-center-entry .quantum-engine-matrix>a.quantum-engine-link small{font-size:9px;line-height:1.7;color:#b8c0ca}
 @media(max-width:760px){#quantum-center-entry .quantum-engine-matrix>a.quantum-engine-link{flex-basis:164px;width:164px;min-height:55px}}
 @media(max-width:420px){#quantum-center-entry .quantum-engine-matrix>a.quantum-engine-link{flex-basis:148px;width:148px;min-height:52px}}
+
+/* One command-center control contains the 12 specialist engines; collapsed by default. */
+#quantum-center-entry details.quantum-engine-board{grid-column:1/-1;}
+#quantum-center-entry .quantum-engine-board>summary{list-style:none;cursor:pointer;user-select:none;min-height:44px;margin:0;padding:2px 2px;}
+#quantum-center-entry .quantum-engine-board>summary::-webkit-details-marker{display:none}
+#quantum-center-entry .quantum-engine-board>summary>span{display:flex;align-items:center;gap:9px}
+#quantum-center-entry .engine-toggle-chevron{display:inline-block;font-size:16px;transition:transform .18s ease}
+#quantum-center-entry .quantum-engine-board[open] .engine-toggle-chevron{transform:rotate(180deg)}
+#quantum-center-entry .quantum-engine-board:not([open]) .quantum-engine-matrix,
+#quantum-center-entry .quantum-engine-board:not([open]) .quantum-engine-links{display:none}
+#quantum-center-entry .quantum-engine-board[open] .quantum-engine-matrix{margin-top:10px}
 </style><style id="mmp-global-readable-layout">
 /* Global layout safety: keep every label and value inside its own card. */
 *,*::before,*::after{box-sizing:border-box}
@@ -1434,7 +1445,7 @@ body:before{opacity:.23;background-size:34px 34px}
 .intel-suite-head{display:flex;justify-content:space-between;gap:14px;align-items:center;margin-bottom:16px}
 .intel-suite-head h2{font-size:20px;margin:5px 0}
 .intel-suite-head p{font-size:11px;color:var(--muted);margin:0;line-height:1.9}
-.intel-live-chip,.journal-local-tag,.intel-status-wait{white-space:nowrap;border:1px solid #3a6e68;background:#123b372e;color:#72e6ce;border-radius:30px;padding:7px 11px;font-size:10px}
+.intel-live-chip,.journal-local-tag,.intel-status-wait{white-space:nowrap;border:1px solid #3a4655;background:#17202b;color:#b8c2cf;border-radius:30px;padding:7px 11px;font-size:10px}
 .intel-live-chip i{display:inline-block;width:7px;height:7px;border-radius:50%;background:#42e2b8;box-shadow:0 0 12px #42e2b8;margin-left:5px}
 .intel-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
 .intel-panel{padding:16px;min-width:0;margin:0}
@@ -1781,6 +1792,74 @@ body:before{opacity:.23;background-size:34px 34px}
  #market-hunter .hunter-early-item>span>small{font-size:10px;line-height:1.9;}
 }
 </style>
+<style id="mmp-command-progress-ui">
+#mmp-command-progress{position:relative;isolation:isolate;margin:14px 0 12px;padding:13px 15px;border:1px solid rgba(220,181,99,.34);border-radius:15px;overflow:hidden;background:radial-gradient(ellipse at 8% 50%,rgba(221,177,91,.13),transparent 46%),linear-gradient(112deg,#172331,#0b121b 72%);box-shadow:inset 0 1px #ffffff12,0 12px 28px #0004}
+#mmp-command-progress:before{content:"";position:absolute;inset:0 0 auto;height:1px;background:linear-gradient(90deg,transparent,#e6c77e,transparent);opacity:.8;pointer-events:none}
+#mmp-command-progress .mcp-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+#mmp-command-progress .mcp-head>div{display:grid;gap:4px;min-width:0}
+#mmp-command-progress .mcp-kicker{font-size:8px;letter-spacing:1.5px;color:#c9a75f;font-weight:900}
+#mmp-command-progress .mcp-head b{font-size:12px;color:#f1e1bd}
+#mmp-command-progress .mcp-head strong{font-size:22px;color:#f0cf83;font-variant-numeric:tabular-nums;white-space:nowrap}
+#mmp-command-progress .mcp-track{height:9px;margin:11px 0 9px;border:1px solid #b18c4b33;border-radius:30px;background:#ffffff12;overflow:hidden}
+#mmp-command-progress .mcp-track i{display:block;width:0;height:100%;border-radius:inherit;background:linear-gradient(90deg,#9b7029,#f4d88d 65%,#4ec6a1);box-shadow:0 0 14px #e5c47777;transition:width .45s ease}
+#mmp-command-progress .mcp-metrics{display:flex;flex-wrap:wrap;gap:6px 18px;color:#9eacbb;font-size:9px}
+#mmp-command-progress .mcp-metrics b{color:#e8d4a7;font-variant-numeric:tabular-nums;margin-inline-start:4px}
+#mmp-command-progress>small{display:block;margin-top:8px;color:#8494a5;font-size:9px;line-height:1.7}
+#mmp-command-progress.is-error{border-color:#9b555566}
+#mmp-command-progress.is-error .mcp-head b{color:#e6a5a5}
+@media(max-width:560px){#mmp-command-progress{padding:11px}#mmp-command-progress .mcp-head strong{font-size:19px}#mmp-command-progress .mcp-metrics{gap:5px 12px}}
+@media(prefers-reduced-motion:reduce){#mmp-command-progress .mcp-track i{transition:none}}
+</style><style id="mmp-market-intelligence-v3">
+.market-heatmap-panel{grid-column:1/-1;position:relative;overflow:hidden}
+.market-heatmap-panel:before{content:"";position:absolute;inset:0 0 auto;height:2px;background:linear-gradient(90deg,transparent,#d9b66d,#25d695,#d9b66d,transparent);opacity:.8}
+.heatmap-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:12px 0}
+.heatmap-summary span,.performance-summary>div{padding:10px;border:1px solid #30394b;border-radius:10px;background:#101722;color:#9aa7b7;font-size:10px}
+.heatmap-summary b,.performance-summary b{display:block;color:#f4d58d;font-size:15px;margin-top:5px;font-variant-numeric:tabular-nums}
+.market-heatmap-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));grid-auto-rows:minmax(72px,auto);gap:7px}
+.heat-tile{grid-column:span var(--heat-col,1);grid-row:span var(--heat-row,1);position:relative;display:flex;flex-direction:column;justify-content:space-between;min-width:0;min-height:74px;padding:9px;border:1px solid #ffffff20;border-radius:11px;overflow:hidden;background:linear-gradient(145deg,#15392f,#10251f);box-shadow:inset 0 0 22px #ffffff08;transition:transform .2s,border-color .2s}
+.heat-tile:hover{transform:translateY(-2px);border-color:#f4d58d99}
+.heat-tile.negative{background:linear-gradient(145deg,#49232d,#27151d)}
+.heat-tile.neutral{background:linear-gradient(145deg,#34313a,#1b1c24)}
+.heat-tile.major{min-height:155px;padding:13px}
+.heat-tile b{font-size:13px;color:#fff;direction:ltr;text-align:left;overflow:hidden;text-overflow:ellipsis}
+.heat-tile strong{font-size:clamp(15px,2vw,22px);color:#fff;direction:ltr;text-align:left;font-variant-numeric:tabular-nums}
+.heat-tile small{font-size:9px;color:#ffffffb8;direction:ltr;text-align:left;white-space:nowrap}
+.heat-tile .heat-volume{font-size:9px;color:#ffffffa8}
+.heatmap-empty{padding:20px;text-align:center;border:1px dashed #384456;border-radius:11px;color:#9aa7b7;font-size:11px;grid-column:1/-1}
+.liquidity-map-head{display:flex;justify-content:space-between;gap:10px;align-items:center;margin:15px 0 8px;font-size:11px;color:#f2d58e}
+.liquidity-map-head small{font-size:9px;color:#9aa7b7}
+.liquidity-depth-map{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.liquidity-side{min-width:0;padding:9px;border:1px solid #30394b;border-radius:10px;background:#0b111a}
+.liquidity-side h4{font-size:10px;margin:0 0 8px}
+.liquidity-side.bids h4{color:#48d6a6}.liquidity-side.asks h4{color:#ff8795}
+.liquidity-level{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px;padding:5px 4px;margin:3px 0;border-radius:5px;overflow:hidden;font-size:9px;direction:ltr}
+.liquidity-level:before{content:"";position:absolute;inset:0 auto 0 0;width:var(--depth-width);opacity:.22;background:#25d695}
+.liquidity-side.asks .liquidity-level:before{background:#ff6576}
+.liquidity-level.wall{outline:1px solid #d9b66d99;background:#d9b66d0c}
+.liquidity-level.wall:after{content:"WALL";position:absolute;right:4px;top:3px;color:#f4d58d;font-size:7px;letter-spacing:.5px}
+.liquidity-level span,.liquidity-level b{position:relative;z-index:1}
+.liquidity-level b{font-variant-numeric:tabular-nums;color:#fff}
+.liquidity-map-note{font-size:9px;line-height:1.8;color:#a5afbd;margin:8px 0;padding:8px 10px;border-right:2px solid #c49d54;background:#ffffff05;border-radius:6px}
+.server-performance-panel{margin:12px 0 16px;padding:14px;border:1px solid #78633b88;border-radius:14px;background:radial-gradient(ellipse at 100% 0,#d9b66d12,transparent 45%),linear-gradient(145deg,#151c27,#0b1119)}
+.server-performance-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.server-performance-head b{display:block;color:#f4d58d;font-size:13px}
+.server-performance-head small{display:block;color:#9aa7b7;font-size:9px;margin-top:4px}
+.performance-summary{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:7px;margin:12px 0}
+.performance-engine-list{display:grid;gap:7px}
+.performance-engine-row{display:grid;grid-template-columns:minmax(0,1.2fr) repeat(4,minmax(0,.7fr));gap:8px;align-items:center;padding:9px;border:1px solid #30394b;border-radius:9px;background:#0e1520;font-size:10px}
+.performance-engine-row b{color:#f4d58d}
+.performance-engine-row small{display:block;color:#94a1b2;font-size:8px;margin-bottom:3px}
+.performance-status{margin-top:9px;color:#9aa7b7;font-size:9px;line-height:1.8}
+@media(max-width:760px){.market-heatmap-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.heat-tile.major{min-height:125px}.performance-summary{grid-template-columns:repeat(3,minmax(0,1fr))}.performance-engine-row{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:420px){.heatmap-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.market-heatmap-grid{grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:minmax(65px,auto)}.heat-tile.major{grid-column:span 2!important;grid-row:span 1!important;min-height:95px}.liquidity-depth-map{grid-template-columns:1fr}.performance-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style>
+\n<style id="mmp-radar-real-progress-status">\n.radar-core-state.is-offline i{background:#ef6262;box-shadow:0 0 8px #ef6262;animation:none}\n.radar-core-state.is-cached i{background:#e7b45c;box-shadow:0 0 8px #e7b45c}\n.radar-scan-progress.is-offline .radar-scan-track span{background:linear-gradient(90deg,#8c3434,#ef6262)}\n.radar-scan-progress.is-cached .radar-scan-track span{background:linear-gradient(90deg,#946a27,#e7b45c)}\n</style>\n<style id="mmp-market-heatmap-entry">
+.market-heatmap-entry{display:flex;align-items:center;justify-content:space-between;gap:18px;margin:0 0 18px;padding:17px 20px;border:1px solid #80683f88;border-radius:17px;background:radial-gradient(ellipse at 0 50%,#d9b66d18,transparent 45%),linear-gradient(115deg,#171d28,#0c121b);box-shadow:0 12px 32px #0005}
+.market-heatmap-entry-copy{min-width:0}.market-heatmap-entry-kicker{font-size:9px;letter-spacing:1.4px;color:#d9b66d;font-weight:900}.market-heatmap-entry h2{margin:6px 0;font-size:17px;color:#f4dfa8}.market-heatmap-entry p{margin:0;color:#aab4c2;font-size:11px;line-height:1.9}.market-heatmap-entry-tags{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}.market-heatmap-entry-tags span{font-size:9px;color:#c8b98f;border:1px solid #6d5a36;border-radius:20px;padding:4px 8px}
+.market-heatmap-entry-button{flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid #b59658;border-radius:12px;background:linear-gradient(120deg,#9c742f,#e5c77f);color:#17130a;text-decoration:none;box-shadow:0 7px 22px #0005}
+.market-heatmap-entry-icon{display:grid;place-items:center;width:36px;height:36px;border-radius:10px;background:#17130a18;font-size:22px}.market-heatmap-entry-button b,.market-heatmap-entry-button small{display:block}.market-heatmap-entry-button b{font-size:11px}.market-heatmap-entry-button small{font-size:9px;margin-top:3px;opacity:.75}.market-heatmap-entry-button strong{font-size:20px}
+@media(max-width:620px){.market-heatmap-entry{align-items:stretch;flex-direction:column;padding:14px}.market-heatmap-entry-button{justify-content:center}.market-heatmap-entry-tags{gap:5px}}
+</style>
 </head>
 <body class="mmp-app-mode">
 
@@ -1801,6 +1880,7 @@ body:before{opacity:.23;background-size:34px 34px}
 <div class="dropdown-menu" id="dropdownMenu" aria-label="منوی اصلی">
   <div class="menu-section-label">بخش‌های اصلی</div>
   <a href="/quantum-lab.html">◈ ورود به مرکز فرماندهی کوانتومی MMP</a>
+  <a href="/market-heatmap.html">▦ نقشه حرارتی بازار</a>
   <a href="#opportunities">📡 رادار هوشمند بازار</a>
   <a href="#market-hunter">🎯 شکارچی کوانتومی بازار</a>
   <a href="#ai-section">✧ تحلیلگر هوشمند AI</a>
@@ -1817,6 +1897,7 @@ body:before{opacity:.23;background-size:34px 34px}
   <div class="side-caption">INTELLIGENCE FIRST</div>
   <a class="side-link active" href="#hero"><i>◈</i><span>نمای کلی بازار</span><em>01</em></a>
   <a class="side-link quantum-center-nav" href="#quantum-center-entry"><i>✧</i><span>مرکز فرماندهی کوانتومی MMP</span><em>CORE</em></a>
+  <a class="side-link" href="/market-heatmap.html"><i>▦</i><span>نقشه حرارتی بازار</span><em>LIVE</em></a>
   <a class="side-link" href="#opportunities"><i>⌖</i><span>رادار صعودی و نزولی</span><em>02</em></a>
   <a class="side-link hunter-nav-link" href="#market-hunter"><i>🎯</i><span>شکارچی بازار</span><em>03</em></a>
   <a class="side-link" href="#ai-section"><i>✧</i><span>تحلیلگر هوشمند AI</span><em>04</em></a>
@@ -1896,32 +1977,42 @@ body:before{opacity:.23;background-size:34px 34px}
 
 <section class="quantum-command-hero" id="quantum-center-entry" data-quantum-module="quantum-center" aria-labelledby="quantum-center-title">
  <div class="quantum-hero-copy">
-  <div class="quantum-hero-eyebrow"><i class="quantum-live-pip"></i>MMP QUANTUM COMMAND · MARKET INTELLIGENCE</div>
+  <div class="quantum-hero-eyebrow">MMP QUANTUM COMMAND · MARKET INTELLIGENCE</div>
   <h2 class="hero-title" id="quantum-center-title"><span class="quantum-gold-title">مرکز فرماندهی کوانتومی MMP</span><span>اتاق فرمان تحلیل و شکار بازار</span></h2>
   <p>اتاق تصمیم‌گیری یکپارچه برای رصد بازار، کشف فرصت‌های زودهنگام، تحلیل جریان سفارش و سنجش سناریوهای معاملاتی؛ متصل به رادار، شکارچی بازار و تحلیلگر هوشمند.</p>
-  <div class="quantum-hero-tags"><span>یک ابرموتور · ۱۲ قابلیت هماهنگ</span><span>اسکن پویای جفت‌های واجد شرایط USDT</span><span>تحلیل چندلایه و مدیریت ریسک</span></div>
-  <div class="quantum-hero-actions"><a class="quantum-enter-btn" href="/quantum-lab.html"><span>ورود به مرکز کوانتومی</span><b>←</b></a><a class="quantum-run-compact" href="/quantum-lab.html?run-engines=1" aria-label="ورود و اجرای ابرموتور هوشمند"><span>⟳ اجرای ابرموتور</span><small>اسکن واقعی بازار</small></a><span class="badge">مرکز یکپارچه تحلیل بازار</span></div>
+  <div class="quantum-hero-tags"><span>۱۲ موتور تخصصی</span><span>اسکن پویای جفت‌های واجد شرایط USDT</span><span>تحلیل چندلایه و مدیریت ریسک</span></div>
+  <div class="quantum-hero-actions"><a class="quantum-enter-btn" href="/quantum-lab.html"><span>ورود به مرکز کوانتومی</span><b>←</b></a><a class="quantum-run-compact" href="/quantum-lab.html?run-engines=1" aria-label="ورود و اجرای مجدد هر ۱۲ موتور"><span>⟳ اجرای مجدد ۱۲ موتور</span><small>اسکن واقعی بازار</small></a><span class="badge">مرکز یکپارچه تحلیل بازار</span></div>
  </div>
  <div class="quantum-hero-art" aria-label="نشان سه‌بعدی کوانتومی MMP"><div class="quantum-art-grid"></div><div class="quantum-art-orbit orbit-one"></div><div class="quantum-art-orbit orbit-two"></div><div class="quantum-art-orbit orbit-three"></div><div class="quantum-art-core mmp-quantum-emblem"><img src="assets/mmp-coin-mark.svg?v=20261109-hero" alt="نشان اصلی سکه MMP"></div><i class="quantum-node node-one"></i><i class="quantum-node node-two"></i><i class="quantum-node node-three"></i><div class="quantum-art-caption">QUANTUM COMMAND<small>MMP MARKET INTELLIGENCE</small></div></div>
- <div class="quantum-engine-board" aria-label="ابر موتور هوشمند فرماندهی بازار">
-  <div class="quantum-engine-board-head"><div><b>ابر‌موتور هوشمند MMP</b><small>یک هسته مشترک · ۱۲ قابلیت تخصصی · یک تصمیم نهایی هماهنگ</small></div><span>QUANTUM SUPER ENGINE</span></div>
-  <details class="quantum-engine-capabilities"><summary>نمایش ۱۲ قابلیت یکپارچه ابرموتور</summary><div class="quantum-engine-matrix">
-   <div class="quantum-engine-link"><i>01</i><b>هوشمندی بازار</b><small>رژیم بازار، جهت BTC و همبستگی</small></div>
-   <div class="quantum-engine-link"><i>02</i><b>پیش‌بینی حرکت انفجاری</b><small>فشردگی قیمت، حجم و شتاب اولیه</small></div>
-   <div class="quantum-engine-link"><i>03</i><b>شکار فرصت زودهنگام</b><small>کشف تغییرات اولیه بین نمادها</small></div>
-   <div class="quantum-engine-link"><i>04</i><b>جریان پول هوشمند</b><small>جهت جریان Taker Buy و Sell</small></div>
-   <div class="quantum-engine-link"><i>05</i><b>شکارچی نقدینگی</b><small>دفتر سفارش، عدم تعادل و نقدینگی</small></div>
-   <div class="quantum-engine-link"><i>06</i><b>هم‌جهتی چندتایم‌فریمی</b><small>تطبیق روند ۵ دقیقه و یک‌ساعته</small></div>
-   <div class="quantum-engine-link"><i>07</i><b>هوشمندی نوسان</b><small>ATR، دامنه حرکت و فشردگی نوسان</small></div>
-   <div class="quantum-engine-link"><i>08</i><b>سنجش احساسات بازار</b><small>رفتار قیمت و حجم به‌عنوان نشانه</small></div>
-   <div class="quantum-engine-link"><i>09</i><b>شبیه‌ساز سناریو</b><small>سناریوی صعودی/نزولی و نقطه ابطال</small></div>
-   <div class="quantum-engine-link"><i>10</i><b>یادگیری تطبیقی</b><small>ثبت و سنجش نتیجه پیش‌بینی‌ها</small></div>
-   <div class="quantum-engine-link"><i>11</i><b>هوشمندی مدیریت ریسک</b><small>حدضرر، ATR و نسبت ریسک به بازده</small></div>
-   <div class="quantum-engine-link"><i>12</i><b>موتور تصمیم کوانتومی</b><small>ترکیب شواهد، کیفیت داده و رتبه‌بندی</small></div>
-  </div></details>
+ <details class="quantum-engine-board" aria-label="مرکز دسترسی به ۱۲ موتور تخصصی">
+  <summary class="quantum-engine-board-head"><div><b>یک موتور مرکزی · ۱۲ قابلیت تخصصی</b><small>برای مشاهده ابزارهای داخلی، این مرکز فرماندهی را باز کن؛ وضعیت هر قابلیت فقط با داده معتبر اعلام می‌شود</small></div><span>نمایش ۱۲ موتور <b class="engine-toggle-chevron" aria-hidden="true">⌄</b></span></summary>
+  <div class="quantum-engine-matrix">
+   <a class="quantum-engine-link" href="quantum-lab.html#engine-detail-01" aria-label="ورود به موتور هوشمندی بازار"><i>01</i><b>هوشمندی بازار</b><small>رژیم بازار، جهت BTC و همبستگی</small></a>
+   <a class="quantum-engine-link" href="quantum-lab.html#engine-detail-02" aria-label="ورود به موتور پیش‌بینی حرکت انفجاری بازار"><i>02</i><b>پیش‌بینی حرکت انفجاری بازار</b><small>برآورد احتمال جهش بر پایه فشردگی قیمت، حجم و شتاب اولیه</small></a>
+   <a class="quantum-engine-link" href="quantum-lab.html#engine-detail-03" aria-label="ورود به موتور شکار فرصت زودهنگام"><i>03</i><b>شکار فرصت زودهنگام</b><small>کشف تغییرات اولیه بین نمادها</small></a>
+   <a class="quantum-engine-link" href="quantum-lab.html#engine-detail-04" aria-label="ورود به موتور جریان پول هوشمند"><i>04</i><b>جریان پول هوشمند</b><small>جهت جریان Taker Buy و Sell</small></a>
+   <a class="quantum-engine-link" href="quantum-lab.html#engine-detail-05" aria-label="ورود به موتور شکارچی نقدینگی"><i>05</i><b>شکارچی نقدینگی</b><small>دفتر سفارش، عدم تعادل و نقدینگی</small></a>
+   <a class="quantum-engine-link" href="quantum-lab.html#engine-detail-06" aria-label="ورود به موتور هم‌جهتی چندتایم‌فریمی"><i>06</i><b>هم‌جهتی چندتایم‌فریمی</b><small>تطبیق روند ۵ دقیقه و یک‌ساعته</small></a>
+   <a class="quantum-engine-link" href="quantum-lab.html#engine-detail-07" aria-label="ورود به موتور هوشمندی نوسان"><i>07</i><b>هوشمندی نوسان</b><small>ATR، دامنه حرکت و فشردگی نوسان</small></a>
+   <a class="quantum-engine-link" href="quantum-lab.html#engine-detail-08" aria-label="ورود به موتور سنجش احساسات بازار"><i>08</i><b>سنجش احساسات بازار</b><small>رفتار قیمت و حجم به‌عنوان نشانه</small></a>
+   <a class="quantum-engine-link" href="quantum-lab.html#engine-detail-09" aria-label="ورود به موتور شبیه‌ساز سناریو"><i>09</i><b>شبیه‌ساز سناریو</b><small>سناریوی صعودی/نزولی و نقطه ابطال</small></a>
+   <a class="quantum-engine-link" href="quantum-lab.html#engine-detail-10" aria-label="ورود به موتور یادگیری تطبیقی"><i>10</i><b>یادگیری تطبیقی</b><small>ثبت و سنجش نتیجه پیش‌بینی‌ها</small></a>
+   <a class="quantum-engine-link" href="quantum-lab.html#engine-detail-11" aria-label="ورود به موتور هوشمندی مدیریت ریسک"><i>11</i><b>هوشمندی مدیریت ریسک</b><small>حدضرر، ATR و نسبت ریسک به بازده</small></a>
+   <a class="quantum-engine-link" href="quantum-lab.html#engine-detail-12" aria-label="ورود به موتور موتور تصمیم کوانتومی"><i>12</i><b>موتور تصمیم کوانتومی</b><small>ترکیب شواهد، کیفیت داده و رتبه‌بندی</small></a>
+  </div>
   <div class="quantum-engine-links"><span>رادار فرصت‌ها</span><b>←</b><span>شکارچی بازار</span><b>←</b><span>تحلیلگر هوشمند</span><b>←</b><span>جریان سفارش و سناریو</span></div>
- </div>
- <div class="quantum-hero-foot"><span>اسکن پویا جفت‌های واجد شرایط USDT Spot</span><span>۱۲ قابلیت تخصصی در یک هسته</span><span>داده ناموجود = بدون امتیازسازی جعلی</span></div>
+ </details>
+ <section class="mmp-command-progress" id="mmp-command-progress" aria-live="polite" aria-label="پیشرفت واقعی موتور مرکزی">
+<div class="mcp-head"><div><span class="mcp-kicker">QUANTUM CORE · LIVE CYCLE</span><b id="mcp-state">در انتظار دریافت وضعیت موتور مرکزی</b></div><strong id="mcp-percent">—</strong></div>
+<div class="mcp-track" role="progressbar" aria-label="پیشرفت اسکن موتور مرکزی" aria-valuemin="0" aria-valuemax="100"><i id="mcp-bar"></i></div>
+<div class="mcp-metrics"><span>بررسی‌شده <b id="mcp-done">—</b></span><span>از <b id="mcp-total">—</b> نماد</span><span>قابلیت‌های دارای شواهد <b id="mcp-engines">—</b></span><span>خطاها <b id="mcp-errors">—</b></span></div>
+<small id="mcp-updated">این نوار فقط از snapshot واقعی موتور مرکزی تغذیه می‌شود؛ در نبود داده، درصد نمایش داده نمی‌شود.</small></section>
+<div class="quantum-hero-foot"><span>اسکن پویا جفت‌های واجد شرایط USDT Spot</span><span>۱۲ موتور تحلیل و تصمیم</span><span>داده ناموجود = بدون امتیازسازی جعلی</span></div>
+</section>
+
+<section class="market-heatmap-entry" aria-label="ورود به نقشه حرارتی بازار">
+ <div class="market-heatmap-entry-copy"><span class="market-heatmap-entry-kicker">MARKET BREADTH · LIVE TURNOVER</span><h2>نقشه حرارتی بازار</h2><p>تمرکز حرکت و گردش معاملات بازار را در یک نمای تصویری بررسی کن؛ نقشه کامل فقط با ورود به این بخش بارگذاری می‌شود.</p><div class="market-heatmap-entry-tags"><span>تغییر قیمت ۲۴ ساعته</span><span>مقایسه گردش معاملات</span><span>نمادهای صعودی و نزولی</span></div></div>
+ <a class="market-heatmap-entry-button" href="/market-heatmap.html"><span class="market-heatmap-entry-icon">▦</span><span><b>ورود به نقشه حرارتی</b><small>مشاهده نقشه زنده بازار</small></span><strong>←</strong></a>
 </section>
 
 <section class="terminal-grid" id="opportunities" data-quantum-module="radar">
@@ -1936,7 +2027,7 @@ body:before{opacity:.23;background-size:34px 34px}
 </section></section>
 
 <section class="card market-hunter" id="market-hunter" data-quantum-module="hunter">
- <div class="hunter-topline"><div class="hunter-heading-wrap"><div class="hunter-quantum-mark" aria-label="نشان کوانتومی شکارچی"><span class="hunter-quantum-orbit orbit-one"></span><span class="hunter-quantum-orbit orbit-two"></span><span class="hunter-target-symbol">🎯</span></div><div class="hunter-heading-copy"><div class="section-kicker">QUANTUM HUNTER CORE · UNIFIED ENGINE</div><h2>شکارچی بازار</h2><p class="sub">هسته هوشمند شکار اسپات و فیوچرز با اسکن چندتایم‌فریمی و جریان واقعی معاملات</p></div></div><div class="hunter-head-actions"><button class="radar-refresh-btn hunter-refresh-btn" id="hunter-refresh-btn" type="button" aria-label="بروزرسانی شکار اسپات و فیوچرز" title="دریافت دوباره داده‌ها و اجرای شکار"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M5.6 9A7 7 0 0 1 18 6.5L20 12M4 12l2 5.5A7 7 0 0 0 18.4 15"/></svg><span>بروزرسانی شکار</span></button><div class="hunter-live-badge"><i></i><span>پایش خودکار</span></div></div></div>
+ <div class="hunter-topline"><div class="hunter-heading-wrap"><div class="hunter-quantum-mark" aria-label="نشان کوانتومی شکارچی"><span class="hunter-quantum-orbit orbit-one"></span><span class="hunter-quantum-orbit orbit-two"></span><span class="hunter-target-symbol">🎯</span></div><div class="hunter-heading-copy"><div class="section-kicker">QUANTUM HUNTER CORE · UNIFIED ENGINE</div><h2>شکارچی بازار</h2><p class="sub">هسته هوشمند شکار اسپات و فیوچرز با اسکن چندتایم‌فریمی و جریان واقعی معاملات</p></div></div><div class="hunter-head-actions"><button class="radar-refresh-btn hunter-refresh-btn" id="hunter-refresh-btn" type="button" aria-label="بروزرسانی شکار اسپات و فیوچرز" title="دریافت دوباره داده‌ها و اجرای شکار"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M5.6 9A7 7 0 0 1 18 6.5L20 12M4 12l2 5.5A7 7 0 0 0 18.4 15"/></svg><span>بروزرسانی شکار</span></button><span class="badge">موتور شکار چندتایم‌فریمی</span></div></div>
  <div class="hunter-overview"><div class="hunter-stat"><small>فرصت‌های تأییدشده اسپات</small><b id="hunter-spot-count">۰</b></div><div class="hunter-stat"><small>فرصت‌های مستقل فیوچرز</small><b id="hunter-futures-count">۰</b></div><div class="hunter-stat"><small>اسکن Quantum Hunter / کل صف</small><b id="hunter-dh-progress">—</b></div><div class="hunter-stat"><small>خطاهای چرخه اخیر</small><b id="hunter-dh-errors">—</b></div></div>
  <div class="hunter-early-panel"><div class="hunter-early-head"><b>⚡ هشدارهای اولیه قیمت · PRELIMINARY</b><span id="hunter-early-status">در انتظار اتصال جریان قیمت WebSocket؛ بدون تأیید حجم یا فشار معاملات</span></div><div id="hunter-early-feed" class="hunter-early-feed"><div class="hunter-early-empty">هشدارهای مقدماتی قیمت پس از اتصال صرافی‌ها نمایش داده می‌شوند.</div></div><small class="hunter-early-disclaimer">این بخش فقط جهش قیمت Ticker را رصد می‌کند؛ سیگنال معاملاتی تأییدشده نیست و حجم لحظه‌ای یا فشار خریدوفروش را ادعا نمی‌کند.</small></div>
  <div class="hunter-mode-panel hunter-spot-panel"><div class="hunter-mode-head"><div><b>🟢 شکار اسپات | QUANTUM HUNTER v2</b><small>کندل‌های ۱، ۳، ۵ و ۱۵ دقیقه · تأیید دو صرافی · جریان واقعی معاملات · عمق دفتر سفارش</small></div><span class="hunter-timeframe">1M · 3M · 5M · 15M CORE</span></div><div id="hunter-spot-feed" class="hunter-feed"><div class="hunter-empty"><b>در انتظار بررسی بازار اسپات</b><small>نمایش فقط پس از تأیید کندل، حجم، جریان واقعی معاملات، عمق سفارش و تازگی داده.</small></div></div></div>
@@ -2032,7 +2123,7 @@ body:before{opacity:.23;background-size:34px 34px}
 
 
 <section class="intel-suite" id="market-intelligence" data-quantum-module="intelligence">
- <div class="intel-suite-head"><div><div class="section-kicker">QUANTUM MARKET INTELLIGENCE</div><h2>مرکز هوشمندی کوانتومی بازار</h2><p>جریان سفارش، مشتقات، سناریوهای کندلی و پایش عملکرد؛ با تفکیک داده واقعی از مواردی که هنوز منبع معتبر ندارند.</p></div><span class="intel-live-chip"><i></i> پایش داده</span></div>
+ <div class="intel-suite-head"><div><div class="section-kicker">QUANTUM MARKET INTELLIGENCE</div><h2>مرکز هوشمندی کوانتومی بازار</h2><p>جریان سفارش، مشتقات، سناریوهای کندلی و پایش عملکرد؛ با تفکیک داده واقعی از مواردی که هنوز منبع معتبر ندارند.</p></div><span class="badge">داده‌های تکمیلی بازار</span></div>
  <div class="intel-grid">
   <article class="intel-panel" id="derivatives-panel">
    <div class="intel-panel-head"><div><small>FUTURES · DERIVATIVES</small><h3>نبض بازار فیوچرز</h3></div><button class="intel-refresh" id="derivatives-refresh" type="button">↻ تازه‌سازی</button></div>
@@ -2043,14 +2134,18 @@ body:before{opacity:.23;background-size:34px 34px}
    <div class="intel-foot" id="derivatives-status">برای دریافت داده زنده، نماد را بررسی کن.</div>
   </article>
   <article class="intel-panel" id="orderflow-panel">
-   <div class="intel-panel-head"><div><small>ORDER FLOW · LIQUIDITY</small><h3>جریان سفارش و نقدشوندگی</h3></div><button class="intel-refresh" id="orderflow-refresh" type="button">↻ تازه‌سازی</button></div>
+   <div class="intel-panel-head"><div><small>ORDER FLOW · LIQUIDITY</small><h3>ردیاب نقدینگی و شکار استاپ</h3><p class="sub">دیوارهای واقعی دفتر سفارش، عمق خرید و فروش و نزدیک‌ترین خوشه نقدینگی قابل مشاهده.</p></div><button class="intel-refresh" id="orderflow-refresh" type="button">↻ تازه‌سازی</button></div>
    <div class="intel-symbol-row"><label for="orderflow-market">بازار داده</label><select id="orderflow-market" aria-label="انتخاب بازار جریان سفارش"><option value="spot">Spot · اسپات</option><option value="futures">Futures · فیوچرز</option></select></div>
    <div class="intel-metrics two" id="orderflow-metrics">
     <div><small>عمق خرید ۱٪</small><b>—</b><em>Bid liquidity</em></div><div><small>عمق فروش ۱٪</small><b>—</b><em>Ask liquidity</em></div><div><small>عدم‌تعادل دفتر سفارش</small><b>—</b><em>Order-book imbalance</em></div><div><small>جریان خالص معاملات ۵ دقیقه</small><b>—</b><em>Executed Trade Flow · 5m</em></div>
    </div>
    <div class="intel-flow-track"><span id="orderflow-buy-bar"></span><span id="orderflow-sell-bar"></span></div>
+   <div class="liquidity-map-head"><b>دفتر سفارش زنده · Order Book Heatmap</b><small id="liquidity-map-meta">در انتظار داده معتبر</small></div>
+   <div id="orderflow-depth-map" class="liquidity-depth-map"><div class="heatmap-empty">پس از دریافت دفتر سفارش واقعی، سطوح خرید و فروش و دیوارهای قابل مشاهده نمایش داده می‌شوند.</div></div>
+   <div class="liquidity-map-note">دیوارها سفارش‌های Limit قابل مشاهده در لحظه دریافت‌اند و ممکن است لغو شوند. سفارش‌های حدضرر پنهان در دفتر سفارش عمومی دیده نمی‌شوند؛ محدوده‌های احتمالی استاپ، تخمین‌اند نه داده قطعی.</div>
    <div class="intel-foot" id="orderflow-status">در انتظار دریافت دفتر سفارش و معاملات واقعی…</div>
   </article>
+  
   <article class="intel-panel" id="candle-intelligence">
    <div class="intel-panel-head"><div><small>CANDLE INTELLIGENCE · 15M</small><h3>آزمایشگاه سناریوهای کندلی</h3></div><button class="intel-refresh" id="forecast-run" type="button">تحلیل کندل‌ها</button></div>
    <div class="intel-forecast-summary" id="forecast-summary">پس از دریافت کندل‌های واقعی، دامنه‌های برآوردی ۱، ۳ و ۵ کندل آینده محاسبه می‌شوند.</div>
@@ -2068,6 +2163,12 @@ body:before{opacity:.23;background-size:34px 34px}
 </section>
 <section class="intel-panel journal-panel" id="signal-journal" data-quantum-module="learning">
  <div class="intel-panel-head"><div><small>TRADE JOURNAL · BACKTEST & CALIBRATION</small><h3>دفتر ثبت سیگنال و ارزیابی عملکرد</h3><p class="sub">سیگنال‌ها روی همین دستگاه ذخیره می‌شوند؛ نتیجه فقط با رسیدن قیمت واقعی به حد سود یا حد ضرر بسته می‌شود.</p></div><span class="journal-local-tag">ذخیره محلی</span></div>
+ <div class="server-performance-panel" id="server-performance-panel">
+  <div class="server-performance-head"><div><b>سنجش اعتبار موتورهای تحلیل</b><small>کارنامه سروری · فقط نتایج بسته‌شده و قابل‌ردیابی</small></div><button class="intel-refresh" id="performance-refresh" type="button">↻ تازه‌سازی آمار</button></div>
+  <div class="performance-summary" id="performance-summary"><div><small>نمونه‌های ثبت‌شده</small><b>—</b></div><div><small>نتایج قطعی</small><b>—</b></div><div><small>موفق</small><b>—</b></div><div><small>ناموفق</small><b>—</b></div><div><small>نرخ موفقیت</small><b>—</b></div><div><small>میانگین R</small><b>—</b></div></div>
+  <div class="performance-engine-list" id="performance-engine-list"><div class="heatmap-empty">در انتظار دریافت کارنامه سرور…</div></div>
+  <div class="performance-status" id="performance-status">نتایج مبهم، منقضی و بدون معامله از نرخ موفقیت حذف می‌شوند. تا تشکیل نمونه کافی، نرخ موفقیت نمایش داده نخواهد شد.</div>
+ </div>
  <div class="journal-form">
   <label>نماد<input id="journal-symbol" value="BTC" maxlength="15" placeholder="BTC"></label>
   <label>جهت معامله<select id="journal-side"><option value="LONG">خرید / LONG</option><option value="SHORT">فروش / SHORT</option></select></label>
@@ -2936,7 +3037,6 @@ async function checkConnections(){
    }catch(directError){wallexCheck.error="اتصال مستقیم: "+String(directError?.message||"خطای شبکه").slice(0,80);}
    finally{clearTimeout(wallexTimer);}
   }
-
   const probeDirectFallback=async(check,urls,valid,purpose)=>{
    if(!check||check.status!=="down")return;
    const started=Date.now(),controller=new AbortController(),timer=setTimeout(()=>controller.abort(),6500);
@@ -2995,7 +3095,7 @@ const FAST_RADAR_SERVER_ENDPOINT = "https://mmp-coin-ai-radar.mehrdadmohammadi19
 const unifiedRadarSignals = new Map();
 let unifiedRadarSnapshotAt = 0;
 let unifiedRadarSnapshotBusy = false;
-let unifiedRadarProgress = {completed:0,total:0,failed:0,candidates:0,percent:0,state:"در انتظار اتصال به موتور هوشمند"};
+let unifiedRadarProgress = {completed:0,total:0,failed:0,candidates:0,flowChecked:0,flowConfirmed:0,qualityPass:0,percent:0,state:"در انتظار اتصال به موتور هوشمند"};
 const RADAR_MIN_DISPLAY_SCORE=69;
 function radarSignalPassesDisplayThreshold(signal){
  const score=Number(signal?.score),weakScans=Number(signal?.weakScans)||0;
@@ -3004,16 +3104,19 @@ function radarSignalPassesDisplayThreshold(signal){
 function getVisibleRadarSignalCount(){return [...unifiedRadarSignals.values()].filter(radarSignalPassesDisplayThreshold).length;}
 function renderUnifiedRadarProgress(){
  const p=unifiedRadarProgress,put=(id,value)=>{const el=$(id);if(el)el.textContent=String(value);};
- put("radar-core-live-state",p.state||"هسته آماده دریافت داده زنده");
- put("radar-scan-state",p.state||"رصد بازار");
+ put("radar-core-live-state",p.state||"در انتظار داده واقعی");
+ put("radar-scan-state",p.state||"در انتظار داده واقعی");
  put("radar-scan-percent",Number(p.percent||0).toLocaleString("fa-IR")+"٪");
  put("radar-scan-done",Number(p.completed||0).toLocaleString("fa-IR"));
  put("radar-scan-total",Number(p.total||0).toLocaleString("fa-IR"));
  put("radar-scan-candidates",Number(p.candidates||0).toLocaleString("fa-IR"));
  put("radar-scan-errors",Number(p.failed||0).toLocaleString("fa-IR"));
  const bar=$("radar-scan-bar");if(bar)bar.style.width=Math.max(0,Math.min(100,Number(p.percent)||0))+"%";
- const score=$("radar-core-live-score"),visibleCount=getVisibleRadarSignalCount();if(score)score.textContent=visibleCount?String(visibleCount).padStart(2,"0"):"CORE";
- const note=$("radar-scan-persistence");if(note)note.textContent="تحلیل و اسکن روی موتور مرکزی MMP انجام می‌شود؛ این صفحه فقط خروجی معتبر را دریافت می‌کند.";
+ const score=$("radar-core-live-score"),visibleCount=getVisibleRadarSignalCount();if(score)score.textContent=String(visibleCount).padStart(2,"0");
+ const note=$("radar-scan-persistence");if(note)note.textContent=p.note||"آمار چرخه از گزارش ثبت‌شده موتور مرکزی دریافت می‌شود.";
+ const stateEl=$("radar-core-live-state"),stateWrap=stateEl?.closest(".radar-core-state");
+ if(stateWrap){stateWrap.classList.toggle("is-offline",/قطع|ناموفق|قدیمی|خطا/.test(p.state||""));stateWrap.classList.toggle("is-cached",/حافظه موقت/.test(p.state||""));}
+ const progressWrap=$("radar-scan-bar")?.closest(".radar-scan-progress");if(progressWrap){progressWrap.classList.toggle("is-offline",/قطع|ناموفق|قدیمی|خطا/.test(p.state||""));progressWrap.classList.toggle("is-cached",/حافظه موقت/.test(p.state||""));}
 }
 async function loadUnifiedRadarSnapshot(){
  if(unifiedRadarSnapshotBusy)return null;
@@ -3024,7 +3127,8 @@ async function loadUnifiedRadarSnapshot(){
   if(!response.ok)throw new Error("HTTP "+response.status);
   const snapshot=await response.json();
   if(snapshot.status!=="online")throw new Error(snapshot.message||"سرویس رادار هنوز آماده نیست");
-  const snapshotAt=Date.parse(snapshot.scanned_at||"")||Date.now();
+  const snapshotAt=Date.parse(snapshot.scanned_at||"");
+  if(!Number.isFinite(snapshotAt)||snapshotAt<=0)throw new Error("زمان Snapshot معتبر نیست");
   if(snapshotAt>unifiedRadarSnapshotAt||unifiedRadarSignals.size===0){
    unifiedRadarSnapshotAt=Math.max(unifiedRadarSnapshotAt,snapshotAt);
    (Array.isArray(snapshot.signals)?snapshot.signals:[]).forEach(signal=>{
@@ -3041,18 +3145,22 @@ async function loadUnifiedRadarSnapshot(){
    for(const [id,signal] of unifiedRadarSignals){if(Date.now()-Number(signal.updatedAt||0)>5*60*1000)unifiedRadarSignals.delete(id);}
    renderOpportunities();
   }
-  const total=Number(snapshot.universe_count)||0,done=Number(snapshot.next_cursor)||0;
+  const total=Number(snapshot.cycle_total||snapshot.universe_count)||0,done=Math.max(0,Number(snapshot.cycle_scanned_count)||0);
+  const percent=Math.max(0,Math.min(100,Number(snapshot.cycle_percent)||0));
+  const ageMs=Math.max(0,Date.now()-snapshotAt),fresh=ageMs<=180000;
+  const sourceLabel=snapshot.universe_source==="cached"?"فهرست نمادها از حافظه موقت":"داده زنده";
   unifiedRadarProgress={
-   completed:done,total,failed:Number(snapshot.failed_count)||0,candidates:getVisibleRadarSignalCount(),
-   percent:total?Math.round(done/total*100):0,
-   state:"موتور هوشمند فعال · اسکن چرخشی "+Number(snapshot.batch_size||36).toLocaleString("fa-IR")+" نماد در هر نوبت"
+   completed:done,total,failed:Number(snapshot.failed_count)||0,candidates:Number(snapshot.valid_count)||0,flowChecked:Number(snapshot.flow_checked_count)||0,flowConfirmed:Number(snapshot.flow_confirmed_count)||0,qualityPass:Number(snapshot.quality_pass_count)||0,percent,
+   state:!fresh?"آخرین چرخه قدیمی است · منتظر اسکن تازه":snapshot.universe_source==="cached"?"اسکن فعال · "+sourceLabel:"اسکن زنده · چرخه "+Number(snapshot.cycle_number||1).toLocaleString("fa-IR"),
+   note:"چرخه "+Number(snapshot.cycle_number||1).toLocaleString("fa-IR")+" · بررسی یکتا: "+done.toLocaleString("fa-IR")+" از "+total.toLocaleString("fa-IR")+" نماد · این نوبت: "+Number(snapshot.scanned_count||0).toLocaleString("fa-IR")+" · نامزد کندلی: "+Number(snapshot.valid_count||0).toLocaleString("fa-IR")+" · بررسی جریان: "+Number(snapshot.flow_checked_count||0).toLocaleString("fa-IR")+" · تأیید جریان: "+Number(snapshot.flow_confirmed_count||0).toLocaleString("fa-IR")+" · منبع: "+sourceLabel
   };
   renderUnifiedRadarProgress();
+  renderOpportunities();
   const status=$("radar-updated");
-  if(status)status.textContent="موتور هوشمند مرکزی · "+getVisibleRadarSignalCount().toLocaleString("fa-IR")+" سیگنال واجد شرایط · آخرین دریافت "+new Date(snapshotAt).toLocaleTimeString("fa-IR");
+  if(status)status.textContent=(fresh?"موتور مرکزی · ":"داده قدیمی · ")+getVisibleRadarSignalCount().toLocaleString("fa-IR")+" فرصت معتبر · آخرین اسکن "+new Date(snapshotAt).toLocaleTimeString("fa-IR");
   return snapshot;
  }catch(error){
-  unifiedRadarProgress={...unifiedRadarProgress,state:"اتصال به موتور هوشمند برقرار نشد · تلاش مجدد خودکار"};
+  unifiedRadarProgress={...unifiedRadarProgress,state:"اتصال به موتور هوشمند برقرار نشد · تلاش مجدد خودکار",note:"دریافت Snapshot ناموفق بود؛ اعداد قبلی فقط آخرین آمار ثبت‌شده‌اند و اسکن زنده تأیید نمی‌شود."};
   renderUnifiedRadarProgress();
   const status=$("radar-updated");if(status)status.textContent="دریافت داده از موتور مرکزی ناموفق بود؛ تلاش مجدد ادامه دارد.";
   console.warn("Unified radar snapshot:",error?.message||error);
@@ -3919,7 +4027,7 @@ function renderOpportunities(){
   const remainingHtml=remaining.length?'<div class="signal-drawer"><button type="button" class="signal-drawer-toggle" aria-expanded="false" data-scroll-drawer-toggle><span class="signal-drawer-icon">⌄</span><span class="signal-drawer-copy"><b>نمایش همه فرصت‌ها</b><small>فهرست کامل با پیمایش مستقل</small></span><strong>'+remaining.length.toLocaleString("fa-IR")+' نماد</strong></button><div class="signal-drawer-panel" data-scroll-drawer-panel hidden><div class="signal-drawer-panel-head"><span>سایر نامزدهای '+title+'</span><small>برای مشاهده، داخل این پنجره اسکرول کنید</small></div><div class="radar-list radar-overflow-list" tabindex="0" aria-label="فهرست اسکرولی '+title+'">'+remaining.map(card).join("")+'</div></div></div>':'';
   return '<section class="radar-group radar-side '+(up?"radar-group-bull":"radar-group-bear")+'"><div class="section-head radar-group-head"><div class="radar-group-title"><span class="radar-group-icon">'+symbol+'</span><span><b>'+title+'</b><small>حداقل قدرت ۶۹ · سه گزینه قدرتمند در نمای اصلی · مرتب‌شده بر اساس امتیاز</small></span></div><span class="radar-group-count">'+items.length.toLocaleString("fa-IR")+' نامزد</span></div><div class="radar-list radar-featured-list">'+featuredHtml+'</div>'+remainingHtml+'</section>';
  };
- if(!active.length){el.innerHTML='<div class="ai-empty">موتور هوشمند مرکزی فعال است؛ در انتظار ارزیابی معتبر نمادها. سیگنال‌های قبلی تا اعلام افت تأییدشده حفظ می‌شوند.</div>';return;}
+ if(!active.length){const p=unifiedRadarProgress;el.innerHTML='<div class="ai-empty">هنوز فرصت نهایی تأیید نشده است. در چرخه فعلی '+Number(p.completed||0).toLocaleString("fa-IR")+' از '+Number(p.total||0).toLocaleString("fa-IR")+' نماد بررسی شده؛ نامزدهای کندلی: '+Number(p.candidates||0).toLocaleString("fa-IR")+'، بررسی جریان معاملات: '+Number(p.flowChecked||0).toLocaleString("fa-IR")+'، تأیید جریان: '+Number(p.flowConfirmed||0).toLocaleString("fa-IR")+'، عبور از فیلتر نهایی: '+Number(p.qualityPass||0).toLocaleString("fa-IR")+' . فقط فرصت‌های دارای تأیید واقعی نمایش داده می‌شوند.</div>';return;}
  el.innerHTML=group(bullish,"bull")+group(bearish,"bear");
 }
 function calcRisk(){const capital=Number($("risk-capital").value),pct=Number($("risk-percent").value),entry=Number($("risk-entry").value),stop=Number($("risk-stop").value);const out=$("risk-result");if(!(capital>0&&pct>0&&pct<=100&&entry>0&&stop>0)){out.textContent="سرمایه، درصد ریسک، قیمت ورود و قیمت حد ضرر را کامل و معتبر وارد کنید.";return;}if(entry===stop){out.textContent="قیمت ورود و قیمت حد ضرر نباید برابر باشند.";return;}const risk=capital*pct/100,dist=Math.abs(entry-stop)/entry,notional=risk/dist,qty=notional/entry;out.innerHTML="<div><b>مبلغ ورود به معامله:</b> "+money(notional,2)+" USDT</div><div><b>ضرر احتمالی در صورت برخورد به حد ضرر:</b> "+money(risk,2)+" USDT</div><div><b>فاصله تا حد ضرر:</b> "+(dist*100).toFixed(2)+"%</div><div><b>مقدار دارایی:</b> "+money(qty,6)+"</div><small>مبلغ ورود، ارزش کل معامله است و با اهرم می‌تواند از مارجین پرداختی بیشتر باشد. کارمزد و لغزش قیمت محاسبه نشده‌اند.</small>";}
@@ -4706,8 +4814,17 @@ body:before{opacity:.23;background-size:34px 34px}
  const usd=v=>Number.isFinite(Number(v))?"$"+fmt(v,Number(v)<1?6:2):"—";
  async function getJson(url,timeout=9000){
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeout);
-  try{const r=await fetch(url,{cache:"no-store",signal:controller.signal});if(!r.ok)throw new Error("HTTP "+r.status);return await r.json();}
-  finally{clearTimeout(timer);}
+  try{
+   const r=await fetch(url,{cache:"no-store",signal:controller.signal});
+   const raw=await r.text();let payload=null;
+   try{payload=JSON.parse(raw);}catch{payload=null;}
+   if(!r.ok){
+    const detail=payload?.detail||payload?.error||payload?.message||raw.slice(0,220);
+    throw new Error("HTTP "+r.status+(detail?" · "+detail:""));
+   }
+   if(!payload||typeof payload!=="object")throw new Error("پاسخ منبع داده معتبر نیست.");
+   return payload;
+  }finally{clearTimeout(timer);}
  }
  async function loadDerivatives(){
   const symbol=safeSymbol(byId("intel-symbol")?.value||"BTC")||"BTC";
@@ -4768,10 +4885,16 @@ body:before{opacity:.23;background-size:34px 34px}
   if(button){button.disabled=true;button.textContent="در حال محاسبه…";}
   if(summary)summary.textContent="در حال دریافت کندل‌های ۱۵ دقیقه‌ای "+symbol+"…";
   try{
-   const data=await getJson(api()+"/market-candles?symbol="+symbol+"&interval=15m",20000);
-   const rows=Array.isArray(data.candles)?data.candles:[];
-   const closes=rows.map(x=>Number(x.close)).filter(x=>x>0);
-   if(closes.length<35)throw new Error("تعداد کندل معتبر برای محاسبه کافی نیست.");
+   if(!api())throw new Error("نشانی موتور داده تنظیم نشده است؛ تحلیل اجرا نشد.");
+   const data=await getJson(api()+"/market-candles?symbol="+symbol+"&interval=15m",25000);
+   if(!data.provider||!Array.isArray(data.candles))throw new Error("پاسخ کندلی فاقد منبع یا آرایه OHLCV معتبر است.");
+   const now=Math.floor(Date.now()/1000);
+   const rows=data.candles.filter(x=>{
+    const t=Number(x?.time),o=Number(x?.open),hi=Number(x?.high),lo=Number(x?.low),c=Number(x?.close),v=Number(x?.volume);
+    return Number.isFinite(t)&&t+900<=now&&o>0&&hi>=Math.max(o,c)&&lo<=Math.min(o,c)&&lo>0&&c>0&&Number.isFinite(v)&&v>=0;
+   }).sort((a,b)=>Number(a.time)-Number(b.time));
+   const closes=rows.map(x=>Number(x.close));
+   if(closes.length<35)throw new Error("کمتر از ۳۵ کندل ۱۵ دقیقه‌ای بسته‌شده و معتبر دریافت شد؛ "+rows.length+" کندل قابل استفاده بود.");
    const n=closes.length,ys=closes.slice(-30),mean=ys.reduce((a,b)=>a+b,0)/ys.length;
    let sx=0,sy=0,sxx=0,sxy=0;
    ys.forEach((v,i)=>{sx+=i;sy+=v;sxx+=i*i;sxy+=i*v;});
@@ -5069,12 +5192,61 @@ body:before{opacity:.23;background-size:34px 34px}
  $("derivatives-load")?.addEventListener("click",()=>{loadDerivativesViaWorker();loadOrderflowViaWorker();});
  $("derivatives-refresh")?.addEventListener("click",loadDerivativesViaWorker);
  $("intel-symbol")?.addEventListener("change",loadDerivativesViaWorker);
+ function renderLiquidityDepth(depth){
+  const host=$("orderflow-depth-map");if(!host)return;
+  const levels=depth?.levels||{},bids=Array.isArray(levels.bids)?levels.bids:[],asks=Array.isArray(levels.asks)?levels.asks:[];
+  if(!depth?.available||(!bids.length&&!asks.length)){host.innerHTML='<div class="heatmap-empty">سطوح دفتر سفارش از منبع فعلی دریافت نشد؛ دیوار یا محدوده تخمینی جایگزین نشده است.</div>';return;}
+  const all=[...bids,...asks],max=Math.max(1,...all.map(x=>Number(x.notional_usdt)||0));
+  const side=(rows,kind,title)=>'<div class="liquidity-side '+kind+'"><h4>'+title+'</h4>'+(rows.length?rows.slice(0,14).map(x=>{const p=Number(x.price),v=Number(x.notional_usdt)||0;return '<div class="liquidity-level '+(x.is_wall?'wall':'')+'" style="--depth-width:'+Math.max(2,v/max*100)+'%"><span>'+fmt(p,p<1?6:2)+'</span><b>'+usd(v)+'</b></div>';}).join(""):'<div class="heatmap-empty">داده موجود نیست</div>')+'</div>';
+  const meta=$("liquidity-map-meta"),mid=Number(depth.mid_price)||0,near=(Array.isArray(depth.walls)?depth.walls:[]).filter(x=>Number(x.price)>0).sort((a,b)=>Math.abs(Number(a.price)-mid)-Math.abs(Number(b.price)-mid))[0],nearText=near&&mid?" · نزدیک‌ترین دیوار "+(near.side==="bid"?"خرید ":"فروش ")+fmt(Number(near.price),Number(near.price)<1?6:2)+" ("+fmt(Math.abs(Number(near.price)-mid)/mid*100,2)+"٪ فاصله)":"";if(meta)meta.textContent=(depth.source||"منبع نامشخص")+" · "+(depth.level_count||all.length)+" سطح · اسپرد "+(depth.spread_pct==null?"—":fmt(depth.spread_pct,4)+"٪")+nearText;
+  host.innerHTML=side(bids,"bids","دیوارهای خرید / BID")+side(asks,"asks","دیوارهای فروش / ASK");
+ }
+ let marketHeatmapBusy=false;
+ async function loadMarketHeatmap(){
+  const host=$("market-heatmap-grid"),status=$("market-heatmap-status"),summary=$("market-heatmap-summary"),button=$("market-heatmap-refresh");
+  if(!host||marketHeatmapBusy)return;marketHeatmapBusy=true;if(button){button.disabled=true;button.textContent="در حال دریافت…";}
+  if(status)status.textContent="در حال دریافت تیکرهای ۲۴ساعته Binance Spot…";
+  try{
+   const rows=await get(api()+"/market-proxy?source=binance-tickers",20000);
+   if(!Array.isArray(rows))throw new Error("ساختار تیکر بازار معتبر نیست");
+   const stable=new Set(["USDC","FDUSD","TUSD","USDP","DAI","USDE","EUR","BUSD"]);
+   const assets=rows.filter(x=>String(x.symbol||"").endsWith("USDT")&&!stable.has(String(x.symbol).replace(/USDT$/,""))&&Number(x.lastPrice)>0&&Number.isFinite(Number(x.priceChangePercent))&&Number(x.quoteVolume)>0)
+    .map(x=>({symbol:String(x.symbol).replace(/USDT$/,""),price:Number(x.lastPrice),change:Number(x.priceChangePercent),volume:Number(x.quoteVolume),time:Number(x.closeTime)||0}))
+    .sort((a,b)=>b.volume-a.volume).slice(0,30);
+   if(!assets.length)throw new Error("بازارهای معتبر از منبع دریافت نشد");
+   const sum=assets.reduce((n,x)=>n+x.volume,0),up=assets.filter(x=>x.change>0).length,down=assets.filter(x=>x.change<0).length,top=assets[0];
+   if(summary)summary.innerHTML='<span>نمادهای بررسی‌شده <b>'+assets.length+'</b></span><span>مثبت <b>'+up+'</b></span><span>منفی <b>'+down+'</b></span><span>گردش ۳۰ نماد برتر <b>'+usd(sum)+'</b></span>';
+   const maxVolume=assets[0].volume||1;
+   host.innerHTML=assets.map((x,i)=>{const ratio=x.volume/maxVolume,col=ratio>=.18?2:1,row=ratio>=.45?2:1,share=x.volume/sum*100,major=col>1||row>1;return '<div class="heat-tile '+(x.change>0.05?'positive':x.change<-.05?'negative':'neutral')+' '+(major?'major':'')+'" style="--heat-col:'+col+';--heat-row:'+row+'"><b>'+x.symbol+'/USDT</b><strong>'+(x.change>0?'+':'')+fmt(x.change,2)+'٪</strong><small>'+usd(x.price)+'</small><span class="heat-volume">سهم گردش '+fmt(share,1)+'٪ · حجم '+usd(x.volume)+'</span></div>';}).join("");
+   const stamp=Math.max(...assets.map(x=>x.time));if(status)status.textContent="منبع: Binance Spot · "+assets.length+" نماد برتر بر پایه گردش ۲۴ساعته · آخرین زمان تیکر "+(stamp?new Date(stamp).toLocaleTimeString("fa-IR"):"نامشخص")+" · تمرکز حجم به‌معنای ورود خالص پول نیست.";
+  }catch(e){host.innerHTML='<div class="heatmap-empty">نقشه حرارتی به‌روزرسانی نشد: '+String(e.message||e)+'</div>';if(status)status.textContent="داده معتبر در دسترس نیست؛ نمایش آخرین ارقام به‌عنوان زنده متوقف شد.";}
+  finally{marketHeatmapBusy=false;if(button){button.disabled=false;button.textContent="↻ تازه‌سازی نقشه";}}
+ }
+ let performanceBusy=false;
+ async function loadPublicPerformance(){
+  const summary=$("performance-summary"),list=$("performance-engine-list"),status=$("performance-status"),button=$("performance-refresh");
+  if(!summary||!list||performanceBusy)return;performanceBusy=true;if(button){button.disabled=true;button.textContent="در حال دریافت…";}
+  if(status)status.textContent="در حال دریافت کارنامه ثبت‌شده از پایگاه داده سرور…";
+  try{
+   const response=await fetch(MMP_ANALYTICS_ENDPOINT+"/analytics/public-performance?days=90",{cache:"no-store",headers:{Accept:"application/json"}});
+   if(!response.ok)throw new Error("HTTP "+response.status);
+   const data=await response.json(),o=data.overall||{},rate=o.win_rate==null?"—":fmt(o.win_rate,1)+"٪",avg=o.avg_r==null?"—":(Number(o.avg_r)>0?"+":"")+fmt(o.avg_r,2)+"R";
+   summary.innerHTML=[["نمونه‌های ثبت‌شده",o.total],["نتایج قطعی",o.resolved],["در انتظار ورود/معامله",o.open],["موفق",o.wins],["ناموفق",o.losses],["نرخ موفقیت",rate],["میانگین R",avg]].map(x=>'<div><small>'+x[0]+'</small><b>'+((x[1]===null||x[1]===undefined)?"—":x[1])+'</b></div>').join("");
+   const engines=Array.isArray(data.engines)?data.engines:[];
+   list.innerHTML=engines.length?engines.map(x=>'<div class="performance-engine-row"><div><b>'+String(x.engine||"موتور نامشخص")+'</b><small>'+String(x.signal_type||"نوع سیگنال نامشخص")+'</small><small>کل '+Number(x.total||0)+' · نمونه قطعی '+Number(x.resolved||0)+'</small></div><div><small>موفق</small><b>'+Number(x.wins||0)+'</b></div><div><small>ناموفق</small><b>'+Number(x.losses||0)+'</b></div><div><small>نرخ موفقیت</small><b>'+(x.win_rate==null?"—":fmt(x.win_rate,1)+"٪")+'</b></div><div><small>میانگین R</small><b>'+(x.avg_r==null?"—":fmt(x.avg_r,2)+"R")+'</b></div></div>').join(""):'<div class="heatmap-empty">هنوز سیگنال قابل ارزیابی ثبت نشده است.</div>';
+   if(status)status.textContent=(data.methodology||"نرخ موفقیت فقط از معاملات بسته‌شده محاسبه می‌شود.")+" · بازه "+data.days+" روز · آخرین به‌روزرسانی "+(data.as_of?new Date(data.as_of).toLocaleString("fa-IR"):"نامشخص")+(Number(o.resolved||0)<30?" · نمونه قطعی کمتر از ۳۰ مورد است و برای قضاوت آماری کافی نیست.":"");
+  }catch(e){summary.innerHTML='<div class="heatmap-empty">آمار سرور دریافت نشد.</div>';list.innerHTML="";if(status)status.textContent="کارنامه سرور در دسترس نیست: "+String(e.message||e);}
+  finally{performanceBusy=false;if(button){button.disabled=false;button.textContent="↻ تازه‌سازی آمار";}}
+ }
+ let orderflowBusy=false;
  async function loadOrderflowViaWorker(){
+  if(orderflowBusy)return;orderflowBusy=true;
   const symbol=safe($("intel-symbol")?.value||"BTC")||"BTC",market=$("orderflow-market")?.value==="futures"?"futures":"spot",status=$("orderflow-status"),box=$("orderflow-metrics");
   if(status)status.textContent="در حال دریافت دفتر سفارش و معاملات واقعی "+(market==="futures"?"Futures":"Spot")+"…";
   if(orderButton){orderButton.disabled=true;orderButton.textContent="در حال دریافت…";}
   try{
    const d=await get(api()+"/market-orderflow?symbol="+encodeURIComponent(symbol)+"&market="+market,22000),depth=d.depth||{},flow=d.flow||{};
+   renderLiquidityDepth(depth);
    const values=[depth.available?usd(depth.bid_usdt):"دریافت نشد",depth.available?usd(depth.ask_usdt):"دریافت نشد",depth.imbalance_pct==null?"دریافت نشد":fmt(depth.imbalance_pct,1)+"٪",flow.available&&flow.cvd_usdt!=null?(flow.cvd_usdt>=0?"+":"")+usd(flow.cvd_usdt):"دریافت نشد"];
    if(box)box.innerHTML=values.map((v,i)=>'<div><small>'+["عمق خرید ۱٪","عمق فروش ۱٪","عدم‌تعادل دفتر سفارش","جریان خالص معاملات ۵ دقیقه"][i]+'</small><b>'+v+'</b><em>'+["Bid liquidity","Ask liquidity","Order-book imbalance","Executed Trade Flow · 5m"][i]+'</em></div>').join("");
    const total=(Number(flow.buy_usdt)||0)+(Number(flow.sell_usdt)||0),bp=total?Number(flow.buy_usdt)/total*100:50;
@@ -5082,13 +5254,18 @@ body:before{opacity:.23;background-size:34px 34px}
    const parts=[];if(depth.available)parts.push("دفتر سفارش "+depth.source);if(flow.available)parts.push("جریان واقعی "+flow.source+" · "+fmt(flow.trade_count||0,0)+" معامله · "+(flow.complete?"پوشش کامل":"پوشش ناقص"));
    if(status)status.textContent=parts.length?"بازار "+(market==="futures"?"Futures":"Spot")+" · نماد "+symbol+" · "+parts.join(" · ")+" · پنجره "+(flow.window_minutes||5)+" دقیقه · بررسی "+new Date(d.checked_at).toLocaleTimeString("fa-IR"):"داده دریافت نشد؛ "+[d.errors?.depth,d.errors?.flow].filter(Boolean).join(" | ");
   }catch(e){if(box)box.innerHTML=["عمق خرید ۱٪","عمق فروش ۱٪","عدم‌تعادل دفتر سفارش","جریان خالص معاملات ۵ دقیقه"].map(label=>'<div><small>'+label+'</small><b>دریافت نشد</b><em>منبع در دسترس نیست</em></div>').join("");if($("orderflow-buy-bar"))$("orderflow-buy-bar").style.width="50%";if($("orderflow-sell-bar"))$("orderflow-sell-bar").style.width="50%";if(status)status.textContent="جریان سفارش دریافت نشد: "+(e.message||"خطای اتصال")+" · داده‌های قبلی پاک شدند."; }
-  finally{if(orderButton){orderButton.disabled=false;orderButton.textContent="↻ تازه‌سازی";}}
+  finally{orderflowBusy=false;if(orderButton){orderButton.disabled=false;orderButton.textContent="↻ تازه‌سازی";}}
  }
+ $("market-heatmap-refresh")?.addEventListener("click",loadMarketHeatmap);
+ $("performance-refresh")?.addEventListener("click",loadPublicPerformance);
+ loadMarketHeatmap();loadPublicPerformance();
+ setInterval(loadMarketHeatmap,60000);setInterval(loadPublicPerformance,300000);
  orderButton?.addEventListener("click",loadOrderflowViaWorker);
  derivButton?.addEventListener("click",loadOrderflowViaWorker);
  $("intel-symbol")?.addEventListener("change",loadOrderflowViaWorker);
  $("orderflow-market")?.addEventListener("change",loadOrderflowViaWorker);
  loadOrderflowViaWorker();loadDerivativesViaWorker();
+ setInterval(loadOrderflowViaWorker,60000);
 
  // The original intelligence engine remains authoritative for futures; this adds a working BTC large-transfer feed without inventing exchange labels.
  const whale=$("whale-panel");
@@ -5444,7 +5621,7 @@ window.mmpShareDownloadLink = async function () {
 /* MMP QUANTUM COMMAND HERO */
 .quantum-command-hero{position:relative;isolation:isolate;display:grid;grid-template-columns:minmax(0,1.35fr) minmax(250px,.8fr);align-items:center;gap:20px;min-height:310px;margin:12px 0 20px;padding:clamp(20px,3.5vw,42px);overflow:hidden;border:1px solid #a9874d88;border-radius:25px;background:radial-gradient(ellipse at 78% 45%,#b68b3b20,transparent 36%),radial-gradient(ellipse at 5% 100%,#163b3c66,transparent 40%),linear-gradient(115deg,#171820 0%,#0d121b 48%,#15130f 100%);box-shadow:0 24px 70px #000a,inset 0 1px #f7dfa51c}
 .quantum-command-hero:before{content:"";position:absolute;inset:0;z-index:-1;opacity:.2;background-image:linear-gradient(#d7b46a18 1px,transparent 1px),linear-gradient(90deg,#d7b46a18 1px,transparent 1px);background-size:34px 34px;mask-image:linear-gradient(90deg,transparent,#000)}
-.quantum-hero-copy{position:relative;z-index:2;min-width:0}.quantum-hero-eyebrow{display:flex;align-items:center;gap:9px;color:#d9bd7d;font-size:10px;font-weight:900;letter-spacing:1.8px}.quantum-live-pip{width:8px;height:8px;border-radius:50%;background:#d9b66d;box-shadow:0 0 14px #d9b66d;animation:quantum-pip 2s infinite}
+.quantum-hero-copy{position:relative;z-index:2;min-width:0}.quantum-hero-eyebrow{display:flex;align-items:center;gap:9px;color:#d9bd7d;font-size:10px;font-weight:900;letter-spacing:1.8px}.quantum-live-pip{display:none!important}
 .quantum-command-hero .hero-title{font-size:clamp(28px,4.2vw,48px);line-height:1.3;font-weight:900;margin:15px 0 10px;letter-spacing:-1px}.quantum-command-hero .hero-title span{display:block}.quantum-gold-title{background:linear-gradient(100deg,#fff0c4 5%,#d7b46a 48%,#9b7136 95%);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 8px 35px #d7b46a22}
 .quantum-command-hero .quantum-hero-copy>p{max-width:650px;color:#b7bdc8;font-size:13px;line-height:2.1;margin:0}.quantum-hero-tags{display:flex;flex-wrap:wrap;gap:7px;margin:17px 0}.quantum-hero-tags span{border:1px solid #a88b553d;background:#d9b66d0b;color:#d8c69f;border-radius:30px;padding:6px 11px;font-size:10px}.quantum-hero-actions{display:flex;align-items:center;gap:14px;flex-wrap:wrap}.quantum-enter-btn{display:inline-flex;align-items:center;gap:15px;padding:12px 18px;border-radius:12px;background:linear-gradient(115deg,#a77b37,#f0d99b 55%,#c49a50);color:#17130b;text-decoration:none;font-size:12px;font-weight:900;box-shadow:0 8px 25px #d9b66d2b;transition:transform .2s,box-shadow .2s}.quantum-enter-btn:hover{transform:translateY(-2px);box-shadow:0 12px 32px #d9b66d44}.quantum-enter-btn b{font-size:18px}.quantum-command-hero .hero-refresh-group{position:static;display:flex;align-items:center;gap:8px;flex-wrap:wrap}.quantum-command-hero .hero-refresh-group .badge{font-size:9px}
 .quantum-hero-art{position:relative;justify-self:center;width:min(100%,340px);aspect-ratio:1;display:grid;place-items:center;isolation:isolate}.quantum-art-grid{position:absolute;inset:8%;border-radius:50%;background:radial-gradient(circle,#d9b66d18 0 2px,transparent 3px);background-size:17px 17px;mask-image:radial-gradient(circle,#000,transparent 72%)}.quantum-art-orbit{position:absolute;border:1px solid #d9b66d66;border-radius:50%;box-shadow:0 0 25px #d9b66d12,inset 0 0 22px #d9b66d0a}.quantum-art-orbit.orbit-one{width:78%;height:78%;transform:rotate(-28deg) scaleY(.45);border-style:dashed;animation:quantum-orbit 24s linear infinite}.quantum-art-orbit.orbit-two{width:92%;height:92%;transform:rotate(58deg) scaleY(.55);animation:quantum-orbit 32s linear infinite reverse}.quantum-art-orbit.orbit-three{width:66%;height:66%;border-color:#f0d99b55;box-shadow:0 0 40px #d9b66d16}.quantum-art-core{width:39%;aspect-ratio:1;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:radial-gradient(circle at 35% 25%,#fff0bd,#c69b4f 45%,#49351d 100%);border:2px solid #f7e2ad;box-shadow:0 0 0 9px #d9b66d0c,0 0 55px #d9b66d55,inset 0 0 18px #fff7}.quantum-art-core img{width:67%;height:67%;object-fit:contain;filter:drop-shadow(0 4px 4px #38230b88)}.quantum-art-core span{font-size:8px;font-weight:900;letter-spacing:2px;color:#201708}.quantum-node{position:absolute;width:9px;height:9px;border-radius:50%;background:#f5dda2;box-shadow:0 0 18px 5px #d9b66d66}.node-one{top:20%;right:26%}.node-two{bottom:21%;right:18%;width:6px;height:6px}.node-three{bottom:29%;left:13%;width:7px;height:7px}.quantum-art-caption{position:absolute;bottom:1%;display:grid;gap:4px;text-align:center;color:#e5cb91;font-size:10px;font-weight:900;letter-spacing:2px}.quantum-art-caption small{font-size:8px;color:#82909f;font-weight:500;letter-spacing:1.4px}.quantum-hero-foot{grid-column:1/-1;display:flex;gap:10px 22px;flex-wrap:wrap;padding-top:13px;border-top:1px solid #d9b66d2b;color:#8f9aaa;font-size:10px}.quantum-hero-foot span:before{content:"◆";color:#c8a45f;font-size:7px;margin-left:8px}
@@ -5624,7 +5801,45 @@ window.mmpShareDownloadLink = async function () {
 @media(max-width:760px){#quantum-center-entry .quantum-engine-matrix article{flex-basis:164px!important;width:164px;min-height:55px!important}}
 @media(max-width:420px){#quantum-center-entry .quantum-engine-matrix article{flex-basis:148px!important;width:148px;min-height:52px!important}}
 </style>
-<style id="mmp-home-engine-live-style">
+
+
+
+<script id="mmp-command-progress-live">
+(function(){
+ "use strict";
+ const root=document.getElementById("mmp-command-progress");if(!root||root.dataset.bound==="1")return;root.dataset.bound="1";
+ const endpoint="https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/hunter-snapshot";
+ const el=id=>document.getElementById(id),fmt=v=>Number(v).toLocaleString("fa-IR");
+ const keys=["regime","explosion","momentum","flow","liquidity","multiTimeframe","volatility","sentiment","scenario","learning","risk","dataQuality"];
+ function fail(message){
+  root.classList.add("is-error");el("mcp-state").textContent="وضعیت موتور مرکزی دریافت نشد";
+  ["mcp-percent","mcp-done","mcp-total","mcp-engines","mcp-errors"].forEach(id=>el(id).textContent="—");
+  el("mcp-bar").style.width="0%";const track=root.querySelector('[role="progressbar"]');if(track)track.removeAttribute("aria-valuenow");
+  el("mcp-updated").textContent=message||"داده معتبر در دسترس نیست؛ درصد ساختگی نمایش داده نمی‌شود.";
+ }
+ async function refresh(){
+  if(document.hidden)return;const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),12000);
+  try{
+   const response=await fetch(endpoint,{cache:"no-store",headers:{"Accept":"application/json"},signal:controller.signal});
+   if(!response.ok)throw new Error("HTTP "+response.status);
+   const snap=await response.json();if(!snap||snap.status==="offline")throw new Error(snap?.message||"موتور مرکزی آفلاین است");
+   const total=Number(snap.universe_count),done=Number(snap.scanned_count);
+   if(!Number.isFinite(total)||total<=0||!Number.isFinite(done)||done<0)throw new Error("شمارنده معتبر اسکن در snapshot موجود نیست");
+   const pct=Math.max(0,Math.min(100,Math.round(done/total*100))),signals=Array.isArray(snap.signals)?snap.signals:[],activity=snap.engine_activity&&typeof snap.engine_activity==="object"?snap.engine_activity:{};
+   const evidenced=keys.filter(key=>{const m=activity[key];return !!(m&&(Number(m.processed)>0||Number(m.evidence)>0))||signals.some(x=>x?.quantum?.componentAvailability?.[key]===true)}).length;
+   const stamp=Date.parse(snap.checked_at||snap.scanned_at||""),stale=!stamp||Date.now()-stamp>120000;
+   el("mcp-state").textContent=stale?"آخرین چرخه ثبت‌شده · نیازمند به‌روزرسانی":"موتور مرکزی · چرخه اسکن بازار";
+   el("mcp-percent").textContent=fmt(pct)+"٪";el("mcp-done").textContent=fmt(done);el("mcp-total").textContent=fmt(total);
+   el("mcp-engines").textContent=fmt(evidenced)+" / ۱۲";el("mcp-errors").textContent=fmt(Math.max(0,Number(snap.failed_count)||0));
+   el("mcp-bar").style.width=pct+"%";const track=root.querySelector('[role="progressbar"]');if(track)track.setAttribute("aria-valuenow",String(pct));
+   el("mcp-updated").textContent=(stale?"داده قدیمی یا زمان آخرین اسکن نامشخص است · ":"آخرین دریافت: ")+(stamp?new Date(stamp).toLocaleString("fa-IR"):"زمان نامشخص")+" · قابلیت‌های دارای شواهد از snapshot محاسبه شده‌اند.";
+   root.classList.remove("is-error");
+  }catch(error){fail("اتصال یا داده معتبر در دسترس نیست · "+(error?.message||"خطای نامشخص"));}
+  finally{clearTimeout(timer);}
+ }
+ refresh();setInterval(refresh,20000);document.addEventListener("visibilitychange",()=>{if(!document.hidden)refresh();});
+})();
+</script><style id="mmp-home-engine-live-style">
 #quantum-center-entry .quantum-engine-link{position:relative;overflow:hidden}
 #quantum-center-entry .quantum-engine-link .engine-live-row{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:3px;font-size:8px;color:#aeb9c8}
 #quantum-center-entry .quantum-engine-link .engine-live-state{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
@@ -5706,8 +5921,6 @@ window.mmpShareDownloadLink = async function () {
  document.addEventListener("visibilitychange",()=>{if(!document.hidden)refresh()});
 })();
 </script>
-
-
 </body>
 </html>
 
