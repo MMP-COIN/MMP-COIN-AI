@@ -129,12 +129,12 @@ async function scan(){
   log("کاتالوگ چندصرافی دریافت شد: "+state.universe.length+" جفت USDT Spot؛ منابع پاسخ‌گو: "+sourceNames.join("، "));
   setStatus("اسکن تأییدی QIE روی تمام نمادهای واجد شرایط آغاز شد…");
   const batches=[];for(let i=0;i<state.universe.length;i+=12)batches.push(state.universe.slice(i,i+12));
-  let candidateTotal=0,confirmedTotal=0,failedTotal=0,scannedTotal=0,flowConfirmed=0,depthConfirmed=0;
+  let candidateTotal=0,rejectedTotal=0,failedTotal=0,scannedTotal=0,flowConfirmed=0,depthConfirmed=0;
   for(let bi=0;bi<batches.length;bi++){
    const batch=batches[bi],symbols=batch.map(x=>x.symbol).join(",");
    try{
     const result=await apiJSON("/hunter-scan?market=spot&symbols="+encodeURIComponent(symbols),60000);
-    scannedTotal+=Number(result.scanned)||0;failedTotal+=Number(result.failed)||0;candidateTotal+=Number(result.candidates)||0;
+    scannedTotal+=Number(result.scanned)||0;failedTotal+=Number(result.failed)||0;rejectedTotal+=Number(result.rejected)||0;candidateTotal+=Number(result.candidates)||0;
     const bySymbol=new Map(batch.map(x=>[String(x.symbol).toUpperCase(),x]));
     for(const signal of (result.signals||[])){
      const asset=bySymbol.get(String(signal.symbol||"").toUpperCase())||{};
@@ -170,10 +170,10 @@ async function scan(){
     failedTotal+=batch.length;
     if(state.errors<100)log("خطای دسته "+(bi+1)+"/"+batches.length+": "+e.message);
    }
-   state.done=scannedTotal+failedTotal;
+   state.done=scannedTotal+failedTotal;state.rejected=rejectedTotal;
    $("scanned").textContent=scannedTotal.toLocaleString("fa-IR");
    $("opps").textContent=state.rows.length.toLocaleString("fa-IR");
-   $("health").textContent=(state.done?Math.round(scannedTotal/state.done*100):0).toLocaleString("fa-IR")+"٪";
+   $("health").textContent=(state.done?Math.round((scannedTotal-rejectedTotal)/Math.max(1,state.universe.length)*100):0).toLocaleString("fa-IR")+"٪";
    $("progress").textContent=(bi+1).toLocaleString("fa-IR")+" / "+batches.length.toLocaleString("fa-IR")+" دسته · "+state.done.toLocaleString("fa-IR")+" / "+state.universe.length.toLocaleString("fa-IR");
    renderRows();
    if(bi%4===3)log("پیشرفت اسکن: "+state.done+"/"+state.universe.length+" · نامزدها "+candidateTotal+" · فرصت‌های تأییدشده "+state.rows.length);
@@ -184,7 +184,7 @@ async function scan(){
   publishSnapshot(btcTrend);
   $("scanned").textContent=scannedTotal.toLocaleString("fa-IR");
   $("opps").textContent=state.rows.length.toLocaleString("fa-IR");
-  $("health").textContent=Math.round(scannedTotal/Math.max(1,state.universe.length)*100).toLocaleString("fa-IR")+"٪";
+  $("health").textContent=Math.round((scannedTotal-rejectedTotal)/Math.max(1,state.universe.length)*100).toLocaleString("fa-IR")+"٪";
   const statuses=Array(12).fill("partial");
   statuses[0]="ready";statuses[1]=candidateTotal>0?"ready":"partial";statuses[2]="ready";
   statuses[3]=flowConfirmed>0?"ready":"partial";statuses[4]=depthConfirmed>0?"ready":"partial";
@@ -194,7 +194,7 @@ async function scan(){
   renderRows();
   const failedBatches=failedTotal>0;
   setStatus("اسکن پایان یافت · "+scannedTotal+" ارز بررسی شد · "+failedTotal+" خطای داده",failedBatches?"bad":"ok");
-  log("پایان اسکن کامل · یونیورس "+state.universe.length+" · بررسی موفق "+scannedTotal+" · نامزد اولیه "+candidateTotal+" · فرصت تأییدشده "+state.rows.length+" · خطا "+failedTotal);
+  log("پایان اسکن کامل · یونیورس "+state.universe.length+" · بررسی موفق "+scannedTotal+" · نامزد اولیه "+candidateTotal+" · فرصت تأییدشده "+state.rows.length+" · رد کیفیتی "+rejectedTotal+" · خطای داده "+failedTotal);
   if(!scannedTotal)throw new Error("هیچ نمادی در این چرخه با موفقیت بررسی نشد؛ نتیجه معتبر نیست.");
  }catch(e){
   setStatus("اسکن کامل نشد: "+e.message,"bad");log("خطای اصلی آزمایشگاه: "+e.message);
