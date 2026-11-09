@@ -54,7 +54,7 @@ jobs:
           if (!workerSource.includes('const sourceLimit=marketType==="futures"?7:9') || !radarSource.includes("const verificationOrder=[...new Set([...order,...fallback])].slice(0,6);")) throw new Error("Multi-exchange fallback coverage regressed");
           for (const provider of ["contract.mexc.com","api-futures.kucoin.com","api/v2/mix/market/candles","api/v2/mix/market/fills","api.mexc.com/api/v3/klines"]) { if (!workerSource.includes(provider)) throw new Error("Market provider fallback missing: " + provider); }
           if (!radarSource.includes("https://api.mexc.com/api/v3/klines")) throw new Error("MEXC Spot radar fallback missing");
-          const base = {trend:"bull",change1m:0.12,change3m:0.2,change5m:0.35,change15m:0.5,volumeRatio:1.3,breakout:true,structureAligned:true,trend15:true,overextended:false,dataAgeMs:20000,multiExchangeConfirmed:true,totalVolume24h:300000};
+          const base = {trend:"bull",currentPrice:100,change1m:0.12,change3m:0.2,change5m:0.35,change15m:0.5,volumeRatio:1.3,breakout:true,structureAligned:true,trend15:true,overextended:false,dataAgeMs:20000,multiExchangeConfirmed:true,totalVolume24h:300000};
           const candidate = mod.scoreQuantumOpportunity({...base,flowConfirmed:false});
           if (!candidate.candidateGate || candidate.qualityGate) throw new Error("Preliminary candidate gate is incorrect");
           const confirmed = mod.scoreQuantumOpportunity({...base,flowConfirmed:true,flowImbalance:0.12});
