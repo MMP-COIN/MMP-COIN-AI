@@ -2904,13 +2904,25 @@ async function checkConnections(){
     const direct=await fetch("https://api.bitget.com/api/v3/market/tickers?category=SPOT&symbol=BTCUSDT",{cache:"no-store",signal:bitgetController.signal});
     if(!direct.ok)throw new Error("HTTP "+direct.status);
     const data=await direct.json();
-    if(data?.code!=="00000"||!(Number(data?.data?.[0]?.lastPrice)>0))throw new Error("پاسخ معتبر دریافت نشد");
+    if(!["00000","0"].includes(String(data?.code))||!(Number(data?.data?.[0]?.lastPrice||data?.data?.[0]?.lastPr)>0))throw new Error("پاسخ معتبر دریافت نشد");
     bitgetCheck.status=Date.now()-started>2500?"slow":"ok";
     bitgetCheck.ping=Date.now()-started;
     bitgetCheck.error=null;
     bitgetCheck.purpose="اتصال مستقیم از مرورگر";
    }catch(directError){bitgetCheck.error="اتصال مستقیم: "+String(directError?.message||"خطای شبکه").slice(0,80);}
    finally{clearTimeout(bitgetTimer);}
+  }
+  const wallexCheck=checks.get("wallex");
+  if(wallexCheck?.status==="down"){
+   const started=Date.now(),wallexController=new AbortController(),wallexTimer=setTimeout(()=>wallexController.abort(),9000);
+   try{
+    const direct=await fetch("https://api.wallex.ir/v1/markets",{cache:"no-store",signal:wallexController.signal});
+    if(!direct.ok)throw new Error("HTTP "+direct.status);
+    const data=await direct.json(),raw=data?.result?.symbols??data?.result?.markets,rows=Array.isArray(raw)?raw:Object.values(raw||{});
+    if(data?.success!==true||!rows.length)throw new Error("پاسخ معتبر بازار دریافت نشد");
+    wallexCheck.status=Date.now()-started>2500?"slow":"ok";wallexCheck.ping=Date.now()-started;wallexCheck.error=null;wallexCheck.purpose="اتصال مستقیم از مرورگر · بازارهای زنده";
+   }catch(directError){wallexCheck.error="اتصال مستقیم: "+String(directError?.message||"خطای شبکه").slice(0,80);}
+   finally{clearTimeout(wallexTimer);}
   }
   const ordered=expected.map(name=>checks.get(name)).filter(Boolean);
   if(ordered.length!==expected.length)throw new Error("پاسخ بررسی اتصال کامل نیست");
@@ -5282,10 +5294,10 @@ window.mmpShareDownloadLink = async function () {
   summary.textContent="در حال دریافت فهرست بازارها و بررسی اتصال…";
   const jobs=await Promise.allSettled([
    typeof getHunterExchangeMarkets==="function"?getHunterExchangeMarkets():Promise.resolve(new Map()),
-   fetch("https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/connections-health",{cache:"no-store"}).then(r=>{if(!r.ok)throw new Error("health "+r.status);return r.json();})
+   checkConnections()
   ]);
   const sets=jobs[0].status==="fulfilled"?jobs[0].value:new Map();
-  const checks=jobs[1].status==="fulfilled"&&Array.isArray(jobs[1].value?.checks)?jobs[1].value.checks:[];
+  const checks=jobs[1].status==="fulfilled"&&Array.isArray(jobs[1].value)?jobs[1].value:[];
   const health=new Map(checks.map(c=>[String(c.name||"").toLowerCase(),c]));
   const aliases={"binance":"binance spot","bybit":"bybit spot","okx":"okx spot","bitget":"bitget spot","gate":"gate.io spot","kucoin":"kucoin spot","nobitex":"nobitex","wallex":"wallex"};
   let online=0;
