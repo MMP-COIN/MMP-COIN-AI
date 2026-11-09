@@ -19,7 +19,7 @@ async function runAIWithFallback(env,prompt){
   {role:"user",content:prompt}
  ];
  const failures=[];
- const accept=(provider,content)=>({provider,raw:extractAIJson(content)});
+ const accept=(provider,content)=>({provider,raw:extractAIJson(content),fallbacks:failures.slice()});
  const groqModels=[
   {id:"openai/gpt-oss-120b",timeoutMs:25000,body:{temperature:0.15,max_completion_tokens:4096,reasoning_effort:"high"}},
   {id:"qwen/qwen3.8-27b",timeoutMs:18000,body:{temperature:0.1,max_completion_tokens:2400,reasoning_effort:"high"}},
@@ -1420,7 +1420,7 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/futures-engine-heal
   analysis.confidence=Math.max(0,Math.min(100,Math.round(Number(analysis.confidence)||0)));
   analysis.market=analysis.market||{};analysis.market.price_usd=latest.price;
   analysis.indicators={...(analysis.indicators||{}),rsi:latest.rsi==null?null:Number(latest.rsi.toFixed(2)),macd_signal:latest.macd_signal,ema_trend:latest.ema_trend,atr_percent:latest.atr_percent==null?null:Number(latest.atr_percent.toFixed(2))};
-  analysis.market_timestamp=latest.candle_closed_at||latest.candle_time;analysis.market_data_fresh=marketDataFresh;analysis.timeframe_freshness=freshness;analysis.data_source=[...new Set(providers)].join(" + ")+ " · "+aiProvider;
+  analysis.market_timestamp=latest.candle_closed_at||latest.candle_time;analysis.market_data_fresh=marketDataFresh;analysis.timeframe_freshness=freshness;analysis.data_source=[...new Set(providers)].join(" + ")+ " · "+aiProvider;analysis.ai_provider=aiProvider;analysis.ai_provider_fallbacks=aiResult.fallbacks||[];
   analysis.recommendations=Array.isArray(analysis.recommendations)?analysis.recommendations.slice(0,6):[];
   analysis.scenarios=Array.isArray(analysis.scenarios)?analysis.scenarios.slice(0,3):[];
   analysis.reasons=Array.isArray(analysis.reasons)?analysis.reasons.slice(0,6):[];
