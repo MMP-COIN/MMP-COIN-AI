@@ -1400,10 +1400,11 @@ async function runDigitalHunterCron(event,env){
  const bothAvailable=!!spot&&!!futures;
  const hasDataFailures=Number(spot?.failed_count||0)>0||Number(futures?.failed_count||0)>0;
  const hasQualityRejections=Number(spot?.rejected_count||0)>0||Number(futures?.rejected_count||0)>0;
- const status=bothAvailable?(hasDataFailures||hasQualityRejections?"partial":"success"):spot||futures?"partial":"error";
+ const hasIncompleteCycle=!!spot?.universe_refreshed||!!futures?.universe_refreshed||Number(spot?.scanned_count||0)===0||Number(futures?.scanned_count||0)===0;
+ const status=bothAvailable?(hasDataFailures||hasQualityRejections||hasIncompleteCycle?"partial":"success"):spot||futures?"partial":"error";
  const payload={status,engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,cron:event?.cron||"* * * * *",scheduledTime:event?.scheduledTime||null,startedAt:stamp,finishedAt:new Date(finished).toISOString(),markets:{
-  spot:spot?{scanned:spot.scanned_count||0,failed:spot.failed_count||0,rejected:spot.rejected_count||0,universe:spot.universe_count||0,signals:spot.signals?.length||0,last_errors:spot.last_errors||[],last_rejections:spot.last_rejections||[]}:{status:"error",error:errors.spot||"unavailable"},
-  futures:futures?{scanned:futures.scanned_count||0,failed:futures.failed_count||0,rejected:futures.rejected_count||0,universe:futures.universe_count||0,signals:futures.signals?.length||0,last_errors:futures.last_errors||[],last_rejections:futures.last_rejections||[]}:{status:"error",error:errors.futures||"unavailable"}
+  spot:spot?{scanned:spot.scanned_count||0,failed:spot.failed_count||0,rejected:spot.rejected_count||0,cooldown_count:spot.cooldown_count||0,universe_refreshed:spot.universe_refreshed===true,universe:spot.universe_count||0,signals:spot.signals?.length||0,last_errors:spot.last_errors||[],last_rejections:spot.last_rejections||[]}:{status:"error",error:errors.spot||"unavailable"},
+  futures:futures?{scanned:futures.scanned_count||0,failed:futures.failed_count||0,rejected:futures.rejected_count||0,cooldown_count:futures.cooldown_count||0,universe_refreshed:futures.universe_refreshed===true,universe:futures.universe_count||0,signals:futures.signals?.length||0,last_errors:futures.last_errors||[],last_rejections:futures.last_rejections||[]}:{status:"error",error:errors.futures||"unavailable"}
  },errors};
  await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(id,JSON.stringify(payload),new Date(finished).toISOString()).run();
  if(!spot&&!futures)throw new Error("Quantum Spot and Futures cycles both failed: "+JSON.stringify(errors));
