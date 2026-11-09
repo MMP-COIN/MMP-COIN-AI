@@ -119,7 +119,7 @@ const API="https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev";
 const $=id=>document.getElementById(id);
 const state={universe:[],rows:[],selected:null,busy:false,done:0,errors:0,ledger:loadLedger(),depth:new Map(),searchUniverse:[],searchBusy:false,assetLimit:10,independentStop:false,engineActivity:{}};
 const engineDefs=[
-["Market Intelligence","رژیم بازار، جهت BTC و همبستگی زمینه‌ای"],["Explosion Predictor","فشردگی دامنه، افزایش حجم و شتاب اولیه"],["Early Opportunity Hunter","کشف تغییرات اولیه در کل نمادهای واجد شرایط"],["Smart Money Flow","جهت taker buy از داده کندل؛ نه شناسایی هویت نهنگ"],["Liquidity Hunter","عدم تعادل دفتر سفارش و نواحی نقدینگی"],["Multi-Timeframe","هم‌جهتی ۵ دقیقه و یک ساعت"],["Volatility Intelligence","ATR، دامنه و فشردگی نوسان"],["Market Sentiment","رفتار قیمت/حجم به‌عنوان جانشین محدود احساسات"],["Scenario Simulator","سناریوی صعودی/نزولی و نقطه ابطال"],["Adaptive Learning","ثبت و ارزیابی پیش‌بینی‌های گذشته"],["Risk Intelligence","فاصله حدضرر، ATR و نسبت ریسک/بازده"],["Quantum Decision Engine","ترکیب شواهد، کیفیت داده و رتبه‌بندی"]];
+["Market Intelligence","رژیم بازار، جهت BTC و همبستگی زمینه‌ای"],["Explosion Predictor","فشردگی دامنه، افزایش حجم و شتاب اولیه"],["Early Opportunity Hunter","کشف تغییرات اولیه در کل نمادهای واجد شرایط"],["Smart Money Flow","جریان معاملات اجراشده و عدم تعادل خرید/فروش؛ بدون ادعای شناسایی هویت نهنگ"],["Liquidity Hunter","عدم تعادل دفتر سفارش و نواحی نقدینگی"],["Multi-Timeframe","هم‌جهتی ۵ دقیقه و یک ساعت"],["Volatility Intelligence","ATR، دامنه و فشردگی نوسان"],["Market Sentiment","شاخص Fear & Greed جهانی؛ زمینه کلی بازار، نه احساسات اختصاصی هر ارز"],["Scenario Simulator","سناریوی صعودی/نزولی و نقطه ابطال"],["Adaptive Learning","ثبت پیش‌بینی‌ها و سنجش نتیجه با داده‌های بعدی؛ وابسته به سابقه ثبت‌شده"],["Risk Intelligence","فاصله حدضرر، ATR و نسبت ریسک/بازده"],["Quantum Decision Engine","ترکیب شواهد، کیفیت داده و رتبه‌بندی"]];
 function log(s){const el=$("log");el.textContent=(new Date().toLocaleTimeString("fa-IR")+" · "+s+"\n"+el.textContent).slice(0,6500)}
 function setStatus(s,kind){$("status").textContent=s;$("dot").className="dot "+(kind||"")}
 function loadLedger(){try{return JSON.parse(localStorage.getItem("mmp_quantum_ledger_v1")||"[]")}catch(e){return[]}}
@@ -186,7 +186,7 @@ function engineEvidence(i){
 function renderEngines(statuses=null){
  const idle=statuses===null,current=statuses||{};
  $("engines").innerHTML=engineDefs.map((e,i)=>{
-  const status=current[i]||(idle?"idle":"partial"),label=status==="ready"?"فعال":status==="partial"?"در انتظار داده تکمیلی":status==="busy"?"در حال پایش":status==="bad"?"قطع / خطا":"در حال پایش";
+  const status=current[i]||(idle?"idle":"partial"),label=i===9&&!state.ledger.length?"در انتظار سابقه":status==="ready"?"فعال":status==="partial"?"در انتظار داده تکمیلی":status==="busy"?"در حال پایش":status==="bad"?"قطع / خطا":"در حال پایش";
   const m=engineEvidence(i),n=String(i+1).padStart(2,"0");
   return '<details class="engine-drawer" id="engine-detail-'+n+'"><summary><span>'+n+'. '+e[0]+'</span><span class="state '+status+'">'+label+'</span><span class="drawer-meta">'+m.value.toLocaleString("fa-IR")+' / '+m.total.toLocaleString("fa-IR")+'</span></summary><div class="engine-more"><p>'+e[1]+'</p><div class="engine-live-meter"><span style="width:'+m.pct+'%"></span></div><div class="engine-live-meta"><b>'+m.label+'</b><strong>'+m.pct.toLocaleString("fa-IR")+'٪</strong></div><p class="engine-proof">این شاخص از snapshot مرکزی و داده‌های ثبت‌شده محاسبه شده است؛ نمایش آن به معنی وجود الگوریتم مستقل جداگانه نیست.</p><a class="engine-result-link" href="#quantum-opportunities">مشاهده خروجی‌ها و فرصت‌های مرتبط ←</a></div></details>';
  }).join("");
@@ -437,7 +437,7 @@ async function analyzeIndependent(symbol){
      completed=true;break;
     }
     const pending=(result.candidates||0)>0?"نامزد اولیه پیدا شده، اما تأیید جریان معاملات و عمق سفارش هنوز کامل نیست.":"هنوز داده کافی برای تأیید چندصرافی و ساختار قیمت نرسیده است.";
-    const detail=(result.errors||result.rejections||[]).slice(0,2).map(x=>x.error).filter(Boolean).join(" · ");
+    const detail=(result.pending||result.rejections||result.errors||[]).slice(0,2).map(x=>x.error).filter(Boolean).join(" · ");
     status.textContent="پایش "+symbol+" ادامه دارد · نوبت "+attempts.toLocaleString("fa-IR")+" · "+pending+(detail?" · "+detail:"")+" · بررسی بعدی حدود ۲۰ ثانیه دیگر.";
    }catch(e){
     status.textContent="دریافت داده "+symbol+" موقتاً ناموفق بود؛ پایش متوقف نشده است · "+e.message+" · تلاش بعدی حدود ۲۰ ثانیه دیگر.";
