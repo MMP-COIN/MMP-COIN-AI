@@ -809,15 +809,15 @@ async function loadFuturesMarketFlow(symbol,windowMinutes=5){
   try{
    const contract=base+"_USDT";
    const loadGate=async host=>{
-    const [details,...pages]=await Promise.all([
+    const [details,raw]=await Promise.all([
      marketFlowJson(host+"/api/v4/futures/usdt/contracts/"+encodeURIComponent(contract),8500),
-     ...[0,1000,2000].map(offset=>marketFlowJson(host+"/api/v4/futures/usdt/trades?contract="+encodeURIComponent(contract)+"&from="+Math.floor(cutoff/1000)+"&to="+Math.floor(now/1000)+"&limit=1000&offset="+offset,8500))
+     marketFlowJson(host+"/api/v4/futures/usdt/trades?contract="+encodeURIComponent(contract)+"&from="+Math.floor(cutoff/1000)+"&to="+Math.floor(now/1000)+"&limit=1000",8500)
     ]);
-    return {details,pages};
+    return {details,raw};
    };
    let gateData;try{gateData=await loadGate("https://api.gateio.ws");}catch{gateData=await loadGate("https://fx-api.gateio.ws");}
-   const multiplier=Number(gateData.details?.quanto_multiplier)||0,raw=gateData.pages.flat();
-   if(!raw.length||!multiplier)throw new Error("Gate Futures contract multiplier or paged trades unavailable");
+   const multiplier=Number(gateData.details?.quanto_multiplier)||0,raw=gateData.raw;
+   if(!raw.length||!multiplier)throw new Error("Gate Futures contract multiplier or time-ranged trades unavailable");
    const oldest=raw.reduce((v,x)=>Math.min(v,Number(x.create_time_ms)||Number(x.create_time)*1000||Infinity),Infinity),gateTruncated=Number.isFinite(oldest)&&oldest>cutoff+5000;
    const gateTrades=raw.map(x=>({time:Number(x.create_time_ms)||Number(x.create_time)*1000,price:Number(x.price),size:Math.abs(Number(x.size))*multiplier,side:Number(x.size)>0?"Buy":"Sell"})).filter(x=>x.time>=cutoff&&x.time<=now&&x.price>0&&x.size>0);
    if(gateTrades.length&&(!trades?.length||!gateTruncated||gateTrades.length>trades.length)){trades=gateTrades;truncated=gateTruncated;provider="Gate USDT Futures · paged real trades";}
