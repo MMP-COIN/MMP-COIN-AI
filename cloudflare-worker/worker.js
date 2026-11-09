@@ -168,6 +168,30 @@ async function candles(symbol,interval,env,marketType="spot"){
   const pair=splitQuotePair(symbol);
   if(!pair||pair.quote!=="USDT")throw new Error("Futures market supports USDT perpetual contracts only");
   const contract=pair.base+"_USDT";
+  const mexcInterval={"1m":"Min1","5m":"Min5","15m":"Min15","1h":"Min60","4h":"Hour4","1d":"Day1"}[interval];
+  if(mexcInterval){
+   try{
+    const now=Math.floor(Date.now()/1000),start=now-300*({"1m":60,"5m":300,"15m":900,"1h":3600,"4h":14400,"1d":86400}[interval]);
+    const r=await fetch("https://contract.mexc.com/api/v1/contract/kline/"+encodeURIComponent(contract)+"?interval="+mexcInterval+"&start="+start+"&end="+now,{headers});
+    if(!r.ok)throw new Error("MEXC Futures HTTP "+r.status);
+    const d=await r.json(),v=d?.data;
+    const rows=d?.success===true&&Array.isArray(v?.time)?v.time.map((t,i)=>[Number(t)*1000,String(v.open?.[i]??0),String(v.high?.[i]??0),String(v.low?.[i]??0),String(v.close?.[i]??0),String(v.vol?.[i]??0),String(v.amount?.[i]??0),"0","0","0"]):[];
+    if(!validRows(rows))throw new Error(d?.msg||"insufficient MEXC Futures candle history");
+    const result=analyzeKlines(rows);result.data_provider="MEXC USDT Futures";return result;
+   }catch(e){errors.push("MEXC: "+e.message);}
+  }
+  const kucoinGranularity={"1m":1,"5m":5,"15m":15,"1h":60,"4h":240,"1d":1440}[interval];
+  if(kucoinGranularity){
+   try{
+    const now=Date.now(),kucoinSymbol=(pair.base==="BTC"?"XBT":pair.base)+"USDTM";
+    const url="https://api-futures.kucoin.com/api/v1/kline/query?symbol="+encodeURIComponent(kucoinSymbol)+"&granularity="+kucoinGranularity+"&from="+(now-300*kucoinGranularity*60000)+"&to="+now;
+    const r=await fetch(url,{headers});if(!r.ok)throw new Error("KuCoin Futures HTTP "+r.status);
+    const d=await r.json(),raw=d?.code==="200000"?d.data:null;
+    const rows=Array.isArray(raw)?raw.map(x=>[Number(x[0]),String(x[1]),String(x[2]),String(x[3]),String(x[4]),String(x[5]||0),String(x[6]||0),"0","0","0"]):[];
+    if(!validRows(rows))throw new Error(d?.msg||"insufficient KuCoin Futures candle history");
+    const result=analyzeKlines(rows);result.data_provider="KuCoin USDT Futures";return result;
+   }catch(e){errors.push("KuCoin: "+e.message);}
+  }
   for(const host of ["https://api.gateio.ws","https://api.gate.us"]){
    try{
     const r=await fetch(host+"/api/v4/futures/usdt/candlesticks?contract="+encodeURIComponent(contract)+"&interval="+interval+"&limit=250",{headers});
