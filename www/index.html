@@ -5288,6 +5288,17 @@ window.mmpShareDownloadLink = async function () {
  document.addEventListener("visibilitychange",()=>{if(!document.hidden)refresh()});
 })();
 </script>
+
+<style id="mmp-market-cards-square-layout-20261109">
+/* Restore four compact square market tiles instead of wide horizontal cards. */
+#market-snapshot.grid{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:12px!important;align-items:stretch}
+#market-snapshot.grid>.card{box-sizing:border-box;aspect-ratio:1/1!important;min-height:0!important;width:100%;margin:0!important;padding:clamp(10px,1.5vw,18px)!important;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;overflow:hidden}
+#market-snapshot.grid>.card .stat-label{font-size:clamp(9px,1.1vw,12px);line-height:1.7;overflow-wrap:anywhere}
+#market-snapshot.grid>.card .stat-value{font-size:clamp(15px,2vw,25px);line-height:1.35;overflow-wrap:anywhere;margin:9px 0 5px}
+#market-snapshot.grid>.card .sub{font-size:clamp(8px,.95vw,11px);line-height:1.6;overflow-wrap:anywhere}
+@media(max-width:900px){#market-snapshot.grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important}}
+@media(max-width:560px){#market-snapshot.grid{gap:8px!important}#market-snapshot.grid>.card{padding:11px!important;border-radius:14px!important}}
+</style>
 </body>
 
 <!-- mmp-deploy-retry-20261107: trigger GitHub Pages deployment -->
