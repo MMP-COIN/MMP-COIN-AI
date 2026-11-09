@@ -33,7 +33,7 @@ export function calculateQuantumIndicators(rows=[]){
  const obv=[];let running=0;for(let i=1;i<bars.length;i++){running+=bars[i].c>bars[i-1].c?bars[i].v:bars[i].c<bars[i-1].c?-bars[i].v:0;obv.push(running);}
  const obvChange=obv.length>=20?obv.at(-1)-obv.at(-20):0;
  const ema9=e9.at(-1),ema21=e21.at(-1),ema50=e50.at(-1);
- return {available:[ema9,ema21,ema50,rsi14,macdHistogram,atrPct].every(Number.isFinite),ema9,ema21,ema50,rsi14,macdHistogram,atr14,atrPct,vwap,vwapDeviationPct,obvChange,obvTrend:Math.sign(obvChange),breakoutUp:last.c>priorHigh,breakoutDown:last.c<priorLow,trendUp:ema9>ema21&&ema21>ema50&&macdHistogram>=0,trendDown:ema9<ema21&&ema21<ema50&&macdHistogram<=0};
+ return {available:[ema9,ema21,ema50,rsi14,macdHistogram,atrPct,vwap,vwapDeviationPct].every(Number.isFinite),ema9,ema21,ema50,rsi14,macdHistogram,atr14,atrPct,vwap,vwapDeviationPct,obvChange,obvTrend:Math.sign(obvChange),breakoutUp:last.c>priorHigh,breakoutDown:last.c<priorLow,trendUp:ema9>ema21&&ema21>ema50&&macdHistogram>=0,trendDown:ema9<ema21&&ema21<ema50&&macdHistogram<=0};
 }
 
 export function scoreQuantumOpportunity(input={}){
