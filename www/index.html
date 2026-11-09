@@ -1736,6 +1736,37 @@ body:before{opacity:.23;background-size:34px 34px}
 }
 </style>
 
+
+<style id="mmp-hunter-early-overflow-fix">
+/* Keep the live ticker status and heading inside the hunter panel on narrow screens. */
+#market-hunter .hunter-early-panel,
+#market-hunter .hunter-early-head,
+#market-hunter .hunter-early-head>*,
+#market-hunter .hunter-early-feed,
+#market-hunter .hunter-early-disclaimer{
+  box-sizing:border-box;min-width:0;max-width:100%;
+}
+#market-hunter .hunter-early-head{
+  display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;
+  gap:7px;width:100%;
+}
+#market-hunter .hunter-early-head b,
+#market-hunter .hunter-early-head span{
+  display:block;width:100%;max-width:100%;min-width:0;
+  white-space:normal;overflow-wrap:anywhere;word-break:normal;
+  line-height:1.8;text-align:right;
+}
+#market-hunter .hunter-early-head b{font-size:13px}
+#market-hunter .hunter-early-head span{font-size:10px}
+#market-hunter .hunter-early-disclaimer{overflow-wrap:anywhere}
+@media(max-width:600px){
+  #market-hunter .hunter-early-panel{padding:11px}
+  #market-hunter .hunter-early-head{gap:5px}
+  #market-hunter .hunter-early-head b{font-size:12px}
+  #market-hunter .hunter-early-head span{font-size:10px;line-height:1.9}
+}
+</style>
+
 </head>
 <body class="mmp-app-mode">
 
