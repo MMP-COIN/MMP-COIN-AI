@@ -857,15 +857,15 @@ export async function runDigitalHunterMarketCycle(env,marketType="spot"){
  }
  const cursor=(Number(previous.cursor)||0)%assets.length,failureCooldown={...(previous.failureCooldown||{})};
  for(const [symbol,until] of Object.entries(failureCooldown))if(Number(until)<=now)delete failureCooldown[symbol];
- const batch=[],selected=new Set();
+ const batch=[],selectedSymbols=new Set();
  for(let offset=0;offset<assets.length&&batch.length<batchLimit;offset++){
   const asset=assets[(cursor+offset)%assets.length],symbol=String(asset.symbol||"").toUpperCase();
-  if(selected.has(symbol)||Number(failureCooldown[symbol]||0)>now)continue;
-  batch.push(asset);selected.add(symbol);
+  if(selectedSymbols.has(symbol)||Number(failureCooldown[symbol]||0)>now)continue;
+  batch.push(asset);selectedSymbols.add(symbol);
  }
  if(batch.length<Math.min(batchLimit,assets.length)){
-  const retry=assets.filter(asset=>!selected.has(String(asset.symbol||"").toUpperCase())).sort((a,b)=>Number(failureCooldown[a.symbol]||0)-Number(failureCooldown[b.symbol]||0));
-  for(const asset of retry){if(batch.length>=Math.min(batchLimit,assets.length))break;batch.push(asset);selected.add(String(asset.symbol||"").toUpperCase());}
+  const retry=assets.filter(asset=>!selectedSymbols.has(String(asset.symbol||"").toUpperCase())).sort((a,b)=>Number(failureCooldown[a.symbol]||0)-Number(failureCooldown[b.symbol]||0));
+  for(const asset of retry){if(batch.length>=Math.min(batchLimit,assets.length))break;batch.push(asset);selectedSymbols.add(String(asset.symbol||"").toUpperCase());}
  }
  const result=await scanHunterSymbols(batch.map(x=>x.symbol),marketType,batch);
  for(const item of result.errors||[])failureCooldown[item.symbol]=now+5*60*1000;
