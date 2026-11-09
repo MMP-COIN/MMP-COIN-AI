@@ -3,24 +3,6 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<!-- MMP first-open viewport recovery: prevent stale browser scroll restoration from opening midway down the homepage. -->
-<script id="mmp-home-start-position">
-(function(){
-  try {
-    if ("scrollRestoration" in history) history.scrollRestoration = "manual";
-    if (window.location.hash) return;
-    var nav = performance.getEntriesByType && performance.getEntriesByType("navigation")[0];
-    if (nav && nav.type === "back_forward") return;
-    var reset = function(){
-      if (window.location.hash) return;
-      window.scrollTo({top:0,left:0,behavior:"instant"});
-    };
-    reset();
-    window.addEventListener("pageshow", function(){ reset(); requestAnimationFrame(function(){requestAnimationFrame(reset);}); }, {once:true});
-    document.addEventListener("DOMContentLoaded", reset, {once:true});
-  } catch (e) { try { window.scrollTo(0,0); } catch (_) {} }
-})();
-</script>
 <meta name="theme-color" content="#08090d">
 <meta name="mmp-app-version" content="2.0.0">
 <meta name="mmp-quantum-engine" content="QIE-2.0.0">
