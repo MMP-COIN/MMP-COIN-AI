@@ -2936,6 +2936,29 @@ async function checkConnections(){
    }catch(directError){wallexCheck.error="اتصال مستقیم: "+String(directError?.message||"خطای شبکه").slice(0,80);}
    finally{clearTimeout(wallexTimer);}
   }
+
+  const probeDirectFallback=async(check,urls,valid,purpose)=>{
+   if(!check||check.status!=="down")return;
+   const started=Date.now(),controller=new AbortController(),timer=setTimeout(()=>controller.abort(),6500);
+   try{
+    const attempts=await Promise.allSettled(urls.map(async url=>{
+     const response=await fetch(url,{cache:"no-store",signal:controller.signal,headers:{"Accept":"application/json"}});
+     if(!response.ok)throw new Error("HTTP "+response.status);
+     const data=await response.json();if(!valid(data))throw new Error("پاسخ معتبر نبود");return data;
+    }));
+    const success=attempts.find(x=>x.status==="fulfilled");
+    if(!success)throw new Error(String(attempts.find(x=>x.status==="rejected")?.reason?.message||"همه مسیرهای جایگزین ناموفق بودند"));
+    check.status=Date.now()-started>2500?"slow":"ok";check.ping=Date.now()-started;check.error=null;check.purpose=purpose+" · مسیر جایگزین مرورگر";
+   }catch(error){check.error="مسیر جایگزین مرورگر: "+String(error?.message||"خطای شبکه").slice(0,90);}
+   finally{clearTimeout(timer);}
+  };
+  await Promise.all([
+   probeDirectFallback(checks.get("binance spot"),["https://api1.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://api2.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://data-api.binance.vision/api/v3/ticker/price?symbol=BTCUSDT"],d=>Number(d?.price)>0,"قیمت لحظه‌ای Spot"),
+   probeDirectFallback(checks.get("okx spot"),["https://us.okx.com/api/v5/market/ticker?instId=BTC-USDT","https://openapi.okx.com/api/v5/market/ticker?instId=BTC-USDT"],d=>d?.code==="0"&&Number(d?.data?.[0]?.last)>0,"قیمت لحظه‌ای Spot"),
+   probeDirectFallback(checks.get("gate.io spot"),["https://api.gate.us/api/v4/spot/tickers?currency_pair=BTC_USDT"],d=>Array.isArray(d)&&Number(d?.[0]?.last)>0,"قیمت لحظه‌ای Spot"),
+   probeDirectFallback(checks.get("kucoin spot"),["https://api.kucoin.tr/api/v1/market/orderbook/level1?symbol=BTC-USDT"],d=>d?.code==="200000"&&Number(d?.data?.price)>0,"قیمت لحظه‌ای Spot"),
+   probeDirectFallback(checks.get("nobitex"),["https://api.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls"],d=>d?.status==="ok"&&Number(d?.stats?.["usdt-rls"]?.latest)>0,"نرخ تتر به تومان")
+  ]);
   const ordered=expected.map(name=>checks.get(name)).filter(Boolean);
   if(ordered.length!==expected.length)throw new Error("پاسخ بررسی اتصال کامل نیست");
 
