@@ -1382,7 +1382,31 @@ body.radar-detail-open{overflow:hidden}
 #quantum-center-entry .quantum-engine-matrix>a.quantum-engine-link small{font-size:9px;line-height:1.7;color:#b8c0ca}
 @media(max-width:760px){#quantum-center-entry .quantum-engine-matrix>a.quantum-engine-link{flex-basis:164px;width:164px;min-height:55px}}
 @media(max-width:420px){#quantum-center-entry .quantum-engine-matrix>a.quantum-engine-link{flex-basis:148px;width:148px;min-height:52px}}
-</style></head>
+</style><style id="mmp-global-readable-layout">
+/* Global layout safety: keep every label and value inside its own card. */
+*,*::before,*::after{box-sizing:border-box}
+html,body{max-width:100%;overflow-x:hidden}
+body{overflow-wrap:anywhere;word-break:normal}
+:where(main,section,article,aside,header,footer,nav,div,form,fieldset,details,summary){min-width:0}
+:where(h1,h2,h3,h4,h5,h6,p,small,strong,em,label,span,code,pre,figcaption,caption,li,dt,dd){min-width:0;max-width:100%;overflow-wrap:anywhere;word-break:normal}
+:where(button,a,[role="button"],input,select,textarea){max-width:100%;min-width:0}
+:where(button,a,[role="button"]){white-space:normal;overflow-wrap:anywhere;line-height:1.55}
+:where(input,select,textarea){width:auto}
+:where(img,svg,video,canvas,iframe){max-width:100%}
+:where(table){max-width:100%;border-collapse:collapse}
+:where(th,td){overflow-wrap:anywhere;word-break:normal;white-space:normal}
+:where(pre){max-width:100%;white-space:pre-wrap;overflow-wrap:anywhere}
+:where([class*="card"],[class*="panel"],[class*="engine"],[class*="motor"],[class*="tile"],[class*="metric"],[class*="widget"],[class*="module"]){min-width:0;max-width:100%}
+:where([class*="card"],[class*="panel"],[class*="engine"],[class*="motor"],[class*="tile"],[class*="metric"],[class*="widget"],[class*="module"]) :where(h1,h2,h3,h4,p,span,strong,small,label,button,a,code){max-width:100%;overflow-wrap:anywhere}
+:where(.grid,.row,.flex,.actions,.toolbar,.stats,.metrics,.cards,.card-grid,.engine-grid){min-width:0}
+@media(max-width:760px){
+  :where(.grid,.card-grid,.engine-grid){grid-template-columns:minmax(0,1fr)!important}
+  :where(.row,.flex,.actions,.toolbar,.stats,.metrics,.cards){flex-wrap:wrap}
+  :where(button,a,[role="button"]){max-width:100%}
+  :where(table){display:block;width:100%;overflow-x:auto}
+}
+</style>
+</head>
 <body class="mmp-app-mode">
 
 <header class="top">
