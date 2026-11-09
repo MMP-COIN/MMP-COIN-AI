@@ -15,6 +15,7 @@ on:
     paths:
       - "cloudflare-worker/**"
       - "www/index.html"
+      - "www/quantum-lab.html"
       - ".github/workflows/worker-health.yml"
 
 permissions:
@@ -128,6 +129,11 @@ jobs:
           if (html.includes("https://api.binance.com")) throw new Error("Quantum Lab still depends directly on Binance browser APIs");
           if (!html.includes('fetch(API+"/hunter-snapshot"') || !html.includes("function startLiveMonitor()") || !html.includes("setInterval(()=>{if(!document.hidden&&!state.busy)scan()},15000)")) throw new Error("Quantum Lab persistent automatic scan subscription is missing");
           if (!html.includes("flow?.complete===true") || !html.includes("depth?.confirmed===true")) throw new Error("Quantum Lab evidence quality gates are missing");
+          if (!html.includes("MMP QUANTUM SUPER ENGINE") || !html.includes("۱۲ قابلیت تخصصی ابرموتور") || html.includes("mmp-quantum-engine-horizontal-final") || html.includes("#quantum-engines>#engines>.engine-drawer{flex:0 0 340px")) throw new Error("Quantum Lab must render one full-width super-engine panel, not a narrow horizontal engine carousel");
+          const ids = new Set([...html.matchAll(/\\bid=["']([^"']+)["']/g)].map(x => x[1]));
+          const brokenHashLinks = [...new Set([...html.matchAll(/href=["']#([^"']+)["']/g)].map(x => x[1]).filter(id => !ids.has(id)))];
+          if (brokenHashLinks.length) throw new Error("Quantum Lab navigation links have missing targets: " + brokenHashLinks.join(", "));
+
           if (!html.includes('content="2.0.0"')) throw new Error("Quantum Lab must preserve the installed app version");
           console.log("Quantum Lab inline scripts parsed: " + checked + "; multi-exchange routes and evidence gates passed.");
           NODE
