@@ -179,7 +179,7 @@ function engineEvidence(i){
  ["برنامه‌های دارای حد ریسک",valid.filter(x=>Number(x.tradePlan?.riskPercent)>0).length,valid.length],
  ["تصمیم‌های عبورکرده از گیت کیفیت",quality,valid.length]
  ];
- const activityKeys=["regime","momentum","structure","flow","liquidity","multiTimeframe","volatility","sentiment","scenario","learning","risk","dataQuality"];
+ const activityKeys=["regime","volatility","momentum","smartMoney","liquidity","multiTimeframe","volatility","sentiment","scenario","learning","risk","dataQuality"];
  const live=i===9?null:state.engineActivity?.[activityKeys[i]];
  if(live){const value=Math.max(0,Number(live.processed)||0),total=Math.max(value,Number(live.total)||state.universe.length||value),evidence=Math.max(0,Number(live.evidence)||0),pct=total?Math.min(100,Math.round(value/total*100)):0;return {label:evidence>0?"پردازش و شواهد ثبت‌شده":value>0?"پردازش انجام شده · بدون شاهد تأییدشده":"در این چرخه اجرا/گزارش نشده",value,total,pct,evidence};}
  const [label,value,total]=metrics[i],pct=total?Math.min(100,Math.round(value/total*100)):0;
@@ -299,8 +299,8 @@ function applyLiveSnapshot(snap){
  $("progress").textContent="چرخه ۶۰ ثانیه‌ای · نشانگر بازار "+Number(snap.next_cursor||0).toLocaleString("fa-IR")+" / "+state.universe.length.toLocaleString("fa-IR");
  autoRecordSignals(signals);
  state.engineActivity=snap.engine_activity||{};
- const engineKeys=["regime","momentum","structure","flow","liquidity","multiTimeframe","volatility","sentiment","scenario","learning","risk","dataQuality"];
- const statuses=engineKeys.map(key=>{if(key==="learning")return state.ledger.length?"ready":"partial";const metric=state.engineActivity[key];if(metric){if(Number(metric.evidence)>0)return "ready";if(Number(metric.processed)>0)return "partial";return "idle";}return signals.some(x=>x.quantum?.componentAvailability?.[key]===true)?"ready":"idle";});
+ const engineKeys=["regime","volatility","momentum","smartMoney","liquidity","multiTimeframe","volatility","sentiment","scenario","learning","risk","dataQuality"];
+ const statuses=engineKeys.map((key,i)=>{if(key==="learning")return state.ledger.length?"ready":"idle";if(i===11)return signals.some(x=>x.quantum?.qualityGate===true)?"ready":signals.length?"partial":"idle";const metric=state.engineActivity[key];if(metric){if(Number(metric.evidence)>0)return "ready";if(Number(metric.processed)>0)return "partial";return "idle";}return signals.some(x=>x.quantum?.componentAvailability?.[key]===true)?"ready":"idle";});
  renderEngines(statuses);renderRows();
  const live=snap.status==="online"&&state.done>0&&Date.now()-Date.parse(snap.checked_at||snap.scanned_at||"")<120000;setStatus(live?("اسکن خودکار بازار فعال است · "+state.done+" نماد در آخرین چرخه بررسی شد"+(signals.length?" · فرصت‌های تأییدشده به‌روز شدند":" · فعلاً فرصت تأییدشده‌ای وجود ندارد")):"در انتظار چرخه بعدی اسکن مرکزی؛ نتایج قبلی حفظ می‌شوند",live?"ok":"");
  if(!window.__mmpLiveLogAt||Date.now()-window.__mmpLiveLogAt>60000){log("وضعیت مرکزی به‌روزرسانی شد · یونیورس "+state.universe.length+" · بررسی چرخه اخیر "+state.done+" · فرصت تأییدشده "+state.rows.length);window.__mmpLiveLogAt=Date.now()}
