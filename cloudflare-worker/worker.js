@@ -1089,50 +1089,49 @@ async function handle(request,env){
   const url=new URL(request.url),raw=String(url.searchParams.get("symbol")||"BTC").toUpperCase();
   if(!/^[A-Z0-9]{2,15}$/.test(raw))return json({error:"نماد نامعتبر است."},400,request);
   const base=raw.replace(/USDT$/,""),symbol=base+"USDT",instId=base+"-USDT-SWAP";
-  const get=async(u,ms=7500)=>{const c=new AbortController(),t=setTimeout(()=>c.abort(),ms);try{const r=await fetch(u,{signal:c.signal,headers:{"Accept":"application/json"}});if(!r.ok)throw new Error("HTTP "+r.status);return await r.json();}finally{clearTimeout(t);}};
-  const hosts=["https://fapi.binance.com","https://fapi1.binance.com"];
-  const binance=await Promise.allSettled(hosts.map(async host=>{
-   const results=await Promise.allSettled([get(host+"/fapi/v1/premiumIndex?symbol="+symbol),get(host+"/fapi/v1/openInterest?symbol="+symbol),get(host+"/futures/data/globalLongShortAccountRatio?symbol="+symbol+"&period=5m&limit=1")]);
-   const p=results[0].status==="fulfilled"?results[0].value:null,o=results[1].status==="fulfilled"?results[1].value:null,l=results[2].status==="fulfilled"?results[2].value:null;
-   if(!p&&!o&&!l)throw new Error("Binance Futures metrics unavailable");
-   return {premium:p,oi:o,ratio:Array.isArray(l)?l[0]:null,source:"Binance USDⓈ-M Futures"};
-  }));
-  let data=binance.find(x=>x.status==="fulfilled")?.value||null;
-  if(!data){
-   for(const host of ["https://api.bybit.com"]){
-    try{
-     const results=await Promise.allSettled([get(host+"/v5/market/tickers?category=linear&symbol="+symbol),get(host+"/v5/market/account-ratio?category=linear&symbol="+symbol+"&period=5min&limit=1")]);
-     const t=results[0].status==="fulfilled"?results[0].value:null,r=results[1].status==="fulfilled"?results[1].value:null;
-     const ticker=t?.retCode===0?t.result?.list?.[0]:null,ratio=r?.retCode===0?r.result?.list?.[0]:null;
-     if(ticker||ratio){data={premium:ticker?{lastFundingRate:ticker.fundingRate,markPrice:ticker.markPrice}:null,oi:ticker?{openInterest:ticker.openInterest}:null,ratio:ratio?{longShortRatio:Number(ratio.buyRatio)/Math.max(Number(ratio.sellRatio),1e-9)}:null,source:"Bybit Linear"};break;}
-    }catch{}
-   }
-  }
-  if(!data||!data.premium||!data.oi){
+  const get=async(u,ms=6500)=>{const c=new AbortController(),t=setTimeout(()=>c.abort(),ms);try{const r=await fetch(u,{signal:c.signal,headers:{"Accept":"application/json"}});if(!r.ok)throw new Error("HTTP "+r.status);return await r.json();}finally{clearTimeout(t);}};
+  const data={funding_rate:null,open_interest:null,long_short_ratio:null,mark_price:null},sources={},errors=[];
+  const set=(key,value,source)=>{const n=Number(value);if(data[key]===null&&value!==null&&value!==undefined&&Number.isFinite(n)){data[key]=n;sources[key]=source;}};
+  // Binance USD-M: try alternate API hosts; one failed metric must not discard the other valid metrics.
+  for(const host of ["https://fapi.binance.com","https://fapi1.binance.com","https://fapi2.binance.com"]){
    try{
-    const d=await get("https://api.bitget.com/api/v3/market/tickers?category=USDT-FUTURES&symbol="+symbol),ticker=d?.code==="00000"?(d.data||[])[0]:null;
-    if(ticker){
-     data={premium:data?.premium||{lastFundingRate:ticker.fundingRate,markPrice:ticker.markPrice},oi:data?.oi||{openInterest:ticker.openInterest},ratio:data?.ratio||null,source:data?data.source+" + Bitget":"Bitget USDT Futures"};
-    }
-   }catch{}
+    const rs=await Promise.allSettled([get(host+"/fapi/v1/premiumIndex?symbol="+symbol),get(host+"/fapi/v1/openInterest?symbol="+symbol),get(host+"/futures/data/globalLongShortAccountRatio?symbol="+symbol+"&period=5m&limit=1")]);
+    if(rs[0].status==="fulfilled"){set("funding_rate",rs[0].value.lastFundingRate,"Binance USD-M");set("mark_price",rs[0].value.markPrice,"Binance USD-M");}
+    if(rs[1].status==="fulfilled")set("open_interest",rs[1].value.openInterest,"Binance USD-M · "+base);
+    if(rs[2].status==="fulfilled"&&Array.isArray(rs[2].value))set("long_short_ratio",rs[2].value[0]?.longShortRatio,"Binance USD-M");
+    if(data.funding_rate!==null&&data.open_interest!==null&&data.mark_price!==null&&data.long_short_ratio!==null)break;
+   }catch(e){errors.push("Binance: "+String(e.message||e).slice(0,90));}
   }
-  if(!data||!data.premium){
+  // Bybit Linear fallback, independently fill missing values.
+  for(const host of ["https://api.bybit.com","https://api.bytick.com","https://api.bybit.eu"]){
+   if(data.funding_rate!==null&&data.open_interest!==null&&data.mark_price!==null&&data.long_short_ratio!==null)break;
    try{
-    let ticker;try{const rows=await get("https://api.gateio.ws/api/v4/futures/usdt/tickers?contract="+base+"_USDT");ticker=Array.isArray(rows)?rows[0]:null;}catch{const rows=await get("https://api.gate.us/api/v4/futures/usdt/tickers?contract="+base+"_USDT");ticker=Array.isArray(rows)?rows[0]:null;}
-    if(ticker)data={premium:data?.premium||{lastFundingRate:ticker.funding_rate,markPrice:ticker.mark_price},oi:data?.oi||null,ratio:data?.ratio||null,source:data?data.source+" + Gate":"Gate USDT Futures"};
-   }catch{}
+    const rs=await Promise.allSettled([get(host+"/v5/market/tickers?category=linear&symbol="+symbol),get(host+"/v5/market/account-ratio?category=linear&symbol="+symbol+"&period=5min&limit=1")]);
+    const t=rs[0].status==="fulfilled"&&rs[0].value.retCode===0?rs[0].value.result?.list?.[0]:null;
+    const r=rs[1].status==="fulfilled"&&rs[1].value.retCode===0?rs[1].value.result?.list?.[0]:null;
+    if(t){set("funding_rate",t.fundingRate,"Bybit Linear");set("mark_price",t.markPrice,"Bybit Linear");set("open_interest",t.openInterest,"Bybit Linear · "+base);}
+    if(r)set("long_short_ratio",Number(r.buyRatio)/Math.max(Number(r.sellRatio),1e-9),"Bybit Linear");
+   }catch(e){errors.push("Bybit: "+String(e.message||e).slice(0,90));}
   }
-  if(!data){
+  // OKX swap can provide funding and coin-denominated open interest.
+  if(data.funding_rate===null||data.open_interest===null){
    try{
-    const results=await Promise.allSettled([get("https://www.okx.com/api/v5/public/funding-rate?instId="+instId),get("https://www.okx.com/api/v5/public/open-interest?instType=SWAP&instId="+instId)]);
-    const p=results[0].status==="fulfilled"?results[0].value:null,o=results[1].status==="fulfilled"?results[1].value:null;
-    const premium=p?.code==="0"?p.data?.[0]:null,oi=o?.code==="0"?o.data?.[0]:null;
-    if(premium||oi)data={premium:premium?{lastFundingRate:premium.fundingRate,markPrice:null}:null,oi:oi?{openInterest:oi.oiCcy||oi.oi}:null,ratio:null,source:"OKX Swap"};
-   }catch{}
+    const rs=await Promise.allSettled([get("https://www.okx.com/api/v5/public/funding-rate?instId="+instId),get("https://www.okx.com/api/v5/public/open-interest?instType=SWAP&instId="+instId)]);
+    const p=rs[0].status==="fulfilled"&&rs[0].value.code==="0"?rs[0].value.data?.[0]:null;
+    const o=rs[1].status==="fulfilled"&&rs[1].value.code==="0"?rs[1].value.data?.[0]:null;
+    if(p)set("funding_rate",p.fundingRate,"OKX Swap");
+    if(o)set("open_interest",o.oiCcy||null,"OKX Swap · "+base);
+   }catch(e){errors.push("OKX: "+String(e.message||e).slice(0,90));}
   }
-  if(!data)return json({error:"داده مشتقات برای این نماد از منابع بررسی‌شده دریافت نشد."},502,request);
-  const p=data.premium||{},o=data.oi||{},r=data.ratio||{};
-  return json({symbol:base,source:data.source,funding_rate:p.lastFundingRate==null?null:Number(p.lastFundingRate),open_interest:o.openInterest==null?null:Number(o.openInterest),long_short_ratio:r.longShortRatio==null?null:Number(r.longShortRatio),mark_price:p.markPrice==null?null:Number(p.markPrice),checked_at:new Date().toISOString()},200,request);
+  // Bitget V2 is an additional funding/mark-price fallback.
+  if(data.funding_rate===null||data.mark_price===null){
+   try{
+    const d=await get("https://api.bitget.com/api/v2/mix/market/ticker?productType=USDT-FUTURES&symbol="+symbol),t=d?.code==="00000"?d.data?.[0]:null;
+    if(t){set("funding_rate",t.fundingRate,"Bitget USDT Futures");set("mark_price",t.markPrice||t.lastPr,"Bitget USDT Futures");}
+   }catch(e){errors.push("Bitget: "+String(e.message||e).slice(0,90));}
+  }
+  if(Object.values(data).every(v=>v===null))return json({error:"داده مشتقات از منابع بررسی‌شده دریافت نشد.",sources,errors:errors.slice(0,6)},502,request);
+  return json({symbol:base,...data,open_interest_unit:base,source:[...new Set(Object.values(sources))].join(" + "),sources,missing:Object.keys(data).filter(k=>data[k]===null),checked_at:new Date().toISOString()},200,request);
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/market-orderflow"){
   const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"market-orderflow"),request);if(limited)return limited;
