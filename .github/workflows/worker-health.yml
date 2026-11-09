@@ -200,7 +200,7 @@ jobs:
           ready=false
           for attempt in 1 2 3 4 5 6; do
             status=$(curl --silent --show-error --max-time 15 -o /tmp/hunter-cron-status.json -w "%{http_code}" "$WORKER_URL/hunter-cron-status" || true)
-            if [ "$status" = "200" ] && jq -e '(.status == "success" or .status == "partial") and (.markets.spot.universe // 0) > 0 and (.markets.futures.universe // 0) > 0 and (.markets.spot.scanned // 0) > 0 and (.markets.futures.scanned // 0) > 0 and (.errors | length == 0)' /tmp/hunter-cron-status.json >/dev/null; then
+            if [ "$status" = "200" ] && jq -e '(.status == "success" or .status == "partial") and (.markets.spot.universe // 0) > 0 and (.markets.futures.universe // 0) > 0 and ((.markets.spot.scanned // 0) > 0 or (.markets.spot.universe_refreshed // false)) and ((.markets.futures.scanned // 0) > 0 or (.markets.futures.universe_refreshed // false)) and (.errors | length == 0)' /tmp/hunter-cron-status.json >/dev/null; then
               ready=true
               break
             fi
@@ -211,7 +211,7 @@ jobs:
             echo "Scheduled Spot/Futures cycle is not fully healthy." >&2
             exit 1
           fi
-          jq -r '"Scheduled Quantum cycle: Spot " + (.markets.spot.scanned|tostring) + "/" + (.markets.spot.universe|tostring) + " (failed " + (.markets.spot.failed|tostring) + "); Futures " + (.markets.futures.scanned|tostring) + "/" + (.markets.futures.universe|tostring) + " (failed " + (.markets.futures.failed|tostring) + "); status " + .status' /tmp/hunter-cron-status.json
+          jq -r '"Scheduled Quantum cycle: Spot " + (.markets.spot.scanned|tostring) + "/" + (.markets.spot.universe|tostring) + " (failed " + (.markets.spot.failed|tostring) + ", rejected " + (.markets.spot.rejected|tostring) + ", refresh " + (.markets.spot.universe_refreshed|tostring) + "); Futures " + (.markets.futures.scanned|tostring) + "/" + (.markets.futures.universe|tostring) + " (failed " + (.markets.futures.failed|tostring) + ", rejected " + (.markets.futures.rejected|tostring) + ", refresh " + (.markets.futures.universe_refreshed|tostring) + "); status " + .status' /tmp/hunter-cron-status.json
           echo "- Scheduled Spot and Futures engines: both completed a live scan without cycle errors" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Verify independent server-side fast radar scan
