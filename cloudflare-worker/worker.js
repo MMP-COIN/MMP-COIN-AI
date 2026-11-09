@@ -21,9 +21,7 @@ async function runAIWithFallback(env,prompt){
  const failures=[];
  const accept=(provider,content)=>({provider,raw:extractAIJson(content),fallbacks:failures.slice()});
  const groqModels=[
-  {id:"openai/gpt-oss-120b",timeoutMs:25000,body:{temperature:0.15,max_completion_tokens:4096,reasoning_effort:"high"}},
-  {id:"qwen/qwen3.8-27b",timeoutMs:18000,body:{temperature:0.1,max_completion_tokens:2400,reasoning_effort:"high"}},
-  {id:"openai/gpt-oss-20b",timeoutMs:18000,body:{temperature:0.15,max_completion_tokens:2400,reasoning_effort:"medium"}}
+  {id:"openai/gpt-oss-120b",timeoutMs:30000,body:{temperature:0.15,max_completion_tokens:8192,reasoning_effort:"medium"}}
  ];
  if(env.GROQ_API_KEY){
   for(const entry of groqModels){
