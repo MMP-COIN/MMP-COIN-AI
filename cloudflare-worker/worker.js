@@ -166,7 +166,7 @@ async function candles(symbol,interval,env,marketType="spot"){
     if(payload?.s!=="ok"||!Array.isArray(payload.t))throw new Error(payload?.errmsg||"Nobitex candle history unavailable");
     const rows=payload.t.map((time,i)=>[Number(time)*1000,String(payload.o?.[i]??0),String(payload.h?.[i]??0),String(payload.l?.[i]??0),String(payload.c?.[i]??0),String(payload.v?.[i]??0)]).filter(row=>row.slice(1,5).every(value=>Number(value)>0)).sort((a,b)=>a[0]-b[0]);
     if(rows.length<minimumCandles)throw new Error("Nobitex candle history is insufficient");
-    const result=analyzeClosedKlines(rows);result.data_provider="Nobitex Spot";return result;
+    const result=analyzeClosedKlines(rows,interval);result.data_provider="Nobitex Spot";return result;
    }catch(error){lastError=error;}
   }
   throw new Error("Nobitex Spot data unavailable for "+symbol+": "+(lastError?.message||"no candle response"));
@@ -190,7 +190,7 @@ async function candles(symbol,interval,env,marketType="spot"){
     const d=await r.json(),v=d?.data;
     const rows=d?.success===true&&Array.isArray(v?.time)?v.time.map((t,i)=>[Number(t)*1000,String(v.open?.[i]??0),String(v.high?.[i]??0),String(v.low?.[i]??0),String(v.close?.[i]??0),String(v.vol?.[i]??0),String(v.amount?.[i]??0),"0","0","0"]):[];
     if(!validRows(rows))throw new Error(d?.msg||"insufficient MEXC Futures candle history");
-    const result=analyzeClosedKlines(rows);result.data_provider="MEXC USDT Futures";return result;
+    const result=analyzeClosedKlines(rows,interval);result.data_provider="MEXC USDT Futures";return result;
    }catch(e){errors.push("MEXC: "+e.message);}
   }
   const kucoinGranularity={"1m":1,"5m":5,"15m":15,"1h":60,"4h":240,"1d":1440}[interval];
@@ -202,7 +202,7 @@ async function candles(symbol,interval,env,marketType="spot"){
     const d=await r.json(),raw=d?.code==="200000"?d.data:null;
     const rows=Array.isArray(raw)?raw.map(x=>[Number(x[0]),String(x[1]),String(x[2]),String(x[3]),String(x[4]),String(x[5]||0),String(x[6]||0),"0","0","0"]):[];
     if(!validRows(rows))throw new Error(d?.msg||"insufficient KuCoin Futures candle history");
-    const result=analyzeClosedKlines(rows);result.data_provider="KuCoin USDT Futures";return result;
+    const result=analyzeClosedKlines(rows,interval);result.data_provider="KuCoin USDT Futures";return result;
    }catch(e){errors.push("KuCoin: "+e.message);}
   }
   for(const host of ["https://api.gateio.ws","https://api.gate.us"]){
@@ -211,7 +211,7 @@ async function candles(symbol,interval,env,marketType="spot"){
     if(!r.ok)throw new Error("Gate Futures HTTP "+r.status);
     const raw=await r.json(),rows=Array.isArray(raw)?raw.map(x=>[Number(x.t)<1e12?Number(x.t)*1000:Number(x.t),x.o,x.h,x.l,x.c,x.v,x.sum||"0","0","0","0"]):[];
     if(!validRows(rows))throw new Error("insufficient Gate Futures candle history");
-    const result=analyzeClosedKlines(rows);result.data_provider="Gate USDT Futures";return result;
+    const result=analyzeClosedKlines(rows,interval);result.data_provider="Gate USDT Futures";return result;
    }catch(e){errors.push("Gate: "+e.message);}
   }
   try{
@@ -220,7 +220,7 @@ async function candles(symbol,interval,env,marketType="spot"){
    const payload=await r.json(),raw=payload?.code==="00000"?payload.data:null;
    const rows=Array.isArray(raw)?raw.map(x=>[Number(x[0]),x[1],x[2],x[3],x[4],x[5]||"0",x[6]||"0","0","0","0"]):[];
    if(!validRows(rows))throw new Error(payload?.msg||"insufficient Bitget Futures candle history");
-   const result=analyzeClosedKlines(rows);result.data_provider="Bitget USDT Futures";return result;
+   const result=analyzeClosedKlines(rows,interval);result.data_provider="Bitget USDT Futures";return result;
   }catch(e){errors.push("Bitget: "+e.message);}
   for(const host of ["https://api.bybit.com","https://api.bytick.com","https://api.bybit.eu"]){
    try{
@@ -228,7 +228,7 @@ async function candles(symbol,interval,env,marketType="spot"){
     const r=await fetch(url,{headers});if(!r.ok)throw new Error("Bybit Linear HTTP "+r.status);
     const payload=await r.json(),list=payload?.retCode===0?payload.result?.list:null;
     if(!validRows(list))throw new Error(payload?.retMsg||"insufficient Bybit linear candle history");
-    const result=analyzeClosedKlines(toBybitRows(list));result.data_provider="Bybit Linear Perpetual";return result;
+    const result=analyzeClosedKlines(toBybitRows(list),interval);result.data_provider="Bybit Linear Perpetual";return result;
    }catch(e){errors.push("Bybit: "+e.message);}
   }
   if(pair){
@@ -238,7 +238,7 @@ async function candles(symbol,interval,env,marketType="spot"){
      if(!r.ok)throw new Error("OKX Swap HTTP "+r.status);
      const payload=await r.json(),list=payload?.code==="0"?payload.data:null;
      if(!validRows(list))throw new Error(payload?.msg||"insufficient OKX swap candle history");
-     const result=analyzeClosedKlines(toOkxRows(list));result.data_provider="OKX Linear Swap";return result;
+     const result=analyzeClosedKlines(toOkxRows(list),interval);result.data_provider="OKX Linear Swap";return result;
     }catch(e){errors.push("OKX: "+e.message);}
    }
   }
@@ -247,7 +247,7 @@ async function candles(symbol,interval,env,marketType="spot"){
     const r=await fetch(host+"/fapi/v1/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250",{headers});
     if(!r.ok)throw new Error("Binance Futures HTTP "+r.status);
     const rows=await r.json();if(!validRows(rows))throw new Error("insufficient Binance Futures candle history");
-    const result=analyzeClosedKlines(rows);result.data_provider="Binance USD-M Futures";return result;
+    const result=analyzeClosedKlines(rows,interval);result.data_provider="Binance USD-M Futures";return result;
    }catch(e){errors.push("Binance: "+e.message);}
   }
   throw new Error("Futures data unavailable for "+symbol+" "+interval+"; "+errors.join(" | ").slice(0,520));
@@ -267,7 +267,7 @@ async function candles(symbol,interval,env,marketType="spot"){
    if(!r.ok)throw new Error("Binance Spot HTTP "+r.status);
    const rows=await r.json();
    if(!validRows(rows))throw new Error("insufficient Binance spot candle history");
-   const result=analyzeClosedKlines(rows);
+   const result=analyzeClosedKlines(rows,interval);
    result.data_provider=url.includes("binance.us")?"Binance.US":url.includes("data-api")?"Binance Data API":url.includes("api1.")||url.includes("api2.")||url.includes("api3.")?"Binance mirror":"Binance Spot";
    return result;
   }catch(e){lastError=e;}
@@ -276,7 +276,7 @@ async function candles(symbol,interval,env,marketType="spot"){
   const r=await fetch("https://api.mexc.com/api/v3/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250",{headers});
   if(!r.ok)throw new Error("MEXC Spot HTTP "+r.status);
   const rows=await r.json();if(!validRows(rows))throw new Error("insufficient MEXC spot candle history");
-  const result=analyzeClosedKlines(rows);result.data_provider="MEXC Spot";return result;
+  const result=analyzeClosedKlines(rows,interval);result.data_provider="MEXC Spot";return result;
  }catch(e){lastError=new Error((lastError?.message||"Binance unavailable")+"; "+e.message);}
  try{
   const bitgetInterval={"1m":"1m","3m":"3m","5m":"5m","15m":"15m","1h":"1H","4h":"4H","1d":"1D"}[interval];
@@ -286,7 +286,7 @@ async function candles(symbol,interval,env,marketType="spot"){
   const payload=await r.json(),rows=payload?.code==="00000"||payload?.code==="0"?payload.data:null;
   if(!validRows(rows))throw new Error(payload?.msg||"insufficient Bitget spot candle history");
   const normalized=rows.map(x=>[Number(x[0]),x[1],x[2],x[3],x[4],x[5],x[6]||"0","0","0","0"]).sort((a,b)=>a[0]-b[0]);
-  const result=analyzeClosedKlines(normalized);result.data_provider="Bitget Spot";return result;
+  const result=analyzeClosedKlines(normalized,interval);result.data_provider="Bitget Spot";return result;
  }catch(e){bitgetError=e;}
  try{
   const bitgetGranularity={"1m":"1min","3m":"3min","5m":"5min","15m":"15min","1h":"1h","4h":"4h","1d":"1day"}[interval];
@@ -296,7 +296,7 @@ async function candles(symbol,interval,env,marketType="spot"){
   const payload=await r.json(),rows=payload?.code==="00000"?payload.data:null;
   if(!validRows(rows))throw new Error(payload?.msg||"insufficient Bitget V2 spot candle history");
   const normalized=rows.map(x=>[Number(x[0]),x[1],x[2],x[3],x[4],x[5],x[6]||"0","0","0","0"]).sort((a,b)=>a[0]-b[0]);
-  const result=analyzeClosedKlines(normalized);result.data_provider="Bitget Spot V2 fallback";return result;
+  const result=analyzeClosedKlines(normalized,interval);result.data_provider="Bitget Spot V2 fallback";return result;
  }catch(e){bitgetError=new Error((bitgetError?.message||"Bitget V3 unavailable")+"; "+e.message);}
  const pairInfo=splitQuotePair(symbol);
  if(pairInfo){
@@ -308,7 +308,7 @@ async function candles(symbol,interval,env,marketType="spot"){
    const payload=await r.json(),rows=payload?.code==="200000"?payload.data:null;
    if(!validRows(rows))throw new Error(payload?.msg||"insufficient KuCoin spot candle history");
    const normalized=rows.map(x=>[Number(x[0])*1000,x[1],x[3],x[4],x[2],x[5]||"0","0","0","0","0"]).sort((a,b)=>a[0]-b[0]);
-   const result=analyzeClosedKlines(normalized);result.data_provider="KuCoin Spot (fallback)";return result;
+   const result=analyzeClosedKlines(normalized,interval);result.data_provider="KuCoin Spot (fallback)";return result;
   }catch(e){lastError=new Error((lastError?.message||"Binance unavailable")+"; "+e.message);}
   try{
    const gateInterval={"1m":"1m","3m":"3m","5m":"5m","15m":"15m","1h":"1h","4h":"4h","1d":"1d"}[interval];
@@ -319,7 +319,7 @@ async function candles(symbol,interval,env,marketType="spot"){
    const rows=await r.json();
    if(!validRows(rows))throw new Error("insufficient Gate.io spot candle history");
    const normalized=rows.map(x=>[Number(x[0])<1e12?Number(x[0])*1000:Number(x[0]),x[5],x[3],x[4],x[2],x[6]||"0","0","0","0","0"]).sort((a,b)=>a[0]-b[0]);
-   const result=analyzeClosedKlines(normalized);result.data_provider="Gate.io Spot (fallback)";return result;
+   const result=analyzeClosedKlines(normalized,interval);result.data_provider="Gate.io Spot (fallback)";return result;
   }catch(e){lastError=new Error((lastError?.message||"Binance unavailable")+"; "+e.message);}
  }
  const whitebitPair=splitQuotePair(symbol);
@@ -335,7 +335,7 @@ async function candles(symbol,interval,env,marketType="spot"){
     const payload=await r.json(),rows=payload?.success===true?payload.result:null;
     if(!validRows(rows))throw new Error(payload?.message||"insufficient WhiteBIT candle history");
     const normalized=rows.map(x=>[Number(x[0])*1000,x[1],x[3],x[4],x[2],x[5]||"0","0","0","0","0"]).sort((a,b)=>a[0]-b[0]);
-    const result=analyzeClosedKlines(normalized);result.data_provider="WhiteBIT Spot";return result;
+    const result=analyzeClosedKlines(normalized,interval);result.data_provider="WhiteBIT Spot";return result;
    }catch(e){whitebitError=e;}
   }
   lastError=new Error((lastError?.message||"Earlier spot sources unavailable")+"; "+(whitebitError?.message||"WhiteBIT unavailable"));
@@ -348,7 +348,7 @@ async function candles(symbol,interval,env,marketType="spot"){
    if(!r.ok)throw new Error("Bybit Spot HTTP "+r.status);
    const payload=await r.json(),list=payload?.retCode===0?payload.result?.list:null;
    if(!validRows(list))throw new Error(payload?.retMsg||"insufficient Bybit spot candle history");
-   const result=analyzeClosedKlines(toBybitRows(list));result.data_provider="Bybit Spot (fallback)";return result;
+   const result=analyzeClosedKlines(toBybitRows(list),interval);result.data_provider="Bybit Spot (fallback)";return result;
   }catch(e){bybitError=e;}
  }
  const pair=splitQuotePair(symbol);
@@ -360,7 +360,7 @@ async function candles(symbol,interval,env,marketType="spot"){
     if(!r.ok)throw new Error("OKX Spot HTTP "+r.status);
     const payload=await r.json(),list=payload?.code==="0"?payload.data:null;
     if(!validRows(list))throw new Error(payload?.msg||"insufficient OKX spot candle history");
-    const result=analyzeClosedKlines(toOkxRows(list));result.data_provider="OKX Spot (fallback)";return result;
+    const result=analyzeClosedKlines(toOkxRows(list),interval);result.data_provider="OKX Spot (fallback)";return result;
    }catch(e){okxError=e;}
   }
  }else okxError=new Error("Unsupported quote currency for OKX spot");
