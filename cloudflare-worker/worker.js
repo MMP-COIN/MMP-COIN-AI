@@ -637,23 +637,36 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
  const fallbackPriority=marketType==="futures"?[3,4,5,6,1,2,0]:[7,2,6,4,5,8,1,3,0];
  order=unique([...order,...fallbackPriority.filter(index=>!order.includes(index))]);
  const sourceLimit=marketType==="futures"?7:9,orderedSources=order.map(index=>sources[index]).filter(Boolean).slice(0,sourceLimit),verified=[];
- for(let offset=0;offset<orderedSources.length&&verified.length<2;offset+=2){
+ let selectedPair=null,bestObservedPair=null;
+ const evaluatePairs=()=>{
+  const pairs=[];
+  for(let i=0;i<verified.length;i++)for(let j=i+1;j<verified.length;j++){
+   const primary=verified[i],secondary=verified[j],primaryClosed=primary.rows.slice(0,-1),secondaryClosed=secondary.rows.slice(0,-1),secondaryByTime=new Map(secondaryClosed.map(candle=>[candle[0],candle]));
+   let alignedIndex=-1,a=null,b=null;
+   for(let k=primaryClosed.length-1;k>=0;k--){const match=secondaryByTime.get(primaryClosed[k][0]);if(match){alignedIndex=k;a=primaryClosed[k];b=match;break;}}
+   if(!a||!b)continue;
+   const ageMs=Date.now()-a[0],deviationPct=a[4]>0?Math.abs(b[4]/a[4]-1)*100:Infinity;
+   pairs.push({primary,secondary,alignedIndex,a,b,ageMs,deviationPct});
+  }
+  pairs.sort((x,y)=>x.ageMs-y.ageMs||x.deviationPct-y.deviationPct);
+  if(pairs.length)bestObservedPair=pairs[0];
+  return pairs.find(x=>x.ageMs<=210000&&x.deviationPct<=0.4)||null;
+ };
+ for(let offset=0;offset<orderedSources.length;offset+=2){
   const attempts=await Promise.allSettled(orderedSources.slice(offset,offset+2).map(fn=>fn()));
-  for(const result of attempts){if(result.status==="fulfilled"){const [provider,rows]=result.value;verified.push({provider,rows});}else errors.push(String(result.reason?.message||result.reason).slice(0,130));}
+  for(const result of attempts){if(result.status==="fulfilled"){const [provider,rows]=result.value;verified.push({provider,rows});}else errors.push(String(result.reason?.message||result.reason).slice(0,180));}
+  selectedPair=evaluatePairs();
+  if(selectedPair)break;
  }
- if(!verified.length)throw new Error((marketType==="futures"?"Futures":"Spot")+" candles unavailable: "+errors.join(" | "));
- if(verified.length<2)throw new Error("تأیید دو صرافی برای جفت "+pair+" در دسترس نیست: "+errors.join(" | "));
- const primary=verified[0],secondary=verified[1],primaryClosed=primary.rows.slice(0,-1),secondaryClosed=secondary.rows.slice(0,-1);
- const secondaryByTime=new Map(secondaryClosed.map(candle=>[candle[0],candle]));
- let alignedIndex=-1,a=null,b=null;
- for(let i=primaryClosed.length-1;i>=0;i--){const match=secondaryByTime.get(primaryClosed[i][0]);if(match){alignedIndex=i;a=primaryClosed[i];b=match;break;}}
- if(!a||!b)throw new Error("QUALITY_REJECTED: کندل بسته‌شده مشترک برای تأیید چندصرافی پیدا نشد");
- const timeDiffMs=Math.abs(a[0]-b[0]),priceDeviationPct=a[4]>0?Math.abs(b[4]/a[4]-1)*100:Infinity,commonCandleAge=Date.now()-a[0];
- if(commonCandleAge>180000)throw new Error("QUALITY_REJECTED: کندل مشترک چندصرافی قدیمی است ("+commonCandleAge+"ms)");
- if(priceDeviationPct>0.4)throw new Error("QUALITY_REJECTED: اختلاف قیمت چندصرافی "+priceDeviationPct.toFixed(3)+"٪");
- // Keep the shared confirmed candle as the last closed candle; never analyze a newer uncorroborated bar.
+ if(!selectedPair){
+  if(verified.length<2)throw new Error((marketType==="futures"?"Futures":"Spot")+" candles unavailable or only one exchange responded: "+errors.join(" | "));
+  if(!bestObservedPair)throw new Error("QUALITY_REJECTED: کندل بسته‌شده مشترک برای تأیید چندصرافی پیدا نشد");
+  if(bestObservedPair.ageMs>210000)throw new Error("QUALITY_REJECTED: تازه‌ترین کندل مشترک چندصرافی قدیمی است ("+bestObservedPair.ageMs+"ms)");
+  throw new Error("QUALITY_REJECTED: اختلاف قیمت چندصرافی "+bestObservedPair.deviationPct.toFixed(3)+"٪");
+ }
+ const {primary,secondary,alignedIndex,a,b,ageMs:commonCandleAge,deviationPct:priceDeviationPct}=selectedPair,timeDiffMs=0;
  const alignedRows=primary.rows.slice(0,alignedIndex+2);
- return {provider:primary.provider,rows:alignedRows,market:marketType,multiExchangeConfirmed:true,multiExchangeEvidence:{primary:primary.provider,secondary:secondary.provider,timeDiffMs,priceDeviationPct:Number(priceDeviationPct.toFixed(4)),primaryPrice:a[4],secondaryPrice:b[4],candleTime:a[0]}};
+ return {provider:primary.provider,rows:alignedRows,market:marketType,multiExchangeConfirmed:true,multiExchangeEvidence:{primary:primary.provider,secondary:secondary.provider,timeDiffMs,priceDeviationPct:Number(priceDeviationPct.toFixed(4)),primaryPrice:a[4],secondaryPrice:b[4],candleTime:a[0],commonCandleAgeMs:commonCandleAge}};
 }
 async function analyzeDigitalHunterSymbol(symbol,marketType="spot",asset=null){
  const m=await fetchHunterCandles(symbol,marketType,asset),rows=m.rows.slice(0,-1),now=Date.now();if(rows.length<60)return null;
