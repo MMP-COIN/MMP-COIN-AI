@@ -9,6 +9,7 @@ on:
     paths:
       - "cloudflare-worker/**"
       - "www/index.html"
+      - "www/quantum-lab.html"
       - ".github/workflows/worker-health.yml"
   pull_request:
     paths:
@@ -89,6 +90,29 @@ jobs:
           console.log("Parsed " + checked + " inline browser scripts; Hunter UI wiring checks passed");
           NODE
 
+      - name: Validate Quantum Lab runtime and multi-exchange wiring
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require("node:fs");
+          const vm = require("node:vm");
+          const html = fs.readFileSync("www/quantum-lab.html", "utf8");
+          const scripts = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi)];
+          let checked = 0;
+          for (let i = 0; i < scripts.length; i++) {
+            if (/\bsrc\s*=/.test(scripts[i][1])) continue;
+            new vm.Script(scripts[i][2], { filename: "www/quantum-lab.html#inline-" + (i + 1) });
+            checked++;
+          }
+          const required = ["/hunter-universe", "/hunter-scan", "/market-candles", "/market-orderflow"];
+          const missing = required.filter(route => !html.includes(route));
+          if (missing.length) throw new Error("Quantum Lab worker routes missing: " + missing.join(", "));
+          if (html.includes("https://api.binance.com")) throw new Error("Quantum Lab still depends directly on Binance browser APIs");
+          if (!html.includes("for(let i=0;i<state.universe.length;i+=12)")) throw new Error("Quantum Lab full-universe batching is missing");
+          if (!html.includes("flow?.complete===true") || !html.includes("depth?.confirmed===true")) throw new Error("Quantum Lab evidence quality gates are missing");
+          if (!html.includes('content="2.0.0"')) throw new Error("Quantum Lab must preserve the installed app version");
+          console.log("Quantum Lab inline scripts parsed: " + checked + "; multi-exchange routes and evidence gates passed.");
+          NODE
       - name: Audit every public site and app module
         run: |
           set -euo pipefail
