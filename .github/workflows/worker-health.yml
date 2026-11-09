@@ -1,4 +1,5 @@
 name: MMP COIN AI Worker Health Check
+# Post-deploy verification for Worker version 154
 
 on:
   workflow_dispatch:
@@ -15,6 +16,7 @@ on:
     paths:
       - "cloudflare-worker/**"
       - "www/index.html"
+      - "www/quantum-lab.html"
       - ".github/workflows/worker-health.yml"
 
 permissions:
@@ -43,6 +45,17 @@ jobs:
           const source = fs.readFileSync("cloudflare-worker/quantum-core.js", "utf8");
           const mod = await import("data:text/javascript;base64," + Buffer.from(source).toString("base64"));
           const workerSource = fs.readFileSync("cloudflare-worker/worker.js", "utf8");
+          if (!workerSource.includes("for(const url of urls)") || workerSource.includes("Promise.all(urls.map(url=>timeoutFetch")) throw new Error("Exchange health fallback must try alternate endpoints sequentially and stop after a verified response");
+                    if (!workerSource.includes("async function fetchWithTimeout") || !workerSource.includes("return await fetch(url,{...options,signal:controller.signal})") || workerSource.includes("return await fetchWithTimeout(url,{...options,signal:controller.signal})")) throw new Error("Bounded fetch helper must call native fetch exactly once and must not recurse");
+          if (!workerSource.includes('const MODEL = "@cf/openai/gpt-oss-120b"') || !workerSource.includes('reasoning_effort:"medium"});')) throw new Error("Cloudflare AI fallback must use GPT-OSS 120B with medium reasoning");
+                    const groqStart = workerSource.indexOf('https://api.groq.com/openai/v1/chat/completions');
+          const groqEnd = workerSource.indexOf("if(!response.ok)", groqStart);
+          if (groqStart < 0 || groqEnd < 0 || workerSource.slice(groqStart, groqEnd).includes("response_format:")) throw new Error("Groq reasoning requests must use robust JSON extraction instead of forced JSON response mode");
+                    const groqModelStart = workerSource.indexOf("const groqModels=[");
+          const groqModelEnd = workerSource.indexOf("];", groqModelStart);
+          const groqCascade = workerSource.slice(groqModelStart, groqModelEnd);
+          if (groqModelStart < 0 || !groqCascade.includes('id:"openai/gpt-oss-120b"') || !groqCascade.includes('reasoning_effort:"medium"') || groqCascade.includes("qwen/") || groqCascade.includes("gpt-oss-20b")) throw new Error("Groq AI cascade must use one bounded GPT-OSS 120B model, avoiding rate-limited secondary models");
+                    if (!workerSource.includes("function analyzeClosedKlines") || !workerSource.includes("داده کندل‌های بسته‌شده کافی نیست") || !workerSource.includes("marketDataFresh") || !workerSource.includes("const volumeConfirmed=") || !workerSource.includes("currentPrice:last[4]")) throw new Error("Analyzer must use closed candles, deterministic freshness/volume gates, and explicit price evidence");
           if (!workerSource.includes("const HUNTER_BATCH_SIZE = 10;") || !workerSource.includes("const FUTURES_HUNTER_BATCH_SIZE = 8;") || !workerSource.includes('const concurrency=marketType==="futures"?1:2;') || !workerSource.includes("Promise.allSettled(orderedSources.slice(offset,offset+2).map(fn=>fn()))")) throw new Error("Hunter scan budget/parallelism regression");
           if (!workerSource.includes("filter(x=>x.venues.size>=2)") || !workerSource.includes("x=>[+x[0]*1000,+x[5],+x[3],+x[4],+x[2],+x[1]]")) throw new Error("Futures venue qualification or Gate Spot OHLCV mapping regression");
           if (!workerSource.includes("QUALITY_REJECTED:") || !workerSource.includes("rejected_count:result.rejected||0") || !workerSource.includes("secondaryByTime=new Map(secondaryClosed.map(candle=>[candle[0],candle]));")) throw new Error("Shared-candle alignment or quality-rejection accounting missing");
@@ -54,7 +67,7 @@ jobs:
           if (!workerSource.includes('const sourceLimit=marketType==="futures"?7:9') || !radarSource.includes("const verificationOrder=[...new Set([...order,...fallback])].slice(0,6);")) throw new Error("Multi-exchange fallback coverage regressed");
           for (const provider of ["contract.mexc.com","api-futures.kucoin.com","api/v2/mix/market/candles","api/v2/mix/market/fills","api.mexc.com/api/v3/klines"]) { if (!workerSource.includes(provider)) throw new Error("Market provider fallback missing: " + provider); }
           if (!radarSource.includes("https://api.mexc.com/api/v3/klines")) throw new Error("MEXC Spot radar fallback missing");
-          const base = {trend:"bull",change1m:0.12,change3m:0.2,change5m:0.35,change15m:0.5,volumeRatio:1.3,breakout:true,structureAligned:true,trend15:true,overextended:false,dataAgeMs:20000,multiExchangeConfirmed:true,totalVolume24h:300000};
+          const base = {trend:"bull",currentPrice:100,change1m:0.12,change3m:0.2,change5m:0.35,change15m:0.5,volumeRatio:1.3,breakout:true,structureAligned:true,trend15:true,overextended:false,dataAgeMs:20000,multiExchangeConfirmed:true,totalVolume24h:300000};
           const candidate = mod.scoreQuantumOpportunity({...base,flowConfirmed:false});
           if (!candidate.candidateGate || candidate.qualityGate) throw new Error("Preliminary candidate gate is incorrect");
           const confirmed = mod.scoreQuantumOpportunity({...base,flowConfirmed:true,flowImbalance:0.12});
@@ -71,6 +84,16 @@ jobs:
             mod.scoreQuantumOpportunity({...base,flowConfirmed:true,flowImbalance:0.12,totalVolume24h:90000})
           ];
           if (rejected.some(result => result.qualityGate)) throw new Error("A weak/stale/unconfirmed candidate passed the quality gate");
+          const missingEvidence = [
+            mod.scoreQuantumOpportunity({trend:"bull",volumeRatio:2,totalVolume24h:500000,multiExchangeConfirmed:true,flowConfirmed:true,flowImbalance:0.2}),
+            mod.scoreQuantumOpportunity({...base,dataAgeMs:undefined}),
+            mod.scoreQuantumOpportunity({...base,currentPrice:0}),
+            mod.scoreQuantumOpportunity({...base,change15m:undefined})
+          ];
+          if (missingEvidence.some(result => result.candidateGate || result.qualityGate)) throw new Error("Missing price, freshness, or timeframe evidence must never produce a candidate");
+          if (missingEvidence[0].componentAvailability.multiTimeframe || missingEvidence[0].componentAvailability.dataQuality) throw new Error("Unavailable components must be marked unavailable, not neutral");
+          if (!missingEvidence[1].missingEvidence.includes("dataAge")) throw new Error("Missing freshness evidence must be reported");
+
           console.log("Quantum candidate and confirmation gates: passed");
           NODE
 
@@ -116,6 +139,16 @@ jobs:
           if (html.includes("https://api.binance.com")) throw new Error("Quantum Lab still depends directly on Binance browser APIs");
           if (!html.includes('fetch(API+"/hunter-snapshot"') || !html.includes("function startLiveMonitor()") || !html.includes("setInterval(()=>{if(!document.hidden&&!state.busy)scan()},15000)")) throw new Error("Quantum Lab persistent automatic scan subscription is missing");
           if (!html.includes("flow?.complete===true") || !html.includes("depth?.confirmed===true")) throw new Error("Quantum Lab evidence quality gates are missing");
+          if (!html.includes("MMP QUANTUM SUPER ENGINE") || !html.includes("۱۲ قابلیت تخصصی ابرموتور") || html.includes("mmp-quantum-engine-horizontal-final") || html.includes("#quantum-engines>#engines>.engine-drawer{flex:0 0 340px")) throw new Error("Quantum Lab must render one full-width super-engine panel, not a narrow horizontal engine carousel");
+          const ids = new Set([...html.matchAll(/\bid=["']([^"']+)["']/g)].map(x => x[1]));
+          const brokenHashLinks = [...new Set([...html.matchAll(/href=["']#([^"']+)["']/g)].map(x => x[1]).filter(id => !ids.has(id)))];
+          if (brokenHashLinks.length) throw new Error("Quantum Lab navigation links have missing targets: " + brokenHashLinks.join(", "));
+          const home = fs.readFileSync("www/index.html", "utf8");
+          const homeIds = new Set([...home.matchAll(/\bid=["']([^"']+)["']/g)].map(x => x[1]));
+          const brokenHomeLinks = [...new Set([...home.matchAll(/href=["']#([^"']+)["']/g)].map(x => x[1]).filter(id => !homeIds.has(id)))];
+          if (brokenHomeLinks.length) throw new Error("Homepage menu links have missing targets: " + brokenHomeLinks.join(", "));
+
+
           if (!html.includes('content="2.0.0"')) throw new Error("Quantum Lab must preserve the installed app version");
           console.log("Quantum Lab inline scripts parsed: " + checked + "; multi-exchange routes and evidence gates passed.");
           NODE
@@ -140,7 +173,8 @@ jobs:
           const missingControls = requiredControls.filter(id => !idSet.has(id));
           if (missingControls.length) throw new Error("Missing core controls: " + missingControls.join(", "));
           if (/market-ticker|ticker-item|renderMarketTicker/.test(html)) throw new Error("Removed horizontal market ticker code has returned");
-          if (html.includes("checkNativeApkUpdate") || !html.includes("function checkNativeUpdate(manual){checkLivePageUpdate(!!manual);}")) throw new Error("Native app update must remain internal-only and must not require a new APK");
+          if (!html.includes("probeDirectFallback(checks.get(\"binance spot\")") || !html.includes("probeDirectFallback(checks.get(\"nobitex\")") || !html.includes("probeDirectFallback(checks.get(\"kucoin spot\")")) throw new Error("Homepage must try independent browser fallback routes for down exchanges");
+                    if (html.includes("checkNativeApkUpdate") || !html.includes("function checkNativeUpdate(manual){checkLivePageUpdate(!!manual);}")) throw new Error("Native app update must remain internal-only and must not require a new APK");
           if (!html.includes("params.set('mmp_live_refresh',String(Date.now()))") || !html.includes("mmp_native_version")) throw new Error("Native live-page cache refresh is missing");
           const version = html.match(/<meta name=["']mmp-app-version["'] content=["']([^"']+)["']/i);
           if (!version) throw new Error("Native app version metadata is missing");
@@ -472,9 +506,10 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Live AI analyzer end-to-end smoke test
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' || github.event_name == 'pull_request'
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
+          CANARY_URL: https://02afe1c1-mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
           set -euo pipefail
           payload='{"coin_id":"bitcoin","symbol":"BTC","name":"Bitcoin","market_mode":"spot"}'
@@ -485,6 +520,21 @@ jobs:
             exit 1
           fi
           jq -e '.analysis.action as $a | (["BUY","SELL","WAIT"] | index($a) != null) and (.market.timeframes | has("15m") and has("1h") and has("4h") and has("1d"))' /tmp/analysis.json >/dev/null
+          canary_health_status=$(curl --silent --show-error --max-time 30 -o /tmp/canary-health.json -w "%{http_code}" "$CANARY_URL/health" || true)
+          echo "Canary Worker health HTTP $canary_health_status"
+          if [ "$canary_health_status" != "200" ]; then cat /tmp/canary-health.json 2>/dev/null || true; exit 1; fi
+          canary_health=$(cat /tmp/canary-health.json)
+          echo "$canary_health" | jq -e '.worker == "online" and .ai_binding == true and .futures_engine_binding == true' >/dev/null
+          canary_status=$(curl --silent --show-error --max-time 110 -H "Content-Type: application/json" -X POST --data "$payload" -o /tmp/canary-analysis.json -w "%{http_code}" "$CANARY_URL/analyze")
+          echo "Canary AI analyzer HTTP $canary_status"
+          if [ "$canary_status" != "200" ]; then
+            jq -r '.stage // "unknown stage", .error // "unknown error"' /tmp/canary-analysis.json || cat /tmp/canary-analysis.json
+            exit 1
+          fi
+          jq -e '.analysis.action as $a | (["BUY","SELL","WAIT"] | index($a) != null) and (.market.timeframes | has("15m") and has("1h") and has("4h") and has("1d"))' /tmp/canary-analysis.json >/dev/null
+          jq -r '"Selected AI model: " + (.analysis.ai_provider // "not reported")' /tmp/canary-analysis.json
+          jq -r '.analysis.ai_provider_fallbacks[]? | "AI fallback reason: " + .' /tmp/canary-analysis.json
+          jq -r '"Canary model provider: " + (.analysis.data_source // "not reported")' /tmp/canary-analysis.json
           {
             echo "- AI analyzer: HTTP 200"
             echo "- Four timeframes: 15m, 1h, 4h, 1d"

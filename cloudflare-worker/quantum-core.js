@@ -13,62 +13,78 @@ const finite=value=>Number.isFinite(Number(value))?Number(value):0;
 const has=(input,key)=>input[key]!==undefined&&input[key]!==null&&Number.isFinite(Number(input[key]));
 
 export function scoreQuantumOpportunity(input={}){
- const trend=input.trend==="bear"?-1:1;
- const changes=[finite(input.change1m??input.m1),finite(input.change3m??input.m3),finite(input.change5m??input.m5),finite(input.change15m??input.m15)];
- const momentum=clamp(28+Math.abs(changes[0])*11+Math.abs(changes[1])*7+Math.abs(changes[2])*4+Math.abs(changes[3])*1.2);
- const flowImbalance=finite(input.flowImbalance);
- const flow=input.flowConfirmed===true?clamp(50+flowImbalance*trend*250):50;
- const structure=input.breakout===true?100:input.structureAligned===true||input.structure===true?68:38;
- const volumeRatio=Math.max(0,finite(input.volumeRatio));
+ const direction=input.trend==="bull"?1:input.trend==="bear"?-1:0;
+ const changes=[input.change1m??input.m1,input.change3m??input.m3,input.change5m??input.m5,input.change15m??input.m15];
+ const changesAvailable=changes.every(value=>value!==undefined&&value!==null&&Number.isFinite(Number(value)));
+ const price=finite(input.currentPrice??input.price);
+ const priceAvailable=price>0;
+ const ageAvailable=has(input,"dataAgeMs");
+ const age=ageAvailable?Math.max(0,finite(input.dataAgeMs)):Infinity;
+ const fresh=ageAvailable&&age<=90000;
+ const momentumAvailable=changesAvailable;
+ const momentum=momentumAvailable?clamp(28+Math.abs(Number(changes[0]))*11+Math.abs(Number(changes[1]))*7+Math.abs(Number(changes[2]))*4+Math.abs(Number(changes[3]))*1.2):0;
+ const flowAvailable=input.flowConfirmed===true&&has(input,"flowImbalance");
+ const flowImbalance=flowAvailable?finite(input.flowImbalance):0;
+ const flow=flowAvailable&&direction?clamp(50+flowImbalance*direction*250):0;
+ const structureAvailable=input.breakout!==undefined||input.structureAligned!==undefined||input.structure!==undefined;
+ const structure=structureAvailable?(input.breakout===true?100:input.structureAligned===true||input.structure===true?68:38):0;
+ const volumeAvailable=has(input,"volumeRatio");
+ const volumeRatio=volumeAvailable?Math.max(0,finite(input.volumeRatio)):0;
  const depthAvailable=input.depthConfirmed===true&&has(input,"depthImbalance");
- const depthScore=depthAvailable?clamp(50+finite(input.depthImbalance)*180*trend):50;
- const liquidity=clamp((clamp(volumeRatio*45)*0.7)+(depthAvailable?depthScore*0.3:50*0.3));
- const aligned=changes.filter(value=>Math.abs(value)<0.025||Math.sign(value)===trend).length;
- const multiTimeframe=aligned/changes.length*100;
- let regime=has(input,"marketRegimeScore")?clamp(input.marketRegimeScore):(input.trend15===true||input.trend15m===true?84:56);
- if(input.overextended===true)regime=Math.max(25,regime-28);
- const age=Math.max(0,finite(input.dataAgeMs));
- const dataQuality=age<=90000?100:age<=150000?80:age<=210000?60:0;
+ const depthScore=depthAvailable&&direction?clamp(50+finite(input.depthImbalance)*180*direction):0;
+ const liquidityAvailable=volumeAvailable||depthAvailable;
+ const liquidity=liquidityAvailable?clamp((volumeAvailable?clamp(volumeRatio*45)*0.7:0)+(depthAvailable?depthScore*0.3:0)):0;
+ const multiTimeframeAvailable=changesAvailable&&direction!==0;
+ const aligned=multiTimeframeAvailable?changes.filter(value=>Math.abs(Number(value))<0.025||Math.sign(Number(value))===direction).length:0;
+ const multiTimeframe=multiTimeframeAvailable?aligned/changes.length*100:0;
+ const regimeAvailable=has(input,"marketRegimeScore")||input.trend15===true||input.trend15m===true;
+ let regime=has(input,"marketRegimeScore")?clamp(input.marketRegimeScore):(regimeAvailable?((input.trend15===true||input.trend15m===true)?84:56):0);
+ if(input.overextended===true&&regimeAvailable)regime=Math.max(25,regime-28);
+ const dataQualityAvailable=ageAvailable&&priceAvailable;
+ const dataQuality=dataQualityAvailable?(age<=90000?100:age<=150000?80:age<=210000?60:0):0;
 
  const volatilityAvailable=has(input,"explosionScore")||has(input,"compressionScore")||has(input,"atrPct")||has(input,"atrPercent")||has(input,"volatilityRatio");
- let volatility=50;
+ let volatility=0;
  if(has(input,"explosionScore"))volatility=clamp(input.explosionScore);
  else if(has(input,"compressionScore"))volatility=clamp(55+finite(input.compressionScore)*35);
  else if(has(input,"volatilityRatio")){const ratio=Math.max(0,finite(input.volatilityRatio));volatility=clamp(78-Math.abs(ratio-1.15)*38);}
  else if(has(input,"atrPct")){const atr=Math.max(0,finite(input.atrPct));volatility=clamp(88-Math.max(0,atr-0.45)*24-Math.max(0,0.18-atr)*65);}
  else if(has(input,"atrPercent")){const atr=Math.max(0,finite(input.atrPercent));volatility=clamp(88-Math.max(0,atr-0.45)*24-Math.max(0,0.18-atr)*65);}
 
- const sentimentAvailable=has(input,"sentimentScore")&&(input.sentimentConfirmed===true||input.sentimentSource);
- const sentiment=sentimentAvailable?clamp(input.sentimentScore):50;
+ const sentimentAvailable=has(input,"sentimentScore")&&(input.sentimentConfirmed===true||!!input.sentimentSource);
+ const sentiment=sentimentAvailable?clamp(input.sentimentScore):0;
  const smartMoneyAvailable=has(input,"smartMoneyScore")||input.smartMoneyConfirmed===true;
- const smartMoney=has(input,"smartMoneyScore")?clamp(input.smartMoneyScore):(input.smartMoneyConfirmed===true?clamp(50+flowImbalance*trend*180):50);
+ const smartMoney=has(input,"smartMoneyScore")?clamp(input.smartMoneyScore):(input.smartMoneyConfirmed===true&&flowAvailable&&direction?clamp(50+flowImbalance*direction*180):0);
  const scenarioAvailable=has(input,"scenarioScore")||has(input,"riskRewardRatio");
  const riskReward=Math.max(0,finite(input.riskRewardRatio));
- const scenario=has(input,"scenarioScore")?clamp(input.scenarioScore):(scenarioAvailable?clamp(48+(riskReward-1)*24):50);
+ const scenario=has(input,"scenarioScore")?clamp(input.scenarioScore):(scenarioAvailable?clamp(48+(riskReward-1)*24):0);
  const riskAvailable=has(input,"riskScore")||has(input,"stopDistancePct")||has(input,"riskPercent");
  const stopDistance=Math.max(0,finite(input.stopDistancePct??input.riskPercent));
- const risk=has(input,"riskScore")?clamp(input.riskScore):(riskAvailable?clamp(100-Math.max(0,stopDistance-1.25)*24-Math.max(0,0.25-stopDistance)*70):50);
+ const risk=has(input,"riskScore")?clamp(input.riskScore):(riskAvailable?clamp(100-Math.max(0,stopDistance-1.25)*24-Math.max(0,0.25-stopDistance)*70):0);
 
  const parts={momentum,flow,structure,liquidity,multiTimeframe,regime,volatility,sentiment,smartMoney,scenario,risk,dataQuality};
- const availability={momentum:true,flow:true,structure:true,liquidity:true,multiTimeframe:true,regime:true,
-  volatility:volatilityAvailable,sentiment:sentimentAvailable,smartMoney:smartMoneyAvailable,scenario:scenarioAvailable,risk:riskAvailable,dataQuality:true};
+ const availability={momentum:momentumAvailable,flow:flowAvailable,structure:structureAvailable,liquidity:liquidityAvailable,
+  multiTimeframe:multiTimeframeAvailable,regime:regimeAvailable,volatility:volatilityAvailable,sentiment:sentimentAvailable,
+  smartMoney:smartMoneyAvailable,scenario:scenarioAvailable,risk:riskAvailable,dataQuality:dataQualityAvailable};
  const activeWeight=Object.entries(QUANTUM_SCORE_WEIGHTS).reduce((sum,[key,weight])=>sum+(availability[key]?weight:0),0);
- const score=Math.round(Object.entries(QUANTUM_SCORE_WEIGHTS).reduce((sum,[key,weight])=>sum+(availability[key]?parts[key]*weight:0),0)/Math.max(activeWeight,0.001));
- const confidence=Math.round(clamp(dataQuality*.35+multiTimeframe*.25+liquidity*.20+(input.flowConfirmed===true?20:8)+(volatilityAvailable?5:0)+(smartMoneyAvailable?5:0)));
- const liquidityConfirmed=input.totalVolume24h==null||finite(input.totalVolume24h)>=150000;
- const candidateGate=dataQuality>=80&&multiTimeframe>=50&&liquidity>=25&&liquidityConfirmed&&input.overextended!==true;
- const flowAligned=input.flowConfirmed===true&&flowImbalance*trend>=0.045;
- const volumeConfirmed=volumeRatio>=1.1;
+ const score=activeWeight>0?Math.round(Object.entries(QUANTUM_SCORE_WEIGHTS).reduce((sum,[key,weight])=>sum+(availability[key]?parts[key]*weight:0),0)/activeWeight):0;
+ const confidence=Math.round(clamp((dataQualityAvailable?dataQuality*.35:0)+(multiTimeframeAvailable?multiTimeframe*.25:0)+(liquidityAvailable?liquidity*.20:0)+(flowAvailable?20:0)+(volatilityAvailable?5:0)+(smartMoneyAvailable?5:0)));
+ const totalVolumeAvailable=has(input,"totalVolume24h");
+ const liquidityConfirmed=totalVolumeAvailable&&finite(input.totalVolume24h)>=150000;
+ const candidateGate=priceAvailable&&fresh&&changesAvailable&&direction!==0&&structureAvailable&&volumeAvailable&&dataQuality>=80&&multiTimeframe>=50&&liquidity>=25&&liquidityConfirmed&&volumeRatio>=1.1&&input.overextended!==true;
+ const flowAligned=flowAvailable&&direction!==0&&flowImbalance*direction>=0.045;
+ const volumeConfirmed=volumeAvailable&&volumeRatio>=1.1;
  const multiExchangeConfirmed=input.multiExchangeConfirmed===true;
  const depthConfirmed=input.requireDepthConfirmation===true?input.depthConfirmed===true:null;
  const depthGate=input.requireDepthConfirmation!==true||depthConfirmed===true;
  const qualityGate=candidateGate&&flowAligned&&volumeConfirmed&&multiExchangeConfirmed&&depthGate;
+ const missingEvidence=Object.entries({price:priceAvailable,dataAge:ageAvailable&&fresh,multiTimeframe:changesAvailable,trend:direction!==0,structure:structureAvailable,volume:volumeAvailable,marketLiquidity:liquidityConfirmed,multiExchange:multiExchangeConfirmed,executedFlow:flowAvailable}).filter(([,ok])=>!ok).map(([key])=>key);
  return {
   engine:QUANTUM_ENGINE_NAME,version:QUANTUM_ENGINE_VERSION,score:clamp(score,0,99),confidence,
   components:Object.fromEntries(Object.entries(parts).map(([key,value])=>[key,Math.round(value)])),
   componentAvailability:availability,weights:QUANTUM_SCORE_WEIGHTS,activeWeight:Number(activeWeight.toFixed(3)),
-  dataAgeMs:age,flowValidated:input.flowConfirmed===true,flowAligned,volumeConfirmed,
-  multiExchangeConfirmed,depthConfirmed,candidateGate,qualityGate
+  dataAgeMs:Number.isFinite(age)?age:null,flowValidated:flowAvailable,flowAligned,volumeConfirmed,
+  multiExchangeConfirmed,depthConfirmed,candidateGate,qualityGate,missingEvidence
  };
 }
 

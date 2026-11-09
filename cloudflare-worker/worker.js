@@ -2,7 +2,7 @@
 import { QUANTUM_ENGINE_NAME, QUANTUM_ENGINE_VERSION, normalizeQuantumUniverse, scoreQuantumOpportunity } from "./quantum-core.js";
 const HUNTER_BATCH_SIZE = 10;
 const FUTURES_HUNTER_BATCH_SIZE = 8;
-const MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+const MODEL = "@cf/openai/gpt-oss-120b";
 function extractAIJson(value){
  let raw=typeof value==="string"?value:JSON.stringify(value??"");
  raw=raw.replace(/^\s*\x60{3}(?:json)?\s*/i,"").replace(/\s*\x60{3}\s*$/,"").trim();
@@ -19,20 +19,19 @@ async function runAIWithFallback(env,prompt){
   {role:"user",content:prompt}
  ];
  const failures=[];
- const accept=(provider,content)=>({provider,raw:extractAIJson(content)});
+ const accept=(provider,content)=>({provider,raw:extractAIJson(content),fallbacks:failures.slice()});
  const groqModels=[
-  {id:"qwen/qwen3.8-27b",body:{temperature:0.1,max_completion_tokens:800,reasoning_effort:"none"}},
-  {id:"openai/gpt-oss-20b",body:{max_completion_tokens:1200,reasoning_effort:"low"}}
+  {id:"openai/gpt-oss-120b",timeoutMs:30000,body:{temperature:0.15,max_completion_tokens:8192,reasoning_effort:"medium"}}
  ];
  if(env.GROQ_API_KEY){
   for(const entry of groqModels){
    const model=entry.id;
    try{
-    const response=await fetch("https://api.groq.com/openai/v1/chat/completions",{
+    const response=await fetchWithTimeout("https://api.groq.com/openai/v1/chat/completions",{
      method:"POST",
      headers:{"Authorization":"Bearer "+env.GROQ_API_KEY,"Content-Type":"application/json"},
-     body:JSON.stringify({model,messages,...entry.body,response_format:{type:"json_object"}})
-    });
+     body:JSON.stringify({model,messages,...entry.body})
+    },entry.timeoutMs||18000);
     if(!response.ok){
      const body=await response.text();
      let detail=body;
@@ -52,14 +51,14 @@ async function runAIWithFallback(env,prompt){
  // Cloudflare AI remains a fallback, with a smaller output budget.
  if(env.AI){
   try{
-   const result=await env.AI.run(MODEL,{messages,max_tokens:900,temperature:0.12});
+   const result=await env.AI.run(MODEL,{messages,max_tokens:1600,temperature:0.1,reasoning_effort:"medium"});
    if(result?.error)throw new Error(typeof result.error==="string"?result.error:JSON.stringify(result.error));
-   return accept("Cloudflare Workers AI",result?.response??result?.result??result?.output_text??result);
+   return accept("Cloudflare Workers AI / "+MODEL,result?.response??result?.result??result?.output_text??result);
   }catch(error){failures.push("Cloudflare: "+String(error?.message||error).slice(0,260));}
  }else failures.push("Cloudflare AI binding missing");
  if(env.HF_TOKEN&&env.HF_MODEL){
   try{
-   const response=await fetch("https://router.huggingface.co/v1/chat/completions",{
+   const response=await fetchWithTimeout("https://router.huggingface.co/v1/chat/completions",{
     method:"POST",headers:{"Authorization":"Bearer "+env.HF_TOKEN,"Content-Type":"application/json"},
     body:JSON.stringify({model:env.HF_MODEL,messages,temperature:0.12,max_completion_tokens:900,response_format:{type:"json_object"}})
    });
@@ -74,7 +73,7 @@ async function runAIWithFallback(env,prompt){
    const base=String(env.OLLAMA_BASE_URL).replace(/\/+$/,"");
    const headers={"Content-Type":"application/json"};
    if(env.OLLAMA_API_KEY)headers.Authorization="Bearer "+env.OLLAMA_API_KEY;
-   const response=await fetch(base+"/api/chat",{method:"POST",headers,body:JSON.stringify({model:env.OLLAMA_MODEL,messages,stream:false,format:"json",options:{temperature:0.12,num_predict:900}})});
+   const response=await fetchWithTimeout(base+"/api/chat",{method:"POST",headers,body:JSON.stringify({model:env.OLLAMA_MODEL,messages,stream:false,format:"json",options:{temperature:0.12,num_predict:900}})});
    if(!response.ok)throw new Error("HTTP "+response.status+" "+(await response.text()).slice(0,320));
    const data=await response.json(),content=data?.message?.content;
    if(!content)throw new Error("Empty model response");
@@ -137,6 +136,19 @@ function splitQuotePair(symbol){
  const match=String(symbol||"").toUpperCase().match(/^([A-Z0-9_]+?)(USDT|USDC|FDUSD|BUSD|USD|BTC|ETH|IRT)$/);
  return match?{base:match[1],quote:match[2]}:null;
 }
+function analyzeClosedKlines(rows,interval){
+ const duration=({"1m":60000,"3m":180000,"5m":300000,"15m":900000,"1h":3600000,"4h":14400000,"1d":86400000})[interval];
+ if(!duration)throw new Error("Unsupported candle interval: "+interval);
+ const minimum=interval==="1d"?20:30,now=Date.now();
+ const closed=(Array.isArray(rows)?rows:[]).filter(row=>Number.isFinite(Number(row?.[0]))&&Number(row[0])+duration<=now-1000).sort((a,b)=>Number(a[0])-Number(b[0]));
+ if(closed.length<minimum)throw new Error("داده کندل‌های بسته‌شده کافی نیست؛ داده کندل باز برای تحلیل استفاده نمی‌شود.");
+ const result=analyzeKlines(closed),lastOpen=Number(closed[closed.length-1][0]),closedAt=lastOpen+duration;
+ result.candle_time=new Date(lastOpen).toISOString();
+ result.candle_closed_at=new Date(closedAt).toISOString();
+ result.data_age_ms=Math.max(0,now-closedAt);
+ result.candle_interval=interval;
+ return result;
+}
 async function candles(symbol,interval,env,marketType="spot"){
  const headers={"Accept":"application/json, text/plain, */*","User-Agent":"MMP-COIN-AI/1.0","Accept-Language":"en-US,en;q=0.9"};
  const minimumCandles=interval==="1d"?20:30;
@@ -147,13 +159,13 @@ async function candles(symbol,interval,env,marketType="spot"){
   for(const host of ["https://apiv2.nobitex.ir","https://api.nobitex.ir"]){
    try{
     const url=host+"/market/udf/history?symbol="+encodeURIComponent(base+"IRT")+"&resolution="+resolution+"&from="+from+"&to="+to;
-    const response=await fetch(url,{headers});
+    const response=await fetchWithTimeout(url,{headers});
     if(!response.ok)throw new Error("Nobitex candle HTTP "+response.status);
     const payload=await response.json();
     if(payload?.s!=="ok"||!Array.isArray(payload.t))throw new Error(payload?.errmsg||"Nobitex candle history unavailable");
     const rows=payload.t.map((time,i)=>[Number(time)*1000,String(payload.o?.[i]??0),String(payload.h?.[i]??0),String(payload.l?.[i]??0),String(payload.c?.[i]??0),String(payload.v?.[i]??0)]).filter(row=>row.slice(1,5).every(value=>Number(value)>0)).sort((a,b)=>a[0]-b[0]);
     if(rows.length<minimumCandles)throw new Error("Nobitex candle history is insufficient");
-    const result=analyzeKlines(rows);result.data_provider="Nobitex Spot";return result;
+    const result=analyzeClosedKlines(rows,interval);result.data_provider="Nobitex Spot";return result;
    }catch(error){lastError=error;}
   }
   throw new Error("Nobitex Spot data unavailable for "+symbol+": "+(lastError?.message||"no candle response"));
@@ -172,12 +184,12 @@ async function candles(symbol,interval,env,marketType="spot"){
   if(mexcInterval){
    try{
     const now=Math.floor(Date.now()/1000),start=now-300*({"1m":60,"5m":300,"15m":900,"1h":3600,"4h":14400,"1d":86400}[interval]);
-    const r=await fetch("https://contract.mexc.com/api/v1/contract/kline/"+encodeURIComponent(contract)+"?interval="+mexcInterval+"&start="+start+"&end="+now,{headers});
+    const r=await fetchWithTimeout("https://contract.mexc.com/api/v1/contract/kline/"+encodeURIComponent(contract)+"?interval="+mexcInterval+"&start="+start+"&end="+now,{headers});
     if(!r.ok)throw new Error("MEXC Futures HTTP "+r.status);
     const d=await r.json(),v=d?.data;
     const rows=d?.success===true&&Array.isArray(v?.time)?v.time.map((t,i)=>[Number(t)*1000,String(v.open?.[i]??0),String(v.high?.[i]??0),String(v.low?.[i]??0),String(v.close?.[i]??0),String(v.vol?.[i]??0),String(v.amount?.[i]??0),"0","0","0"]):[];
     if(!validRows(rows))throw new Error(d?.msg||"insufficient MEXC Futures candle history");
-    const result=analyzeKlines(rows);result.data_provider="MEXC USDT Futures";return result;
+    const result=analyzeClosedKlines(rows,interval);result.data_provider="MEXC USDT Futures";return result;
    }catch(e){errors.push("MEXC: "+e.message);}
   }
   const kucoinGranularity={"1m":1,"5m":5,"15m":15,"1h":60,"4h":240,"1d":1440}[interval];
@@ -185,56 +197,56 @@ async function candles(symbol,interval,env,marketType="spot"){
    try{
     const now=Date.now(),kucoinSymbol=(pair.base==="BTC"?"XBT":pair.base)+"USDTM";
     const url="https://api-futures.kucoin.com/api/v1/kline/query?symbol="+encodeURIComponent(kucoinSymbol)+"&granularity="+kucoinGranularity+"&from="+(now-300*kucoinGranularity*60000)+"&to="+now;
-    const r=await fetch(url,{headers});if(!r.ok)throw new Error("KuCoin Futures HTTP "+r.status);
+    const r=await fetchWithTimeout(url,{headers});if(!r.ok)throw new Error("KuCoin Futures HTTP "+r.status);
     const d=await r.json(),raw=d?.code==="200000"?d.data:null;
     const rows=Array.isArray(raw)?raw.map(x=>[Number(x[0]),String(x[1]),String(x[2]),String(x[3]),String(x[4]),String(x[5]||0),String(x[6]||0),"0","0","0"]):[];
     if(!validRows(rows))throw new Error(d?.msg||"insufficient KuCoin Futures candle history");
-    const result=analyzeKlines(rows);result.data_provider="KuCoin USDT Futures";return result;
+    const result=analyzeClosedKlines(rows,interval);result.data_provider="KuCoin USDT Futures";return result;
    }catch(e){errors.push("KuCoin: "+e.message);}
   }
   for(const host of ["https://api.gateio.ws","https://api.gate.us"]){
    try{
-    const r=await fetch(host+"/api/v4/futures/usdt/candlesticks?contract="+encodeURIComponent(contract)+"&interval="+interval+"&limit=250",{headers});
+    const r=await fetchWithTimeout(host+"/api/v4/futures/usdt/candlesticks?contract="+encodeURIComponent(contract)+"&interval="+interval+"&limit=250",{headers});
     if(!r.ok)throw new Error("Gate Futures HTTP "+r.status);
     const raw=await r.json(),rows=Array.isArray(raw)?raw.map(x=>[Number(x.t)<1e12?Number(x.t)*1000:Number(x.t),x.o,x.h,x.l,x.c,x.v,x.sum||"0","0","0","0"]):[];
     if(!validRows(rows))throw new Error("insufficient Gate Futures candle history");
-    const result=analyzeKlines(rows);result.data_provider="Gate USDT Futures";return result;
+    const result=analyzeClosedKlines(rows,interval);result.data_provider="Gate USDT Futures";return result;
    }catch(e){errors.push("Gate: "+e.message);}
   }
   try{
    const url="https://api.bitget.com/api/v3/market/candles?category=USDT-FUTURES&symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250";
-   const r=await fetch(url,{headers});if(!r.ok)throw new Error("Bitget Futures HTTP "+r.status);
+   const r=await fetchWithTimeout(url,{headers});if(!r.ok)throw new Error("Bitget Futures HTTP "+r.status);
    const payload=await r.json(),raw=payload?.code==="00000"?payload.data:null;
    const rows=Array.isArray(raw)?raw.map(x=>[Number(x[0]),x[1],x[2],x[3],x[4],x[5]||"0",x[6]||"0","0","0","0"]):[];
    if(!validRows(rows))throw new Error(payload?.msg||"insufficient Bitget Futures candle history");
-   const result=analyzeKlines(rows);result.data_provider="Bitget USDT Futures";return result;
+   const result=analyzeClosedKlines(rows,interval);result.data_provider="Bitget USDT Futures";return result;
   }catch(e){errors.push("Bitget: "+e.message);}
   for(const host of ["https://api.bybit.com","https://api.bytick.com","https://api.bybit.eu"]){
    try{
     const url=host+"/v5/market/kline?category=linear&symbol="+encodeURIComponent(symbol)+"&interval="+bybitInterval+"&limit=250";
-    const r=await fetch(url,{headers});if(!r.ok)throw new Error("Bybit Linear HTTP "+r.status);
+    const r=await fetchWithTimeout(url,{headers});if(!r.ok)throw new Error("Bybit Linear HTTP "+r.status);
     const payload=await r.json(),list=payload?.retCode===0?payload.result?.list:null;
     if(!validRows(list))throw new Error(payload?.retMsg||"insufficient Bybit linear candle history");
-    const result=analyzeKlines(toBybitRows(list));result.data_provider="Bybit Linear Perpetual";return result;
+    const result=analyzeClosedKlines(toBybitRows(list),interval);result.data_provider="Bybit Linear Perpetual";return result;
    }catch(e){errors.push("Bybit: "+e.message);}
   }
   if(pair){
    for(const host of ["https://www.okx.com","https://us.okx.com"]){
     try{
-     const instId=pair.base+"-"+pair.quote+"-SWAP",r=await fetch(host+"/api/v5/market/candles?instId="+encodeURIComponent(instId)+"&bar="+okxBar+"&limit=250",{headers});
+     const instId=pair.base+"-"+pair.quote+"-SWAP",r=await fetchWithTimeout(host+"/api/v5/market/candles?instId="+encodeURIComponent(instId)+"&bar="+okxBar+"&limit=250",{headers});
      if(!r.ok)throw new Error("OKX Swap HTTP "+r.status);
      const payload=await r.json(),list=payload?.code==="0"?payload.data:null;
      if(!validRows(list))throw new Error(payload?.msg||"insufficient OKX swap candle history");
-     const result=analyzeKlines(toOkxRows(list));result.data_provider="OKX Linear Swap";return result;
+     const result=analyzeClosedKlines(toOkxRows(list),interval);result.data_provider="OKX Linear Swap";return result;
     }catch(e){errors.push("OKX: "+e.message);}
    }
   }
   for(const host of ["https://fapi.binance.com","https://fapi1.binance.com","https://fapi2.binance.com"]){
    try{
-    const r=await fetch(host+"/fapi/v1/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250",{headers});
+    const r=await fetchWithTimeout(host+"/fapi/v1/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250",{headers});
     if(!r.ok)throw new Error("Binance Futures HTTP "+r.status);
     const rows=await r.json();if(!validRows(rows))throw new Error("insufficient Binance Futures candle history");
-    const result=analyzeKlines(rows);result.data_provider="Binance USD-M Futures";return result;
+    const result=analyzeClosedKlines(rows,interval);result.data_provider="Binance USD-M Futures";return result;
    }catch(e){errors.push("Binance: "+e.message);}
   }
   throw new Error("Futures data unavailable for "+symbol+" "+interval+"; "+errors.join(" | ").slice(0,520));
@@ -250,63 +262,63 @@ async function candles(symbol,interval,env,marketType="spot"){
  ];
  for(const url of spotUrls){
   try{
-   const r=await fetch(url,{headers});
+   const r=await fetchWithTimeout(url,{headers});
    if(!r.ok)throw new Error("Binance Spot HTTP "+r.status);
    const rows=await r.json();
    if(!validRows(rows))throw new Error("insufficient Binance spot candle history");
-   const result=analyzeKlines(rows);
+   const result=analyzeClosedKlines(rows,interval);
    result.data_provider=url.includes("binance.us")?"Binance.US":url.includes("data-api")?"Binance Data API":url.includes("api1.")||url.includes("api2.")||url.includes("api3.")?"Binance mirror":"Binance Spot";
    return result;
   }catch(e){lastError=e;}
  }
  try{
-  const r=await fetch("https://api.mexc.com/api/v3/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250",{headers});
+  const r=await fetchWithTimeout("https://api.mexc.com/api/v3/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250",{headers});
   if(!r.ok)throw new Error("MEXC Spot HTTP "+r.status);
   const rows=await r.json();if(!validRows(rows))throw new Error("insufficient MEXC spot candle history");
-  const result=analyzeKlines(rows);result.data_provider="MEXC Spot";return result;
+  const result=analyzeClosedKlines(rows,interval);result.data_provider="MEXC Spot";return result;
  }catch(e){lastError=new Error((lastError?.message||"Binance unavailable")+"; "+e.message);}
  try{
   const bitgetInterval={"1m":"1m","3m":"3m","5m":"5m","15m":"15m","1h":"1H","4h":"4H","1d":"1D"}[interval];
   const url="https://api.bitget.com/api/v3/market/candles?category=SPOT&symbol="+encodeURIComponent(symbol)+"&interval="+bitgetInterval+"&limit=250";
-  const r=await fetch(url,{headers});
+  const r=await fetchWithTimeout(url,{headers});
   if(!r.ok)throw new Error("Bitget Spot HTTP "+r.status);
   const payload=await r.json(),rows=payload?.code==="00000"||payload?.code==="0"?payload.data:null;
   if(!validRows(rows))throw new Error(payload?.msg||"insufficient Bitget spot candle history");
   const normalized=rows.map(x=>[Number(x[0]),x[1],x[2],x[3],x[4],x[5],x[6]||"0","0","0","0"]).sort((a,b)=>a[0]-b[0]);
-  const result=analyzeKlines(normalized);result.data_provider="Bitget Spot";return result;
+  const result=analyzeClosedKlines(normalized,interval);result.data_provider="Bitget Spot";return result;
  }catch(e){bitgetError=e;}
  try{
   const bitgetGranularity={"1m":"1min","3m":"3min","5m":"5min","15m":"15min","1h":"1h","4h":"4h","1d":"1day"}[interval];
   const now=Date.now(),start=now-250*({"1m":60000,"3m":180000,"5m":300000,"15m":900000,"1h":3600000,"4h":14400000,"1d":86400000}[interval]);
   const url="https://api.bitget.com/api/v2/spot/market/candles?symbol="+encodeURIComponent(symbol)+"&granularity="+bitgetGranularity+"&startTime="+start+"&endTime="+now+"&limit=250";
-  const r=await fetch(url,{headers:{...headers,"Origin":"https://www.bitget.com","Referer":"https://www.bitget.com/","User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"}});if(!r.ok)throw new Error("Bitget Spot V2 HTTP "+r.status);
+  const r=await fetchWithTimeout(url,{headers:{...headers,"Origin":"https://www.bitget.com","Referer":"https://www.bitget.com/","User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"}});if(!r.ok)throw new Error("Bitget Spot V2 HTTP "+r.status);
   const payload=await r.json(),rows=payload?.code==="00000"?payload.data:null;
   if(!validRows(rows))throw new Error(payload?.msg||"insufficient Bitget V2 spot candle history");
   const normalized=rows.map(x=>[Number(x[0]),x[1],x[2],x[3],x[4],x[5],x[6]||"0","0","0","0"]).sort((a,b)=>a[0]-b[0]);
-  const result=analyzeKlines(normalized);result.data_provider="Bitget Spot V2 fallback";return result;
+  const result=analyzeClosedKlines(normalized,interval);result.data_provider="Bitget Spot V2 fallback";return result;
  }catch(e){bitgetError=new Error((bitgetError?.message||"Bitget V3 unavailable")+"; "+e.message);}
  const pairInfo=splitQuotePair(symbol);
  if(pairInfo){
   try{
    const kucoinInterval={"1m":"1min","3m":"3min","5m":"5min","15m":"15min","1h":"1hour","4h":"4hour","1d":"1day"}[interval];
    const url="https://api.kucoin.com/api/v1/market/candles?symbol="+encodeURIComponent(pairInfo.base+"-"+pairInfo.quote)+"&type="+kucoinInterval;
-   const r=await fetch(url,{headers});
+   const r=await fetchWithTimeout(url,{headers});
    if(!r.ok)throw new Error("KuCoin Spot HTTP "+r.status);
    const payload=await r.json(),rows=payload?.code==="200000"?payload.data:null;
    if(!validRows(rows))throw new Error(payload?.msg||"insufficient KuCoin spot candle history");
    const normalized=rows.map(x=>[Number(x[0])*1000,x[1],x[3],x[4],x[2],x[5]||"0","0","0","0","0"]).sort((a,b)=>a[0]-b[0]);
-   const result=analyzeKlines(normalized);result.data_provider="KuCoin Spot (fallback)";return result;
+   const result=analyzeClosedKlines(normalized,interval);result.data_provider="KuCoin Spot (fallback)";return result;
   }catch(e){lastError=new Error((lastError?.message||"Binance unavailable")+"; "+e.message);}
   try{
    const gateInterval={"1m":"1m","3m":"3m","5m":"5m","15m":"15m","1h":"1h","4h":"4h","1d":"1d"}[interval];
    const gatePair=pairInfo.base+"_"+pairInfo.quote;
    const url="https://api.gateio.ws/api/v4/spot/candlesticks?currency_pair="+encodeURIComponent(gatePair)+"&interval="+gateInterval+"&limit=250";
-   const r=await fetch(url,{headers});
+   const r=await fetchWithTimeout(url,{headers});
    if(!r.ok)throw new Error("Gate.io Spot HTTP "+r.status);
    const rows=await r.json();
    if(!validRows(rows))throw new Error("insufficient Gate.io spot candle history");
    const normalized=rows.map(x=>[Number(x[0])<1e12?Number(x[0])*1000:Number(x[0]),x[5],x[3],x[4],x[2],x[6]||"0","0","0","0","0"]).sort((a,b)=>a[0]-b[0]);
-   const result=analyzeKlines(normalized);result.data_provider="Gate.io Spot (fallback)";return result;
+   const result=analyzeClosedKlines(normalized,interval);result.data_provider="Gate.io Spot (fallback)";return result;
   }catch(e){lastError=new Error((lastError?.message||"Binance unavailable")+"; "+e.message);}
  }
  const whitebitPair=splitQuotePair(symbol);
@@ -317,12 +329,12 @@ async function candles(symbol,interval,env,marketType="spot"){
   for(const host of ["https://whitebit.com","https://whitebit.eu","https://whitebit.tr","https://whitebit.ge"]){
    try{
     const url=host+"/api/v1/public/kline?market="+encodeURIComponent(market)+"&interval="+whitebitInterval+"&limit=250";
-    const r=await fetch(url,{headers});
+    const r=await fetchWithTimeout(url,{headers});
     if(!r.ok)throw new Error("WhiteBIT HTTP "+r.status);
     const payload=await r.json(),rows=payload?.success===true?payload.result:null;
     if(!validRows(rows))throw new Error(payload?.message||"insufficient WhiteBIT candle history");
     const normalized=rows.map(x=>[Number(x[0])*1000,x[1],x[3],x[4],x[2],x[5]||"0","0","0","0","0"]).sort((a,b)=>a[0]-b[0]);
-    const result=analyzeKlines(normalized);result.data_provider="WhiteBIT Spot";return result;
+    const result=analyzeClosedKlines(normalized,interval);result.data_provider="WhiteBIT Spot";return result;
    }catch(e){whitebitError=e;}
   }
   lastError=new Error((lastError?.message||"Earlier spot sources unavailable")+"; "+(whitebitError?.message||"WhiteBIT unavailable"));
@@ -331,11 +343,11 @@ async function candles(symbol,interval,env,marketType="spot"){
  for(const host of ["https://api.bybit.com","https://api.bytick.com","https://api.bybit.eu"]){
   try{
    const url=host+"/v5/market/kline?category=spot&symbol="+encodeURIComponent(symbol)+"&interval="+bybitInterval+"&limit=250";
-   const r=await fetch(url,{headers});
+   const r=await fetchWithTimeout(url,{headers});
    if(!r.ok)throw new Error("Bybit Spot HTTP "+r.status);
    const payload=await r.json(),list=payload?.retCode===0?payload.result?.list:null;
    if(!validRows(list))throw new Error(payload?.retMsg||"insufficient Bybit spot candle history");
-   const result=analyzeKlines(toBybitRows(list));result.data_provider="Bybit Spot (fallback)";return result;
+   const result=analyzeClosedKlines(toBybitRows(list),interval);result.data_provider="Bybit Spot (fallback)";return result;
   }catch(e){bybitError=e;}
  }
  const pair=splitQuotePair(symbol);
@@ -343,11 +355,11 @@ async function candles(symbol,interval,env,marketType="spot"){
   const instId=pair.base+"-"+pair.quote;
   for(const host of ["https://www.okx.com"]){
    try{
-    const r=await fetch(host+"/api/v5/market/candles?instId="+encodeURIComponent(instId)+"&bar="+okxBar+"&limit=250",{headers});
+    const r=await fetchWithTimeout(host+"/api/v5/market/candles?instId="+encodeURIComponent(instId)+"&bar="+okxBar+"&limit=250",{headers});
     if(!r.ok)throw new Error("OKX Spot HTTP "+r.status);
     const payload=await r.json(),list=payload?.code==="0"?payload.data:null;
     if(!validRows(list))throw new Error(payload?.msg||"insufficient OKX spot candle history");
-    const result=analyzeKlines(toOkxRows(list));result.data_provider="OKX Spot (fallback)";return result;
+    const result=analyzeClosedKlines(toOkxRows(list),interval);result.data_provider="OKX Spot (fallback)";return result;
    }catch(e){okxError=e;}
   }
  }else okxError=new Error("Unsupported quote currency for OKX spot");
@@ -381,9 +393,17 @@ function buildTradePlans(longMarket,action,mode,shortMarket=longMarket){
 function validSymbol(s){return /^[A-Z0-9_]{2,30}$/.test(s||"")&&!s.startsWith("_")&&!s.endsWith("_")&&!s.includes("USDTUSDT")}
 
 let exchangeCatalogCache=null,exchangeCatalogCacheAt=0;
+async function fetchWithTimeout(url,options={},timeoutMs=9000){
+ const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeoutMs);
+ const externalSignal=options.signal;
+ let abortExternal=()=>controller.abort();
+ if(externalSignal){if(externalSignal.aborted)controller.abort();else externalSignal.addEventListener("abort",abortExternal,{once:true});}
+ try{return await fetch(url,{...options,signal:controller.signal});}
+ finally{clearTimeout(timer);if(externalSignal)externalSignal.removeEventListener("abort",abortExternal);}
+}
 async function readPublicJson(url){
  try{
-  const r=await fetch(url,{headers:{"Accept":"application/json, text/plain, */*","User-Agent":"MMP-COIN-AI/1.0","Accept-Language":"en-US,en;q=0.9"}});
+  const r=await fetchWithTimeout(url,{headers:{"Accept":"application/json, text/plain, */*","User-Agent":"MMP-COIN-AI/1.0","Accept-Language":"en-US,en;q=0.9"}},7500);
   if(!r.ok)return {ok:false,status:r.status,error:"HTTP "+r.status};
   const data=await r.json();return {ok:true,status:r.status,data};
  }catch(e){return {ok:false,status:0,error:e.message||"network error"};}
@@ -529,7 +549,7 @@ function persianize(value){
 
 async function marketFlowJson(url,timeoutMs=7500){
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeoutMs);
- try{const response=await fetch(url,{headers:{"Accept":"application/json","User-Agent":"MMP-COIN-AI-FLOW/1.0"},signal:controller.signal});if(!response.ok)throw new Error("HTTP "+response.status);return await response.json();}
+ try{const response=await fetchWithTimeout(url,{headers:{"Accept":"application/json","User-Agent":"MMP-COIN-AI-FLOW/1.0"},signal:controller.signal});if(!response.ok)throw new Error("HTTP "+response.status);return await response.json();}
  finally{clearTimeout(timer);}
 }
 async function loadMarketFlow(symbol,windowMinutes=5){
@@ -687,7 +707,7 @@ async function analyzeDigitalHunterSymbol(symbol,marketType="spot",asset=null){
  const prior=rows.slice(-10,-5),breakout=trend==="bull"?last[4]>Math.max(...prior.map(q=>q[2])):last[4]<Math.min(...prior.map(q=>q[3])),base=b.slice(-16,-1).map(q=>q.v).filter(v=>v>0);if(base.length<10)return null;
  const avg=base.reduce((p,q)=>p+q,0)/base.length,volumeRatio=avg?x.v/avg:0,trend15=trend==="bull"?m15>.015:m15<-.015,structure=trend==="bull"?last[4]>=last[1]:last[4]<=last[1],coreAligned=Math.sign(m5)===Math.sign(m15)&&Math.abs(m5)>=.05&&Math.abs(m15)>=.08,overextended=Math.abs(m5)>=1.5||Math.abs(m1)>=.8,lowLiquidity=Number(asset?.total_volume)>0&&Number(asset.total_volume)<150000;
  if(!coreAligned||lowLiquidity)return null;
- const quantum=scoreQuantumOpportunity({trend,change1m:m1,change3m:m3,change5m:m5,change15m:m15,volumeRatio,breakout,structureAligned:structure&&coreAligned,trend15,overextended,dataAgeMs:now-last[0],flowConfirmed:false,multiExchangeConfirmed:m.multiExchangeConfirmed,totalVolume24h:asset?.total_volume});const score=quantum.score;if(score<55||!quantum.candidateGate||!m.multiExchangeConfirmed)return null;
+ const quantum=scoreQuantumOpportunity({trend,currentPrice:last[4],change1m:m1,change3m:m3,change5m:m5,change15m:m15,volumeRatio,breakout,structureAligned:structure&&coreAligned,trend15,overextended,dataAgeMs:now-last[0],flowConfirmed:false,multiExchangeConfirmed:m.multiExchangeConfirmed,totalVolume24h:asset?.total_volume});const score=quantum.score;if(score<55||!quantum.candidateGate||!m.multiExchangeConfirmed)return null;
  return {symbol,trend,score,change1m:m1,change3m:m3,change5m:m5,change15m:m15,volumeRatio,breakout,price:last[4],provider:m.provider,multiExchangeConfirmed:m.multiExchangeConfirmed,multiExchangeEvidence:m.multiExchangeEvidence,lowLiquidity,rows:rows.slice(-30),updatedAt:now,candleTime:last[0],engine:"quantum-hunter-v2",market:marketType,timeframes:{m1,m3,m5,m15},evidence:{volumeRatio:+volumeRatio.toFixed(2),breakout,trend15m:trend15,structure,coreAligned,multiExchange:m.multiExchangeEvidence},overextended};
 }
 async function loadFuturesMarketFlow(symbol,windowMinutes=5){
@@ -1257,19 +1277,23 @@ async function handle(request,env){
    finally{clearTimeout(timer);}
   };
   const probeAny=async(urls,valid,timeout=9000,extraHeaders={})=>{
-   const results=await Promise.all(urls.map(url=>timeoutFetch(url,valid,timeout,extraHeaders)));
-   const good=results.filter(x=>x.status!=="down").sort((a,b)=>a.ping-b.ping);
-   return good[0]||results[results.length-1]||{status:"down",ping:null,error:"no Wallex endpoint responded"};
+   let last={status:"down",ping:null,error:"no endpoint responded"};
+   for(const url of urls){
+    const result=await timeoutFetch(url,valid,timeout,extraHeaders);
+    if(result.status!=="down")return {...result,endpoint:url};
+    last=result;
+   }
+   return last;
   };
   const [binance,bybit,okx,nobitex,wallex,bitget,gate,kucoin]=await Promise.all([
    probeAny(["https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://api.binance.us/api/v3/ticker/price?symbol=BTCUSDT","https://api1.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://api2.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://api3.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://data-api.binance.vision/api/v3/ticker/price?symbol=BTCUSDT"],d=>Number(d?.price)>0),
    probeAny(["https://api.bybit.com/v5/market/tickers?category=spot&symbol=BTCUSDT","https://api.bytick.com/v5/market/tickers?category=spot&symbol=BTCUSDT","https://api.bybit.eu/v5/market/tickers?category=spot&symbol=BTCUSDT","https://api.bytick.eu/v5/market/tickers?category=spot&symbol=BTCUSDT"],d=>d?.retCode===0&&Number(d?.result?.list?.[0]?.lastPrice)>0),
    probeAny(["https://www.okx.com/api/v5/market/ticker?instId=BTC-USDT","https://us.okx.com/api/v5/market/ticker?instId=BTC-USDT","https://openapi.okx.com/api/v5/market/ticker?instId=BTC-USDT"],d=>d?.code==="0"&&Number(d?.data?.[0]?.last)>0),
-   timeoutFetch("https://apiv2.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls",d=>d?.status==="ok"&&Number(d?.stats?.["usdt-rls"]?.latest)>0,12000),
+   probeAny(["https://apiv2.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls","https://api.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls"],d=>d?.status==="ok"&&Number(d?.stats?.["usdt-rls"]?.latest)>0,12000),
    probeAny(["https://api.wallex.ir/hector/web/v1/markets","https://api.wallex.ir/v1/markets","https://api.wallex.ir/v1/otc/markets"],d=>{if(d?.success!==true)return false;const raw=d?.result?.symbols??d?.result?.markets;if(Array.isArray(raw))return raw.length>0;if(raw&&typeof raw==="object")return Object.keys(raw).length>0;return false;},12000,{"Origin":"https://wallex.ir","Referer":"https://wallex.ir/","User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"}),
-   timeoutFetch("https://api.bitget.com/api/v3/market/tickers?category=SPOT&symbol=BTCUSDT",d=>["00000","0"].includes(String(d?.code))&&Number(d?.data?.[0]?.lastPrice||d?.data?.[0]?.lastPr)>0,9000,{"Origin":"https://www.bitget.com","Referer":"https://www.bitget.com/","User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"}),
-   timeoutFetch("https://api.gateio.ws/api/v4/spot/tickers?currency_pair=BTC_USDT",d=>Array.isArray(d)&&Number(d?.[0]?.last)>0,7000),
-   timeoutFetch("https://api.kucoin.com/api/v1/market/orderbook/level1?symbol=BTC-USDT",d=>d?.code==="200000"&&Number(d?.data?.price)>0,7000)
+   probeAny(["https://api.bitget.com/api/v3/market/tickers?category=SPOT&symbol=BTCUSDT","https://api.bitget.com/api/v2/spot/market/tickers?symbol=BTCUSDT"],d=>["00000","0"].includes(String(d?.code))&&Number(d?.data?.[0]?.lastPrice||d?.data?.[0]?.lastPr)>0,9000,{"Origin":"https://www.bitget.com","Referer":"https://www.bitget.com/","User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"}),
+   probeAny(["https://api.gateio.ws/api/v4/spot/tickers?currency_pair=BTC_USDT","https://api.gate.us/api/v4/spot/tickers?currency_pair=BTC_USDT"],d=>Array.isArray(d)&&Number(d?.[0]?.last)>0,9000),
+   probeAny(["https://api.kucoin.com/api/v1/market/orderbook/level1?symbol=BTC-USDT","https://api.kucoin.tr/api/v1/market/orderbook/level1?symbol=BTC-USDT"],d=>d?.code==="200000"&&Number(d?.data?.price)>0,9000)
   ]);
   const checks=[
    {name:"Binance Spot",purpose:"قیمت، حجم و کندل اسپات",...binance},
@@ -1373,9 +1397,13 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/futures-engine-heal
    if(!openInterest&&bybitOi?.retCode===0&&bybitOi.result?.list?.[0])openInterest={openInterest:bybitOi.result.list[0].openInterest};
   }
   const providers=[...(spotMarket?Object.values(spotMarket).map(x=>x.data_provider):[]),...(futuresMarket?Object.values(futuresMarket).map(x=>x.data_provider):[])];
-  const compactTimeframes=source=>Object.fromEntries(Object.entries(source||{}).map(([tf,x])=>[tf,{price:x.price,change_pct:x.change_pct,rsi:x.rsi,ema_trend:x.ema_trend,macd_signal:x.macd_signal,atr_percent:x.atr_percent,support:x.support,resistance:x.resistance,volume_ratio:x.volume_ratio,candle_time:x.candle_time,data_provider:x.data_provider}]));
-  const snapshot={asset:String(body.name||symbol).slice(0,60),symbol:pair,market_mode:mode,source:[...new Set(providers)].join(" + ")+"; derivatives metrics when available; Alternative.me Fear & Greed; CoinGecko global market",market_timestamp:latest.candle_time,timeframes:compactTimeframes(market),futures_timeframes:mode==="both"&&futuresMarket?compactTimeframes(futuresMarket):null,futures_data_available:mode==="both"?!!futuresMarket:mode==="futures",derivatives:funding?{funding_rate:funding.lastFundingRate,mark_price:funding.markPrice??null,next_funding_time:funding.nextFundingTime??null,open_interest:openInterest?.openInterest||null}:null,sentiment:fng?.data?.[0]?{fear_greed_value:Number(fng.data[0].value),classification:fng.data[0].value_classification}:null,global_market:global?.data?{btc_dominance:global.data.market_cap_percentage?.btc,total_market_cap_usd:global.data.total_market_cap?.usd,total_volume_usd:global.data.total_volume?.usd}:null}
-  const prompt="You are MMP COIN AI, a professional quantitative crypto analyst. Use ONLY the supplied market snapshot and its numeric values. Write every human-readable sentence in fluent, natural Persian. Do not mix Persian with Russian, Chinese, or English words. All explanatory text must be fluent Persian. Never write English words such as signal, leverage, market, entry, exit, volume, wait, monitor, breakout, breakdown, support, resistance, risk, or trade; translate them into Persian. Avoid mixed-language sentences entirely. Preserve only tickers and standard indicators: BTCUSDT, RSI, MACD, EMA, ATR, LONG, SHORT, BUY, SELL, WAIT, TP1, TP2, TP3. Never invent news, events, order-book data, on-chain metrics, funding, open interest, volume, prices, or indicators.\n\nAnalyze all four timeframes (15m, 1h, 4h, 1d), distinguish short-term noise from the main trend, compare EMA alignment, RSI, MACD, volume ratio, ATR, support and resistance. In both mode, compare spot timeframes against futures_timeframes and explicitly identify agreement or divergence; never claim futures data was checked when futures_data_available is false. Evaluate derivatives funding and open interest only when present; explain Fear & Greed only when present.\n\nReturn ONLY one valid JSON object with keys: action (BUY, SELL, WAIT), primary_timeframe, confidence (integer 0-100 representing strength/alignment of evidence, NOT probability of profit), risk_level, market {price_usd}, levels {entry_zone:{low,high},stop_loss,tp1,tp2,tp3}, risk_reward, holding_horizon, position_risk, summary, technical_analysis, indicators {rsi,macd_signal,ema_trend,atr_percent}, scenarios [{name,description}], recommendations [3-6 concise actionable Persian suggestions], reasons [3-6 evidence-based Persian strings], risk_management, invalidation, market_context, data_source, market_timestamp.\n\nScenarios must cover bullish, bearish, and sideways cases, each with the condition that would confirm it and the relevant supplied support/resistance or indicator evidence. Recommendations should include what to monitor next, what would confirm entry, what invalidates the setup, and whether to wait for candle close. Never promise a return or call confidence a win probability.\n\nChoose WAIT when timeframes conflict, evidence is weak, risk/reward is below 1.5, volume confirmation is missing, or data is insufficient. When action is WAIT, set all entry/stop/target values to null. For BUY, entry and targets must be logically consistent around current price; for SELL, reverse the direction. Derive levels only from supplied support, resistance, ATR and current price. In spot-only mode never recommend SHORT or SELL. For futures, warn that leverage creates liquidation risk and advise low or no leverage. Use concise but substantive analysis, not generic filler.\n\nSnapshot: "+JSON.stringify(snapshot);
+  const compactTimeframes=source=>Object.fromEntries(Object.entries(source||{}).map(([tf,x])=>[tf,{price:x.price,change_pct:x.change_pct,rsi:x.rsi,ema_trend:x.ema_trend,macd_signal:x.macd_signal,atr_percent:x.atr_percent,support:x.support,resistance:x.resistance,volume_ratio:x.volume_ratio,candle_time:x.candle_time,candle_closed_at:x.candle_closed_at,data_age_ms:x.data_age_ms,data_provider:x.data_provider}]));
+  const timeframeMs={"15m":900000,"1h":3600000,"4h":14400000,"1d":86400000};
+  const freshness=Object.entries(market).map(([tf,x])=>({timeframe:tf,age:Number(x?.data_age_ms),maxAge:timeframeMs[tf]+300000}));
+  const marketDataFresh=freshness.length===4&&freshness.every(x=>Number.isFinite(x.age)&&x.age>=0&&x.age<=x.maxAge);
+  const providerCount=new Set(providers.filter(Boolean)).size;
+  const snapshot={asset:String(body.name||symbol).slice(0,60),symbol:pair,market_mode:mode,source:[...new Set(providers)].join(" + ")+"; derivatives metrics when available; Alternative.me Fear & Greed; CoinGecko global market",market_timestamp:latest.candle_closed_at||latest.candle_time,market_data_fresh:marketDataFresh,timeframe_freshness:freshness,provider_count:providerCount,timeframes:compactTimeframes(market),futures_timeframes:mode==="both"&&futuresMarket?compactTimeframes(futuresMarket):null,futures_data_available:mode==="both"?!!futuresMarket:mode==="futures",derivatives:funding?{funding_rate:funding.lastFundingRate,mark_price:funding.markPrice??null,next_funding_time:funding.nextFundingTime??null,open_interest:openInterest?.openInterest||null}:null,sentiment:fng?.data?.[0]?{fear_greed_value:Number(fng.data[0].value),classification:fng.data[0].value_classification}:null,global_market:global?.data?{btc_dominance:global.data.market_cap_percentage?.btc,total_market_cap_usd:global.data.total_market_cap?.usd,total_volume_usd:global.data.total_volume?.usd}:null}
+  const prompt="You are MMP COIN AI, a professional quantitative crypto analyst. Use ONLY the supplied market snapshot and its numeric values. Write every human-readable sentence in fluent, natural Persian. Do not mix Persian with Russian, Chinese, or English words. All explanatory text must be fluent Persian. Never write English words such as signal, leverage, market, entry, exit, volume, wait, monitor, breakout, breakdown, support, resistance, risk, or trade; translate them into Persian. Avoid mixed-language sentences entirely. Preserve only tickers and standard indicators: BTCUSDT, RSI, MACD, EMA, ATR, LONG, SHORT, BUY, SELL, WAIT, TP1, TP2, TP3. Never invent news, events, order-book data, on-chain metrics, funding, open interest, volume, prices, or indicators.\n\nUse only fully closed candles. Never infer a candle close from an in-progress bar. First inspect market_data_fresh and timeframe_freshness; if any required timeframe is stale or missing, choose WAIT. Analyze all four timeframes (15m, 1h, 4h, 1d), distinguish short-term noise from the main trend, compare EMA alignment, RSI, MACD, volume ratio, ATR, support and resistance. In both mode, compare spot timeframes against futures_timeframes and explicitly identify agreement or divergence; never claim futures data was checked when futures_data_available is false. Evaluate derivatives funding and open interest only when present; explain Fear & Greed only when present.\n\nReturn ONLY one valid JSON object with keys: action (BUY, SELL, WAIT), primary_timeframe, confidence (integer 0-100 representing strength/alignment of evidence, NOT probability of profit), risk_level, market {price_usd}, levels {entry_zone:{low,high},stop_loss,tp1,tp2,tp3}, risk_reward, holding_horizon, position_risk, summary, technical_analysis, indicators {rsi,macd_signal,ema_trend,atr_percent}, scenarios [{name,description}], recommendations [3-6 concise actionable Persian suggestions], reasons [3-6 evidence-based Persian strings], risk_management, invalidation, market_context, data_source, market_timestamp.\n\nScenarios must cover bullish, bearish, and sideways cases, each with the condition that would confirm it and the relevant supplied support/resistance or indicator evidence. Recommendations should include what to monitor next, what would confirm entry, what invalidates the setup, and whether to wait for candle close. Never promise a return or call confidence a win probability.\n\nChoose WAIT when timeframes conflict, evidence is weak, risk/reward is below 1.5, volume confirmation is missing, or data is insufficient. When action is WAIT, set all entry/stop/target values to null. For BUY, entry and targets must be logically consistent around current price; for SELL, reverse the direction. Derive levels only from supplied support, resistance, ATR and current price. In spot-only mode never recommend SHORT or SELL. For futures, warn that leverage creates liquidation risk and advise low or no leverage. Use concise but substantive analysis, not generic filler.\n\nSnapshot: "+JSON.stringify(snapshot);
   stage="اجرای هوش مصنوعی";
   const aiResult=await runAIWithFallback(env,prompt);
   const aiProvider=aiResult.provider;
@@ -1390,7 +1418,7 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/futures-engine-heal
   analysis.confidence=Math.max(0,Math.min(100,Math.round(Number(analysis.confidence)||0)));
   analysis.market=analysis.market||{};analysis.market.price_usd=latest.price;
   analysis.indicators={...(analysis.indicators||{}),rsi:latest.rsi==null?null:Number(latest.rsi.toFixed(2)),macd_signal:latest.macd_signal,ema_trend:latest.ema_trend,atr_percent:latest.atr_percent==null?null:Number(latest.atr_percent.toFixed(2))};
-  analysis.market_timestamp=latest.candle_time;analysis.data_source=[...new Set(providers)].join(" + ")+ " · "+aiProvider;
+  analysis.market_timestamp=latest.candle_closed_at||latest.candle_time;analysis.market_data_fresh=marketDataFresh;analysis.timeframe_freshness=freshness;analysis.data_source=[...new Set(providers)].join(" + ")+ " · "+aiProvider;analysis.ai_provider=aiProvider;analysis.ai_provider_fallbacks=aiResult.fallbacks||[];
   analysis.recommendations=Array.isArray(analysis.recommendations)?analysis.recommendations.slice(0,6):[];
   analysis.scenarios=Array.isArray(analysis.scenarios)?analysis.scenarios.slice(0,3):[];
   analysis.reasons=Array.isArray(analysis.reasons)?analysis.reasons.slice(0,6):[];
@@ -1399,9 +1427,10 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/futures-engine-heal
   let longAligned=alignmentMarket["4h"].ema_trend==="bullish"&&alignmentMarket["1d"].ema_trend!=="bearish";
   let shortAligned=alignmentMarket["4h"].ema_trend==="bearish"&&alignmentMarket["1d"].ema_trend!=="bullish";
   if(mode==="both"&&futuresMarket){longAligned=longAligned&&futuresMarket["4h"].ema_trend==="bullish"&&futuresMarket["1d"].ema_trend!=="bearish";shortAligned=shortAligned&&futuresMarket["4h"].ema_trend==="bearish"&&futuresMarket["1d"].ema_trend!=="bullish";}
-  if((analysis.action==="BUY"&&!longAligned)||(analysis.action==="SELL"&&!shortAligned)||(mode==="spot"&&analysis.action==="SELL")){
-   analysis.action="WAIT";analysis.confidence=Math.min(analysis.confidence,55);
-   analysis.reasons.unshift("هم‌جهتی کافی میان روند ۴ ساعته و روزانه وجود ندارد؛ ورود فوری تأیید نمی‌شود.");
+  const volumeConfirmed=Number(market["15m"]?.volume_ratio)>=1.1||Number(market["1h"]?.volume_ratio)>=1.1;
+  if(!marketDataFresh||!volumeConfirmed||(analysis.action==="BUY"&&!longAligned)||(analysis.action==="SELL"&&!shortAligned)||(mode==="spot"&&analysis.action==="SELL")){
+   analysis.action="WAIT";analysis.confidence=Math.min(analysis.confidence,marketDataFresh?45:20);
+   analysis.reasons.unshift(!marketDataFresh?"داده یکی از بازه‌های زمانی کهنه یا ناقص است؛ تا دریافت کندل‌های بسته‌شده تازه، ورود تأیید نمی‌شود.":!volumeConfirmed?"حجم معاملات در بازه کوتاه‌مدت تأیید کافی ندارد؛ ورود به تعویق می‌افتد.":"هم‌جهتی کافی میان روند ۴ ساعته و روزانه وجود ندارد؛ ورود فوری تأیید نمی‌شود.");
   }
   const longPlanMarket=(mode==="futures"&&futuresMarket?futuresMarket:market)["4h"];
   const shortPlanMarket=mode==="spot"?null:(mode==="both"?(futuresMarket?futuresMarket["4h"]:null):longPlanMarket);
