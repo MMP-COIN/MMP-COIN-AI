@@ -5024,6 +5024,35 @@ window.mmpShareDownloadLink = async function () {
 
 
 </style>
+
+<style id="mmp-home-quantum-restore">
+/* MMP HOME FIX — restore full quantum command hero and remove stale scan-status card */
+#quantum-center-entry.quantum-command-hero{display:grid!important;grid-template-columns:minmax(0,1.35fr) minmax(250px,.8fr)!important;align-items:center!important;gap:20px!important;min-height:310px!important;margin:12px 0 20px!important;padding:clamp(20px,3.5vw,42px)!important}
+#quantum-center-entry .quantum-hero-art,#quantum-center-entry .quantum-hero-foot,#quantum-center-entry .quantum-hero-copy>p,#quantum-center-entry .quantum-hero-tags,#quantum-center-entry .quantum-hero-actions>.badge{display:initial!important}
+#quantum-center-entry .quantum-hero-art{display:grid!important}
+#quantum-center-entry .quantum-hero-foot{display:flex!important}
+#quantum-center-entry .quantum-hero-tags{display:flex!important}
+#quantum-center-entry .quantum-hero-actions>.badge{display:inline-flex!important}
+@media(max-width:700px){#quantum-center-entry.quantum-command-hero{grid-template-columns:minmax(0,1fr)!important;min-height:0!important;padding:20px 16px!important}#quantum-center-entry .quantum-hero-art{width:min(100%,210px)!important;grid-row:1!important}#quantum-center-entry .quantum-hero-foot{flex-wrap:wrap!important}}
+</style>
+<script id="mmp-remove-home-stale-quantum-output">
+(function(){
+ function removeStaleOutput(){
+  if(/quantum-lab\.html/i.test(location.pathname))return;
+  document.querySelectorAll(".quantum-output-frame,#quantum-overview").forEach(function(el){el.remove()});
+  document.querySelectorAll("body *").forEach(function(el){
+   if(el.children.length===0 && /این خروجی هنوز چرخهٔ اسکن معتبری ندارد/.test(el.textContent||"")){
+    var card=el.closest(".quantum-output-frame,#quantum-overview,section");
+    if(card)card.remove();
+   }
+  });
+ }
+ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",removeStaleOutput,{once:true});else removeStaleOutput();
+ var observer=new MutationObserver(removeStaleOutput);
+ observer.observe(document.documentElement,{childList:true,subtree:true});
+})();
+</script>
+
 </body>
 
 <!-- mmp-deploy-retry-20261107: trigger GitHub Pages deployment -->
