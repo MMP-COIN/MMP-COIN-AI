@@ -2280,6 +2280,30 @@ let currentTetherWarning='';
 let currentTetherUpdatedAt=0;
 try{const saved=JSON.parse(localStorage.getItem('mmp_tether_cache_v1')||'null');if(saved&&Number(saved.price)>0&&Date.now()-Number(saved.updatedAt)<15*60*1000){currentTetherPrice=Number(saved.price);currentTetherSources=Array.isArray(saved.sources)?saved.sources:[];currentTetherUpdatedAt=Number(saved.updatedAt);currentTetherWarning='آخرین نرخ معتبر ذخیره‌شده';}}catch(e){}
 let cachedCoinsData = [];
+let liveQuoteInFlight=false;
+async function refreshLiveQuotes(){
+ if(liveQuoteInFlight||!Array.isArray(cachedCoinsData)||!cachedCoinsData.length||document.visibilityState==="hidden")return false;
+ liveQuoteInFlight=true;
+ try{
+  const updated=await enrichWithBinance(cachedCoinsData);
+  const now=Date.now();
+  const fresh=updated.filter(c=>Number(c.current_price)>0&&Number.isFinite(Date.parse(c.price_updated_at||""))&&now-Date.parse(c.price_updated_at)<=45000&&(c.price_source==="Binance Spot"||c.price_source==="Bitget Spot"));
+  if(!fresh.length)return false;
+  const byId=new Map(updated.map(c=>[String(c.id),c]));
+  cachedCoinsData=cachedCoinsData.map(c=>byId.get(String(c.id))||c);
+  lastMarket.crypto=lastMarket.crypto||{};
+  cachedCoinsData.forEach(c=>{
+   const symbol=String(c.symbol||"").toUpperCase();
+   if(symbol==="BTC")lastMarket.crypto.BTC={usd:Number(c.current_price),change24h:c.price_change_percentage_24h};
+   if(symbol==="ETH")lastMarket.crypto.ETH={usd:Number(c.current_price),change24h:c.price_change_percentage_24h};
+  });
+  renderCoinsTables(cachedCoinsData);renderHeroCards();
+  const stamp=new Date().toLocaleTimeString("fa-IR");
+  const status=$("updated");if(status)status.textContent="قیمت زنده از "+[...new Set(fresh.map(c=>c.price_source))].join(" + ")+" · "+stamp;
+  return true;
+ }catch(error){console.warn("Fast quote refresh failed:",error);return false;}
+ finally{liveQuoteInFlight=false;}
+}
 
 const money=(v,d=2)=>Number(v).toLocaleString('en-US',{maximumFractionDigits:d});
 const toman=(v)=>Math.round(v).toLocaleString('en-US');
@@ -4061,6 +4085,7 @@ try{renderMarketHours();setInterval(renderMarketHours,15000);}catch(error){conso
 checkConnections();setInterval(()=>{if(document.visibilityState!=="hidden")checkConnections();},60000);window.addEventListener("online",()=>checkConnections());document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"){checkConnections();loadUnifiedRadarSnapshot();}});
 try{initTradingView("BINANCE:BTCUSDT");}catch(error){console.error("TradingView initialization failed:",error);}
 setInterval(refreshAll, 60000);
+setInterval(()=>{if(document.visibilityState!=="hidden")refreshLiveQuotes();},15000);
 setTimeout(()=>loadUnifiedRadarSnapshot(),12000);
 setInterval(()=>{if(document.visibilityState!=="hidden")loadUnifiedRadarSnapshot();},30000);
 setTimeout(()=>runFastRadarScan(),12000);
