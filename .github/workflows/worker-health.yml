@@ -71,6 +71,16 @@ jobs:
             mod.scoreQuantumOpportunity({...base,flowConfirmed:true,flowImbalance:0.12,totalVolume24h:90000})
           ];
           if (rejected.some(result => result.qualityGate)) throw new Error("A weak/stale/unconfirmed candidate passed the quality gate");
+          const missingEvidence = [
+            mod.scoreQuantumOpportunity({trend:"bull",volumeRatio:2,totalVolume24h:500000,multiExchangeConfirmed:true,flowConfirmed:true,flowImbalance:0.2}),
+            mod.scoreQuantumOpportunity({...base,dataAgeMs:undefined}),
+            mod.scoreQuantumOpportunity({...base,currentPrice:0}),
+            mod.scoreQuantumOpportunity({...base,change15m:undefined})
+          ];
+          if (missingEvidence.some(result => result.candidateGate || result.qualityGate)) throw new Error("Missing price, freshness, or timeframe evidence must never produce a candidate");
+          if (missingEvidence[0].componentAvailability.multiTimeframe || missingEvidence[0].componentAvailability.dataQuality) throw new Error("Unavailable components must be marked unavailable, not neutral");
+          if (!missingEvidence[1].missingEvidence.includes("dataAge")) throw new Error("Missing freshness evidence must be reported");
+
           console.log("Quantum candidate and confirmation gates: passed");
           NODE
 
