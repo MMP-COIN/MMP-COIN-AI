@@ -1861,6 +1861,38 @@ body:before{opacity:.23;background-size:34px 34px}
 .market-heatmap-entry-icon{display:grid;place-items:center;width:36px;height:36px;border-radius:10px;background:#17130a18;font-size:22px}.market-heatmap-entry-button b,.market-heatmap-entry-button small{display:block}.market-heatmap-entry-button b{font-size:11px}.market-heatmap-entry-button small{font-size:9px;margin-top:3px;opacity:.75}.market-heatmap-entry-button strong{font-size:20px}
 @media(max-width:620px){.market-heatmap-entry{align-items:stretch;flex-direction:column;padding:14px}.market-heatmap-entry-button{justify-content:center}.market-heatmap-entry-tags{gap:5px}}
 </style>
+<style id="mmp-radar-compact-expandable-cards">
+#opportunities .radar-list{gap:6px}
+#opportunities .radar-item{grid-template-columns:minmax(0,1.05fr) 48px minmax(0,1.35fr) minmax(105px,.8fr);gap:8px;padding:8px 9px;border-radius:11px;min-height:0;cursor:pointer;transition:border-color .18s,transform .18s,box-shadow .18s}
+#opportunities .radar-item:hover,#opportunities .radar-item:focus-visible{border-color:#d9b66d99;box-shadow:0 5px 18px #0006;outline:none;transform:translateY(-1px)}
+#opportunities .radar-asset{gap:7px}
+#opportunities .radar-asset img{width:25px;height:25px;flex-basis:25px}
+#opportunities .radar-asset b{font-size:11px}
+#opportunities .radar-asset small{font-size:9px;margin-top:2px}
+#opportunities .radar-score{padding:3px 5px;border-radius:8px}
+#opportunities .radar-score b{font-size:15px}
+#opportunities .radar-score small{font-size:8px}
+#opportunities .radar-stats{gap:4px 6px}
+#opportunities .radar-stats span{font-size:8px;line-height:1.3}
+#opportunities .radar-stats b{font-size:9px;margin-top:2px}
+#opportunities .radar-action{gap:4px;flex-direction:column;align-items:flex-end}
+#opportunities .radar-trend{font-size:8px;white-space:normal;text-align:end;line-height:1.35}
+#opportunities .radar-featured-list .radar-item:after{content:"جزئیات ←";grid-column:1/-1;justify-self:end;color:#d9bd7d;font-size:8px;opacity:.8}
+#opportunities .radar-detail-timeframes{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 9px}
+.radar-detail-timeframes button{border:1px solid #3b4859;border-radius:8px;padding:6px 10px;background:#0d1621;color:#aeb9c8;font:inherit;font-size:10px}
+.radar-detail-timeframes button.active{border-color:#d9b66d;background:#d9b66d1c;color:#f2d795}
+#radar-detail-chart-content{min-width:0;overflow:hidden}
+#radar-detail-chart-status{margin-top:7px}
+@media(max-width:760px){
+ #opportunities .radar-item{grid-template-columns:minmax(0,1fr) 46px;gap:6px 8px;padding:8px}
+ #opportunities .radar-asset{grid-column:1;grid-row:1}
+ #opportunities .radar-score{grid-column:2;grid-row:1}
+ #opportunities .radar-stats{grid-column:1/-1;grid-row:2;grid-template-columns:repeat(4,minmax(0,1fr))}
+ #opportunities .radar-action{grid-column:1/-1;grid-row:3;flex-direction:row;align-items:center;justify-content:space-between;border-top:1px solid #ffffff12;padding-top:5px}
+ #opportunities .radar-trend{font-size:8px}
+}
+@media(max-width:390px){#opportunities .radar-item{padding:7px;gap:5px 7px}#opportunities .radar-asset img{width:22px;height:22px;flex-basis:22px}#opportunities .radar-stats span{font-size:7px}#opportunities .radar-stats b{font-size:8px}}
+</style>
 </head>
 <body class="mmp-app-mode">
 
@@ -4019,7 +4051,7 @@ function radarCandlesSvg(signal){
  return '<svg class="radar-detail-candles" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="نمودار کندل و حجم معاملات"><line x1="8" y1="'+plotH+'" x2="'+(W-8)+'" y2="'+plotH+'" stroke="#526071" stroke-width="1"/><line x1="8" y1="'+(top+priceBottom)/2+'" x2="'+(W-8)+'" y2="'+(top+priceBottom)/2+'" stroke="#526071" stroke-dasharray="3 6" opacity=".45"/>'+body+'<line x1="8" y1="'+lastY.toFixed(2)+'" x2="'+(W-8)+'" y2="'+lastY.toFixed(2)+'" stroke="#e4c477" stroke-dasharray="5 4" opacity=".8"/><text x="12" y="18" fill="#d8c28d" font-size="11">'+radarFormatValue(max)+'</text><text x="12" y="'+(priceBottom-3)+'" fill="#d8c28d" font-size="11">'+radarFormatValue(min)+'</text><text x="12" y="'+(H-5)+'" fill="#9ba8b8" font-size="11">'+labels[0]+'</text><text x="'+(W/2)+'" y="'+(H-5)+'" text-anchor="middle" fill="#9ba8b8" font-size="11">'+labels[1]+'</text><text x="'+(W-12)+'" y="'+(H-5)+'" text-anchor="end" fill="#9ba8b8" font-size="11">'+labels[2]+'</text></svg>';
 }
 function renderRadarSignalPage(id){
- const signal=unifiedRadarSignals.get(String(id));if(!signal)return;
+ const signal=unifiedRadarSignals.get(String(id))||unifiedRadarCandidates.find(x=>String(x.id)===String(id));if(!signal)return;
  const cached=cachedCoinsData.find(x=>String(x.id)===String(id));
  const coin={...(cached||{}),...(signal.coin||{}),id:String(id),symbol:signal.symbol||signal.coin?.symbol||cached?.symbol||""};
  const up=signal.trend==="bull",score=Math.round(Number(signal.score)||0);
@@ -4031,6 +4063,7 @@ function renderRadarSignalPage(id){
  const tp2=radarSignalValue(signal,"target2","takeProfit2","tp2","targets.1","tradePlan.target2","plan.target2");
  const confidence=radarSignalValue(signal,"confidence","confidenceScore","reliability","probability");
  const timeFrame=radarSignalValue(signal,"timeframe","timeFrame","interval","sourceTimeframe")||"۱ دقیقه";
+ const detailSymbol=String(coin.symbol||signal.symbol||"").toUpperCase();
  const change=v=>v==null||!Number.isFinite(Number(v))?"—":(Number(v)>0?"+":"")+Number(v).toFixed(2)+"٪";
  const priceCards=[["قیمت فعلی",price],["نقطه ورود",entry],["حد ضرر",stop],["هدف خروج اول",tp1],["هدف خروج دوم",tp2]]
   .filter(([,v])=>v!==undefined&&v!==null&&v!=="")
@@ -4049,9 +4082,35 @@ function renderRadarSignalPage(id){
  const reasonText=reasons===undefined?"":Array.isArray(reasons)?reasons.map(x=>typeof x==="string"||typeof x==="number"?String(x):x&&typeof x==="object"?String(x.message||x.text||x.reason||x.label||""): "").filter(Boolean).join(" · "):typeof reasons==="object"?String(reasons.message||reasons.text||reasons.reason||reasons.label||""):String(reasons);
  const page=document.getElementById("radar-signal-page");
  if(!page)return;
- page.innerHTML='<div class="radar-detail-shell"><header class="radar-detail-header"><button type="button" class="radar-detail-back" data-radar-page-close>‹ بازگشت به رادار</button><span class="radar-detail-exchange">'+aiEscape(String(exchange))+'</span></header><section class="radar-detail-hero"><div class="radar-detail-identity"><img src="'+aiEscape(coin.image||"")+'" alt="" onerror="this.style.display=\'none\'"><div><h2>'+aiEscape(coin.name||coin.symbol)+'</h2><span>'+aiEscape(String(coin.symbol).toUpperCase())+' / USDT · '+aiEscape(String(exchange))+'</span></div></div><div class="radar-detail-score"><b>'+score.toLocaleString("fa-IR")+'</b><small>قدرت از ۱۰۰</small></div><div class="radar-detail-direction '+(up?"up":"down")+'">'+(up?"تمایل صعودی":"تمایل نزولی")+' · تغییر ۱ دقیقه '+change(signal.change1m)+'</div></section><section class="radar-detail-chart-panel"><div class="radar-detail-section-head"><b>نمودار کندل و حجم معاملات</b><span>'+aiEscape(String(timeFrame))+'</span></div>'+radarCandlesSvg(signal)+'</section><section class="radar-detail-section"><div class="radar-detail-section-head"><b>قیمت و نقشه معامله</b><span>مقادیر ثبت‌شده موتور</span></div><div class="radar-detail-grid">'+(priceCards||'<p class="radar-detail-muted">اطلاعات قیمت و سطوح معامله در خروجی این سیگنال موجود نیست.</p>')+'</div></section>'+'<section class="radar-detail-section"><div class="radar-detail-section-head"><b>جریان واقعی خرید و فروش</b><span id="radar-detail-flow-source">'+aiEscape(String(flowSource))+' · معاملات ۵ دقیقه اخیر</span></div><div id="radar-detail-flow-content">'+renderFlowContent(signal)+'</div></section>'+'<section class="radar-detail-section"><div class="radar-detail-section-head"><b>قدرت و تغییرات</b><span>حرکت کوتاه‌مدت</span></div><div class="radar-detail-grid"><div class="radar-detail-value"><small>تغییر ۱ دقیقه</small><b>'+change(signal.change1m)+'</b></div><div class="radar-detail-value"><small>تغییر ۳ دقیقه</small><b>'+change(signal.change3m)+'</b></div><div class="radar-detail-value"><small>تغییر ۵ دقیقه</small><b>'+change(signal.change5m)+'</b></div><div class="radar-detail-value"><small>حجم نسبی</small><b>'+radarFormatValue(signal.volumeRatio,"×")+'</b></div>'+(confidence!==undefined?'<div class="radar-detail-value"><small>اطمینان موتور</small><b>'+radarFormatValue(Number(confidence)<=1?Number(confidence)*100:confidence,"٪")+'</b></div>':'')+'</div></section>'+(reasonText?'<section class="radar-detail-section"><div class="radar-detail-section-head"><b>دلیل شناسایی فرصت</b></div><p class="radar-detail-reason">'+aiEscape(reasonText)+'</p></section>':'')+'<p class="radar-detail-foot">فقط اطلاعات واقعی ارسالی موتور نمایش داده می‌شود؛ داده خام و فیلدهای داخلی حذف شده‌اند.</p></div>';
+ page.innerHTML='<div class="radar-detail-shell"><header class="radar-detail-header"><button type="button" class="radar-detail-back" data-radar-page-close>‹ بازگشت به رادار</button><span class="radar-detail-exchange">'+aiEscape(String(exchange))+'</span></header><section class="radar-detail-hero"><div class="radar-detail-identity"><img src="'+aiEscape(coin.image||"")+'" alt="" onerror="this.style.display=\'none\'"><div><h2>'+aiEscape(coin.name||coin.symbol)+'</h2><span>'+aiEscape(String(coin.symbol).toUpperCase())+' / USDT · '+aiEscape(String(exchange))+'</span></div></div><div class="radar-detail-score"><b>'+score.toLocaleString("fa-IR")+'</b><small>قدرت از ۱۰۰</small></div><div class="radar-detail-direction '+(up?"up":"down")+'">'+(up?"تمایل صعودی":"تمایل نزولی")+' · تغییر ۱ دقیقه '+change(signal.change1m)+'</div></section><section class="radar-detail-chart-panel"><div class="radar-detail-section-head"><b>نمودار کندل و حجم معاملات</b><span id="radar-detail-timeframe">'+aiEscape(String(timeFrame))+'</span></div><div class="radar-detail-timeframes" role="group" aria-label="بازه زمانی نمودار"><button type="button" data-radar-timeframe="15" class="active">۱۵ دقیقه</button><button type="button" data-radar-timeframe="60">۱ ساعت</button><button type="button" data-radar-timeframe="240">۴ ساعت</button><button type="button" data-radar-timeframe="D">روزانه</button></div><div id="radar-detail-chart-content">'+radarCandlesSvg(signal)+'</div><p class="radar-detail-muted" id="radar-detail-chart-status">نمودار کندلی زنده از صرافی‌های Spot دریافت می‌شود.</p></section><section class="radar-detail-section"><div class="radar-detail-section-head"><b>قیمت و نقشه معامله</b><span>مقادیر ثبت‌شده موتور</span></div><div class="radar-detail-grid">'+(priceCards||'<p class="radar-detail-muted">اطلاعات قیمت و سطوح معامله در خروجی این سیگنال موجود نیست.</p>')+'</div></section>'+'<section class="radar-detail-section"><div class="radar-detail-section-head"><b>جریان واقعی خرید و فروش</b><span id="radar-detail-flow-source">'+aiEscape(String(flowSource))+' · معاملات ۵ دقیقه اخیر</span></div><div id="radar-detail-flow-content">'+renderFlowContent(signal)+'</div></section>'+'<section class="radar-detail-section"><div class="radar-detail-section-head"><b>قدرت و تغییرات</b><span>حرکت کوتاه‌مدت</span></div><div class="radar-detail-grid"><div class="radar-detail-value"><small>تغییر ۱ دقیقه</small><b>'+change(signal.change1m)+'</b></div><div class="radar-detail-value"><small>تغییر ۳ دقیقه</small><b>'+change(signal.change3m)+'</b></div><div class="radar-detail-value"><small>تغییر ۵ دقیقه</small><b>'+change(signal.change5m)+'</b></div><div class="radar-detail-value"><small>حجم نسبی</small><b>'+radarFormatValue(signal.volumeRatio,"×")+'</b></div>'+(confidence!==undefined?'<div class="radar-detail-value"><small>اطمینان موتور</small><b>'+radarFormatValue(Number(confidence)<=1?Number(confidence)*100:confidence,"٪")+'</b></div>':'')+'</div></section>'+(reasonText?'<section class="radar-detail-section"><div class="radar-detail-section-head"><b>دلیل شناسایی فرصت</b></div><p class="radar-detail-reason">'+aiEscape(reasonText)+'</p></section>':'')+'<p class="radar-detail-foot">فقط اطلاعات واقعی ارسالی موتور نمایش داده می‌شود؛ داده خام و فیلدهای داخلی حذف شده‌اند.</p></div>';
  page.dataset.signalId=String(id);
  page.hidden=false;page.setAttribute("aria-hidden","false");document.body.classList.add("radar-detail-open");
+ let radarDetailInterval="15";
+ async function loadRadarCandles(interval){
+  const chartHost=document.getElementById("radar-detail-chart-content"),statusHost=document.getElementById("radar-detail-chart-status"),timeHost=document.getElementById("radar-detail-timeframe");
+  if(!chartHost)return;
+  radarDetailInterval=String(interval);
+  page.querySelectorAll("[data-radar-timeframe]").forEach(button=>button.classList.toggle("active",button.dataset.radarTimeframe===radarDetailInterval));
+  const names={"15":"۱۵ دقیقه","60":"۱ ساعت","240":"۴ ساعت","D":"روزانه"};
+  if(timeHost)timeHost.textContent=names[radarDetailInterval]||radarDetailInterval;
+  if(statusHost)statusHost.textContent="در حال دریافت کندل‌های واقعی از صرافی‌های Spot…";
+  chartHost.innerHTML='<div class="radar-detail-chart-empty">در حال دریافت نمودار کندلی…</div>';
+  try{
+   const rows=await hunterDetailFetch(detailSymbol,"spot",radarDetailInterval);
+   if(page.dataset.signalId!==String(id)||radarDetailInterval!==String(interval))return;
+   const candles=rows.map(row=>[Number(row.t),Number(row.o),Number(row.h),Number(row.l),Number(row.c),Number(row.v||0)]);
+   chartHost.innerHTML=radarCandlesSvg({...signal,rows:candles});
+   if(statusHost)statusHost.textContent="داده کندلی واقعی · "+(rows.length)+" کندل · بازار Spot";
+  }catch(error){
+   if(page.dataset.signalId!==String(id)||radarDetailInterval!==String(interval))return;
+   if(statusHost)statusHost.textContent="دریافت نمودار ناموفق بود: "+String(error?.message||error).slice(0,120);
+   chartHost.innerHTML=radarCandlesSvg(signal);
+  }
+ }
+ page.querySelectorAll("[data-radar-timeframe]").forEach(button=>button.addEventListener("click",()=>loadRadarCandles(button.dataset.radarTimeframe)));
+ if(!Array.isArray(radarSignalValue(signal,"rows","candles","klines","data.rows","market.rows"))||!radarSignalValue(signal,"rows","candles","klines","data.rows","market.rows").length)loadRadarCandles("15");
+ else {page.querySelector('[data-radar-timeframe="15"]')?.classList.add("active");}
+
  const providerLabel=String(radarSignalValue(signal,"provider")||"");
  const flowExchange=String(radarSignalValue(signal,"marketExchange")||providerLabel.replace(/ Spot$/,""));
  const flowMarketType=String(signal.marketType||(providerLabel.includes("Futures")?"futures":"spot"));
@@ -4083,7 +4142,7 @@ function renderRadarCandidateSection(){
   const c=cachedCoinsData.find(item=>String(item.id)===String(x.id))||x.coin||{};
   const up=x.trend==="bull",status=x.qualityGate?"عبور از گیت کیفیت":x.flowConfirmed?"جریان تأیید شد · فیلتر نهایی باقی است":(labels[x.flowStatus]||"در انتظار بررسی");
   const change=v=>Number.isFinite(Number(v))?(Number(v)>0?"+":"")+Number(v).toFixed(2)+"٪":"—";
-  return '<article class="radar-item '+(up?"radar-item-bullish":"radar-item-bearish")+'"><div class="radar-asset"><img src="'+aiEscape(c.image||"")+'" alt="" loading="lazy" onerror="this.style.display=\'none\'"><span><b>'+aiEscape(c.name||x.symbol)+'</b><small>'+aiEscape(String(x.symbol).toUpperCase())+' / USDT</small></span></div><div class="radar-score"><b>'+Math.round(Number(x.score)||0).toLocaleString("fa-IR")+'</b><small>نامزد / ۱۰۰</small></div><div class="radar-stats"><span>۱ دقیقه <b>'+change(x.change1m)+'</b></span><span>۳ دقیقه <b>'+change(x.change3m)+'</b></span><span>۵ دقیقه <b>'+change(x.change5m)+'</b></span><span>حجم نسبی <b>'+Number(x.volumeRatio||0).toFixed(1)+'×</b></span></div><div class="radar-action"><span class="radar-trend '+(up?"positive":"negative")+'">'+(up?"تمایل صعودی":"تمایل نزولی")+'</span><span class="radar-trend">'+aiEscape(status)+'</span></div></article>';
+  return '<article class="radar-item '+(up?"radar-item-bullish":"radar-item-bearish")+'" data-radar-id="'+aiEscape(String(x.id))+'" role="button" tabindex="0" aria-label="نمایش جزئیات '+aiEscape(c.name||c.symbol||x.symbol)+'"><div class="radar-asset"><img src="'+aiEscape(c.image||"")+'" alt="" loading="lazy" onerror="this.style.display=\'none\'"><span><b>'+aiEscape(c.name||x.symbol)+'</b><small>'+aiEscape(String(x.symbol).toUpperCase())+' / USDT</small></span></div><div class="radar-score"><b>'+Math.round(Number(x.score)||0).toLocaleString("fa-IR")+'</b><small>نامزد / ۱۰۰</small></div><div class="radar-stats"><span>۱ دقیقه <b>'+change(x.change1m)+'</b></span><span>۳ دقیقه <b>'+change(x.change3m)+'</b></span><span>۵ دقیقه <b>'+change(x.change5m)+'</b></span><span>حجم نسبی <b>'+Number(x.volumeRatio||0).toFixed(1)+'×</b></span></div><div class="radar-action"><span class="radar-trend '+(up?"positive":"negative")+'">'+(up?"تمایل صعودی":"تمایل نزولی")+'</span><span class="radar-trend">'+aiEscape(status)+'</span></div></article>';
  }).join("");
  return '<section class="radar-group"><div class="section-head radar-group-head"><div class="radar-group-title"><span class="radar-group-icon">◎</span><span><b>نامزدهای اولیه در حال بررسی</b><small>غربال کندلی؛ هنوز سیگنال نهایی یا توصیه ورود نیست</small></span></div><span class="radar-group-count">'+candidates.length.toLocaleString("fa-IR")+' نامزد</span></div><div class="radar-list radar-featured-list">'+cards+'</div></section>';
 }
