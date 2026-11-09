@@ -117,7 +117,7 @@ body{overflow-wrap:anywhere;word-break:normal}
 "use strict";
 const API="https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev";
 const $=id=>document.getElementById(id);
-const state={universe:[],rows:[],selected:null,busy:false,done:0,errors:0,ledger:loadLedger(),depth:new Map(),searchUniverse:[],searchBusy:false,assetLimit:10,independentStop:false};
+const state={universe:[],rows:[],selected:null,busy:false,done:0,errors:0,ledger:loadLedger(),depth:new Map(),searchUniverse:[],searchBusy:false,assetLimit:10,independentStop:false,engineActivity:{}};
 const engineDefs=[
 ["Market Intelligence","رژیم بازار، جهت BTC و همبستگی زمینه‌ای"],["Explosion Predictor","فشردگی دامنه، افزایش حجم و شتاب اولیه"],["Early Opportunity Hunter","کشف تغییرات اولیه در کل نمادهای واجد شرایط"],["Smart Money Flow","جهت taker buy از داده کندل؛ نه شناسایی هویت نهنگ"],["Liquidity Hunter","عدم تعادل دفتر سفارش و نواحی نقدینگی"],["Multi-Timeframe","هم‌جهتی ۵ دقیقه و یک ساعت"],["Volatility Intelligence","ATR، دامنه و فشردگی نوسان"],["Market Sentiment","رفتار قیمت/حجم به‌عنوان جانشین محدود احساسات"],["Scenario Simulator","سناریوی صعودی/نزولی و نقطه ابطال"],["Adaptive Learning","ثبت و ارزیابی پیش‌بینی‌های گذشته"],["Risk Intelligence","فاصله حدضرر، ATR و نسبت ریسک/بازده"],["Quantum Decision Engine","ترکیب شواهد، کیفیت داده و رتبه‌بندی"]];
 function log(s){const el=$("log");el.textContent=(new Date().toLocaleTimeString("fa-IR")+" · "+s+"\n"+el.textContent).slice(0,6500)}
@@ -177,13 +177,16 @@ function engineEvidence(i){
  ["برنامه‌های دارای حد ریسک",valid.filter(x=>Number(x.tradePlan?.riskPercent)>0).length,valid.length],
  ["تصمیم‌های عبورکرده از گیت کیفیت",quality,valid.length]
  ];
+ const activityKeys=["regime","explosion","momentum","flow","liquidity","multiTimeframe","volatility","sentiment","scenario","learning","risk","dataQuality"];
+ const live=i===9?null:state.engineActivity?.[activityKeys[i]];
+ if(live){const value=Number(live.evidence)||0,total=Number(live.processed)||0,pct=total?Math.min(100,Math.round(value/total*100)):0;return {label:"شواهد معتبر در چرخه اخیر",value,total,pct};}
  const [label,value,total]=metrics[i],pct=total?Math.min(100,Math.round(value/total*100)):0;
  return {label,value,total,pct};
 }
 function renderEngines(statuses=null){
  const idle=statuses===null,current=statuses||{};
  $("engines").innerHTML=engineDefs.map((e,i)=>{
-  const status=current[i]||(idle?"idle":"partial"),label=status==="ready"?"فعال":status==="partial"?"نیازمند داده":status==="busy"?"در حال بررسی":status==="bad"?"قطع / خطا":"منتظر داده";
+  const status=current[i]||(idle?"idle":"partial"),label=status==="ready"?"فعال":status==="partial"?"در انتظار داده تکمیلی":status==="busy"?"در حال پایش":status==="bad"?"قطع / خطا":"در حال پایش";
   const m=engineEvidence(i),n=String(i+1).padStart(2,"0");
   return '<details class="engine-drawer" id="engine-detail-'+n+'"><summary><span>'+n+'. '+e[0]+'</span><span class="state '+status+'">'+label+'</span><span class="drawer-meta">'+m.value.toLocaleString("fa-IR")+' / '+m.total.toLocaleString("fa-IR")+'</span></summary><div class="engine-more"><p>'+e[1]+'</p><div class="engine-live-meter"><span style="width:'+m.pct+'%"></span></div><div class="engine-live-meta"><b>'+m.label+'</b><strong>'+m.pct.toLocaleString("fa-IR")+'٪</strong></div><p class="engine-proof">این شاخص از snapshot مرکزی و داده‌های ثبت‌شده محاسبه شده است؛ نمایش آن به معنی وجود الگوریتم مستقل جداگانه نیست.</p><a class="engine-result-link" href="#quantum-opportunities">مشاهده خروجی‌ها و فرصت‌های مرتبط ←</a></div></details>';
  }).join("");
@@ -333,8 +336,9 @@ function applyLiveSnapshot(snap){
  if($("cycle-status"))$("cycle-status").textContent="اسکن خودکار فعال";
  $("source").textContent=(snap.universe_provider||"چندصرافی")+" · پایگاه مرکزی پایدار · "+(snap.market||"spot").toUpperCase();
  $("progress").textContent="چرخه ۶۰ ثانیه‌ای · نشانگر بازار "+Number(snap.next_cursor||0).toLocaleString("fa-IR")+" / "+state.universe.length.toLocaleString("fa-IR");
- const engineKeys=["momentum","flow","structure","liquidity","multiTimeframe","regime","volatility","sentiment","smartMoney","scenario","risk","dataQuality"];
- const statuses=engineKeys.map(key=>signals.some(x=>x.quantum?.componentAvailability?.[key]===true)?"ready":"partial");
+ state.engineActivity=snap.engine_activity||{};
+ const engineKeys=["regime","explosion","momentum","flow","liquidity","multiTimeframe","volatility","sentiment","scenario","learning","risk","dataQuality"];
+ const statuses=engineKeys.map(key=>{if(key==="learning")return state.ledger.length?"ready":"partial";const metric=state.engineActivity[key];if(metric)return Number(metric.evidence)>0?"ready":"partial";return signals.some(x=>x.quantum?.componentAvailability?.[key]===true)?"ready":"partial";});
  renderEngines(statuses);renderRows();
  const live=snap.status==="online"&&state.done>0&&Date.now()-Date.parse(snap.checked_at||snap.scanned_at||"")<120000;setStatus(live?("اسکن خودکار بازار فعال است · "+state.done+" نماد در آخرین چرخه بررسی شد"+(signals.length?" · فرصت‌های تأییدشده به‌روز شدند":" · فعلاً فرصت تأییدشده‌ای وجود ندارد")):"در انتظار چرخه بعدی اسکن مرکزی؛ نتایج قبلی حفظ می‌شوند",live?"ok":"");
  if(!window.__mmpLiveLogAt||Date.now()-window.__mmpLiveLogAt>60000){log("وضعیت مرکزی به‌روزرسانی شد · یونیورس "+state.universe.length+" · بررسی چرخه اخیر "+state.done+" · فرصت تأییدشده "+state.rows.length);window.__mmpLiveLogAt=Date.now()}
