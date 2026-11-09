@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#08090d">
 <meta name="mmp-app-version" content="2.0.0">
+<meta name="mmp-web-build" content="__MMP_WEB_BUILD_ID__">
 <meta name="mmp-quantum-engine" content="QIE-2.0.0">
 <!-- Native app: bypass stale WebView HTML cache on every cold launch without requiring an APK rebuild. -->
 <script>
@@ -6007,6 +6008,39 @@ window.mmpShareDownloadLink = async function () {
  refresh();if(window.__mmpHomeEngineTimer)clearInterval(window.__mmpHomeEngineTimer);
  window.__mmpHomeEngineTimer=setInterval(refresh,15000);
  document.addEventListener("visibilitychange",()=>{if(!document.hidden)refresh()});
+})();
+</script>
+<script id="mmp-live-update">
+(function(){
+ "use strict";
+ var marker=document.querySelector('meta[name="mmp-web-build"]');
+ var pageBuild=marker&&marker.content;
+ if(!pageBuild||pageBuild==="__MMP_WEB_BUILD_ID__")return;
+ var busy=false;
+ async function checkForLiveUpdate(){
+  if(busy||document.visibilityState==="hidden")return;
+  busy=true;
+  try{
+   var endpoint=new URL("version.json",document.baseURI);
+   endpoint.searchParams.set("_",String(Date.now()));
+   var response=await fetch(endpoint.toString(),{cache:"no-store",credentials:"same-origin",headers:{Accept:"application/json"}});
+   if(!response.ok)return;
+   var release=await response.json();
+   if(!release||typeof release.build!=="string"||!release.build)return;
+   var target=release.build.slice(0,12);
+   var current=new URL(window.location.href);
+   if(release.build!==pageBuild&&current.searchParams.get("mmp_live_refresh")!==target){
+    current.searchParams.set("mmp_live_refresh",target);
+    window.location.replace(current.toString());
+   }
+  }catch(error){
+   // Keep the current working screen when the network or version endpoint is unavailable.
+  }finally{busy=false;}
+ }
+ window.setInterval(checkForLiveUpdate,120000);
+ window.addEventListener("focus",checkForLiveUpdate,{passive:true});
+ document.addEventListener("visibilitychange",function(){if(document.visibilityState==="visible")checkForLiveUpdate();});
+ window.setTimeout(checkForLiveUpdate,12000);
 })();
 </script>
 </body>
