@@ -5013,9 +5013,9 @@ body:before{opacity:.23;background-size:34px 34px}
   if(button){button.disabled=true;button.textContent="در حال دریافت…";}
   try{
    const d=await get(api()+"/market-derivatives?symbol="+encodeURIComponent(symbol),14000);
-   const values=[d.funding_rate==null?"دریافت نشد":fmt(d.funding_rate*100,5)+"٪",d.open_interest==null?"دریافت نشد":fmt(d.open_interest,2)+" "+symbol,d.long_short_ratio==null?"دریافت نشد":fmt(d.long_short_ratio,3),d.mark_price==null?"دریافت نشد":usd(d.mark_price)];
+   const values=[d.funding_rate==null?"دریافت نشد":fmt(d.funding_rate*100,5)+"٪",d.open_interest==null?"دریافت نشد":fmt(d.open_interest,2)+" "+(d.open_interest_unit||symbol),d.long_short_ratio==null?"دریافت نشد":fmt(d.long_short_ratio,3),d.mark_price==null?"دریافت نشد":usd(d.mark_price)];
    if(box)box.innerHTML=values.map((v,i)=>'<div><small>'+["نرخ تأمین مالی","موجودی قرارداد باز","نسبت خرید به فروش","قیمت نشانگر"][i]+'</small><b>'+v+'</b><em>'+["Funding Rate","Open Interest","Long / Short","Mark Price"][i]+'</em></div>').join("");
-   if(status)status.textContent="نماد "+symbol+" · منبع: "+d.source+" · آخرین بررسی "+new Date(d.checked_at).toLocaleTimeString("fa-IR")+(values.some(v=>v==="دریافت نشد")?" · بعضی شاخص‌ها در این منبع ارائه نمی‌شوند.":"");
+   if(status)status.textContent="نماد "+symbol+" · منابع: "+d.source+" · آخرین بررسی "+new Date(d.checked_at).toLocaleTimeString("fa-IR")+(d.missing?.length?" · شاخص‌های بدون منبع معتبر: "+d.missing.join("، "):" · هر چهار شاخص دریافت شد.");
   }catch(e){if(status)status.textContent="داده مشتقات دریافت نشد: "+(e.message||"خطای اتصال");}
   finally{if(button){button.disabled=false;button.textContent="↻ تازه‌سازی";}}
  }
