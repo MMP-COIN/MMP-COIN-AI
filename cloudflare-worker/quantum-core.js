@@ -14,8 +14,7 @@ const has=(input,key)=>input[key]!==undefined&&input[key]!==null&&Number.isFinit
 
 export function scoreQuantumOpportunity(input={}){
  const direction=input.trend==="bull"?1:input.trend==="bear"?-1:0;
- const requiredChanges=["change1m","change3m","change5m","change15m"];
- const changes=requiredChanges.map(key=>input[key]??input[key.replace("change","m")]);
+ const changes=[input.change1m??input.m1,input.change3m??input.m3,input.change5m??input.m5,input.change15m??input.m15];
  const changesAvailable=changes.every(value=>value!==undefined&&value!==null&&Number.isFinite(Number(value)));
  const price=finite(input.currentPrice??input.price);
  const priceAvailable=price>0;
