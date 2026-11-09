@@ -54,6 +54,8 @@ header{position:sticky;top:0;z-index:10;background:#090d14ed;border-bottom:1px s
 </style><style id="mmp-quantum-engine-detail-ui">
 .engine-live-meter{height:7px;background:#080d14;border:1px solid #344052;border-radius:20px;overflow:hidden;margin:12px 0 7px}
 .engine-live-meter span{display:block;height:100%;border-radius:20px;background:linear-gradient(90deg,#8c672e,#f3d58f);box-shadow:0 0 12px #d8b56b88;transition:width .45s}
+.engine-live-meter.is-live span{background:linear-gradient(90deg,#8c672e 0%,#f3d58f 35%,#fff0bd 50%,#c99b4d 68%,#8c672e 100%);background-size:220% 100%;animation:mmpEngineFlow 1.35s linear infinite;box-shadow:0 0 16px #e7c879aa}
+@keyframes mmpEngineFlow{from{background-position:100% 0}to{background-position:-120% 0}}
 .engine-live-meta{display:flex;justify-content:space-between;gap:8px;color:#e8cf91;font-size:10px}
 .engine-proof{color:#aeb9c8;font-size:10px;line-height:1.8}
 .engine-result-link{display:inline-block;color:#e8cf91;text-decoration:none;font-size:11px;font-weight:800;margin-top:5px}
@@ -189,10 +191,11 @@ function renderEngines(statuses=null){
  const confirmed=validRows.filter(x=>x.raw?.quantum?.qualityGate===true).length;
  const overall=state.busy?"busy":state.errors>0&&state.done===0?"bad":validRows.length?"ready":"idle";
  const label=state.busy?"در حال پردازش داده‌های بازار":overall==="bad"?"خطا در دریافت داده":validRows.length?"داده دریافت شده · در انتظار ارزیابی شواهد":"در انتظار داده معتبر";
+ const cycleLive=Date.now()-Number(window.__mmpLastQuantumUpdate||0)<120000;
  const capabilities=engineCapabilities.map((e,i)=>{
-  const status=current[i]||(idle?"idle":"partial"),m=engineEvidence(i);
+  const status=current[i]||(idle?"idle":"partial"),m=engineEvidence(i),meterWidth=cycleLive&&status!=="bad"?Math.max(m.pct,28):m.pct;
   const stateLabel=status==="ready"?"داده تأییدشده":status==="busy"?"در حال پردازش":status==="bad"?"خطا":status==="partial"?"نیازمند داده":"در انتظار";
-  return '<div class="engine-capability" id="engine-detail-'+String(i+1).padStart(2,"0")+'"><div class="engine-capability-head"><b>'+String(i+1).padStart(2,"0")+'. '+e[0]+'</b><span class="state '+status+'">'+stateLabel+'</span></div><p>'+e[1]+'</p><div class="engine-live-meter"><span style="width:'+m.pct+'%"></span></div><div class="engine-live-meta"><small>'+m.label+'</small><strong>'+m.value.toLocaleString("fa-IR")+' / '+m.total.toLocaleString("fa-IR")+'</strong></div></div>';
+  return '<div class="engine-capability" id="engine-detail-'+String(i+1).padStart(2,"0")+'"><div class="engine-capability-head"><b>'+String(i+1).padStart(2,"0")+'. '+e[0]+'</b><span class="state '+status+'">'+stateLabel+'</span></div><p>'+e[1]+'</p><div class="engine-live-meter'+(cycleLive&&status!=="bad"?" is-live":"")+'"><span style="width:'+meterWidth+'%"></span></div><div class="engine-live-meta"><small>'+(cycleLive&&status!=="bad"?"چرخه زنده · "+m.label:m.label)+'</small><strong>'+m.value.toLocaleString("fa-IR")+' / '+m.total.toLocaleString("fa-IR")+' · '+m.pct.toLocaleString("fa-IR")+'٪</strong></div></div>';
  }).join("");
  $("engines").innerHTML='<article class="engine primary-engine super-engine-card"><div class="engine-top"><b>MMP QUANTUM SUPER ENGINE</b><span class="state '+overall+'">'+label+'</span></div><p>تمام ۱۲ قابلیت در یک چرخه مشترک کار می‌کنند. داده یک‌بار دریافت و اعتبارسنجی می‌شود؛ شواهد تخصصی با هم تطبیق داده می‌شوند و فقط یک خروجی نهایی صادر می‌شود.</p><div class="super-engine-stats"><div><small>نمادهای بررسی‌شده</small><b>'+Number(state.done||validRows.length).toLocaleString("fa-IR")+'</b></div><div><small>فرصت‌های دارای داده</small><b>'+validRows.length.toLocaleString("fa-IR")+'</b></div><div><small>تصمیم‌های عبورکرده از گیت کیفیت</small><b>'+confirmed.toLocaleString("fa-IR")+'</b></div><div><small>خطاهای چرخه</small><b>'+Number(state.errors||0).toLocaleString("fa-IR")+'</b></div></div><details class="engine-drawer super-engine-capabilities" id="super-engine-capabilities"><summary><span>نمایش ۱۲ قابلیت یکپارچه ابرموتور</span><span class="drawer-meta">زیرمجموعه‌های تحلیلی · بدون تصمیم مستقل</span></summary><div class="engine-more super-engine-capability-grid">'+capabilities+'</div></details></article>';
  const target=decodeURIComponent(location.hash.slice(1));
@@ -265,6 +268,7 @@ async function scan(){
 }
 function applyLiveSnapshot(snap){
  if(!snap||snap.status==="offline")throw new Error("موتور مرکزی در دسترس نیست");
+ window.__mmpLastQuantumUpdate=Date.now();
  const signals=Array.isArray(snap.signals)?snap.signals:[];
  state.universe.length=Math.max(0,Number(snap.universe_count)||0);
  state.done=Math.max(0,Number(snap.scanned_count)||0);
