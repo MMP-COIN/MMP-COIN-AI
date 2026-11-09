@@ -175,6 +175,7 @@ jobs:
       - name: Check Worker health endpoint
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
+          CANARY_URL: https://qie-canary-mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
           set -euo pipefail
           curl --fail --silent --show-error --retry 2 --retry-delay 3 --max-time 25 "$WORKER_URL/health" -o /tmp/health.json
@@ -511,6 +512,16 @@ jobs:
             exit 1
           fi
           jq -e '.analysis.action as $a | (["BUY","SELL","WAIT"] | index($a) != null) and (.market.timeframes | has("15m") and has("1h") and has("4h") and has("1d"))' /tmp/analysis.json >/dev/null
+          canary_health=$(curl --fail --silent --show-error --max-time 30 "$CANARY_URL/health")
+          echo "$canary_health" | jq -e '.worker == "online" and .ai_binding == true and .futures_engine_binding == true' >/dev/null
+          canary_status=$(curl --silent --show-error --max-time 110 -H "Content-Type: application/json" -X POST --data "$payload" -o /tmp/canary-analysis.json -w "%{http_code}" "$CANARY_URL/analyze")
+          echo "Canary AI analyzer HTTP $canary_status"
+          if [ "$canary_status" != "200" ]; then
+            jq -r '.stage // "unknown stage", .error // "unknown error"' /tmp/canary-analysis.json || cat /tmp/canary-analysis.json
+            exit 1
+          fi
+          jq -e '.analysis.action as $a | (["BUY","SELL","WAIT"] | index($a) != null) and (.market.timeframes | has("15m") and has("1h") and has("4h") and has("1d"))' /tmp/canary-analysis.json >/dev/null
+          jq -r '"Canary model provider: " + (.analysis.data_source // "not reported")' /tmp/canary-analysis.json
           {
             echo "- AI analyzer: HTTP 200"
             echo "- Four timeframes: 15m, 1h, 4h, 1d"
