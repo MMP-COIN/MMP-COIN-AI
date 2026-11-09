@@ -483,7 +483,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Live AI analyzer end-to-end smoke test
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' || github.event_name == 'pull_request'
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
