@@ -24,7 +24,7 @@ concurrency:
 jobs:
   audit:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 120
     steps:
       - name: Checkout canonical project
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -279,14 +279,14 @@ jobs:
             const spotResults=[];
             for(let i=0;i<spotAssets.length;i+=4){
               const batch=spotAssets.slice(i,i+4);
-              const rows=await Promise.all(batch.map(a=>checkAsset(a,supportMap[String(a.symbol).toUpperCase()],i<100)));
+              const rows=await Promise.all(batch.map(a=>checkAsset(a,supportMap[String(a.symbol).toUpperCase()],true)));
               spotResults.push(...rows);
               console.log('Checked Spot '+spotResults.length+'/'+spotAssets.length+' instruments');
             }
             const futuresResults=[];
             for(let i=0;i<futuresAssets.length;i+=4){
               const batch=futuresAssets.slice(i,i+4);
-              const rows=await Promise.all(batch.map(a=>checkFuturesAsset(a,i<100)));
+              const rows=await Promise.all(batch.map(a=>checkFuturesAsset(a,true)));
               futuresResults.push(...rows);
               console.log('Checked Futures '+futuresResults.length+'/'+futuresAssets.length+' instruments');
             }
