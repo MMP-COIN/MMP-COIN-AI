@@ -1279,9 +1279,13 @@ async function handle(request,env){
    finally{clearTimeout(timer);}
   };
   const probeAny=async(urls,valid,timeout=9000,extraHeaders={})=>{
-   const results=await Promise.all(urls.map(url=>timeoutFetch(url,valid,timeout,extraHeaders)));
-   const good=results.filter(x=>x.status!=="down").sort((a,b)=>a.ping-b.ping);
-   return good[0]||results[results.length-1]||{status:"down",ping:null,error:"no Wallex endpoint responded"};
+   let last={status:"down",ping:null,error:"no endpoint responded"};
+   for(const url of urls){
+    const result=await timeoutFetch(url,valid,timeout,extraHeaders);
+    if(result.status!=="down")return {...result,endpoint:url};
+    last=result;
+   }
+   return last;
   };
   const [binance,bybit,okx,nobitex,wallex,bitget,gate,kucoin]=await Promise.all([
    probeAny(["https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://api.binance.us/api/v3/ticker/price?symbol=BTCUSDT","https://api1.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://api2.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://api3.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://data-api.binance.vision/api/v3/ticker/price?symbol=BTCUSDT"],d=>Number(d?.price)>0),
