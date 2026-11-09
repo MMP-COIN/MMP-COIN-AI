@@ -51,6 +51,7 @@ jobs:
           const workerSource = fs.readFileSync("cloudflare-worker/worker.js", "utf8");
           if (!workerSource.includes("for(const url of urls)") || workerSource.includes("Promise.all(urls.map(url=>timeoutFetch")) throw new Error("Exchange health fallback must try alternate endpoints sequentially and stop after a verified response");
                     if (!workerSource.includes("async function fetchWithTimeout") || !workerSource.includes("return await fetch(url,{...options,signal:controller.signal})") || workerSource.includes("return await fetchWithTimeout(url,{...options,signal:controller.signal})")) throw new Error("Bounded fetch helper must call native fetch exactly once and must not recurse");
+          if (!workerSource.includes("async function readMarketFallback") || !workerSource.includes("async function writeMarketFallback") || !workerSource.includes("env.MARKET_CACHE_DB") || !workerSource.includes("data_stale:true") || !workerSource.includes("X-MMP-Cache") || !workerSource.includes("market_cache_binding:!!env.MARKET_CACHE_DB")) throw new Error("Persistent D1 market cache and explicit stale-data reporting are required");
           if (!workerSource.includes('const MODEL = "@cf/openai/gpt-oss-120b"') || !workerSource.includes('reasoning_effort:"medium"});')) throw new Error("Cloudflare AI fallback must use GPT-OSS 120B with medium reasoning");
                     const groqStart = workerSource.indexOf('https://api.groq.com/openai/v1/chat/completions');
           const groqEnd = workerSource.indexOf("if(!response.ok)", groqStart);
