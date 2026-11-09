@@ -171,108 +171,72 @@ async function getDepth(symbol){try{return await apiJSON("/market-orderflow?symb
 
 async function scan(){
  if(state.busy)return;
- state.busy=true; $("scan").disabled=true; $("scan").textContent="اسکن در حال اجرا…";
- state.rows=[];state.done=0;state.errors=0;state.universe=[];renderEngines(Object.fromEntries(engineDefs.map((_,i)=>[i,"busy"])));
- setStatus("اتصال به کاتالوگ چندصرافی و دریافت فهرست کامل USDT Spot…");
- $("universe").textContent="…";$("scanned").textContent="۰";$("opps").textContent="۰";if($("cycle-status"))$("cycle-status").textContent="در حال آماده‌سازی";$("health").textContent="—";
+ state.busy=true;$("scan").disabled=true;$("scan").textContent="اتصال به موتور زنده…";
  try{
-  const catalog=await apiJSON("/hunter-universe",60000);
-  const assets=Array.isArray(catalog.hunter_assets)?catalog.hunter_assets:[];
-  const seen=new Set();
-  state.universe=assets.filter(a=>{const s=String(a.symbol||"").toUpperCase();if(!/^[A-Z0-9]{2,24}$/.test(s)||seen.has(s)||!(Number(a.current_price)>0)||!a.hasUsdtMarket)return false;seen.add(s);return true;}).sort((a,b)=>Number(b.total_volume||0)-Number(a.total_volume||0));
-  if(!state.universe.length)throw new Error("کاتالوگ چندصرافی هیچ جفت USDT Spot واجد شرایطی برنگرداند.");
-  $("universe").textContent=state.universe.length.toLocaleString("fa-IR");
-  const btcAsset=state.universe.find(x=>String(x.symbol).toUpperCase()==="BTC");
-  let btcTrend="نامشخص";
-  try{const btc=await apiJSON("/market-candles?symbol=BTC&interval=1h&market=spot",20000);const closes=(btc.candles||[]).map(x=>Number(x.close));if(closes.length>30)btcTrend=ema(closes.slice(-50),9)>ema(closes.slice(-50),21)?"صعودی":"نزولی";}catch{}
-  const sourceNames=Object.entries(catalog.sources||{}).filter(([,v])=>v&&v.ok).map(([k])=>k);
-  $("source").textContent=(catalog.metadata_provider||"کاتالوگ چندصرافی")+" · "+sourceNames.length+" منبع پاسخ‌گو · زمینه BTC: "+btcTrend;
-  log("کاتالوگ چندصرافی دریافت شد: "+state.universe.length+" جفت USDT Spot؛ منابع پاسخ‌گو: "+sourceNames.join("، "));
-  setStatus("اسکن تأییدی QIE روی تمام نمادهای واجد شرایط آغاز شد…");
-  const batches=[];for(let i=0;i<state.universe.length;i+=12)batches.push(state.universe.slice(i,i+12));
-  let candidateTotal=0,rejectedTotal=0,failedTotal=0,scannedTotal=0,flowConfirmed=0,depthConfirmed=0;
-  for(let bi=0;bi<batches.length;bi++){
-   const batch=batches[bi],symbols=batch.map(x=>x.symbol).join(",");
-   try{
-    const result=await apiJSON("/hunter-scan?market=spot&symbols="+encodeURIComponent(symbols),60000);
-    scannedTotal+=Number(result.scanned)||0;failedTotal+=Number(result.failed)||0;rejectedTotal+=Number(result.rejected)||0;candidateTotal+=Number(result.candidates)||0;
-    const bySymbol=new Map(batch.map(x=>[String(x.symbol).toUpperCase(),x]));
-    for(const signal of (result.signals||[])){
-     const asset=bySymbol.get(String(signal.symbol||"").toUpperCase())||{};
-     const flow=signal.flow||null,depth=signal.depth||null,trade=signal.tradePlan||null;
-     if(flow?.complete===true)flowConfirmed++;
-     if(depth?.confirmed===true)depthConfirmed++;
-     const evidence=[];
-     const ev=signal.evidence||{};
-     if(Number(signal.volumeRatio)>=1.1)evidence.push("افزایش حجم نسبی "+Number(signal.volumeRatio).toFixed(2)+"×");
-     if(ev.breakout)evidence.push("شکست ساختار کوتاه‌مدت");
-     if(ev.trend15m)evidence.push("هم‌جهتی روند ۵ و ۱۵ دقیقه");
-     if(flow?.complete===true)evidence.push("جریان معاملات واقعی تأیید شد");
-     if(depth?.confirmed===true)evidence.push("عمق دفتر سفارش تأیید شد");
-     if(signal.multiExchangeConfirmed)evidence.push("تأیید چندصرافی");
-     const imbalance=Number(flow?.imbalance)||0;
-     state.rows.push({
-      symbol:signal.symbol,last:Number(signal.price)||Number(asset.current_price)||0,
-      change:Number(asset.hunterChange24h)||0,quoteVolume:Number(asset.total_volume)||0,
-      score:Number(signal.score)||0,direction:signal.trend==="bull"?"bull":signal.trend==="bear"?"bear":"neutral",
-      dirScore:signal.trend==="bull"?1:signal.trend==="bear"?-1:0,
-      explosion:Number(signal.explosionScore)||0,atrPct:Number(signal.atrPct)||null,
-      volRatio:Number(signal.volumeRatio)||0,buyRatio:flow?.complete===true?(1+imbalance)/2:null,
-      trend5:signal.trend==="bull"?1:-1,trend1:signal.trend==="bull"?1:-1,rsi:null,
-      breakout:ev.breakout?1:0,compression:null,
-      book:depth?.confirmed?{imbalance:Number(depth.imbalance)||0,bids:Number(depth.bidUsdt)||0,asks:Number(depth.askUsdt)||0}:null,
-      flow,evidence,completeness:signal.quantum?.qualityGate?1:(flow?.complete?0.8:0.6),
-      stopDist:Number(trade?.riskPercent)||null,targetDist:null,
-      high:null,low:null,time:Date.now(),provider:signal.provider||"چندصرافی",
-      tradePlan:trade,depth,raw:signal
-     });
-    }
-   }catch(e){
-    failedTotal+=batch.length;
-    if(state.errors<100)log("خطای دسته "+(bi+1)+"/"+batches.length+": "+e.message);
-   }
-   state.done=scannedTotal+failedTotal;state.rejected=rejectedTotal;state.errors=failedTotal;saveScanState(false,btcTrend);
-   $("scanned").textContent=scannedTotal.toLocaleString("fa-IR");
-   $("opps").textContent=state.rows.filter(x=>Number(x.score)>=55).length.toLocaleString("fa-IR");
-   $("health").textContent=(state.done?Math.round((scannedTotal-rejectedTotal)/Math.max(1,state.universe.length)*100):0).toLocaleString("fa-IR")+"٪";
-   $("progress").textContent=(bi+1).toLocaleString("fa-IR")+" / "+batches.length.toLocaleString("fa-IR")+" دسته · "+state.done.toLocaleString("fa-IR")+" / "+state.universe.length.toLocaleString("fa-IR");
-   renderRows();
-   if(bi%4===3)log("پیشرفت اسکن: "+state.done+"/"+state.universe.length+" · نامزدها "+candidateTotal+" · فرصت‌های تأییدشده "+state.rows.length);
-   if(bi<batches.length-1)await sleep(1200);
+  let snap=null;
+  const response=await fetch(API+"/hunter-snapshot",{cache:"no-store",headers:{"Accept":"application/json"}});
+  if(!response.ok)throw new Error("دریافت وضعیت موتور مرکزی ناموفق بود · HTTP "+response.status);
+  snap=await response.json();
+  const stamp=Date.parse(snap.checked_at||snap.scanned_at||"");
+  if(!stamp||Date.now()-stamp>90000){
+   setStatus("موتور مرکزی در حال راه‌اندازی چرخه خودکار بازار است…");
+   try{await fetch(API+"/hunter-run",{cache:"no-store",headers:{"Accept":"application/json"}})}catch(e){}
+   const fresh=await fetch(API+"/hunter-snapshot",{cache:"no-store",headers:{"Accept":"application/json"}});
+   if(fresh.ok)snap=await fresh.json();
   }
-  state.errors=failedTotal;
-  state.rows.sort((a,b)=>b.score-a.score);
-  publishSnapshot(btcTrend);
-  saveScanState(true,btcTrend);
-  $("scanned").textContent=scannedTotal.toLocaleString("fa-IR");
-  $("opps").textContent=state.rows.filter(x=>Number(x.score)>=55).length.toLocaleString("fa-IR");
-  $("health").textContent=Math.round((scannedTotal-rejectedTotal)/Math.max(1,state.universe.length)*100).toLocaleString("fa-IR")+"٪";
-  const statuses=Array(12).fill("partial");
-  statuses[0]=btcTrend!=="نامشخص"?"ready":"partial";
-  statuses[1]=candidateTotal>0?"ready":"partial";
-  statuses[2]=scannedTotal>0?"ready":"partial";
-  statuses[3]=flowConfirmed>0?"ready":"partial";
-  statuses[4]=depthConfirmed>0?"ready":"partial";
-  statuses[5]=state.rows.some(x=>Array.isArray(x.evidence)&&x.evidence.some(v=>String(v).includes("هم‌جهتی")||String(v).includes("تایم‌فریم")))?"ready":"partial";
-  statuses[6]=scannedTotal>0?"ready":"partial";
-  statuses[7]=state.rows.some(x=>x.flow&&x.flow.complete===true)?"ready":"partial";
-  statuses[8]=state.rows.some(x=>x.tradePlan)?"ready":"partial";
-  statuses[9]=state.ledger.length>0?"ready":"partial";
-  statuses[10]=state.rows.some(x=>x.tradePlan&&Number(x.tradePlan.riskPercent)>0)?"ready":"partial";
-  statuses[11]=state.rows.length>0?"ready":"partial";
-  renderEngines(statuses);
-  renderRows();
-  const failedBatches=failedTotal>0;
-  setStatus("اسکن پایان یافت · "+scannedTotal+" ارز بررسی شد · "+failedTotal+" خطای داده",failedBatches?"bad":"ok");if($("cycle-status"))$("cycle-status").textContent="چرخه ثبت شد";
-  log("پایان اسکن کامل · یونیورس "+state.universe.length+" · بررسی موفق "+scannedTotal+" · نامزد اولیه "+candidateTotal+" · فرصت تأییدشده "+state.rows.length+" · رد کیفیتی "+rejectedTotal+" · خطای داده "+failedTotal);
-  if(!scannedTotal)throw new Error("هیچ نمادی در این چرخه با موفقیت بررسی نشد؛ نتیجه معتبر نیست.");
- }catch(e){
-  setStatus("اسکن کامل نشد: "+e.message,"bad");log("خطای اصلی آزمایشگاه: "+e.message);
-  $("health").textContent="نامعتبر";
- }finally{
-  state.busy=false;$("scan").disabled=false;$("scan").textContent="اجرای دوباره اسکن کامل";
- }
+  applyLiveSnapshot(snap);
+ }catch(e){setStatus("اتصال زنده برقرار نشد: "+e.message,"bad");log("خطای اتصال به اسکن مرکزی: "+e.message)}
+ finally{state.busy=false;$("scan").disabled=false;$("scan").textContent="اتصال مجدد به اسکن زنده"}
 }
+function applyLiveSnapshot(snap){
+ if(!snap||snap.status==="offline")throw new Error("موتور مرکزی در دسترس نیست");
+ const signals=Array.isArray(snap.signals)?snap.signals:[];
+ state.universe.length=Math.max(0,Number(snap.universe_count)||0);
+ state.done=Math.max(0,Number(snap.scanned_count)||0);
+ state.errors=Math.max(0,Number(snap.failed_count)||0);
+ state.rows=signals.map(x=>{
+  const coin=x.coin||{},flow=x.flow||null,depth=x.depth||null,plan=x.tradePlan||{};
+  const trend=x.trend==="bull"?"bull":x.trend==="bear"?"bear":"neutral";
+  const evidence=Array.isArray(x.evidence)?x.evidence.map(v=>typeof v==="string"?v:(v?.label||v?.name||"شاهد ثبت‌شده")):[];
+  return {symbol:String(x.symbol||coin.symbol||"").toUpperCase(),last:Number(x.price)||Number(coin.current_price)||0,
+   change:Number(x.dailyChange24h)||0,quoteVolume:Number(coin.total_volume)||0,score:Number(x.score)||0,
+   direction:trend,dirScore:trend==="bull"?1:trend==="bear"?-1:0,
+   explosion:Number(x.explosionScore)||0,atrPct:Number(x.atrPct)||null,volRatio:Number(x.volumeRatio)||0,
+   buyRatio:flow?.complete===true?(1+Number(flow.imbalance||0))/2:null,
+   trend5:trend==="bull"?1:trend==="bear"?-1:0,trend1:trend==="bull"?1:trend==="bear"?-1:0,
+   rsi:Number(x.rsi)||null,breakout:x.evidence?.breakout?1:0,compression:null,
+   book:depth?.confirmed?{imbalance:Number(depth.imbalance)||0,bids:Number(depth.bidUsdt)||0,asks:Number(depth.askUsdt)||0}:null,
+   flow,depth,evidence,completeness:x.quantum?.qualityGate?1:(flow?.complete?0.8:0.6),
+   stopDist:Number(plan.riskPercent)||null,targetDist:null,high:null,low:null,
+   time:Number(x.updatedAt)||Date.now(),provider:x.provider||snap.universe_provider||"اسکن چندصرافی",
+   tradePlan:plan,raw:x};
+ }).sort((a,b)=>b.score-a.score);
+ $("universe").textContent=state.universe.length.toLocaleString("fa-IR");
+ $("scanned").textContent=state.done.toLocaleString("fa-IR");
+ $("opps").textContent=state.rows.length.toLocaleString("fa-IR");
+ $("health").textContent=state.errors?("خطا: "+state.errors.toLocaleString("fa-IR")):"پایدار";
+ if($("cycle-status"))$("cycle-status").textContent="اسکن خودکار فعال";
+ $("source").textContent=(snap.universe_provider||"چندصرافی")+" · پایگاه مرکزی پایدار · "+(snap.market||"spot").toUpperCase();
+ $("progress").textContent="چرخه ۶۰ ثانیه‌ای · نشانگر بازار "+Number(snap.next_cursor||0).toLocaleString("fa-IR")+" / "+state.universe.length.toLocaleString("fa-IR");
+ const statuses=[
+  snap.status==="online"?"ready":"partial",
+  Number(snap.scanned_count)>0?"ready":"busy",
+  Number(snap.scanned_count)>0?"ready":"busy",
+  signals.some(x=>x.flow?.complete===true)?"ready":"partial",
+  signals.some(x=>x.depth?.confirmed===true)?"ready":"partial",
+  signals.some(x=>Array.isArray(x.evidence)&&x.evidence.some(v=>String(v).includes("تایم")||String(v).includes("روند")))?"ready":"partial",
+  signals.some(x=>Number(x.atrPct)>0)?"ready":"partial",
+  "partial",
+  signals.some(x=>x.tradePlan)?"ready":"partial",
+  state.ledger.length?"ready":"partial",
+  signals.some(x=>Number(x.tradePlan?.riskPercent)>0)?"ready":"partial",
+  signals.some(x=>x.confirmed===true&&x.multiExchangeConfirmed===true&&x.quantum?.qualityGate===true)?"ready":"partial"
+ ];
+ renderEngines(statuses);renderRows();
+ setStatus("اسکن خودکار بازار فعال است · "+state.done+" نماد در آخرین چرخه بررسی شد"+(signals.length?" · فرصت‌های تأییدشده به‌روز شدند":" · فعلاً فرصت تأییدشده‌ای وجود ندارد"),"ok");
+ if(!window.__mmpLiveLogAt||Date.now()-window.__mmpLiveLogAt>60000){log("وضعیت مرکزی به‌روزرسانی شد · یونیورس "+state.universe.length+" · بررسی چرخه اخیر "+state.done+" · فرصت تأییدشده "+state.rows.length);window.__mmpLiveLogAt=Date.now()}
+}
+function startLiveMonitor(){scan();if(window.__mmpQuantumPoll)clearInterval(window.__mmpQuantumPoll);window.__mmpQuantumPoll=setInterval(()=>{if(!document.hidden&&!state.busy)scan()},15000)}
 
 function renderRows(){
  const q=$("filter").value.trim().toUpperCase(),dir=$("direction").value,sort=$("sort").value;
@@ -348,6 +312,21 @@ async function analyzeIndependent(symbol){
  }catch(e){status.textContent="تحلیل "+symbol+" ناموفق بود: "+e.message}finally{state.searchBusy=false}
 }
 $("asset-search").addEventListener("input",()=>{clearTimeout(searchTimer);searchTimer=setTimeout(renderAssetSearch,120)});$("asset-search-clear").addEventListener("click",()=>{$("asset-search").value="";state.assetLimit=24;renderAssetSearch();$("asset-search").focus()});$("asset-search-more").addEventListener("click",()=>{state.assetLimit+=24;renderAssetSearch()});$("asset-search-results").addEventListener("click",e=>{const b=e.target.closest("[data-independent-analyze]");if(b)analyzeIndependent(b.dataset.independentAnalyze)});$("scan").addEventListener("click",scan);$("back").addEventListener("click",()=>location.href="/");$("filter").addEventListener("input",renderRows);$("direction").addEventListener("change",renderRows);$("sort").addEventListener("change",renderRows);$("rows").addEventListener("click",e=>{const b=e.target.closest("[data-detail]");if(b)showDetail(b.dataset.detail)});$("record").addEventListener("click",record);$("history").addEventListener("click",updateLedger);$("export").addEventListener("click",exportCSV);
-renderEngines(null);renderLedger();renderQuantumCharts();restoreScanState();loadIndependentCatalog();if(state.ledger.length)log("حافظه محلی شامل "+state.ledger.length+" پیش‌بینی قبلی است.");
+renderEngines(null);renderLedger();renderQuantumCharts();loadIndependentCatalog();startLiveMonitor();if(state.ledger.length)log("حافظه محلی شامل "+state.ledger.length+" پیش‌بینی قبلی است.");
 })();
-</script></body></html>
+</script>
+<style id="mmp-quantum-live-engine-strip">
+/* Live quantum engine rail — backend scan continues independently of this page */
+.engine-showcase{display:block!important;overflow:hidden;border:1px solid #a9874c66;border-radius:15px;padding:10px;background:linear-gradient(110deg,#141b25,#090f18)}
+.engines{display:flex!important;gap:8px!important;overflow-x:auto!important;overflow-y:hidden!important;padding:2px 2px 9px;scroll-snap-type:x proximity;scrollbar-width:thin;scrollbar-color:#9e7b43 #111925}
+.engine{flex:0 0 190px!important;width:190px;min-height:86px!important;padding:10px 11px!important;scroll-snap-align:start;border-radius:11px!important;background:linear-gradient(145deg,#1a2634,#0c131d)!important}
+.engine:after{content:"";position:absolute;inset:auto 10px 0 10px;height:2px;background:linear-gradient(90deg,transparent,#cba45f,transparent);opacity:.55}
+.engine b{font-size:11px!important}
+.engine p{font-size:9px!important;line-height:1.7!important;margin-top:6px!important}
+.engine .state{font-size:8px!important}
+.engine .state.ready{box-shadow:0 0 12px #25d69522}
+.engine .state.busy{animation:mmpEnginePulse 1.4s ease-in-out infinite}
+@keyframes mmpEnginePulse{50%{opacity:.42}}
+@media(max-width:560px){.engine-showcase{padding:7px}.engines{gap:7px!important}.engine{flex-basis:158px!important;width:158px;min-height:78px!important;padding:9px!important}.engine b{font-size:10px!important}.engine p{font-size:8px!important}}
+</style>
+</body></html>
