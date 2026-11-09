@@ -72,9 +72,9 @@ async function scanCoin(coin){
   const symbol=String(coin?.symbol||"").toUpperCase();
   if(!/^[A-Z0-9]{2,20}$/.test(symbol))return null;
   const listed=Array.isArray(coin.marketPairs)
-    ?coin.marketPairs.filter(x=>String(x.quote||"").toUpperCase()==="USDT"&&Number(x.volume)>=5000&&SUPPORTED.has(String(x.exchange)))
-    :Object.entries(coin.hunterVenueVolume||{}).filter(([name,volume])=>SUPPORTED.has(name)&&Number(volume)>=5000).map(([exchange,volume])=>({exchange,volume,quote:"USDT"}));
-  if(Number(coin.total_volume||0)<50000||!listed.length)return null;
+    ?coin.marketPairs.filter(x=>String(x.quote||"").toUpperCase()==="USDT"&&SUPPORTED.has(String(x.exchange)))
+    :Object.entries(coin.hunterVenueVolume||{}).filter(([name])=>SUPPORTED.has(name)).map(([exchange,volume])=>({exchange,volume,quote:"USDT"}));
+  if(!listed.length)return null;
   const order=[...new Map(listed.sort((a,b)=>Number(b.volume)-Number(a.volume)).map(x=>[x.exchange,x])).values()].map(x=>x.exchange);
   const fallback=["Binance","OKX","Gate","MEXC","KuCoin","WhiteBIT","Bitget","Bybit"].filter(name=>!order.includes(name));
   const verificationOrder=[...new Set([...order,...fallback])].slice(0,6);
@@ -165,9 +165,9 @@ async function runRadar(env,scheduledTime=Date.now()){
   }
   const buildUniverse=items=>{
     const eligible=normalizeQuantumUniverse(items,"spot").filter(coin=>{
-      const venues=Array.isArray(coin.marketPairs)?coin.marketPairs.some(x=>String(x.quote||"").toUpperCase()==="USDT"&&Number(x.volume)>=15000&&SUPPORTED.has(String(x.exchange))):
-        Object.entries(coin.hunterVenueVolume||{}).some(([name,volume])=>SUPPORTED.has(name)&&Number(volume)>=15000);
-      return venues&&Number(coin.total_volume||0)>=50000&&/^[A-Z0-9]{2,20}$/.test(String(coin.symbol||""));
+      const venues=Array.isArray(coin.marketPairs)?coin.marketPairs.some(x=>String(x.quote||"").toUpperCase()==="USDT"&&SUPPORTED.has(String(x.exchange))):
+        Object.keys(coin.hunterVenueVolume||{}).some(name=>SUPPORTED.has(name));
+      return venues&&/^[A-Z0-9]{2,20}$/.test(String(coin.symbol||""));
     }).sort((a,b)=>Number(b.total_volume||0)-Number(a.total_volume||0));
     const seen=new Set();
     return eligible.filter(coin=>{
