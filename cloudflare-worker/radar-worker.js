@@ -73,16 +73,20 @@ async function scanCoin(coin){
   if(Number(coin.total_volume||0)<50000||!listed.length)return null;
   const order=[...new Map(listed.sort((a,b)=>Number(b.volume)-Number(a.volume)).map(x=>[x.exchange,x])).values()].map(x=>x.exchange);
   const fallback=["Binance","OKX","Gate","KuCoin","WhiteBIT","Bitget","Bybit"].filter(name=>!order.includes(name));
-  const verificationOrder=[...new Set([...order,...fallback])].slice(0,3);
+  const verificationOrder=[...new Set([...order,...fallback])].slice(0,5);
   let market=null,corroboration=null,errors=[];
   for(const venue of verificationOrder){if(corroboration)break;try{const candidate=await loadProvider(symbol,venue);if(!market)market=candidate;else corroboration=candidate;}catch(error){errors.push(venue+": "+String(error?.message||error).slice(0,80));}}
   if(!market)throw new Error(errors.join(" | ")||"No candle provider responded");
   if(!corroboration)throw new Error("تأیید دو صرافی برای "+symbol+"USDT در دسترس نیست: "+errors.join(" | "));
-  const rows=market.rows,now=Date.now(),index=rows.length-2,other=corroboration.rows.slice(0,-1).at(-1),primary=rows.slice(0,-1).at(-1);
-  if(!primary||!other)throw new Error("کندل بسته‌شده برای تأیید چندصرافی کافی نیست");
+  const rows=market.rows,now=Date.now(),primaryClosed=rows.slice(0,-1),secondaryClosed=corroboration.rows.slice(0,-1);
+  const secondaryByTime=new Map(secondaryClosed.map(candle=>[candle[0],candle]));
+  let index=-1,primary=null,other=null;
+  for(let i=primaryClosed.length-1;i>=0;i--){const match=secondaryByTime.get(primaryClosed[i][0]);if(match){index=i;primary=primaryClosed[i];other=match;break;}}
+  if(!primary||!other)throw new Error("کندل بسته‌شده مشترک برای تأیید چندصرافی پیدا نشد");
   const exchangeTimeDiffMs=Math.abs(primary[0]-other[0]),exchangePriceDeviationPct=primary[4]>0?Math.abs(other[4]/primary[4]-1)*100:Infinity;
-  const multiExchangeConfirmed=exchangeTimeDiffMs<=90000&&exchangePriceDeviationPct<=0.4;
-  if(!multiExchangeConfirmed)throw new Error("اختلاف چندصرافی خارج از حد مجاز: "+exchangeTimeDiffMs+"ms / "+exchangePriceDeviationPct.toFixed(3)+"٪");
+  const multiExchangeConfirmed=exchangeTimeDiffMs===0&&exchangePriceDeviationPct<=0.4;
+  // A real price disagreement is a quality rejection, not an upstream transport failure.
+  if(!multiExchangeConfirmed)return null;
   if(index<30)return null;
   const last=rows[index],candleAge=now-last[0],close=last[4],open=last[1],volume=last[5];
   if(candleAge<60000||candleAge>180000||close<=0||open<=0||volume<=0)return null;
