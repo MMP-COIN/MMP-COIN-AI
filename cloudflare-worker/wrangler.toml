@@ -33,3 +33,7 @@ database_id = "dfb3ee95-ef2f-4067-a973-31b8fb1ee62f"
 
 [placement]
 region = "aws:eu-central-1"
+
+[[kv_namespaces]]
+binding = "MARKET_DATA_CACHE"
+id = "35f05f95cf874bd39d40958991639294"
