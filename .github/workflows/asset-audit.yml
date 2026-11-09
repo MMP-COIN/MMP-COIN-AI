@@ -235,7 +235,7 @@ jobs:
             const supportMap={},supportSources={};
             for(let i=0;i<candidates.length;i+=120){
               const symbols=[...new Set(candidates.slice(i,i+120).map(x=>String(x.symbol).toUpperCase()))];
-              const supportPayload=await getJson(WORKER+'/support-check?symbols='+encodeURIComponent(symbols.join(',')),12000);
+              const supportPayload=await getJson(WORKER+'/support-check?symbols='+encodeURIComponent(symbols.join(',')),30000);
               (supportPayload.assets||[]).forEach(x=>{supportMap[String(x.symbol||"").toUpperCase()]=x;});
               Object.assign(supportSources,supportPayload.sources||{});
             }
