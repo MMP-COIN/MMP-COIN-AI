@@ -51,6 +51,13 @@ header{position:sticky;top:0;z-index:10;background:#090d14ed;border-bottom:1px s
 
 /* Slim framed latest quantum output */
 .quantum-output-frame{position:relative;max-width:100%;margin:10px 0 18px;padding:12px 15px 10px;border:1px solid #9b7a45;border-radius:13px;background:linear-gradient(105deg,#171b22 0%,#101722 52%,#0c131d 100%);box-shadow:inset 0 1px #fff2,0 7px 22px #0003;overflow:hidden}.quantum-output-frame:before{content:"";position:absolute;inset:0 auto 0 0;width:3px;background:linear-gradient(180deg,#f5dda2,#9a7134,#f5dda2)}.qof-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-bottom:9px;border-bottom:1px solid #d9b66d25}.qof-head>div{display:flex;align-items:center;gap:10px;min-width:0}.qof-kicker{font-size:8px;letter-spacing:1.5px;color:#c9a45e;font-weight:900}.qof-head b{font-size:12px;color:#f5dda2}.qof-cycle{font-size:9px;color:#e8c777;border:1px solid #9b7a4566;border-radius:20px;padding:4px 9px;white-space:nowrap;background:#d9b66d0b}.qof-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;padding:10px 0 7px}.qof-metric{display:flex;align-items:center;justify-content:center;gap:9px;padding:2px 10px;border-left:1px solid #ffffff12}.qof-metric:last-child{border-left:0}.qof-metric small{font-size:10px;color:#aab5c4}.qof-metric b{font-size:17px;line-height:1;color:#f4d99c;font-variant-numeric:tabular-nums}.qof-note{margin:2px 0 0;padding-top:8px;border-top:1px solid #ffffff0d;color:#8996a7;font-size:9px;line-height:1.8}@media(max-width:560px){.quantum-output-frame{padding:10px 11px;margin:8px 0 14px}.qof-head{padding-bottom:8px}.qof-head>div{gap:7px}.qof-kicker{font-size:7px;letter-spacing:1px}.qof-head b{font-size:11px}.qof-metrics{padding:9px 0 7px}.qof-metric{flex-direction:column;gap:5px;padding:2px 4px}.qof-metric small{font-size:9px}.qof-metric b{font-size:16px}.qof-note{font-size:8px}}
+</style><style id="mmp-quantum-engine-detail-ui">
+.engine-live-meter{height:7px;background:#080d14;border:1px solid #344052;border-radius:20px;overflow:hidden;margin:12px 0 7px}
+.engine-live-meter span{display:block;height:100%;border-radius:20px;background:linear-gradient(90deg,#8c672e,#f3d58f);box-shadow:0 0 12px #d8b56b88;transition:width .45s}
+.engine-live-meta{display:flex;justify-content:space-between;gap:8px;color:#e8cf91;font-size:10px}
+.engine-proof{color:#aeb9c8;font-size:10px;line-height:1.8}
+.engine-result-link{display:inline-block;color:#e8cf91;text-decoration:none;font-size:11px;font-weight:800;margin-top:5px}
+.engine-drawer[open]{border-color:#c5a35f;box-shadow:0 0 18px #c49d4b20}
 </style></head>
 <body>
 <header><div class="brand"><div class="mark" aria-label="MMP Quantum coin">M</div><div><b>مرکز کوانتومی MMP</b><small>MMP QUANTUM CENTER · MARKET INTELLIGENCE</small></div></div><div class="actions"><button class="btn" id="back">بازگشت به ترمینال</button><button class="btn primary" id="scan">اتصال به اسکن زنده</button></div></header>
@@ -122,7 +129,39 @@ function std(a){let m=mean(a);return Math.sqrt(mean(a.map(x=>(x-m)**2)))}
 function ema(a,p){if(!a.length)return 0;let k=2/(p+1),v=a[0];for(let i=1;i<a.length;i++)v=a[i]*k+v*(1-k);return v}
 function rsi(a,p=14){if(a.length<p+1)return 50;let up=0,dn=0;for(let i=a.length-p;i<a.length;i++){let d=a[i]-a[i-1];if(d>0)up+=d;else dn-=d}return dn===0?100:100-100/(1+(up/p)/(dn/p))}
 function calcATR(k,p=14){let tr=[];for(let i=1;i<k.length;i++){let h=+k[i][2],l=+k[i][3],pc=+k[i-1][4];tr.push(Math.max(h-l,Math.abs(h-pc),Math.abs(l-pc)))}return mean(tr.slice(-p))}
-function renderEngines(statuses=null){const idle=statuses===null;const current=statuses||{};$("engines").innerHTML=engineDefs.map((e,i)=>{const status=current[i]||(idle?"idle":"partial");const label=status==="ready"?"فعال":status==="partial"?"نیازمند داده":status==="busy"?"در حال بررسی":status==="idle"?"آماده اجرا":status==="bad"?"قطع / خطا":"منتظر داده";return '<article class="engine"><div class="engine-top"><b>'+String(i+1).padStart(2,"0")+". "+e[0]+'</b><span class="state '+status+'">'+label+'</span></div><p>'+e[1]+'</p></article>'}).join("")}
+function engineEvidence(i){
+ const rows=state.rows||[],valid=rows.filter(x=>Number(x.last)>0);
+ const flow=valid.filter(x=>x.flow&&x.flow.complete===true).length;
+ const depth=valid.filter(x=>(x.depth&&x.depth.confirmed)||x.book).length;
+ const plans=valid.filter(x=>x.tradePlan&&Object.keys(x.tradePlan).length).length;
+ const quality=valid.filter(x=>x.raw&&x.raw.quantum&&x.raw.quantum.qualityGate).length;
+ const metrics=[
+ ["نمادهای دارای داده",valid.length,state.universe.length||valid.length],
+ ["نامزدهای حرکت انفجاری",valid.filter(x=>Number(x.explosion)>=.55).length,valid.length],
+ ["فرصت‌های ثبت‌شده",rows.length,state.universe.length||rows.length],
+ ["نمادهای دارای جریان کامل",flow,valid.length],
+ ["نمادهای دارای شواهد عمق",depth,valid.length],
+ ["هم‌جهتی روندها",valid.filter(x=>x.trend5===x.trend1&&x.trend5!==0).length,valid.length],
+ ["نمادهای دارای ATR",valid.filter(x=>Number(x.atrPct)>0).length,valid.length],
+ ["نمادهای دارای نشانه جهت",valid.filter(x=>x.direction==="bull"||x.direction==="bear").length,valid.length],
+ ["برنامه‌های سناریو",plans,valid.length],
+ ["پیش‌بینی‌های ثبت‌شده",state.ledger.length,Math.max(1,state.ledger.length)],
+ ["برنامه‌های دارای حد ریسک",valid.filter(x=>Number(x.tradePlan?.riskPercent)>0).length,valid.length],
+ ["تصمیم‌های عبورکرده از گیت کیفیت",quality,valid.length]
+ ];
+ const [label,value,total]=metrics[i],pct=total?Math.min(100,Math.round(value/total*100)):0;
+ return {label,value,total,pct};
+}
+function renderEngines(statuses=null){
+ const idle=statuses===null,current=statuses||{};
+ $("engines").innerHTML=engineDefs.map((e,i)=>{
+  const status=current[i]||(idle?"idle":"partial"),label=status==="ready"?"فعال":status==="partial"?"نیازمند داده":status==="busy"?"در حال بررسی":status==="bad"?"قطع / خطا":"منتظر داده";
+  const m=engineEvidence(i),n=String(i+1).padStart(2,"0");
+  return '<details class="engine-drawer" id="engine-detail-'+n+'"><summary><span>'+n+'. '+e[0]+'</span><span class="state '+status+'">'+label+'</span><span class="drawer-meta">'+m.value.toLocaleString("fa-IR")+' / '+m.total.toLocaleString("fa-IR")+'</span></summary><div class="engine-more"><p>'+e[1]+'</p><div class="engine-live-meter"><span style="width:'+m.pct+'%"></span></div><div class="engine-live-meta"><b>'+m.label+'</b><strong>'+m.pct.toLocaleString("fa-IR")+'٪</strong></div><p class="engine-proof">این شاخص از snapshot مرکزی و داده‌های ثبت‌شده محاسبه شده است؛ نمایش آن به معنی وجود الگوریتم مستقل جداگانه نیست.</p><a class="engine-result-link" href="#quantum-opportunities">مشاهده خروجی‌ها و فرصت‌های مرتبط ←</a></div></details>';
+ }).join("");
+ const target=decodeURIComponent(location.hash.slice(1));
+ if(/^engine-detail-\d{2}$/.test(target)){const el=$(target);if(el){el.open=true;setTimeout(()=>el.scrollIntoView({behavior:"smooth",block:"center"}),100)}}
+}
 function analyze(t,k5,k1h,marketData){
  const close=k5.map(x=>+x[4]),high=k5.map(x=>+x[2]),low=k5.map(x=>+x[3]),quote=k5.map(x=>+x[7]),last=close.at(-1),prev=close.at(-2),atr=calcATR(k5),atrPct=last?atr/last*100:0;
  const fast=ema(close.slice(-60),9),slow=ema(close.slice(-60),21),r=rsi(close),volAvg=mean(quote.slice(-20,-1)),volRatio=volAvg?quote.at(-1)/volAvg:1;
