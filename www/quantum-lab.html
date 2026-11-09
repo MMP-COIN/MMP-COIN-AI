@@ -417,97 +417,15 @@ $("asset-search").addEventListener("input",()=>{clearTimeout(searchTimer);search
 renderEngines(null);renderLedger();renderQuantumCharts();loadIndependentCatalog();startLiveMonitor();if(state.ledger.length)log("حافظه محلی شامل "+state.ledger.length+" پیش‌بینی قبلی است.");
 })();
 </script>
-<style id="mmp-quantum-live-engine-strip">
-/* Live quantum engine rail — backend scan continues independently of this page */
-.engine-showcase{display:block!important;overflow:hidden;border:1px solid #a9874c66;border-radius:15px;padding:10px;background:linear-gradient(110deg,#141b25,#090f18)}
-.engines{display:flex!important;gap:8px!important;overflow-x:auto!important;overflow-y:hidden!important;padding:2px 2px 9px;scroll-snap-type:x proximity;scrollbar-width:thin;scrollbar-color:#9e7b43 #111925}
-.engine{flex:0 0 190px!important;width:190px;min-height:86px!important;padding:10px 11px!important;scroll-snap-align:start;border-radius:11px!important;background:linear-gradient(145deg,#1a2634,#0c131d)!important}
-.engine:after{content:"";position:absolute;inset:auto 10px 0 10px;height:2px;background:linear-gradient(90deg,transparent,#cba45f,transparent);opacity:.55}
-.engine b{font-size:11px!important}
-.engine p{font-size:9px!important;line-height:1.7!important;margin-top:6px!important}
-.engine .state{font-size:8px!important}
-.engine .state.ready{box-shadow:0 0 12px #25d69522}
-.engine .state.busy{animation:mmpEnginePulse 1.4s ease-in-out infinite}
-@keyframes mmpEnginePulse{50%{opacity:.42}}
-@media(max-width:560px){.engine-showcase{padding:7px}.engines{gap:7px!important}.engine{flex-basis:158px!important;width:158px;min-height:78px!important;padding:9px!important}.engine b{font-size:10px!important}.engine p{font-size:8px!important}}
-</style>
-
-<style id="mmp-quantum-horizontal-engine-cards">
-/* Horizontal engine cards: apply to the actual details elements, not the unused .engine class. */
-.engine-showcase{display:block!important;max-width:100%;overflow:hidden}
-#quantum-engines.engines,.engines#engines{display:flex!important;flex-flow:row nowrap!important;align-items:stretch;gap:10px!important;overflow-x:auto!important;overflow-y:hidden!important;padding:3px 2px 12px;scroll-snap-type:x mandatory;scrollbar-width:thin;scrollbar-color:#a9874c #101722}
-.engine-drawer{flex:0 0 min(360px,82vw);width:min(360px,82vw);min-width:0;scroll-snap-align:start;display:flex;flex-direction:column;align-self:stretch}
-.engine-drawer summary{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"name state" "meta meta";align-items:center;gap:7px 10px;min-height:76px;padding:12px 14px}
-.engine-drawer summary>span:first-child{grid-area:name;min-width:0;overflow-wrap:anywhere;line-height:1.6}
-.engine-drawer summary>.state{grid-area:state;justify-self:end}
-.engine-drawer summary>.drawer-meta{grid-area:meta;margin:0;justify-self:start;font-variant-numeric:tabular-nums}
-.engine-drawer summary:after{position:absolute;right:12px;bottom:10px}
-.engine-drawer summary{position:relative;padding-bottom:27px}
-.engine-more{padding:10px 13px 13px;display:grid;grid-template-columns:minmax(0,1fr) minmax(90px,.7fr);gap:7px 12px;align-content:start}
-.engine-more>p:first-child{grid-column:1/-1;margin:0;line-height:1.8;overflow-wrap:anywhere}
-.engine-more .engine-live-meter{grid-column:1/-1;margin:3px 0}
-.engine-more .engine-live-meta{grid-column:1/-1}
-.engine-more .engine-proof{grid-column:1/-1;margin:0}
-.engine-more .engine-result-link{grid-column:1/-1;overflow-wrap:anywhere}
-@media(max-width:560px){
- #quantum-engines.engines,.engines#engines{gap:8px!important;padding-bottom:10px}
- .engine-drawer{flex-basis: min(310px,86vw);width:min(310px,86vw)}
- .engine-drawer summary{min-height:72px;padding:10px 12px 25px;font-size:11px}
- .engine-drawer summary>span:first-child{font-size:11px}
- .engine-more{padding:9px 11px 11px}
- .engine-proof{font-size:9px;line-height:1.75}
-}
-</style>
 
 
-<style id="mmp-quantum-horizontal-rail-force">
-/* Horizontal rail fallback, scoped to the 12 engine cards section. */
-#quantum-engines{display:block!important;max-width:100%;overflow:hidden!important}
-#quantum-engines #engines{display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:stretch!important;gap:10px!important;width:100%!important;max-width:100%!important;overflow-x:auto!important;overflow-y:hidden!important;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;padding:4px 3px 13px}
-#quantum-engines #engines>.engine-drawer{display:flex!important;flex:0 0 min(360px,82vw)!important;width:min(360px,82vw)!important;min-width:0!important;max-width:none!important;flex-direction:column!important;scroll-snap-align:start}
-@media(max-width:560px){#quantum-engines #engines>.engine-drawer{flex-basis:min(310px,86vw)!important;width:min(310px,86vw)!important}}
-</style>
 
 
-<style id="mmp-quantum-engine-horizontal-grid-final">
-#quantum-engines{display:block!important;max-width:100%!important;min-width:0!important;overflow:hidden!important}
-#quantum-engines>#engines,
-#quantum-engines .engines#engines{
- display:grid!important;
- grid-auto-flow:column!important;
- grid-template-rows:minmax(0,auto)!important;
- grid-template-columns:repeat(12,minmax(min(310px,86vw),360px))!important;
- grid-auto-columns:minmax(min(310px,86vw),360px)!important;
- justify-content:start!important;
- align-items:stretch!important;
- gap:10px!important;
- width:100%!important;
- max-width:100%!important;
- min-width:0!important;
- overflow-x:auto!important;
- overflow-y:hidden!important;
- overscroll-behavior-x:contain;
- -webkit-overflow-scrolling:touch;
- scroll-snap-type:x mandatory;
- padding:5px 3px 14px!important;
-}
-#quantum-engines>#engines>.engine-drawer,
-#quantum-engines .engines#engines>.engine-drawer{
- display:block!important;
- width:100%!important;
- min-width:0!important;
- max-width:none!important;
- margin:0!important;
- scroll-snap-align:start;
-}
-#quantum-engines .engine-drawer summary{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:center!important}
-@media(max-width:560px){
- #quantum-engines>#engines,#quantum-engines .engines#engines{
-  grid-template-columns:repeat(12,minmax(86vw,86vw))!important;
-  grid-auto-columns:86vw!important;
- }
-}
-</style>
+
+
+
+
+
 <style id="mmp-quantum-engine-horizontal-final">
 #quantum-engines{display:block!important;width:100%!important;max-width:100%!important;min-width:0!important;overflow:hidden!important}
 #quantum-engines>#engines{display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:stretch!important;justify-content:flex-start!important;gap:10px!important;width:100%!important;max-width:100%!important;min-width:0!important;overflow-x:auto!important;overflow-y:hidden!important;overscroll-behavior-x:contain!important;-webkit-overflow-scrolling:touch!important;scroll-snap-type:x mandatory!important;padding:5px 3px 14px!important}
