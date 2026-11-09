@@ -100,7 +100,7 @@ body{overflow-wrap:anywhere;word-break:normal}
  <article class="architecture-step"><span>لایه ۳ · تأیید</span><b>سنجش جریان و سناریو</b><p>Smart Money Flow · Liquidity Hunter · Scenario Simulator</p><small>خروجی: شواهد سفارش، نقدینگی و سناریوهای قابل ابطال</small></article><i class="architecture-arrow">←</i>
  <article class="architecture-step"><span>لایه ۴ · تصمیم</span><b>ریسک، یادگیری و رتبه‌بندی</b><p>Risk Intelligence · Adaptive Learning · Quantum Decision Engine</p><small>خروجی: رتبه نهایی، کنترل ریسک و ارزیابی عملکرد</small></article>
 </section>
-<div class="section-title"><h2>۱۲ موتور هوشمند و تخصصی</h2><small>قابلیت‌ها و وضعیت هر موتور به‌صورت شفاف</small></div>
+<div class="section-title"><h2>۱۲ قابلیت تخصصی ابرموتور</h2><small>وضعیت شواهد هر قابلیت در چرخه واحد ابرموتور</small></div>
 <section class="engine-showcase" id="quantum-engines"><div class="engines" id="engines"></div></section>
 <div class="section-title" id="quantum-charts-section"><h2>داشبورد نموداری مرکز کوانتومی</h2><small>نمودارها فقط از نتایج واقعی ثبت‌شده ساخته می‌شوند</small></div><section class="quantum-charts" id="quantum-charts"><div class="chart-card"><div class="empty">پس از دریافت داده بازار، نمودارها به‌روزرسانی می‌شوند.</div></div></section>\n<div class="section-title" id="quantum-assets"><h2>انتخاب ارز برای تحلیل کوانتومی</h2><small>۱۰ ارز پرمعامله اول · سایر ارزها در فهرست جمع‌شونده · USDT Spot</small></div>
 <section class="panel" id="independent-search"><div class="toolbar"><input id="asset-search" autocomplete="off" placeholder="نام یا نماد ارز را جستجو کن؛ مثل BTC یا Bitcoin…"><button class="btn" id="asset-search-clear" type="button">پاک‌کردن</button><button class="btn" id="asset-search-stop" type="button" hidden>توقف پایش</button></div><div id="asset-search-status" class="muted tiny" style="margin-top:8px">در حال دریافت فهرست دارایی‌های واجد شرایط بازار…</div><div id="asset-search-results" class="asset-search-results"></div><div class="asset-more-wrap"><button class="btn" id="asset-search-more" type="button">نمایش ارزهای بیشتر</button><small id="asset-count-label" class="muted tiny"></small></div></section>
@@ -443,56 +443,6 @@ renderEngines(null);renderLedger();renderQuantumCharts();loadIndependentCatalog(
 
 
 
-
-<style id="mmp-quantum-engine-horizontal-final">
-#quantum-engines{display:block!important;width:100%!important;max-width:100%!important;min-width:0!important;overflow:hidden!important}
-#quantum-engines>#engines{display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:stretch!important;justify-content:flex-start!important;gap:10px!important;width:100%!important;max-width:100%!important;min-width:0!important;overflow-x:auto!important;overflow-y:hidden!important;overscroll-behavior-x:contain!important;-webkit-overflow-scrolling:touch!important;scroll-snap-type:x mandatory!important;padding:5px 3px 14px!important}
-#quantum-engines>#engines>.engine-drawer{display:block!important;flex:0 0 340px!important;width:340px!important;min-width:340px!important;max-width:340px!important;margin:0!important;scroll-snap-align:start!important}
-@media(max-width:560px){#quantum-engines>#engines{gap:8px!important}#quantum-engines>#engines>.engine-drawer{flex:0 0 86vw!important;width:86vw!important;min-width:86vw!important;max-width:86vw!important}}
-</style>
-<style id="mmp-engine-detail-horizontal-layout">
-/* Expanded engine detail: turn the vertical information stack into horizontal columns. */
-#quantum-engines>#engines>.engine-drawer[open]{
- flex:0 0 min(920px,calc(100vw - 36px))!important;
- width:min(920px,calc(100vw - 36px))!important;
- min-width:min(920px,calc(100vw - 36px))!important;
- max-width:min(920px,calc(100vw - 36px))!important;
-}
-#quantum-engines .engine-more{
- display:grid!important;
- grid-template-columns:minmax(0,1.15fr) minmax(150px,.9fr) minmax(0,1.35fr)!important;
- align-items:center!important;
- gap:10px 14px!important;
- padding:12px 14px 14px!important;
-}
-#quantum-engines .engine-more>p:first-child{grid-column:1;grid-row:1;margin:0!important}
-#quantum-engines .engine-more>.engine-live-meter{grid-column:2;grid-row:1;margin:0 0 7px!important}
-#quantum-engines .engine-more>.engine-live-meta{grid-column:2;grid-row:1;align-self:end;margin-top:23px}
-#quantum-engines .engine-more>.engine-proof{grid-column:3;grid-row:1;margin:0!important}
-#quantum-engines .engine-more>.engine-result-link{grid-column:1/-1;grid-row:2;margin-top:0!important;padding-top:8px;border-top:1px solid #ffffff12}
-#detail .details{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:9px!important}
-#detail .detail{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:9px!important;min-width:0!important}
-#detail .detail small{margin:0!important;flex:1 1 auto!important}
-#detail .detail b{flex:0 1 auto!important;text-align:left!important}
-@media(max-width:560px){
- #quantum-engines>#engines>.engine-drawer[open]{
-  flex-basis:92vw!important;width:92vw!important;min-width:92vw!important;max-width:92vw!important;
- }
- #quantum-engines .engine-more{
-  grid-template-columns:repeat(2,minmax(0,1fr))!important;
-  gap:9px!important;padding:10px!important;
- }
- #quantum-engines .engine-more>p:first-child{grid-column:1/-1;grid-row:1}
- #quantum-engines .engine-more>.engine-live-meter{grid-column:1;grid-row:2}
- #quantum-engines .engine-more>.engine-live-meta{grid-column:1;grid-row:2}
- #quantum-engines .engine-more>.engine-proof{grid-column:2;grid-row:2;font-size:9px}
- #quantum-engines .engine-more>.engine-result-link{grid-column:1/-1;grid-row:3}
- #detail .details{grid-template-columns:repeat(2,minmax(0,1fr))!important}
- #detail .detail{padding:9px!important;gap:6px!important}
- #detail .detail small{font-size:9px!important}
- #detail .detail b{font-size:11px!important}
-}
-</style>
 
 <style id="mmp-super-engine-unified-layout">
 #quantum-engines{display:block!important;width:100%;min-width:0}
