@@ -54,7 +54,7 @@ function setStatus(s,kind){$("status").textContent=s;$("dot").className="dot "+(
 function loadLedger(){try{return JSON.parse(localStorage.getItem("mmp_quantum_ledger_v1")||"[]")}catch(e){return[]}}
 function saveScanState(completed,btcTrend){
  try{
-  const payload={version:1,completed:!!completed,savedAt:Date.now(),universe:state.universe.length,scanned:state.done,errors:state.errors||0,rejected:state.rejected||0,btcTrend:btcTrend||"نامشخص",rows:state.rows.map(x=>{const y={...x};delete y.k5;delete y.k1h;return y;})};
+  const payload={version:1,completed:!!completed,savedAt:Date.now(),universe:state.universe.length,scanned:state.done,errors:state.errors||0,rejected:state.rejected||0,btcTrend:btcTrend||"نامشخص",rows:state.rows.map(x=>{const y={...x};delete y.k5;delete y.k1h;delete y.raw;return y;})};
   localStorage.setItem("mmp_quantum_fullscan_v1",JSON.stringify(payload));
  }catch(e){log("ذخیره حافظه اسکن ناموفق بود: "+e.message)}
 }
