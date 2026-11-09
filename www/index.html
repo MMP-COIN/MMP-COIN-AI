@@ -3126,6 +3126,7 @@ const AI_ANALYSIS_ENDPOINT = "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.
 
 const FAST_RADAR_SERVER_ENDPOINT = "https://mmp-coin-ai-radar.mehrdadmohammadi1988.workers.dev";
 const unifiedRadarSignals = new Map();
+let unifiedRadarCandidates = [];
 let unifiedRadarSnapshotAt = 0;
 let unifiedRadarSnapshotBusy = false;
 let unifiedRadarProgress = {completed:0,total:0,failed:0,candidates:0,flowChecked:0,flowConfirmed:0,qualityPass:0,percent:0,state:"در انتظار اتصال به موتور هوشمند"};
@@ -3161,6 +3162,7 @@ async function loadUnifiedRadarSnapshot(){
   const snapshot=await response.json();
   if(snapshot.status!=="online")throw new Error(snapshot.message||"سرویس رادار هنوز آماده نیست");
   const snapshotAt=Date.parse(snapshot.scanned_at||"");
+  unifiedRadarCandidates=Array.isArray(snapshot.candidate_details)?snapshot.candidate_details.filter(x=>x&&x.id&&Number.isFinite(Number(x.score))):[];
   if(!Number.isFinite(snapshotAt)||snapshotAt<=0)throw new Error("زمان Snapshot معتبر نیست");
   if(snapshotAt>unifiedRadarSnapshotAt||unifiedRadarSignals.size===0){
    unifiedRadarSnapshotAt=Math.max(unifiedRadarSnapshotAt,snapshotAt);
@@ -4036,6 +4038,18 @@ function closeRadarSignalPage(fromPopState=false){
  page.hidden=true;page.setAttribute("aria-hidden","true");document.body.classList.remove("radar-detail-open");
  if(goBack&&window.history)window.history.back();
 }
+function renderRadarCandidateSection(){
+ const candidates=unifiedRadarCandidates.filter(x=>Date.now()-Number(x.updatedAt||0)<=5*60*1000).sort((a,b)=>Number(b.score)-Number(a.score));
+ if(!candidates.length)return "";
+ const labels={checking_flow:"در حال بررسی جریان معاملات",queued_for_flow_review:"در صف بررسی جریان معاملات",flow_received:"جریان دریافت شد · بررسی هم‌جهتی",flow_incomplete:"داده جریان ناقص",flow_not_aligned:"جریان معاملات هم‌جهت نیست",flow_error:"خطا در دریافت جریان",flow_confirmed:"جریان معاملات تأیید شد"};
+ const cards=candidates.map(x=>{
+  const c=cachedCoinsData.find(item=>String(item.id)===String(x.id))||x.coin||{};
+  const up=x.trend==="bull",status=x.qualityGate?"عبور از گیت کیفیت":x.flowConfirmed?"جریان تأیید شد · فیلتر نهایی باقی است":(labels[x.flowStatus]||"در انتظار بررسی");
+  const change=v=>Number.isFinite(Number(v))?(Number(v)>0?"+":"")+Number(v).toFixed(2)+"٪":"—";
+  return '<article class="radar-item '+(up?"radar-item-bullish":"radar-item-bearish")+'"><div class="radar-asset"><img src="'+aiEscape(c.image||"")+'" alt="" loading="lazy" onerror="this.style.display=\'none\'"><span><b>'+aiEscape(c.name||x.symbol)+'</b><small>'+aiEscape(String(x.symbol).toUpperCase())+' / USDT</small></span></div><div class="radar-score"><b>'+Math.round(Number(x.score)||0).toLocaleString("fa-IR")+'</b><small>نامزد / ۱۰۰</small></div><div class="radar-stats"><span>۱ دقیقه <b>'+change(x.change1m)+'</b></span><span>۳ دقیقه <b>'+change(x.change3m)+'</b></span><span>۵ دقیقه <b>'+change(x.change5m)+'</b></span><span>حجم نسبی <b>'+Number(x.volumeRatio||0).toFixed(1)+'×</b></span></div><div class="radar-action"><span class="radar-trend '+(up?"positive":"negative")+'">'+(up?"تمایل صعودی":"تمایل نزولی")+'</span><span class="radar-trend">'+aiEscape(status)+'</span></div></article>';
+ }).join("");
+ return '<section class="radar-group"><div class="section-head radar-group-head"><div class="radar-group-title"><span class="radar-group-icon">◎</span><span><b>نامزدهای اولیه در حال بررسی</b><small>غربال کندلی؛ هنوز سیگنال نهایی یا توصیه ورود نیست</small></span></div><span class="radar-group-count">'+candidates.length.toLocaleString("fa-IR")+' نامزد</span></div><div class="radar-list radar-featured-list">'+cards+'</div></section>';
+}
 function renderOpportunities(){
  const el=$("opportunity-list");if(!el)return;
  const active=[...unifiedRadarSignals.entries()].filter(([,signal])=>Date.now()-Number(signal.updatedAt||0)<=5*60*1000&&radarSignalPassesDisplayThreshold(signal)).map(([id,signal])=>{
@@ -4046,7 +4060,7 @@ function renderOpportunities(){
  const bullish=active.filter(x=>x.signal.trend==="bull").sort((a,b)=>Number(b.signal.score)-Number(a.signal.score));
  const bearish=active.filter(x=>x.signal.trend==="bear").sort((a,b)=>Number(b.signal.score)-Number(a.signal.score));
  const updated=$("radar-updated");
- if(updated)updated.textContent="موتور هوشمند مرکزی · "+active.length.toLocaleString("fa-IR")+" سیگنال معتبر · صعودی "+bullish.length.toLocaleString("fa-IR")+" · نزولی "+bearish.length.toLocaleString("fa-IR");
+ if(updated)updated.textContent="موتور هوشمند مرکزی · "+active.length.toLocaleString("fa-IR")+" فرصت معتبر · "+unifiedRadarCandidates.length.toLocaleString("fa-IR")+" نامزد در بررسی";
  const change=v=>v==null||!Number.isFinite(Number(v))?"—":(Number(v)>0?"+":"")+Number(v).toFixed(2)+"٪";
  const card=x=>{
   const c=x.coin,q=x.signal,up=q.trend==="bull",score=Math.round(Number(q.score)||0);
@@ -4060,8 +4074,9 @@ function renderOpportunities(){
   const remainingHtml=remaining.length?'<div class="signal-drawer"><button type="button" class="signal-drawer-toggle" aria-expanded="false" data-scroll-drawer-toggle><span class="signal-drawer-icon">⌄</span><span class="signal-drawer-copy"><b>نمایش همه فرصت‌ها</b><small>فهرست کامل با پیمایش مستقل</small></span><strong>'+remaining.length.toLocaleString("fa-IR")+' نماد</strong></button><div class="signal-drawer-panel" data-scroll-drawer-panel hidden><div class="signal-drawer-panel-head"><span>سایر نامزدهای '+title+'</span><small>برای مشاهده، داخل این پنجره اسکرول کنید</small></div><div class="radar-list radar-overflow-list" tabindex="0" aria-label="فهرست اسکرولی '+title+'">'+remaining.map(card).join("")+'</div></div></div>':'';
   return '<section class="radar-group radar-side '+(up?"radar-group-bull":"radar-group-bear")+'"><div class="section-head radar-group-head"><div class="radar-group-title"><span class="radar-group-icon">'+symbol+'</span><span><b>'+title+'</b><small>حداقل قدرت ۶۹ · سه گزینه قدرتمند در نمای اصلی · مرتب‌شده بر اساس امتیاز</small></span></div><span class="radar-group-count">'+items.length.toLocaleString("fa-IR")+' نامزد</span></div><div class="radar-list radar-featured-list">'+featuredHtml+'</div>'+remainingHtml+'</section>';
  };
- if(!active.length){const p=unifiedRadarProgress;el.innerHTML='<div class="ai-empty">هنوز فرصت نهایی تأیید نشده است. در چرخه فعلی '+Number(p.completed||0).toLocaleString("fa-IR")+' از '+Number(p.total||0).toLocaleString("fa-IR")+' نماد بررسی شده؛ نامزدهای کندلی: '+Number(p.candidates||0).toLocaleString("fa-IR")+'، بررسی جریان معاملات: '+Number(p.flowChecked||0).toLocaleString("fa-IR")+'، تأیید جریان: '+Number(p.flowConfirmed||0).toLocaleString("fa-IR")+'، عبور از فیلتر نهایی: '+Number(p.qualityPass||0).toLocaleString("fa-IR")+' . فقط فرصت‌های دارای تأیید واقعی نمایش داده می‌شوند.</div>';return;}
- el.innerHTML=group(bullish,"bull")+group(bearish,"bear");
+ const candidateSection=renderRadarCandidateSection();
+ if(!active.length){const p=unifiedRadarProgress;el.innerHTML=candidateSection+'<div class="ai-empty">هنوز فرصت نهایی تأیید نشده است. در چرخه فعلی '+Number(p.completed||0).toLocaleString("fa-IR")+' از '+Number(p.total||0).toLocaleString("fa-IR")+' نماد بررسی شده؛ نامزدهای کندلی: '+Number(p.candidates||0).toLocaleString("fa-IR")+'، بررسی جریان معاملات: '+Number(p.flowChecked||0).toLocaleString("fa-IR")+'، تأیید جریان: '+Number(p.flowConfirmed||0).toLocaleString("fa-IR")+'، عبور از فیلتر نهایی: '+Number(p.qualityPass||0).toLocaleString("fa-IR")+' . فقط فرصت‌های دارای تأیید واقعی نمایش داده می‌شوند.</div>';return;}
+ el.innerHTML=candidateSection+group(bullish,"bull")+group(bearish,"bear");
 }
 function calcRisk(){const capital=Number($("risk-capital").value),pct=Number($("risk-percent").value),entry=Number($("risk-entry").value),stop=Number($("risk-stop").value);const out=$("risk-result");if(!(capital>0&&pct>0&&pct<=100&&entry>0&&stop>0)){out.textContent="سرمایه، درصد ریسک، قیمت ورود و قیمت حد ضرر را کامل و معتبر وارد کنید.";return;}if(entry===stop){out.textContent="قیمت ورود و قیمت حد ضرر نباید برابر باشند.";return;}const risk=capital*pct/100,dist=Math.abs(entry-stop)/entry,notional=risk/dist,qty=notional/entry;out.innerHTML="<div><b>مبلغ ورود به معامله:</b> "+money(notional,2)+" USDT</div><div><b>ضرر احتمالی در صورت برخورد به حد ضرر:</b> "+money(risk,2)+" USDT</div><div><b>فاصله تا حد ضرر:</b> "+(dist*100).toFixed(2)+"%</div><div><b>مقدار دارایی:</b> "+money(qty,6)+"</div><small>مبلغ ورود، ارزش کل معامله است و با اهرم می‌تواند از مارجین پرداختی بیشتر باشد. کارمزد و لغزش قیمت محاسبه نشده‌اند.</small>";}
 $("market-refresh-btn")?.addEventListener("click",()=>refreshAll());
