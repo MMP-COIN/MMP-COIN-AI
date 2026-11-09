@@ -2487,56 +2487,58 @@ function passesMarketQualityFilter(coin){
 
 
 async function enrichWithBinance(coins){
- let tickers=[],priceSource="Binance Spot";
- try{
-  try{
-   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),8000);
-   let response;
-   try{response=await fetch(AI_ANALYSIS_ENDPOINT+'/market-proxy?source=binance-tickers',{cache:'no-store',signal:controller.signal});}
-   finally{clearTimeout(timer);}
-   if(!response.ok)throw new Error('Binance HTTP '+response.status);
-   tickers=await response.json();
-   if(!Array.isArray(tickers))throw new Error('Invalid Binance ticker response');
-  }catch(binanceError){
-   console.warn('Binance ticker feed unavailable; trying Bitget Spot:',binanceError);
-   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),9000);
-   let response,payload;
-   try{response=await fetch('https://api.bitget.com/api/v3/market/tickers?category=SPOT',{cache:'no-store',signal:controller.signal});}
-   finally{clearTimeout(timer);}
-   if(!response.ok)throw new Error('Bitget HTTP '+response.status);
-   payload=await response.json();
-   if(payload?.code!=="00000"||!Array.isArray(payload.data))throw new Error('Invalid Bitget ticker response');
-   tickers=payload.data.map(t=>({
-    symbol:t.symbol,
-    lastPrice:t.lastPrice,
-    priceChangePercent:Number(t.price24hPcnt)*100,
-    closeTime:t.ts
-   }));
-   priceSource="Bitget Spot";
-  }
-  const bySymbol=new Map();
-  tickers.forEach(t=>{
-   if(typeof t.symbol==='string'&&t.symbol.endsWith('USDT'))bySymbol.set(t.symbol,t);
-  });
-  const counts=new Map();
-  coins.forEach(c=>{
-   const symbol=String(c.symbol||'').toUpperCase();
-   counts.set(symbol,(counts.get(symbol)||0)+1);
-  });
-  return coins.map(c=>{
-   const symbol=String(c.symbol||'').toUpperCase();
-   const ticker=counts.get(symbol)===1&&!NON_TRADABLE_SYMBOLS.has(symbol)&&!NON_TRADABLE_COIN_IDS.has(c.id)?bySymbol.get(symbol+'USDT'):null;
-   const price=Number(ticker?.lastPrice);
-   const change=Number(ticker?.priceChangePercent);
-   if(ticker&&Number.isFinite(price)&&price>0){
-    return {...c,current_price:price,price_change_percentage_24h:Number.isFinite(change)?change:c.price_change_percentage_24h,price_source:priceSource,price_updated_at:new Date(Number(ticker.closeTime)||Date.now()).toISOString()};
-   }
-   return {...c,price_source:c.price_source||'CoinGecko',price_updated_at:c.last_updated||null};
-  });
- }catch(e){
-  console.warn('Binance and Bitget live quotes unavailable; using CoinGecko fallback:',e);
-  return coins.map(c=>({...c,price_source:c.price_source||'CoinGecko'}));
+ const fetchJson=async(url,timeoutMs=6500)=>{
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeoutMs);
+  try{const response=await fetch(url,{cache:"no-store",signal:controller.signal,headers:{"Accept":"application/json"}});if(!response.ok)throw new Error("HTTP "+response.status);return await response.json();}
+  finally{clearTimeout(timer);}
+ };
+ const providers=[
+  {name:"Binance Spot",load:async()=>{
+   try{const d=await fetchJson(AI_ANALYSIS_ENDPOINT+"/market-proxy?source=binance-tickers",7000);if(Array.isArray(d)&&d.length)return d;}catch(e){console.warn("Binance Worker feed unavailable:",e.message);}
+   for(const url of ["https://data-api.binance.vision/api/v3/ticker/24hr","https://api1.binance.com/api/v3/ticker/24hr","https://api.binance.com/api/v3/ticker/24hr"]){try{const d=await fetchJson(url,5000);if(Array.isArray(d)&&d.length)return d;}catch(e){console.warn("Binance alternate endpoint unavailable:",e.message);}}
+   throw new Error("Binance ticker endpoints unavailable");
+  }},
+  {name:"Bitget Spot",load:async()=>{
+   const d=await fetchJson("https://api.bitget.com/api/v3/market/tickers?category=SPOT",6500);
+   if(d?.code!=="00000"||!Array.isArray(d.data)||!d.data.length)throw new Error("Invalid Bitget ticker response");
+   return d.data.map(t=>({symbol:t.symbol,lastPrice:t.lastPrice,priceChangePercent:Number(t.price24hPcnt)*100,closeTime:t.ts}));
+  }},
+  {name:"OKX Spot",load:async()=>{
+   const d=await fetchJson("https://www.okx.com/api/v5/market/tickers?instType=SPOT",6500);
+   if(d?.code!=="0"||!Array.isArray(d.data)||!d.data.length)throw new Error("Invalid OKX ticker response");
+   return d.data.filter(t=>String(t.instId||"").endsWith("-USDT")).map(t=>({symbol:String(t.instId).replace("-",""),lastPrice:t.last,priceChangePercent:Number(t.open24h)>0?(Number(t.last)/Number(t.open24h)-1)*100:NaN,closeTime:t.ts}));
+  }},
+  {name:"Bybit Spot",load:async()=>{
+   const d=await fetchJson("https://api.bybit.com/v5/market/tickers?category=spot",6500);
+   if(d?.retCode!==0||!Array.isArray(d.result?.list)||!d.result.list.length)throw new Error("Invalid Bybit ticker response");
+   return d.result.list.map(t=>({symbol:t.symbol,lastPrice:t.lastPrice,priceChangePercent:Number(t.price24hPcnt)*100,closeTime:d.time||Date.now()}));
+  }}
+ ];
+ let tickers=[],priceSource="",failures=[];
+ for(const provider of providers){
+  try{const rows=await provider.load();if(!Array.isArray(rows)||!rows.length)throw new Error("Empty ticker list");tickers=rows;priceSource=provider.name;break;}
+  catch(error){failures.push(provider.name+": "+String(error?.message||error).slice(0,100));}
  }
+ if(!tickers.length){
+  console.warn("All live quote routes unavailable; preserving last valid prices:",failures);
+  return coins.map(c=>({...c,price_source:c.price_source||"آخرین داده معتبر"}));
+ }
+ const bySymbol=new Map();
+ tickers.forEach(t=>{
+  const symbol=String(t.symbol||"").toUpperCase(),price=Number(t.lastPrice);
+  if(symbol.endsWith("USDT")&&Number.isFinite(price)&&price>0)bySymbol.set(symbol,t);
+ });
+ const counts=new Map();
+ coins.forEach(c=>{const symbol=String(c.symbol||"").toUpperCase();counts.set(symbol,(counts.get(symbol)||0)+1);});
+ return coins.map(c=>{
+  const symbol=String(c.symbol||"").toUpperCase();
+  const ticker=counts.get(symbol)===1&&!NON_TRADABLE_SYMBOLS.has(symbol)&&!NON_TRADABLE_COIN_IDS.has(c.id)?bySymbol.get(symbol+"USDT"):null;
+  const price=Number(ticker?.lastPrice),change=Number(ticker?.priceChangePercent),updated=Number(ticker?.closeTime);
+  if(ticker&&Number.isFinite(price)&&price>0){
+   return {...c,current_price:price,price_change_percentage_24h:Number.isFinite(change)?change:c.price_change_percentage_24h,price_source:priceSource,price_updated_at:new Date(Number.isFinite(updated)&&updated>0?updated:Date.now()).toISOString()};
+  }
+  return {...c,price_source:c.price_source||"CoinGecko",price_updated_at:c.price_updated_at||c.last_updated||null};
+ });
 }
 
 
