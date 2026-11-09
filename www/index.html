@@ -1767,6 +1767,20 @@ body:before{opacity:.23;background-size:34px 34px}
 }
 </style>
 
+
+<style id="mmp-hunter-early-alert-mobile-layout-v3">
+/* Keep fast-move percentages readable inside early-alert cards on narrow screens. */
+#market-hunter .hunter-early-item{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px;width:100%;max-width:100%;box-sizing:border-box;}
+#market-hunter .hunter-early-item>span{display:block;min-width:0;max-width:100%;}
+#market-hunter .hunter-early-item>span>b{display:block;max-width:100%;overflow-wrap:anywhere;}
+#market-hunter .hunter-early-item>span>small{display:block;max-width:100%;white-space:normal;overflow-wrap:anywhere;word-break:normal;line-height:1.8;}
+#market-hunter .hunter-early-item>strong{display:inline-block;min-width:0;max-width:100%;box-sizing:border-box;white-space:normal;overflow-wrap:anywhere;text-align:center;direction:ltr;line-height:1.6;padding:4px 6px;border-radius:7px;background:#ff647710;font-size:11px;}
+@media(max-width:560px){
+ #market-hunter .hunter-early-item{grid-template-columns:minmax(0,1fr);justify-items:stretch;gap:5px;padding:9px;}
+ #market-hunter .hunter-early-item>strong{justify-self:start;text-align:left;max-width:100%;font-size:11px;}
+ #market-hunter .hunter-early-item>span>small{font-size:10px;line-height:1.9;}
+}
+</style>
 </head>
 <body class="mmp-app-mode">
 
