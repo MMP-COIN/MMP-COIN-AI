@@ -5160,6 +5160,88 @@ window.mmpShareDownloadLink = async function () {
 @media(max-width:760px){#quantum-center-entry .quantum-engine-matrix article{flex-basis:164px!important;width:164px;min-height:55px!important}}
 @media(max-width:420px){#quantum-center-entry .quantum-engine-matrix article{flex-basis:148px!important;width:148px;min-height:52px!important}}
 </style>
+<style id="mmp-home-engine-live-style">
+#quantum-center-entry .quantum-engine-link{position:relative;overflow:hidden}
+#quantum-center-entry .quantum-engine-link .engine-live-row{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:3px;font-size:8px;color:#aeb9c8}
+#quantum-center-entry .quantum-engine-link .engine-live-state{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+#quantum-center-entry .quantum-engine-link .engine-live-dot{width:6px;height:6px;border-radius:50%;background:#83909e;flex:none}
+#quantum-center-entry .quantum-engine-link.is-live .engine-live-dot{background:#43d7a0;box-shadow:0 0 9px #43d7a0;animation:mmpEngineDot 1.25s ease-in-out infinite}
+#quantum-center-entry .quantum-engine-link.is-live:before{content:"";position:absolute;inset:0 auto 0 -45%;width:35%;background:linear-gradient(90deg,transparent,#d9b66d20,transparent);transform:skewX(-18deg);animation:mmpEngineSweep 3.2s linear infinite;pointer-events:none}
+#quantum-center-entry .quantum-engine-link.is-live .engine-live-state{color:#75dfb7}
+#quantum-center-entry .quantum-engine-link.is-stale .engine-live-state{color:#e1b96d}
+#quantum-center-entry .quantum-engine-link .engine-live-track{height:3px;border-radius:8px;background:#ffffff12;overflow:hidden;margin-top:5px}
+#quantum-center-entry .quantum-engine-link .engine-live-track span{display:block;height:100%;width:0;background:linear-gradient(90deg,#98713a,#f1d48f);border-radius:8px;transition:width .7s ease}
+#quantum-center-entry .quantum-engine-link.is-live .engine-live-track span{box-shadow:0 0 8px #e4c47788}
+#quantum-center-entry .quantum-engine-link .engine-live-row b{color:#e7d3a7;font-variant-numeric:tabular-nums}
+@keyframes mmpEngineDot{50%{opacity:.35;transform:scale(.78)}}
+@keyframes mmpEngineSweep{0%{left:-45%}100%{left:125%}}
+@media(prefers-reduced-motion:reduce){#quantum-center-entry .quantum-engine-link:before,#quantum-center-entry .quantum-engine-link .engine-live-dot{animation:none!important}}
+</style><script id="mmp-home-engine-live-monitor">
+(function(){
+ const root=document.querySelector("#quantum-center-entry .quantum-engine-matrix");
+ if(!root||root.dataset.liveMonitor==="1")return;
+ root.dataset.liveMonitor="1";
+ const API="https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev";
+ const defs=[
+  ["داده‌های بازار","داده معتبر",s=>s.filter(x=>Number(x.price||x.coin?.current_price)>0).length],
+  ["حرکت انفجاری","نامزد انفجاری",s=>s.filter(x=>Number(x.explosionScore)>=.55).length],
+  ["فرصت‌یابی","فرصت شناسایی‌شده",s=>s.length],
+  ["جریان پول","جریان کامل",s=>s.filter(x=>x.flow?.complete===true).length],
+  ["نقدینگی","عمق تأییدشده",s=>s.filter(x=>x.depth?.confirmed===true).length],
+  ["تایم‌فریم‌ها","هم‌جهتی روند",s=>s.filter(x=>x.trend5&&x.trend1&&x.trend5===x.trend1).length],
+  ["نوسان","ATR معتبر",s=>s.filter(x=>Number(x.atrPct)>0).length],
+  ["رفتار بازار","نشانه جهت",s=>s.filter(x=>["bull","bear"].includes(x.trend)).length],
+  ["سناریوسازی","برنامه معامله",s=>s.filter(x=>x.tradePlan&&Object.keys(x.tradePlan).length).length],
+  ["یادگیری","پیش‌بینی ثبت‌شده",s=>Number(window.__mmpQuantumLedgerCount||0)],
+  ["مدیریت ریسک","حد ریسک معتبر",s=>s.filter(x=>Number(x.tradePlan?.riskPercent)>0).length],
+  ["تصمیم نهایی","گیت کیفیت",s=>s.filter(x=>x.confirmed===true&&x.multiExchangeConfirmed===true&&x.quantum?.qualityGate===true).length]
+ ];
+ const cards=[...root.querySelectorAll("a.quantum-engine-link")];
+ cards.forEach((card,i)=>{
+  if(card.querySelector(".engine-live-row"))return;
+  const row=document.createElement("div");row.className="engine-live-row";
+  row.innerHTML='<span class="engine-live-state"><i class="engine-live-dot"></i><span>در انتظار داده</span></span><b>—</b>';
+  const track=document.createElement("div");track.className="engine-live-track";track.innerHTML="<span></span>";
+  card.append(row,track);
+ });
+ function paint(snap){
+  const signals=Array.isArray(snap.signals)?snap.signals:[];
+  const total=Math.max(0,Number(snap.universe_count)||0),done=Math.max(0,Number(snap.scanned_count)||0);
+  const stamp=Date.parse(snap.checked_at||snap.scanned_at||"");
+  const live=snap.status==="online"&&done>0&&Number.isFinite(stamp)&&Date.now()-stamp<120000;
+  const cyclePct=total?Math.max(0,Math.min(100,Math.round(done/total*100))):0;
+  cards.forEach((card,i)=>{
+   const row=card.querySelector(".engine-live-row"),track=card.querySelector(".engine-live-track span");
+   if(!row||!track)return;
+   const [label,metric,fn]=defs[i]||defs[0];
+   let value=0;try{value=fn(signals)}catch(e){}
+   const active=live&&(i===0?signals.length>0:i===1?done>0:i===2?signals.length>0:i===3?signals.some(x=>x.flow?.complete===true):i===4?signals.some(x=>x.depth?.confirmed===true):i===5?signals.some(x=>x.trend5&&x.trend1):i===6?signals.some(x=>Number(x.atrPct)>0):i===7?signals.some(x=>x.trend):i===8?signals.some(x=>x.tradePlan):i===9?Number(window.__mmpQuantumLedgerCount||0)>0:i===10?signals.some(x=>Number(x.tradePlan?.riskPercent)>0):signals.some(x=>x.confirmed===true&&x.multiExchangeConfirmed===true&&x.quantum?.qualityGate===true));
+   card.classList.toggle("is-live",active);card.classList.toggle("is-stale",!live);
+   const stateText=!live?"مکث · داده کهنه":active?"در حال پایش":"داده ناکافی";
+   row.querySelector(".engine-live-state span").textContent=stateText;
+   row.querySelector("b").textContent=value.toLocaleString("fa-IR")+" · "+metric;
+   track.style.width=(active?Math.max(4,cyclePct):Math.min(100,cyclePct))+"%";
+   card.setAttribute("aria-label",card.querySelector("b")?.textContent+" · "+stateText+" · "+value+" "+metric);
+   card.dataset.engineMetric=label;
+  });
+  const badge=document.querySelector("#quantum-center-entry .quantum-engine-board-head>span");
+  if(badge)badge.textContent=live?"● LIVE · "+done.toLocaleString("fa-IR")+"/"+total.toLocaleString("fa-IR"):"◷ WAITING FOR SNAPSHOT";
+ }
+ async function refresh(){
+  try{
+   const response=await fetch(API+"/hunter-snapshot",{cache:"no-store",headers:{Accept:"application/json"}});
+   if(!response.ok)throw new Error("snapshot "+response.status);
+   const snap=await response.json();window.__mmpQuantumHomeSnapshot=snap;paint(snap);
+  }catch(e){
+   cards.forEach(card=>{card.classList.remove("is-live");card.classList.add("is-stale");const t=card.querySelector(".engine-live-state span");if(t)t.textContent="اتصال ناموفق"}); 
+   const badge=document.querySelector("#quantum-center-entry .quantum-engine-board-head>span");if(badge)badge.textContent="◷ CONNECTION WAIT";
+  }
+ }
+ refresh();if(window.__mmpHomeEngineTimer)clearInterval(window.__mmpHomeEngineTimer);
+ window.__mmpHomeEngineTimer=setInterval(refresh,15000);
+ document.addEventListener("visibilitychange",()=>{if(!document.hidden)refresh()});
+})();
+</script>
 </body>
 
 <!-- mmp-deploy-retry-20261107: trigger GitHub Pages deployment -->
