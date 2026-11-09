@@ -2005,7 +2005,7 @@ body:before{opacity:.23;background-size:34px 34px}
  <section class="mmp-command-progress" id="mmp-command-progress" aria-live="polite" aria-label="پیشرفت واقعی موتور مرکزی">
 <div class="mcp-head"><div><span class="mcp-kicker">QUANTUM CORE · LIVE CYCLE</span><b id="mcp-state">در انتظار دریافت وضعیت موتور مرکزی</b></div><strong id="mcp-percent">—</strong></div>
 <div class="mcp-track" role="progressbar" aria-label="پیشرفت اسکن موتور مرکزی" aria-valuemin="0" aria-valuemax="100"><i id="mcp-bar"></i></div>
-<div class="mcp-metrics"><span>بررسی‌شده <b id="mcp-done">—</b></span><span>از <b id="mcp-total">—</b> نماد</span><span>قابلیت‌های دارای شواهد <b id="mcp-engines">—</b></span><span>خطاها <b id="mcp-errors">—</b></span></div>
+<div class="mcp-metrics"><span>پوشش چرخه <b id="mcp-done">—</b> از <b id="mcp-total">—</b> نماد</span><span>موفق در نوبت اخیر <b id="mcp-batch">—</b></span><span>لایه‌های دارای شواهد در خروجی نهایی <b id="mcp-engines">—</b></span><span>خطاهای نوبت اخیر <b id="mcp-errors">—</b></span></div>
 <small id="mcp-updated">این نوار فقط از snapshot واقعی موتور مرکزی تغذیه می‌شود؛ در نبود داده، درصد نمایش داده نمی‌شود.</small></section>
 <div class="quantum-hero-foot"><span>اسکن پویا جفت‌های واجد شرایط USDT Spot</span><span>۱۲ موتور تحلیل و تصمیم</span><span>داده ناموجود = بدون امتیازسازی جعلی</span></div>
 </section>
@@ -5847,7 +5847,7 @@ window.mmpShareDownloadLink = async function () {
  const keys=["regime","explosion","momentum","flow","liquidity","multiTimeframe","volatility","sentiment","scenario","learning","risk","dataQuality"];
  function fail(message){
   root.classList.add("is-error");el("mcp-state").textContent="وضعیت موتور مرکزی دریافت نشد";
-  ["mcp-percent","mcp-done","mcp-total","mcp-engines","mcp-errors"].forEach(id=>el(id).textContent="—");
+  ["mcp-percent","mcp-done","mcp-total","mcp-batch","mcp-engines","mcp-errors"].forEach(id=>el(id).textContent="—");
   el("mcp-bar").style.width="0%";const track=root.querySelector('[role="progressbar"]');if(track)track.removeAttribute("aria-valuenow");
   el("mcp-updated").textContent=message||"داده معتبر در دسترس نیست؛ درصد ساختگی نمایش داده نمی‌شود.";
  }
@@ -5857,16 +5857,17 @@ window.mmpShareDownloadLink = async function () {
    const response=await fetch(endpoint,{cache:"no-store",headers:{"Accept":"application/json"},signal:controller.signal});
    if(!response.ok)throw new Error("HTTP "+response.status);
    const snap=await response.json();if(!snap||snap.status==="offline")throw new Error(snap?.message||"موتور مرکزی آفلاین است");
-   const total=Number(snap.universe_count),done=Number(snap.scanned_count);
-   if(!Number.isFinite(total)||total<=0||!Number.isFinite(done)||done<0)throw new Error("شمارنده معتبر اسکن در snapshot موجود نیست");
-   const pct=Math.max(0,Math.min(100,Math.round(done/total*100))),signals=Array.isArray(snap.signals)?snap.signals:[],activity=snap.engine_activity&&typeof snap.engine_activity==="object"?snap.engine_activity:{};
+   const total=Number(snap.universe_count),batchDone=Math.max(0,Number(snap.scanned_count)||0),batchSize=Math.max(0,Number(snap.batch_size)||0),cursor=Math.max(0,Number(snap.next_cursor)||0);
+   if(!Number.isFinite(total)||total<=0||!Number.isFinite(batchDone))throw new Error("شمارنده معتبر اسکن در snapshot موجود نیست");
+   const covered=cursor===0&&batchDone>0?total:Math.min(total,cursor||batchDone),pct=Math.max(0,Math.min(100,Math.round(covered/total*100))),signals=Array.isArray(snap.signals)?snap.signals:[],activity=snap.engine_activity&&typeof snap.engine_activity==="object"?snap.engine_activity:{};
    const evidenced=keys.filter(key=>{const m=activity[key];return !!(m&&(Number(m.processed)>0||Number(m.evidence)>0))||signals.some(x=>x?.quantum?.componentAvailability?.[key]===true)}).length;
    const stamp=Date.parse(snap.checked_at||snap.scanned_at||""),stale=!stamp||Date.now()-stamp>120000;
-   el("mcp-state").textContent=stale?"آخرین چرخه ثبت‌شده · نیازمند به‌روزرسانی":"موتور مرکزی · چرخه اسکن بازار";
-   el("mcp-percent").textContent=fmt(pct)+"٪";el("mcp-done").textContent=fmt(done);el("mcp-total").textContent=fmt(total);
+   el("mcp-state").textContent=stale?"آخرین چرخه ثبت‌شده · نیازمند به‌روزرسانی":pct>=100?"پوشش کامل بازار · چرخه آماده تکرار":"موتور مرکزی · پوشش چرخه در حال تکمیل";
+   el("mcp-percent").textContent=fmt(pct)+"٪";el("mcp-done").textContent=fmt(covered);el("mcp-total").textContent=fmt(total);
+   el("mcp-batch").textContent=fmt(batchDone)+(batchSize?" / "+fmt(batchSize):"");
    el("mcp-engines").textContent=fmt(evidenced)+" / ۱۲";el("mcp-errors").textContent=fmt(Math.max(0,Number(snap.failed_count)||0));
    el("mcp-bar").style.width=pct+"%";const track=root.querySelector('[role="progressbar"]');if(track)track.setAttribute("aria-valuenow",String(pct));
-   el("mcp-updated").textContent=(stale?"داده قدیمی یا زمان آخرین اسکن نامشخص است · ":"آخرین دریافت: ")+(stamp?new Date(stamp).toLocaleString("fa-IR"):"زمان نامشخص")+" · قابلیت‌های دارای شواهد از snapshot محاسبه شده‌اند.";
+   el("mcp-updated").textContent=(stale?"داده قدیمی یا زمان آخرین اسکن نامشخص است · ":"آخرین دریافت: ")+(stamp?new Date(stamp).toLocaleString("fa-IR"):"زمان نامشخص")+" · پیشرفت از next_cursor محاسبه شده؛ عدد نوبت اخیر جداست. صفر بودن شواهد خروجی به معنی خاموش بودن موتور نیست.";
    root.classList.remove("is-error");
   }catch(error){fail("اتصال یا داده معتبر در دسترس نیست · "+(error?.message||"خطای نامشخص"));}
   finally{clearTimeout(timer);}
