@@ -209,7 +209,8 @@ function renderEngines(statuses=null){
   card.style.setProperty("margin","0","important");
   card.style.setProperty("scroll-snap-align","start","important");
  });
- if(matchMedia("(max-width:560px)").matches){
+ const mobileRail=matchMedia("(max-width:560px)").matches;
+ if(mobileRail){
   rail.querySelectorAll(".engine-drawer").forEach(card=>{
    card.style.setProperty("flex-basis","86vw","important");
    card.style.setProperty("width","86vw","important");
@@ -217,6 +218,19 @@ function renderEngines(statuses=null){
    card.style.setProperty("max-width","86vw","important");
   });
  }
+ // An opened engine becomes a wide detail panel; closing it restores the compact rail card.
+ rail.querySelectorAll(".engine-drawer").forEach(card=>{
+  const resize=()=>{
+   const width=card.open?(mobileRail?"92vw":"min(920px,calc(100vw - 36px))"):(mobileRail?"86vw":"340px");
+   card.style.setProperty("flex","0 0 "+width,"important");
+   card.style.setProperty("flex-basis",width,"important");
+   card.style.setProperty("width",width,"important");
+   card.style.setProperty("min-width",width,"important");
+   card.style.setProperty("max-width",width,"important");
+  };
+  card.addEventListener("toggle",resize);
+  if(card.open)resize();
+ });
  const target=decodeURIComponent(location.hash.slice(1));
  if(/^engine-detail-\d{2}$/.test(target)){const el=$(target);if(el){el.open=true;setTimeout(()=>el.scrollIntoView({behavior:"smooth",block:"center"}),100)}}
 }
