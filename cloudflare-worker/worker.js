@@ -2,7 +2,7 @@
 import { QUANTUM_ENGINE_NAME, QUANTUM_ENGINE_VERSION, normalizeQuantumUniverse, scoreQuantumOpportunity } from "./quantum-core.js";
 const HUNTER_BATCH_SIZE = 10;
 const FUTURES_HUNTER_BATCH_SIZE = 8;
-const MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+const MODEL = "@cf/openai/gpt-oss-120b";
 function extractAIJson(value){
  let raw=typeof value==="string"?value:JSON.stringify(value??"");
  raw=raw.replace(/^\s*\x60{3}(?:json)?\s*/i,"").replace(/\s*\x60{3}\s*$/,"").trim();
@@ -53,9 +53,9 @@ async function runAIWithFallback(env,prompt){
  // Cloudflare AI remains a fallback, with a smaller output budget.
  if(env.AI){
   try{
-   const result=await env.AI.run(MODEL,{messages,max_tokens:900,temperature:0.12});
+   const result=await env.AI.run(MODEL,{messages,max_tokens:2400,temperature:0.1,reasoning_effort:"high"});
    if(result?.error)throw new Error(typeof result.error==="string"?result.error:JSON.stringify(result.error));
-   return accept("Cloudflare Workers AI",result?.response??result?.result??result?.output_text??result);
+   return accept("Cloudflare Workers AI / "+MODEL,result?.response??result?.result??result?.output_text??result);
   }catch(error){failures.push("Cloudflare: "+String(error?.message||error).slice(0,260));}
  }else failures.push("Cloudflare AI binding missing");
  if(env.HF_TOKEN&&env.HF_MODEL){
