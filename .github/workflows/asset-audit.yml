@@ -107,15 +107,31 @@ jobs:
           const nonTradableSymbols = new Set(['USDT','USDC','DAI','USDS','USDE','FDUSD','PYUSD','TUSD','FRAX','USDD','WBTC','CBBTC','STETH','WSTETH','RETH','XAUT','USDY','GT','PEARL','DRV']);
 
           async function getJson(url, timeout=7000) {
-            const controller = new AbortController();
-            const timer = setTimeout(() => controller.abort(), timeout);
-            try {
-              const r = await fetch(url, {headers:{'Accept':'application/json','User-Agent':'MMP-QUANTUM-UNIVERSE-AUDIT/1.0'}, signal:controller.signal, cache:'no-store'});
-              const body = await r.text();
-              if (!r.ok) throw new Error('HTTP '+r.status+' '+body.slice(0,100));
-              let data; try { data = JSON.parse(body); } catch { throw new Error('Invalid JSON '+body.slice(0,80)); }
-              return data;
-            } finally { clearTimeout(timer); }
+            for (let attempt=0; attempt<2; attempt++) {
+              const controller = new AbortController();
+              const timer = setTimeout(() => controller.abort(), timeout);
+              try {
+                const r = await fetch(url, {headers:{'Accept':'application/json','User-Agent':'MMP-QUANTUM-UNIVERSE-AUDIT/1.0'}, signal:controller.signal, cache:'no-store'});
+                const body = await r.text();
+                if (!r.ok) {
+                  const error = new Error('HTTP '+r.status+' '+body.slice(0,160));
+                  error.status = r.status;
+                  if (attempt===0 && r.status===429) {
+                    const retrySeconds=Number(r.headers.get('Retry-After'))||60;
+                    await new Promise(resolve=>setTimeout(resolve,Math.min(90000,Math.max(60000,retrySeconds*1000))));
+                    continue;
+                  }
+                  if (attempt===0 && [502,503,504].includes(r.status)) {
+                    await new Promise(resolve=>setTimeout(resolve,1800));
+                    continue;
+                  }
+                  throw error;
+                }
+                let data; try { data = JSON.parse(body); } catch { throw new Error('Invalid JSON '+body.slice(0,80)); }
+                return data;
+              } finally { clearTimeout(timer); }
+            }
+            throw new Error('Market API retry budget exhausted');
           }
           async function firstValid(candidates, tf) {
             const errors=[];
@@ -190,7 +206,7 @@ jobs:
               } catch (error) {
                 const message=String(error?.message||error);
                 errors.push(message.slice(0,500));
-                if (attempt < 2 && /HTTP (?:429|500|502|503|504)|timed out|abort|network|fetch failed/i.test(message)) {
+                if (attempt < 2 && /HTTP (?:500|502|503|504)|timed out|abort|network|fetch failed/i.test(message)) {
                   await new Promise(resolve=>setTimeout(resolve, 1200*(attempt+1)));
                   continue;
                 }
