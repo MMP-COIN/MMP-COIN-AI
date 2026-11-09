@@ -3938,6 +3938,20 @@ function hunter4hParse(payload){
 let hunterDetailState={symbol:"",market:"spot",coin:null,signal:null,interval:"60",busy:false,rows:[]};
 function hunterDetailPrice(v){return hunterPrice(v);}
 async function hunterDetailFetch(symbol,market,interval){
+ // اول از تجمیع‌گر اصلی کندل استفاده کن؛ این مسیر نمادهای واقعی هر صرافی را
+ // بررسی می‌کند و برای جفت‌هایی که در Binance/Bybit/OKX نیستند به WhiteBIT و منابع جایگزین می‌رود.
+ const workerIntervals={"15":"15m","60":"1h","240":"4h","D":"1d"};
+ const workerInterval=workerIntervals[String(interval)]||"1h";
+ try{
+  const workerUrl=AI_ANALYSIS_ENDPOINT+"/market-candles?symbol="+encodeURIComponent(String(symbol).toUpperCase()+"USDT")+"&interval="+workerInterval+"&market="+(market==="futures"?"futures":"spot");
+  const payload=await hunterFetchJson(workerUrl,16000);
+  const source=Array.isArray(payload?.candles)?payload.candles:[];
+  const rows=hunter4hParse(source.map(c=>[Number(c.time)*1000,c.open,c.high,c.low,c.close,c.volume]));
+  if(rows.length>=30)return rows;
+  throw new Error(payload?.detail||"کندل معتبر کافی از تجمیع‌گر دریافت نشد");
+ }catch(error){
+  console.warn("MMP candle aggregator unavailable for "+symbol+"; trying direct exchange fallbacks:",error?.message||error);
+ }
  const map={15:{binance:"15m",bybit:"15",okx:"15m"},60:{binance:"1h",bybit:"60",okx:"1H"},240:{binance:"4h",bybit:"240",okx:"4H"},D:{binance:"1d",bybit:"D",okx:"1D"}},tf=map[interval]||map[60],pair=symbol.toUpperCase()+"USDT",limit=interval==="D"?220:220;
  const urls=market==="spot"?[
   async()=>hunter4hParse(await hunterFetchJson("https://api.binance.com/api/v3/klines?symbol="+pair+"&interval="+tf.binance+"&limit="+limit,12000)),
