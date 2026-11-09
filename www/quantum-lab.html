@@ -432,4 +432,47 @@ renderEngines(null);renderLedger();renderQuantumCharts();loadIndependentCatalog(
 #quantum-engines>#engines>.engine-drawer{display:block!important;flex:0 0 340px!important;width:340px!important;min-width:340px!important;max-width:340px!important;margin:0!important;scroll-snap-align:start!important}
 @media(max-width:560px){#quantum-engines>#engines{gap:8px!important}#quantum-engines>#engines>.engine-drawer{flex:0 0 86vw!important;width:86vw!important;min-width:86vw!important;max-width:86vw!important}}
 </style>
+<style id="mmp-engine-detail-horizontal-layout">
+/* Expanded engine detail: turn the vertical information stack into horizontal columns. */
+#quantum-engines>#engines>.engine-drawer[open]{
+ flex:0 0 min(920px,calc(100vw - 36px))!important;
+ width:min(920px,calc(100vw - 36px))!important;
+ min-width:min(920px,calc(100vw - 36px))!important;
+ max-width:min(920px,calc(100vw - 36px))!important;
+}
+#quantum-engines .engine-more{
+ display:grid!important;
+ grid-template-columns:minmax(0,1.15fr) minmax(150px,.9fr) minmax(0,1.35fr)!important;
+ align-items:center!important;
+ gap:10px 14px!important;
+ padding:12px 14px 14px!important;
+}
+#quantum-engines .engine-more>p:first-child{grid-column:1;grid-row:1;margin:0!important}
+#quantum-engines .engine-more>.engine-live-meter{grid-column:2;grid-row:1;margin:0 0 7px!important}
+#quantum-engines .engine-more>.engine-live-meta{grid-column:2;grid-row:1;align-self:end;margin-top:23px}
+#quantum-engines .engine-more>.engine-proof{grid-column:3;grid-row:1;margin:0!important}
+#quantum-engines .engine-more>.engine-result-link{grid-column:1/-1;grid-row:2;margin-top:0!important;padding-top:8px;border-top:1px solid #ffffff12}
+#detail .details{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:9px!important}
+#detail .detail{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:9px!important;min-width:0!important}
+#detail .detail small{margin:0!important;flex:1 1 auto!important}
+#detail .detail b{flex:0 1 auto!important;text-align:left!important}
+@media(max-width:560px){
+ #quantum-engines>#engines>.engine-drawer[open]{
+  flex-basis:92vw!important;width:92vw!important;min-width:92vw!important;max-width:92vw!important;
+ }
+ #quantum-engines .engine-more{
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:9px!important;padding:10px!important;
+ }
+ #quantum-engines .engine-more>p:first-child{grid-column:1/-1;grid-row:1}
+ #quantum-engines .engine-more>.engine-live-meter{grid-column:1;grid-row:2}
+ #quantum-engines .engine-more>.engine-live-meta{grid-column:1;grid-row:2}
+ #quantum-engines .engine-more>.engine-proof{grid-column:2;grid-row:2;font-size:9px}
+ #quantum-engines .engine-more>.engine-result-link{grid-column:1/-1;grid-row:3}
+ #detail .details{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ #detail .detail{padding:9px!important;gap:6px!important}
+ #detail .detail small{font-size:9px!important}
+ #detail .detail b{font-size:11px!important}
+}
+</style>
 </body></html>
