@@ -420,13 +420,13 @@ async function readMarketFallback(env,key){
   const row=await env.MARKET_CACHE_DB.prepare("SELECT payload,cached_at FROM market_data_cache WHERE cache_key = ?").bind(key).first();
   if(!row?.payload||!Number.isFinite(Number(row.cached_at)))return null;
   const ageMs=Math.max(0,Date.now()-Number(row.cached_at));
-  if(ageMs>900000)return null;
+  if(ageMs>900000){await env.MARKET_CACHE_DB.prepare("DELETE FROM market_data_cache WHERE cache_key = ?").bind(key).run();return null;}
   const payload=JSON.parse(row.payload);
   return payload&&typeof payload==="object"?{payload,ageMs}:null;
  }catch{return null;}
 }
-async function writeMarketFallback(env,key,payload){
- if(!env.MARKET_CACHE_DB)return;
+async function writeMarketFallback(env,key,payload,previous=null){
+ if(!env.MARKET_CACHE_DB||previous?.ageMs<15000)return;
  try{
   await env.MARKET_CACHE_DB.prepare("INSERT INTO market_data_cache (cache_key,payload,cached_at) VALUES (?, ?, ?) ON CONFLICT(cache_key) DO UPDATE SET payload=excluded.payload,cached_at=excluded.cached_at").bind(key,JSON.stringify(payload),Date.now()).run();
  }catch(error){console.warn("Market fallback cache write failed:",String(error?.message||error).slice(0,180));}
@@ -1303,7 +1303,7 @@ async function handle(request,env){
   try{
    const result=await candles(symbol,interval,env,marketType);
    const payload={symbol,interval,market:marketType,provider:result.data_provider,price:result.price,change_pct:result.change_pct,candles:result.candles.map(c=>({time:Math.floor(c.t/1000),open:c.o,high:c.h,low:c.l,close:c.c,volume:c.v})),data_checked_at:new Date().toISOString(),data_stale:false};
-   await writeMarketFallback(env,candleCacheKey,payload);
+   await writeMarketFallback(env,candleCacheKey,payload,staleCandles);
    return json(payload,200,request,{"X-MMP-Cache":"fresh"});
   }catch(error){
    if(staleCandles?.payload?.candles?.length)return json({...staleCandles.payload,data_stale:true,data_age_ms:staleCandles.ageMs,stale_reason:String(error?.message||"upstream unavailable").slice(0,160)},200,request,{"X-MMP-Cache":"stale","X-MMP-Data-Age":String(staleCandles.ageMs)});
@@ -1346,7 +1346,7 @@ async function handle(request,env){
     if(!upstream.ok){lastError="Upstream HTTP "+upstream.status;continue;}
     const data=await upstream.json();
     if(data===null||typeof data!=="object")throw new Error("Invalid upstream JSON");
-    await writeMarketFallback(env,marketCacheKey,data);
+    await writeMarketFallback(env,marketCacheKey,data,staleMarketResponse);
     return json(data,200,request,{"X-MMP-Data-Source":source,"X-MMP-Cache":"fresh"});
    }catch(error){lastError=String(error?.message||"network error");}
    finally{clearTimeout(timer);}
