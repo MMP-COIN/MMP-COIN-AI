@@ -4721,7 +4721,7 @@ body:before{opacity:.23;background-size:34px 34px}
   if(button){button.disabled=true;button.textContent="در حال محاسبه…";}
   if(summary)summary.textContent="در حال دریافت کندل‌های ۱۵ دقیقه‌ای "+symbol+"…";
   try{
-   const data=await getJson(api()+"/market-candles?symbol="+symbol+"&interval=15m",12000);
+   const data=await getJson(api()+"/market-candles?symbol="+symbol+"&interval=15m",20000);
    const rows=Array.isArray(data.candles)?data.candles:[];
    const closes=rows.map(x=>Number(x.close)).filter(x=>x>0);
    if(closes.length<35)throw new Error("تعداد کندل معتبر برای محاسبه کافی نیست.");
@@ -4742,7 +4742,7 @@ body:before{opacity:.23;background-size:34px 34px}
     return '<div><small>'+h+' کندل بعد</small><b>'+usd(low)+' – '+usd(high)+'</b><span>'+direction+'<br>میانه برآورد: '+usd(center)+'</span></div>';
    }).join("");
    if(summary)summary.textContent="نماد "+symbol+" · قیمت مرجع "+usd(last)+" · شیب خطی "+(slope>=0?"+":"")+usd(slope)+" در هر کندل · RSI تقریبی "+fmt(rsiApprox,1)+" · منبع "+(data.provider||"داده کندلی Worker");
-  }catch(e){if(summary)summary.textContent="برآورد فعلاً انجام نشد: "+(e.message||"داده کافی دریافت نشد.");}
+  }catch(e){if(grid)grid.innerHTML=[1,3,5].map(h=>'<div><small>'+h+' کندل بعد</small><b>—</b><span>داده معتبر در دسترس نیست</span></div>').join("");if(summary)summary.textContent="برآورد فعلاً انجام نشد: "+(e.message||"داده کافی دریافت نشد.")+" · مقادیر قبلی پاک شدند."; }
   finally{if(button){button.disabled=false;button.textContent="تحلیل کندل‌ها";}}
  }
  const JOURNAL_KEY="mmp_signal_journal_v1",ALERT_KEY="mmp_price_alerts_v1";
@@ -5012,11 +5012,11 @@ body:before{opacity:.23;background-size:34px 34px}
   if(status)status.textContent="در حال دریافت داده مشتقات از منابع جایگزین صرافی‌ها…";
   if(button){button.disabled=true;button.textContent="در حال دریافت…";}
   try{
-   const d=await get(api()+"/market-derivatives?symbol="+encodeURIComponent(symbol),14000);
+   const d=await get(api()+"/market-derivatives?symbol="+encodeURIComponent(symbol),22000);
    const values=[d.funding_rate==null?"دریافت نشد":fmt(d.funding_rate*100,5)+"٪",d.open_interest==null?"دریافت نشد":fmt(d.open_interest,2)+" "+(d.open_interest_unit||symbol),d.long_short_ratio==null?"دریافت نشد":fmt(d.long_short_ratio,3),d.mark_price==null?"دریافت نشد":usd(d.mark_price)];
    if(box)box.innerHTML=values.map((v,i)=>'<div><small>'+["نرخ تأمین مالی","موجودی قرارداد باز","نسبت خرید به فروش","قیمت نشانگر"][i]+'</small><b>'+v+'</b><em>'+["Funding Rate","Open Interest","Long / Short","Mark Price"][i]+'</em></div>').join("");
    if(status)status.textContent="نماد "+symbol+" · منابع: "+d.source+" · آخرین بررسی "+new Date(d.checked_at).toLocaleTimeString("fa-IR")+(d.missing?.length?" · شاخص‌های بدون منبع معتبر: "+d.missing.join("، "):" · هر چهار شاخص دریافت شد.");
-  }catch(e){if(status)status.textContent="داده مشتقات دریافت نشد: "+(e.message||"خطای اتصال");}
+  }catch(e){if(box)box.innerHTML=["نرخ تأمین مالی","موجودی قرارداد باز","نسبت خرید به فروش","قیمت نشانگر"].map((label,i)=>'<div><small>'+label+'</small><b>دریافت نشد</b><em>منبع در دسترس نیست</em></div>').join("");if(status)status.textContent="داده مشتقات دریافت نشد: "+(e.message||"خطای اتصال")+" · داده‌های قبلی پاک شدند."; }
   finally{if(button){button.disabled=false;button.textContent="↻ تازه‌سازی";}}
  }
  $("derivatives-load")?.addEventListener("click",()=>{loadDerivativesViaWorker();loadOrderflowViaWorker();});
@@ -5027,14 +5027,14 @@ body:before{opacity:.23;background-size:34px 34px}
   if(status)status.textContent="در حال دریافت دفتر سفارش و معاملات واقعی "+(market==="futures"?"Futures":"Spot")+"…";
   if(orderButton){orderButton.disabled=true;orderButton.textContent="در حال دریافت…";}
   try{
-   const d=await get(api()+"/market-orderflow?symbol="+encodeURIComponent(symbol)+"&market="+market,15000),depth=d.depth||{},flow=d.flow||{};
+   const d=await get(api()+"/market-orderflow?symbol="+encodeURIComponent(symbol)+"&market="+market,22000),depth=d.depth||{},flow=d.flow||{};
    const values=[depth.available?usd(depth.bid_usdt):"دریافت نشد",depth.available?usd(depth.ask_usdt):"دریافت نشد",depth.imbalance_pct==null?"دریافت نشد":fmt(depth.imbalance_pct,1)+"٪",flow.available&&flow.cvd_usdt!=null?(flow.cvd_usdt>=0?"+":"")+usd(flow.cvd_usdt):"دریافت نشد"];
    if(box)box.innerHTML=values.map((v,i)=>'<div><small>'+["عمق خرید ۱٪","عمق فروش ۱٪","عدم‌تعادل دفتر سفارش","جریان خالص معاملات ۵ دقیقه"][i]+'</small><b>'+v+'</b><em>'+["Bid liquidity","Ask liquidity","Order-book imbalance","Executed Trade Flow · 5m"][i]+'</em></div>').join("");
    const total=(Number(flow.buy_usdt)||0)+(Number(flow.sell_usdt)||0),bp=total?Number(flow.buy_usdt)/total*100:50;
    if($("orderflow-buy-bar"))$("orderflow-buy-bar").style.width=bp+"%";if($("orderflow-sell-bar"))$("orderflow-sell-bar").style.width=(100-bp)+"%";
    const parts=[];if(depth.available)parts.push("دفتر سفارش "+depth.source);if(flow.available)parts.push("جریان واقعی "+flow.source+" · "+fmt(flow.trade_count||0,0)+" معامله · "+(flow.complete?"پوشش کامل":"پوشش ناقص"));
    if(status)status.textContent=parts.length?"بازار "+(market==="futures"?"Futures":"Spot")+" · نماد "+symbol+" · "+parts.join(" · ")+" · پنجره "+(flow.window_minutes||5)+" دقیقه · بررسی "+new Date(d.checked_at).toLocaleTimeString("fa-IR"):"داده دریافت نشد؛ "+[d.errors?.depth,d.errors?.flow].filter(Boolean).join(" | ");
-  }catch(e){if(status)status.textContent="جریان سفارش دریافت نشد: "+(e.message||"خطای اتصال");}
+  }catch(e){if(box)box.innerHTML=["عمق خرید ۱٪","عمق فروش ۱٪","عدم‌تعادل دفتر سفارش","جریان خالص معاملات ۵ دقیقه"].map(label=>'<div><small>'+label+'</small><b>دریافت نشد</b><em>منبع در دسترس نیست</em></div>').join("");if($("orderflow-buy-bar"))$("orderflow-buy-bar").style.width="50%";if($("orderflow-sell-bar"))$("orderflow-sell-bar").style.width="50%";if(status)status.textContent="جریان سفارش دریافت نشد: "+(e.message||"خطای اتصال")+" · داده‌های قبلی پاک شدند."; }
   finally{if(orderButton){orderButton.disabled=false;orderButton.textContent="↻ تازه‌سازی";}}
  }
  orderButton?.addEventListener("click",loadOrderflowViaWorker);
