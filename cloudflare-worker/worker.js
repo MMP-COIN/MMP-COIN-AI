@@ -100,6 +100,7 @@ function corsHeaders(request){
   headers["Access-Control-Allow-Methods"]="GET, POST, OPTIONS";
   headers["Access-Control-Allow-Headers"]="Content-Type";
   headers["Access-Control-Max-Age"]="86400";
+  headers["Access-Control-Expose-Headers"]="X-MMP-Cache, X-MMP-Data-Age, X-MMP-Data-Source, Warning";
  }
  return headers;
 }
@@ -1411,7 +1412,7 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/futures-engine-heal
    probe("https://fapi.binance.com/fapi/v1/klines?symbol=BTCUSDT&interval=1h&limit=1"),
    probe("https://api.bybit.com/v5/market/kline?category=linear&symbol=BTCUSDT&interval=60&limit=1")
   ]);
-  return json({service:"MMP COIN AI",worker:"online",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,ai_binding:!!env.AI,futures_engine_binding:!!env.FUTURES_ENGINE,providers:{spot_binance:spot,futures_binance:futures,futures_bybit_fallback:bybit},checked_at:new Date().toISOString()},200,request);
+  return json({service:"MMP COIN AI",worker:"online",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,ai_binding:!!env.AI,futures_engine_binding:!!env.FUTURES_ENGINE,market_cache_binding:!!env.MARKET_CACHE_DB,providers:{spot_binance:spot,futures_binance:futures,futures_bybit_fallback:bybit},checked_at:new Date().toISOString()},200,request);
  }
  if(request.method!=="POST")return json({error:"Method not allowed"},405,request);
  const limitResult=await checkRateLimit(env.AI_ANALYSIS_LIMITER,request,"ai-analysis");
