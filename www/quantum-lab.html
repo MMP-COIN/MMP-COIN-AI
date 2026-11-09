@@ -245,7 +245,7 @@ async function scan(){
   publishSnapshot(btcTrend);
   saveScanState(true,btcTrend);
   $("scanned").textContent=scannedTotal.toLocaleString("fa-IR");
-  $("opps").textContent=state.rows.length.toLocaleString("fa-IR");
+  $("opps").textContent=state.rows.filter(x=>Number(x.score)>=55).length.toLocaleString("fa-IR");
   $("health").textContent=Math.round((scannedTotal-rejectedTotal)/Math.max(1,state.universe.length)*100).toLocaleString("fa-IR")+"٪";
   const statuses=Array(12).fill("partial");
   statuses[0]=btcTrend!=="نامشخص"?"ready":"partial";
