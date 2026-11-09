@@ -851,7 +851,7 @@ async function loadHunterDepth(symbol,marketType="spot",preferredProviders=[]){
 }
 const QUANTUM_ACTIVITY_KEYS=["momentum","flow","structure","liquidity","multiTimeframe","regime","volatility","sentiment","smartMoney","scenario","risk","dataQuality"];
 function markQuantumEvidence(activity,key){if(activity?.[key])activity[key].evidence++;}
-async function scanHunterSymbols(symbols,marketType="spot",assetList=[]){
+async function scanHunterSymbols(symbols,marketType="spot",assetList=[],env=null){
  const assetMap=new Map((Array.isArray(assetList)?assetList:[]).map(x=>[String(x.symbol||"").toUpperCase(),x]));
  let i=0,failed=0,rejected=0;const candidates=[],errors=[],rejections=[],engineActivity=Object.fromEntries(QUANTUM_ACTIVITY_KEYS.map(key=>[key,{processed:0,evidence:0}]));
  const concurrency=marketType==="futures"?2:4;
@@ -865,7 +865,7 @@ async function scanHunterSymbols(symbols,marketType="spot",assetList=[]){
    const gross=f.buy5m+f.sell5m,imb=gross?f.net5m/gross:0,ok=x.trend==="bull"?imb>=.045:imb<=-.045;
    if(f.trade_count<8||!ok||f.complete===false)return;markQuantumEvidence(engineActivity,"flow");
    const depth=await loadHunterDepth(x.symbol,marketType,[x.multiExchangeEvidence?.primary,x.multiExchangeEvidence?.secondary]);if(!depth.confirmed)return;markQuantumEvidence(engineActivity,"smartMoney");
-   const qBars=Array.isArray(x.rows)?x.rows.slice(-70):[],qRanges=qBars.slice(1).map((bar,i)=>Math.max(Number(bar[2])-Number(bar[3]),Math.abs(Number(bar[2])-Number(qBars[i][4])),Math.abs(Number(bar[3])-Number(qBars[i][4])))).filter(v=>Number.isFinite(v)&&v>0),qAtr=qRanges.length?qRanges.slice(-14).reduce((a,b)=>a+b,0)/Math.min(14,qRanges.length):0,qEntry=Number(x.price),qAtrPct=qEntry>0?qAtr/qEntry*100:null,qStopPct=qEntry>0?Math.max(qAtr*1.25,qEntry*.002)/qEntry*100:null,qDepthImbalance=Number(depth.totalDepthUsdt)>0?(Number(depth.bidUsdt)-Number(depth.askUsdt))/Number(depth.totalDepthUsdt):0,qSmartMoneyScore=Math.max(0,Math.min(100,50+Math.sign(imb)*(x.trend==="bull"?1:-1)*Math.min(25,Math.abs(imb)*100)+Math.min(15,Math.log2(Math.max(1,f.trade_count))*3))),qExplosionScore=Math.max(0,Math.min(100,Math.max(0,Number(x.volumeRatio)-1)*28+Math.abs(imb)*45+Math.min(25,Math.log2(Math.max(1,f.trade_count))*5)));
+   const qBars=Array.isArray(x.rows)?x.rows.slice(-70):[],qRanges=qBars.slice(1).map((bar,i)=>Math.max(Number(bar[2])-Number(bar[3]),Math.abs(Number(bar[2])-Number(qBars[i][4])),Math.abs(Number(bar[3])-Number(qBars[i][4])))).filter(v=>Number.isFinite(v)&&v>0),qAtr=qRanges.length?qRanges.slice(-14).reduce((a,b)=>a+b,0)/Math.min(14,qRanges.length):0,qEntry=Number(x.price),qAtrPct=qEntry>0?qAtr/qEntry*100:null,qStopPct=qEntry>0?Math.max(qAtr*1.25,qEntry*.002)/qEntry*100:null,qDepthImbalance=Number(depth.totalDepthUsdt)>0?(Number(depth.bidUsdt)-Number(depth.askUsdt))/Number(depth.totalDepthUsdt):0,qSmartMoneyScore=Math.max(0,Math.min(100,50+Math.sign(imb)*(x.trend==="bull"?1:-1)*Math.min(22,Math.abs(imb)*90)+qDepthImbalance*(x.trend==="bull"?1:-1)*18+Math.min(10,Math.log2(Math.max(1,f.trade_count))*2))),qExplosionScore=Math.max(0,Math.min(100,Math.max(0,Number(x.volumeRatio)-1)*28+Math.abs(imb)*45+Math.min(25,Math.log2(Math.max(1,f.trade_count))*5)));
    const scenarioScore=Math.max(0,Math.min(100,42+(x.breakout?18:0)+(x.technicalAligned?18:0)+Math.min(15,Math.max(0,x.volumeRatio-1)*12)-(x.overextended?25:0)));markQuantumEvidence(engineActivity,"scenario");markQuantumEvidence(engineActivity,"risk");
    const quantum=scoreQuantumOpportunity({...x,flowImbalance:imb,flowConfirmed:true,multiExchangeConfirmed:x.multiExchangeConfirmed,volumeRatio:x.volumeRatio,depthConfirmed:true,depthImbalance:qDepthImbalance,atrPct:qAtrPct,explosionScore:qExplosionScore,smartMoneyScore:qSmartMoneyScore,smartMoneyConfirmed:true,scenarioScore,stopDistancePct:qStopPct,requireDepthConfirmation:true,dataAgeMs:Date.now()-x.candleTime});if(!quantum.qualityGate)return;x.quantum=quantum;x.score=quantum.score;x.depth=depth;
    x.flow={buy5m:f.buy5m,sell5m:f.sell5m,net5m:f.net5m,windowMinutes:f.window_minutes||5,tradeCount:f.trade_count,provider:f.provider,complete:f.complete,coverageStart:f.coverage_start,rows:f.rows,imbalance:+imb.toFixed(4)};
@@ -878,6 +878,11 @@ async function scanHunterSymbols(symbols,marketType="spot",assetList=[]){
   }catch(e){x.flowError=String(e?.message||e).slice(0,90);}
  }));
  signals.sort((a,b)=>b.score-a.score);
+ if(signals.length&&env){
+  const x=signals[0],prompt=JSON.stringify({task:"Independent second-opinion review of a fully data-confirmed quantitative market setup. Do not invent data, indicators, levels, or news. Do not modify any numeric fields. If evidence conflicts, say caution. Return JSON only: {verdict:'confirm'|'caution'|'reject',confidence:0-100,thesis:string,risks:string[],invalidation:string}.",symbol:x.symbol,market:marketType,direction:x.trend,score:x.score,price:x.price,timeframes:x.timeframes,indicators:x.indicators,evidence:x.evidence,flow:x.flow,orderBook:x.depth,tradePlan:x.tradePlan,quantum:x.quantum});
+  try{const review=await runAIWithFallback(env,prompt),parsed=JSON.parse(review.raw);if(!["confirm","caution","reject"].includes(parsed.verdict)||!Number.isFinite(Number(parsed.confidence))||typeof parsed.thesis!=="string")throw new Error("AI review schema invalid");x.aiReview={status:"reviewed",provider:review.provider,verdict:parsed.verdict,confidence:Math.max(0,Math.min(100,Number(parsed.confidence))),thesis:parsed.thesis.slice(0,700),risks:Array.isArray(parsed.risks)?parsed.risks.slice(0,6).map(v=>String(v).slice(0,180)):[],invalidation:String(parsed.invalidation||"").slice(0,300),fallbacks:review.fallbacks};}
+  catch(error){x.aiReview={status:"unavailable",reason:String(error?.message||error).slice(0,180)};}
+ }
  return {market:marketType,requested:symbols.length,scanned:symbols.length-failed,candidates:candidates.length,failed,rejected,rejections,errors,signals,engine_activity:engineActivity,checked_at:new Date().toISOString()};
 }
 
@@ -929,7 +934,7 @@ export async function runDigitalHunterMarketCycle(env,marketType="spot"){
   const retry=assets.filter(asset=>!selectedSymbols.has(String(asset.symbol||"").toUpperCase())).sort((a,b)=>Number(failureCooldown[a.symbol]||0)-Number(failureCooldown[b.symbol]||0));
   for(const asset of retry){if(batch.length>=Math.min(batchLimit,assets.length))break;batch.push(asset);selectedSymbols.add(String(asset.symbol||"").toUpperCase());}
  }
- const result=await scanHunterSymbols(batch.map(x=>x.symbol),marketType,batch);
+ const result=await scanHunterSymbols(batch.map(x=>x.symbol),marketType,batch,env);
  for(const item of result.errors||[])failureCooldown[item.symbol]=now+5*60*1000;
  for(const item of result.rejections||[])failureCooldown[item.symbol]=now+2*60*1000;
  const map=new Map((previous.snapshot?.signals||[]).map(x=>[x.symbol,x])),scanned=new Set(batch.map(x=>x.symbol));
@@ -994,7 +999,7 @@ async function handle(request,env){
   const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-futures-run"),request);if(limited)return limited;try{return json(await runDigitalHunterMarketCycle(env,"futures"),200,request);}catch(e){return json({status:"error",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,market:"futures",error:String(e?.message||e).slice(0,220)},502,request);}
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-scan"){
-  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-scan"),request);if(limited)return limited;const url=new URL(request.url),symbols=[...new Set((url.searchParams.get("symbols")||"").split(",").map(x=>x.toUpperCase().replace(/[^A-Z0-9]/g,"")).filter(x=>/^[A-Z0-9]{2,24}$/.test(x)))].slice(0,12);if(!symbols.length)return json({error:"حداقل یک نماد معتبر ارسال کنید."},400,request);const marketType=url.searchParams.get("market")==="futures"?"futures":"spot";try{return json({engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,...await scanHunterSymbols(symbols,marketType)},200,request);}catch(e){return json({error:String(e?.message||e).slice(0,220)},502,request);}
+  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-scan"),request);if(limited)return limited;const url=new URL(request.url),symbols=[...new Set((url.searchParams.get("symbols")||"").split(",").map(x=>x.toUpperCase().replace(/[^A-Z0-9]/g,"")).filter(x=>/^[A-Z0-9]{2,24}$/.test(x)))].slice(0,12);if(!symbols.length)return json({error:"حداقل یک نماد معتبر ارسال کنید."},400,request);const marketType=url.searchParams.get("market")==="futures"?"futures":"spot";try{return json({engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,...await scanHunterSymbols(symbols,marketType,[],env)},200,request);}catch(e){return json({error:String(e?.message||e).slice(0,220)},502,request);}
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-universe"){
   const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-universe");
