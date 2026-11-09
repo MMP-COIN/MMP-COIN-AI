@@ -399,7 +399,7 @@ async function fetchWithTimeout(url,options={},timeoutMs=9000){
  const externalSignal=options.signal;
  let abortExternal=()=>controller.abort();
  if(externalSignal){if(externalSignal.aborted)controller.abort();else externalSignal.addEventListener("abort",abortExternal,{once:true});}
- try{return await fetchWithTimeout(url,{...options,signal:controller.signal});}
+ try{return await fetch(url,{...options,signal:controller.signal});}
  finally{clearTimeout(timer);if(externalSignal)externalSignal.removeEventListener("abort",abortExternal);}
 }
 async function readPublicJson(url){
