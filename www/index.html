@@ -1548,6 +1548,103 @@ body:before{opacity:.23;background-size:34px 34px}
  #market-snapshot.grid>.card{height:98px!important;min-height:98px!important;max-height:98px!important;padding:8px!important}
 }
 </style>
+
+<style id="mmp-homepage-first-screen-v2">
+/* Clean, self-contained redesign of the homepage hero and four live market cards */
+#mmp-home-hero.mmp-home-hero{
+  isolation:isolate;position:relative;display:grid!important;grid-template-columns:minmax(0,1fr) 270px;
+  align-items:center;gap:26px;min-height:268px;margin:14px 0 15px;padding:34px clamp(22px,4vw,54px);
+  overflow:hidden;border:1px solid #c5a96a88;border-radius:25px;
+  background:radial-gradient(ellipse at 78% 48%,#37b8a52b 0%,transparent 37%),
+    radial-gradient(ellipse at 8% 0%,#e6c47725 0%,transparent 42%),
+    linear-gradient(112deg,#152d3c 0%,#1b3945 48%,#203b43 100%)!important;
+  box-shadow:0 18px 46px #06111d55,inset 0 1px #ffffff22;color:#f7f3e8;
+}
+#mmp-home-hero:before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;opacity:.17;
+  background-image:linear-gradient(#d9e7e711 1px,transparent 1px),linear-gradient(90deg,#d9e7e711 1px,transparent 1px);
+  background-size:30px 30px;mask-image:linear-gradient(90deg,#000,transparent 90%)}
+#mmp-home-hero:after{content:"";position:absolute;width:360px;height:360px;border:1px solid #e5c77a20;border-radius:50%;left:21%;top:-245px;pointer-events:none}
+#mmp-home-hero .mmp-hero-copy{position:relative;z-index:2;max-width:690px;min-width:0}
+#mmp-home-hero .mmp-hero-kicker{display:flex;align-items:center;gap:9px;color:#e8ce91;font-size:10px;font-weight:900;letter-spacing:2px;direction:ltr;justify-content:flex-start}
+#mmp-home-hero .mmp-live-pulse{width:8px;height:8px;flex:0 0 8px;border-radius:50%;background:#58e2c0;box-shadow:0 0 0 5px #58e2c022,0 0 15px #58e2c0;animation:mmpPulse 1.8s ease-in-out infinite}
+@keyframes mmpPulse{50%{box-shadow:0 0 0 9px #58e2c008,0 0 22px #58e2c0}}
+#mmp-home-hero .mmp-hero-title{margin:17px 0 9px;color:#fff8e9;font-size:clamp(25px,3.3vw,43px);font-weight:950;line-height:1.55;letter-spacing:-.7px;text-shadow:0 3px 16px #07121a66}
+#mmp-home-hero .mmp-hero-title span{display:block;color:#f0d38e}
+#mmp-home-hero .mmp-hero-copy>p{max-width:590px;margin:0;color:#d0dfe0;font-size:12px;line-height:2.1}
+#mmp-home-hero .mmp-hero-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:20px}
+#mmp-home-hero .mmp-market-status{display:inline-flex;align-items:center;min-height:35px;padding:7px 12px;border:1px solid #9bc7bd55;border-radius:10px;background:#081c2670;color:#d5e8df;font-size:10px}
+#mmp-home-hero .mmp-refresh-button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:36px;padding:8px 14px;border:1px solid #f2d99d;border-radius:10px;background:linear-gradient(130deg,#f0d797,#c39a50);color:#18252a;font:900 11px Tahoma,Arial,sans-serif;box-shadow:0 6px 18px #080e1840;cursor:pointer}
+#mmp-home-hero .mmp-refresh-button span{font-size:17px;line-height:1}
+#mmp-home-hero .mmp-refresh-button:disabled{opacity:.7;cursor:wait}
+#mmp-home-hero .mmp-hero-emblem{position:relative;z-index:1;display:grid;place-items:center;min-height:205px}
+#mmp-home-hero .mmp-emblem-ring{position:absolute;width:205px;height:125px;border:1px solid #7ce3d455;border-radius:50%;transform:rotate(-28deg);box-shadow:0 0 25px #4bd9c21a}
+#mmp-home-hero .mmp-ring-two{width:190px;height:150px;border-color:#e4c47a66;transform:rotate(55deg)}
+#mmp-home-hero .mmp-emblem-coin{position:relative;display:grid;place-items:center;width:132px;height:132px;border-radius:50%;background:radial-gradient(circle at 32% 22%,#fff4c7,#e2bd70 32%,#95672f 68%,#4b351d 77%,#d7b36b 82%);border:5px solid #e4c77f;box-shadow:0 0 0 8px #e6c47712,0 15px 34px #07121a99,inset 0 5px 9px #fff9,inset 0 -10px 16px #39250e;animation:mmpCoinFloat 6s ease-in-out infinite}
+#mmp-home-hero .mmp-emblem-coin img{display:block;width:88%;height:88%;object-fit:contain;filter:drop-shadow(0 3px 3px #3b260c99)}
+@keyframes mmpCoinFloat{50%{transform:translateY(-8px) rotateY(12deg)}}
+#mmp-home-hero .mmp-emblem-caption{position:absolute;bottom:1px;white-space:nowrap;color:#b5d0cf;font-size:8px;letter-spacing:1.8px;direction:ltr}
+#mmp-home-hero .mmp-emblem-caption b{color:#67e3c0}
+#mmp-home-hero .mmp-hero-index{position:absolute;left:20px;top:18px;display:flex;flex-direction:column;gap:3px;opacity:.58;direction:ltr}
+#mmp-home-hero .mmp-hero-index small{font-size:7px;letter-spacing:1.3px;color:#d8e2dd}
+#mmp-home-hero .mmp-hero-index b{font-size:17px;color:#f0d38e}
+#mmp-home-hero .mmp-hero-index i{font-size:9px;font-style:normal;color:#c0d2d0}
+#market-snapshot.mmp-market-snapshot{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:12px!important;width:100%;min-width:0;align-items:stretch;margin:0 0 23px!important}
+#market-snapshot.mmp-market-snapshot>.mmp-market-card{position:relative;isolation:isolate;display:flex!important;flex-direction:column;justify-content:flex-start;min-width:0;min-height:154px;height:auto!important;max-height:none!important;margin:0!important;padding:15px 16px 13px!important;overflow:hidden;border:1px solid #c6d5d455;border-radius:17px;background:linear-gradient(145deg,#f7faf9 0%,#e8f0ef 100%)!important;box-shadow:0 9px 22px #071b2820,inset 0 1px #fff;transition:transform .2s,border-color .2s,box-shadow .2s}
+#market-snapshot.mmp-market-snapshot>.mmp-market-card:before{content:"";position:absolute;z-index:-1;right:0;top:0;width:4px;height:100%;background:var(--mmp-card-accent,#c9a85e)}
+#market-snapshot.mmp-market-snapshot>.mmp-market-card:after{content:"";position:absolute;z-index:-1;left:-28px;bottom:-52px;width:125px;height:125px;border:1px solid #6c899022;border-radius:50%;box-shadow:0 0 0 13px #6c899009,0 0 0 26px #6c899006}
+#market-snapshot.mmp-market-snapshot>.mmp-market-card:hover{transform:translateY(-3px);border-color:#a88c55;box-shadow:0 15px 28px #071b282b}
+#market-snapshot .mmp-btc-card{--mmp-card-accent:#d69a35}
+#market-snapshot .mmp-eth-card{--mmp-card-accent:#7180c9}
+#market-snapshot .mmp-usdt-card{--mmp-card-accent:#1caa85}
+#market-snapshot .mmp-gold-card{--mmp-card-accent:#bd9144}
+#market-snapshot .mmp-card-top{display:flex;align-items:center;gap:8px;margin-bottom:12px;min-width:0}
+#market-snapshot .mmp-asset-icon{display:grid;place-items:center;width:31px;height:31px;flex:0 0 31px;border-radius:10px;background:#fff;box-shadow:0 2px 7px #172b3515;font-size:17px;font-weight:900;direction:ltr}
+#market-snapshot .btc-icon{color:#d58b1e}.eth-icon{color:#6878c6}.usdt-icon{color:#169a77}.gold-icon{color:#a97d2d;font-size:12px}
+#market-snapshot .mmp-card-tag{min-width:0;color:#71818a;font-size:9px;font-weight:700}
+#market-snapshot .mmp-card-spark{margin-right:auto;color:var(--mmp-card-accent);font-size:17px}
+#market-snapshot .stat-label{color:#657780!important;font-size:10px!important;line-height:1.6;font-weight:700}
+#market-snapshot .stat-label b{margin-right:4px;color:#8b9ba0;font-size:9px;direction:ltr}
+#market-snapshot .stat-value{margin:7px 0 4px!important;color:#172c37!important;font-size:clamp(17px,1.7vw,24px)!important;font-weight:950!important;line-height:1.35;text-shadow:none!important;overflow-wrap:anywhere}
+#market-snapshot .sub{min-height:15px;color:#788a91!important;font-size:9px!important;line-height:1.55;overflow-wrap:anywhere}
+#market-snapshot .mmp-card-track{height:3px;margin-top:auto;padding-top:10px;overflow:hidden}
+#market-snapshot .mmp-card-track i{display:block;width:42%;height:3px;border-radius:8px;background:var(--mmp-card-accent);opacity:.7}
+@media(max-width:900px){#mmp-home-hero.mmp-home-hero{grid-template-columns:minmax(0,1fr) 205px;min-height:250px;padding:28px 25px}#mmp-home-hero .mmp-emblem-coin{width:112px;height:112px}#market-snapshot.mmp-market-snapshot{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+@media(max-width:600px){
+ #mmp-home-hero.mmp-home-hero{grid-template-columns:minmax(0,1fr) 108px;gap:7px;min-height:220px;margin:9px 0 12px;padding:22px 15px 18px;border-radius:18px}
+ #mmp-home-hero .mmp-hero-kicker{font-size:7px;letter-spacing:1px;gap:6px}
+ #mmp-home-hero .mmp-live-pulse{width:6px;height:6px;flex-basis:6px}
+ #mmp-home-hero .mmp-hero-title{margin:12px 0 7px;font-size:clamp(19px,5.3vw,25px);line-height:1.55;letter-spacing:0}
+ #mmp-home-hero .mmp-hero-copy>p{font-size:9px;line-height:1.9;max-width:100%}
+ #mmp-home-hero .mmp-hero-actions{gap:6px;margin-top:13px}
+ #mmp-home-hero .mmp-market-status{min-height:29px;padding:5px 7px;font-size:8px}
+ #mmp-home-hero .mmp-refresh-button{min-height:29px;padding:6px 8px;font-size:8px;gap:4px}
+ #mmp-home-hero .mmp-emblem-coin{width:83px;height:83px;border-width:3px}
+ #mmp-home-hero .mmp-emblem-ring{width:112px;height:70px}
+ #mmp-home-hero .mmp-ring-two{width:105px;height:83px}
+ #mmp-home-hero .mmp-emblem-caption{font-size:5px;letter-spacing:.7px}
+ #mmp-home-hero .mmp-hero-index{left:10px;top:8px}
+ #mmp-home-hero .mmp-hero-index small{font-size:5px}
+ #mmp-home-hero .mmp-hero-index b{font-size:11px}
+ #market-snapshot.mmp-market-snapshot{gap:8px!important;margin-bottom:17px!important}
+ #market-snapshot.mmp-market-snapshot>.mmp-market-card{min-height:135px!important;padding:11px 10px 9px!important;border-radius:13px}
+ #market-snapshot .mmp-card-top{gap:6px;margin-bottom:8px}
+ #market-snapshot .mmp-asset-icon{width:26px;height:26px;flex-basis:26px;border-radius:8px;font-size:14px}
+ #market-snapshot .mmp-card-tag{font-size:8px}
+ #market-snapshot .mmp-card-spark{font-size:14px}
+ #market-snapshot .stat-label{font-size:9px!important}
+ #market-snapshot .stat-value{font-size:clamp(14px,4vw,18px)!important;margin:6px 0 3px!important}
+ #market-snapshot .sub{font-size:8px!important;line-height:1.45}
+}
+@media(max-width:370px){
+ #mmp-home-hero.mmp-home-hero{grid-template-columns:minmax(0,1fr) 82px;padding-inline:12px}
+ #mmp-home-hero .mmp-emblem-coin{width:68px;height:68px}
+ #mmp-home-hero .mmp-emblem-caption{font-size:4px}
+ #market-snapshot .mmp-card-tag{font-size:7px}
+ #market-snapshot .stat-value{font-size:14px!important}
+}
+@media(prefers-reduced-motion:reduce){#mmp-home-hero .mmp-live-pulse,#mmp-home-hero .mmp-emblem-coin{animation:none!important}#market-snapshot .mmp-market-card{transition:none!important}}
+</style>
+
 </head>
 <body class="mmp-app-mode">
 
@@ -1607,13 +1704,22 @@ body:before{opacity:.23;background-size:34px 34px}
 <main class="wrap" id="hero">
 
 
-<section class="hero">
-<div>
-  <div class="eyebrow">MMP QUANTUM INTELLIGENCE NETWORK</div>
-<h1 class="hero-title"><span>ترمینال جامع و هوشمند</span><span>بازارهای مالی</span></h1>
-  <p>داده‌های زنده بازار، رادار فرصت‌ها و تحلیل چندلایه هوش مصنوعی؛ برای تصمیم‌گیری آگاهانه، نه دنبال‌کردن سیگنال‌های کور.</p>
-</div>
-<div class="hero-visual"><div class="hero-orbit orbit-a"></div><div class="hero-orbit orbit-b"></div><div class="hero-coin"><img src="assets/mmp-coin-mark.svg?v=20261108-qcoin2" alt="سکه طلایی M برجسته MMP COIN AI"></div><div class="hero-spark spark-a"></div><div class="hero-spark spark-b"></div><div class="hero-visual-label">MARKET INTELLIGENCE <span>● LIVE</span></div></div><div class="hero-refresh-group"><span class="badge" id="updated">در حال دریافت داده…</span><button class="btn primary hero-refresh-btn" id="market-refresh-btn" type="button">↻ بروزرسانی بازار</button></div>
+<section class="hero mmp-home-hero" id="mmp-home-hero">
+  <div class="mmp-hero-copy">
+    <div class="mmp-hero-kicker"><span class="mmp-live-pulse"></span>MMP QUANTUM INTELLIGENCE NETWORK</div>
+    <h1 class="mmp-hero-title">ترمینال جامع و هوشمند <span>بازارهای مالی</span></h1>
+    <p>نبض بازار را زنده دنبال کن؛ داده‌های لحظه‌ای، رادار فرصت‌ها و تحلیل چندلایه برای تصمیم‌گیری دقیق‌تر.</p>
+    <div class="mmp-hero-actions">
+      <span class="mmp-market-status" id="updated">در حال دریافت داده…</span>
+      <button class="mmp-refresh-button" id="market-refresh-btn" type="button"><span aria-hidden="true">↻</span> بروزرسانی بازار</button>
+    </div>
+  </div>
+  <div class="mmp-hero-emblem" aria-label="نشان MMP COIN AI">
+    <div class="mmp-emblem-ring mmp-ring-one"></div><div class="mmp-emblem-ring mmp-ring-two"></div>
+    <div class="mmp-emblem-coin"><img src="assets/mmp-coin-mark.svg?v=20261109-hero" alt="نشان سکه MMP"></div>
+    <span class="mmp-emblem-caption">MARKET INTELLIGENCE <b>● LIVE</b></span>
+  </div>
+  <div class="mmp-hero-index"><small>QUANTUM TERMINAL</small><b>01 <i>/ 04</i></b></div>
 </section>
 
 
@@ -1621,11 +1727,27 @@ body:before{opacity:.23;background-size:34px 34px}
 
 
 
-<section class="grid" id="market-snapshot" data-quantum-module="market-data">
-<div class="card"><div class="stat-label">بیت‌کوین · BTC</div><div class="stat-value" id="btc">$—</div><div class="sub" id="btc-sub">—</div></div>
-<div class="card"><div class="stat-label">اتریوم · ETH</div><div class="stat-value" id="eth">$—</div><div class="sub" id="eth-sub">—</div></div>
-<div class="card"><div class="stat-label">تتر به تومان · USDT/IRT</div><div class="stat-value" id="usdt">—</div><div class="sub" id="usdt-source">منبع: Nobitex & Wallex</div></div>
-<div class="card"><div class="stat-label">اونس جهانی طلا · XAU</div><div class="stat-value" id="gold">$—</div><div class="sub">مرجع جهانی فلزات گرانبها</div></div>
+<section class="grid mmp-market-snapshot" id="market-snapshot" data-quantum-module="market-data" aria-label="نمای سریع بازار">
+  <article class="card mmp-market-card mmp-btc-card">
+    <div class="mmp-card-top"><span class="mmp-asset-icon btc-icon">₿</span><span class="mmp-card-tag">دارایی شاخص</span><span class="mmp-card-spark">↗</span></div>
+    <div class="stat-label">بیت‌کوین <b>BTC</b></div><div class="stat-value" id="btc">$—</div><div class="sub" id="btc-sub">در انتظار داده بازار</div>
+    <div class="mmp-card-track"><i></i></div>
+  </article>
+  <article class="card mmp-market-card mmp-eth-card">
+    <div class="mmp-card-top"><span class="mmp-asset-icon eth-icon">◆</span><span class="mmp-card-tag">دارایی شاخص</span><span class="mmp-card-spark">◇</span></div>
+    <div class="stat-label">اتریوم <b>ETH</b></div><div class="stat-value" id="eth">$—</div><div class="sub" id="eth-sub">در انتظار داده بازار</div>
+    <div class="mmp-card-track"><i></i></div>
+  </article>
+  <article class="card mmp-market-card mmp-usdt-card">
+    <div class="mmp-card-top"><span class="mmp-asset-icon usdt-icon">₮</span><span class="mmp-card-tag">نرخ بازار داخلی</span><span class="mmp-card-spark">⇄</span></div>
+    <div class="stat-label">تتر به تومان <b>USDT / IRT</b></div><div class="stat-value" id="usdt">—</div><div class="sub" id="usdt-source">منبع: Nobitex &amp; Wallex</div>
+    <div class="mmp-card-track"><i></i></div>
+  </article>
+  <article class="card mmp-market-card mmp-gold-card">
+    <div class="mmp-card-top"><span class="mmp-asset-icon gold-icon">Au</span><span class="mmp-card-tag">دارایی جهانی</span><span class="mmp-card-spark">✧</span></div>
+    <div class="stat-label">اونس جهانی طلا <b>XAU</b></div><div class="stat-value" id="gold">$—</div><div class="sub">مرجع جهانی فلزات گران‌بها</div>
+    <div class="mmp-card-track"><i></i></div>
+  </article>
 </section>
 
 
