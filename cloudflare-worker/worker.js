@@ -636,11 +636,17 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
  }
  if(!verified.length)throw new Error((marketType==="futures"?"Futures":"Spot")+" candles unavailable: "+errors.join(" | "));
  if(verified.length<2)throw new Error("تأیید دو صرافی برای جفت "+pair+" در دسترس نیست: "+errors.join(" | "));
- const primary=verified[0],secondary=verified[1],a=primary.rows.slice(0,-1).at(-1),b=secondary.rows.slice(0,-1).at(-1);
- if(!a||!b)throw new Error("کندل بسته‌شده برای تأیید چندصرافی کافی نیست");
- const timeDiffMs=Math.abs(a[0]-b[0]),priceDeviationPct=a[4]>0?Math.abs(b[4]/a[4]-1)*100:Infinity;
- if(timeDiffMs>90000||priceDeviationPct>0.4)throw new Error("تأیید چندصرافی رد شد: اختلاف زمان "+timeDiffMs+"ms، اختلاف قیمت "+priceDeviationPct.toFixed(3)+"٪");
- return {provider:primary.provider,rows:primary.rows,market:marketType,multiExchangeConfirmed:true,multiExchangeEvidence:{primary:primary.provider,secondary:secondary.provider,timeDiffMs,priceDeviationPct:Number(priceDeviationPct.toFixed(4)),primaryPrice:a[4],secondaryPrice:b[4],candleTime:a[0]}};
+ const primary=verified[0],secondary=verified[1],primaryClosed=primary.rows.slice(0,-1),secondaryClosed=secondary.rows.slice(0,-1);
+ const secondaryByTime=new Map(secondaryClosed.map(candle=>[candle[0],candle]));
+ let alignedIndex=-1,a=null,b=null;
+ for(let i=primaryClosed.length-1;i>=0;i--){const match=secondaryByTime.get(primaryClosed[i][0]);if(match){alignedIndex=i;a=primaryClosed[i];b=match;break;}}
+ if(!a||!b)throw new Error("QUALITY_REJECTED: کندل بسته‌شده مشترک برای تأیید چندصرافی پیدا نشد");
+ const timeDiffMs=Math.abs(a[0]-b[0]),priceDeviationPct=a[4]>0?Math.abs(b[4]/a[4]-1)*100:Infinity,commonCandleAge=Date.now()-a[0];
+ if(commonCandleAge>180000)throw new Error("QUALITY_REJECTED: کندل مشترک چندصرافی قدیمی است ("+commonCandleAge+"ms)");
+ if(priceDeviationPct>0.4)throw new Error("QUALITY_REJECTED: اختلاف قیمت چندصرافی "+priceDeviationPct.toFixed(3)+"٪");
+ // Keep the shared confirmed candle as the last closed candle; never analyze a newer uncorroborated bar.
+ const alignedRows=primary.rows.slice(0,alignedIndex+2);
+ return {provider:primary.provider,rows:alignedRows,market:marketType,multiExchangeConfirmed:true,multiExchangeEvidence:{primary:primary.provider,secondary:secondary.provider,timeDiffMs,priceDeviationPct:Number(priceDeviationPct.toFixed(4)),primaryPrice:a[4],secondaryPrice:b[4],candleTime:a[0]}};
 }
 async function analyzeDigitalHunterSymbol(symbol,marketType="spot",asset=null){
  const m=await fetchHunterCandles(symbol,marketType,asset),rows=m.rows.slice(0,-1),now=Date.now();if(rows.length<60)return null;
@@ -786,9 +792,9 @@ async function loadHunterDepth(symbol,marketType="spot",preferredProviders=[]){
 }
 async function scanHunterSymbols(symbols,marketType="spot",assetList=[]){
  const assetMap=new Map((Array.isArray(assetList)?assetList:[]).map(x=>[String(x.symbol||"").toUpperCase(),x]));
- let i=0,failed=0;const candidates=[],errors=[];
+ let i=0,failed=0,rejected=0;const candidates=[],errors=[],rejections=[];
  const concurrency=marketType==="futures"?1:2;
- await Promise.all(Array.from({length:Math.min(concurrency,symbols.length)},async()=>{while(i<symbols.length){const symbol=symbols[i++];try{const x=await analyzeDigitalHunterSymbol(symbol,marketType,assetMap.get(symbol));if(x)candidates.push(x);}catch(e){failed++;if(errors.length<8)errors.push({symbol,error:String(e?.message||e).slice(0,120)});}}}));
+ await Promise.all(Array.from({length:Math.min(concurrency,symbols.length)},async()=>{while(i<symbols.length){const symbol=symbols[i++];try{const x=await analyzeDigitalHunterSymbol(symbol,marketType,assetMap.get(symbol));if(x)candidates.push(x);}catch(e){const message=String(e?.message||e);if(message.startsWith("QUALITY_REJECTED:")){rejected++;if(rejections.length<8)rejections.push({symbol,error:message.slice(0,180)});}else{failed++;if(errors.length<8)errors.push({symbol,error:message.slice(0,220)});}}}}));
  candidates.sort((a,b)=>b.score-a.score);const signals=[];
  const flowCandidates=(marketType==="futures"?[...candidates.filter(x=>x.trend==="bull"&&!x.lowLiquidity).slice(0,1),...candidates.filter(x=>x.trend==="bear"&&!x.lowLiquidity).slice(0,1)]:candidates.filter(x=>x.trend==="bull"&&!x.lowLiquidity).slice(0,2)).filter(x=>x.score>=60);
  await Promise.all(flowCandidates.map(async x=>{
@@ -810,7 +816,7 @@ async function scanHunterSymbols(symbols,marketType="spot",assetList=[]){
   }catch(e){x.flowError=String(e?.message||e).slice(0,90);}
  }));
  signals.sort((a,b)=>b.score-a.score);
- return {market:marketType,requested:symbols.length,scanned:symbols.length-failed,candidates:candidates.length,failed,errors,signals,checked_at:new Date().toISOString()};
+ return {market:marketType,requested:symbols.length,scanned:symbols.length-failed,candidates:candidates.length,failed,rejected,rejections,errors,signals,checked_at:new Date().toISOString()};
 }
 
 async function loadDigitalHunterFuturesUniverse(){
@@ -857,7 +863,7 @@ export async function runDigitalHunterMarketCycle(env,marketType="spot"){
  for(const [symbol,signal] of map){if(now-Number(signal.updatedAt||0)>5*60*1000)map.delete(symbol);}
  const fresh=[...map.values()].filter(x=>now-Number(x.updatedAt||0)<=5*60*1000&&Number(x.score)>=68&&x.confirmed===true&&x.multiExchangeConfirmed===true&&x.flow?.complete===true&&Number(x.flow?.tradeCount)>=8&&Number(x.volumeRatio)>=1.1&&x.depth?.confirmed===true&&x.quantum?.qualityGate===true).sort((a,b)=>b.score-a.score);
  const selected=marketType==="futures"?[...fresh.filter(x=>x.trend==="bull").slice(0,6),...fresh.filter(x=>x.trend==="bear").slice(0,6)]:fresh.filter(x=>x.trend==="bull").slice(0,6);
- const snapshot={status:"online",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,market:marketType,checked_at:new Date().toISOString(),scanned_at:new Date().toISOString(),universe_count:assets.length,next_cursor:(cursor+batch.length)%assets.length,batch_size:batch.length,scanned_count:result.scanned,candidate_count:result.signals.length,failed_count:result.failed,universe_refreshed:false,signals:selected,last_errors:result.errors||[],sources:universeSources,universe_provider:universeProvider,cycle_seconds:60};
+ const snapshot={status:"online",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,market:marketType,checked_at:new Date().toISOString(),scanned_at:new Date().toISOString(),universe_count:assets.length,next_cursor:(cursor+batch.length)%assets.length,batch_size:batch.length,scanned_count:result.scanned,candidate_count:result.signals.length,failed_count:result.failed,rejected_count:result.rejected||0,universe_refreshed:false,signals:selected,last_errors:result.errors||[],last_rejections:result.rejections||[],sources:universeSources,universe_provider:universeProvider,cycle_seconds:60};
  const payload=JSON.stringify({cursor:snapshot.next_cursor,lastRun:now,assets,universeUpdatedAt,universeSources,universeProvider,snapshot});
  await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(stateId,payload,new Date(now).toISOString()).run();
  return snapshot;
@@ -1379,10 +1385,11 @@ async function runDigitalHunterCron(event,env){
  const errors={};if(results[0].status==="rejected")errors.spot=String(results[0].reason?.message||results[0].reason).slice(0,220);if(results[1].status==="rejected")errors.futures=String(results[1].reason?.message||results[1].reason).slice(0,220);
  const bothAvailable=!!spot&&!!futures;
  const hasDataFailures=Number(spot?.failed_count||0)>0||Number(futures?.failed_count||0)>0;
- const status=bothAvailable?(hasDataFailures?"partial":"success"):spot||futures?"partial":"error";
+ const hasQualityRejections=Number(spot?.rejected_count||0)>0||Number(futures?.rejected_count||0)>0;
+ const status=bothAvailable?(hasDataFailures||hasQualityRejections?"partial":"success"):spot||futures?"partial":"error";
  const payload={status,engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,cron:event?.cron||"* * * * *",scheduledTime:event?.scheduledTime||null,startedAt:stamp,finishedAt:new Date(finished).toISOString(),markets:{
-  spot:spot?{scanned:spot.scanned_count||0,failed:spot.failed_count||0,universe:spot.universe_count||0,signals:spot.signals?.length||0,last_errors:spot.last_errors||[]}:{status:"error",error:errors.spot||"unavailable"},
-  futures:futures?{scanned:futures.scanned_count||0,failed:futures.failed_count||0,universe:futures.universe_count||0,signals:futures.signals?.length||0,last_errors:futures.last_errors||[]}:{status:"error",error:errors.futures||"unavailable"}
+  spot:spot?{scanned:spot.scanned_count||0,failed:spot.failed_count||0,rejected:spot.rejected_count||0,universe:spot.universe_count||0,signals:spot.signals?.length||0,last_errors:spot.last_errors||[],last_rejections:spot.last_rejections||[]}:{status:"error",error:errors.spot||"unavailable"},
+  futures:futures?{scanned:futures.scanned_count||0,failed:futures.failed_count||0,rejected:futures.rejected_count||0,universe:futures.universe_count||0,signals:futures.signals?.length||0,last_errors:futures.last_errors||[],last_rejections:futures.last_rejections||[]}:{status:"error",error:errors.futures||"unavailable"}
  },errors};
  await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(id,JSON.stringify(payload),new Date(finished).toISOString()).run();
  if(!spot&&!futures)throw new Error("Quantum Spot and Futures cycles both failed: "+JSON.stringify(errors));
