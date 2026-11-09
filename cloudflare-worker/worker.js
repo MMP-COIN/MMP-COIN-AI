@@ -716,9 +716,12 @@ async function loadHunterDepth(symbol,marketType="spot",preferredProviders=[]){
  if(!/^[A-Z0-9]{2,24}$/.test(pair))throw new Error("Invalid depth symbol");
  const get=url=>marketFlowJson(url,7500);
  const sources=marketType==="futures"?[
-  {key:"Binance",name:"Binance USD-M Futures",load:async()=>{const d=await get("https://fapi.binance.com/fapi/v1/depth?symbol="+pair+"&limit=100");return {bids:d.bids,asks:d.asks};}},
-  {key:"Bybit",name:"Bybit Linear Futures",load:async()=>{const d=await get("https://api.bybit.eu/v5/market/orderbook?category=linear&symbol="+pair+"&limit=100");if(Number(d.retCode)!==0)throw Error(d.retMsg||"Bybit order book unavailable");return {bids:d.result?.b,asks:d.result?.a};}},
-  {key:"Gate",name:"Gate USDT Futures",load:async()=>{const contract=base+"_USDT";let details,book;try{[details,book]=await Promise.all([get("https://api.gateio.ws/api/v4/futures/usdt/contracts/"+contract),get("https://api.gateio.ws/api/v4/futures/usdt/order_book?contract="+contract+"&limit=100")]);}catch{[details,book]=await Promise.all([get("https://fx-api.gateio.ws/api/v4/futures/usdt/contracts/"+contract),get("https://fx-api.gateio.ws/api/v4/futures/usdt/order_book?contract="+contract+"&limit=100")]);}const multiplier=Number(details?.quanto_multiplier)||0;if(!multiplier)throw Error("Gate contract multiplier unavailable");return {bids:(book.bids||[]).map(x=>[Number(x.p??x[0]),Number(x.s??x[1])*multiplier]),asks:(book.asks||[]).map(x=>[Number(x.p??x[0]),Number(x.s??x[1])*multiplier])};}}
+  {key:"MEXC",name:"MEXC USDT Futures",load:async()=>{const d=await get("https://contract.mexc.com/api/v1/contract/depth/"+base+"_USDT");if(d?.success!==true)throw Error(d?.msg||"MEXC Futures order book unavailable");return {bids:d.data?.bids,asks:d.data?.asks};}},
+  {key:"Bitget",name:"Bitget USDT Futures",load:async()=>{const d=await get("https://api.bitget.com/api/v2/mix/market/merge-depth?symbol="+pair+"&productType=USDT-FUTURES&limit=100");if(!["00000","0"].includes(String(d.code)))throw Error(d.msg||"Bitget Futures order book unavailable");return {bids:d.data?.bids,asks:d.data?.asks};}},
+  {key:"OKX",name:"OKX USDT Swap",load:async()=>{const d=await get("https://www.okx.com/api/v5/market/books?instId="+base+"-USDT-SWAP&sz=100");if(String(d.code)!=="0")throw Error(d.msg||"OKX Swap order book unavailable");return {bids:d.data?.[0]?.bids,asks:d.data?.[0]?.asks};}},
+  {key:"Gate",name:"Gate USDT Futures",load:async()=>{const contract=base+"_USDT";let details,book;try{[details,book]=await Promise.all([get("https://api.gateio.ws/api/v4/futures/usdt/contracts/"+contract),get("https://api.gateio.ws/api/v4/futures/usdt/order_book?contract="+contract+"&limit=100")]);}catch{[details,book]=await Promise.all([get("https://api.gate.us/api/v4/futures/usdt/contracts/"+contract),get("https://api.gate.us/api/v4/futures/usdt/order_book?contract="+contract+"&limit=100")]);}const multiplier=Number(details?.quanto_multiplier)||0;if(!multiplier)throw Error("Gate contract multiplier unavailable");return {bids:(book.bids||[]).map(x=>[Number(x.p??x[0]),Number(x.s??x[1])*multiplier]),asks:(book.asks||[]).map(x=>[Number(x.p??x[0]),Number(x.s??x[1])*multiplier])};}},
+  {key:"Bybit",name:"Bybit Linear Futures",load:async()=>{const d=await get("https://api.bybit.com/v5/market/orderbook?category=linear&symbol="+pair+"&limit=100");if(Number(d.retCode)!==0)throw Error(d.retMsg||"Bybit order book unavailable");return {bids:d.result?.b,asks:d.result?.a};}},
+  {key:"Binance",name:"Binance USD-M Futures",load:async()=>{const d=await get("https://fapi.binance.com/fapi/v1/depth?symbol="+pair+"&limit=100");return {bids:d.bids,asks:d.asks};}}
  ]:[
   {key:"Binance.US",name:"Binance.US Spot",load:async()=>{const d=await get("https://api.binance.us/api/v3/depth?symbol="+pair+"&limit=100");return {bids:d.bids,asks:d.asks};}},
   {key:"Binance",name:"Binance Spot",load:async()=>{const d=await get("https://api.binance.com/api/v3/depth?symbol="+pair+"&limit=100");return {bids:d.bids,asks:d.asks};}},
@@ -727,7 +730,7 @@ async function loadHunterDepth(symbol,marketType="spot",preferredProviders=[]){
   {key:"Bybit",name:"Bybit Spot",load:async()=>{const d=await get("https://api.bybit.eu/v5/market/orderbook?category=spot&symbol="+pair+"&limit=50");if(Number(d.retCode)!==0)throw Error(d.retMsg||"Bybit order book unavailable");return {bids:d.result?.b,asks:d.result?.a};}}
  ];
  const preferred=preferredProviders.map(value=>sources.findIndex(x=>String(value||"").toLowerCase().includes(x.key.toLowerCase()))).filter(index=>index>=0);
- const order=[...new Set([...preferred,...sources.map((_,index)=>index)])].slice(0,2);
+ const order=[...new Set([...preferred,...sources.map((_,index)=>index)])].slice(0,3);
  let best=null,lastError="";
  for(const index of order){
   const source=sources[index];
