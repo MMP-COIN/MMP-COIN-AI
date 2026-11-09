@@ -1919,6 +1919,17 @@ header.top .brand small{white-space:nowrap}
  header.top .brand small{display:none!important}
  header.top .top-actions #refresh-all-btn{display:none!important}
 }
+
+<style id="mmp-top-transition-spacing-fix-20261109">
+/* Keep the main header/menu intact; remove the oversized blank strip before page content. */
+@media(max-width:900px){
+ html body.mmp-app-mode .wrap{padding-top:5px!important}
+ html body.mmp-app-mode .wrap>.hero:first-child{margin-top:5px!important}
+}
+@media(min-width:901px){
+ html body.mmp-app-mode .wrap{padding-top:10px!important}
+}
+</style>
 </style>
 </head>
 <body class="mmp-app-mode">
