@@ -2897,6 +2897,18 @@ async function checkConnections(){
   if(!Array.isArray(payload?.checks))throw new Error("پاسخ بررسی اتصال کامل نیست");
   const expected=["binance spot","bybit spot","okx spot","bitget spot","gate.io spot","kucoin spot","nobitex","wallex"];
   const checks=new Map(payload.checks.map(c=>[String(c?.name||"").trim().toLowerCase(),c]));
+  const bybitCheck=checks.get("bybit spot");
+  if(bybitCheck?.status==="down"){
+   const started=Date.now(),bybitController=new AbortController(),bybitTimer=setTimeout(()=>bybitController.abort(),6500);
+   try{
+    const urls=["https://api.bybit.eu/v5/market/tickers?category=spot&symbol=BTCUSDT","https://api.bytick.eu/v5/market/tickers?category=spot&symbol=BTCUSDT","https://api.bytick.com/v5/market/tickers?category=spot&symbol=BTCUSDT","https://api.bybit.com/v5/market/tickers?category=spot&symbol=BTCUSDT"];
+    const attempts=await Promise.allSettled(urls.map(async url=>{const r=await fetch(url,{cache:"no-store",signal:bybitController.signal});if(!r.ok)throw new Error("HTTP "+r.status);const d=await r.json();if(d?.retCode!==0||!(Number(d?.result?.list?.[0]?.lastPrice)>0))throw new Error("پاسخ معتبر دریافت نشد");return d;}));
+    const valid=attempts.find(x=>x.status==="fulfilled");
+    if(!valid)throw new Error(String(attempts.find(x=>x.status==="rejected")?.reason?.message||"منبع مستقیم در دسترس نیست"));
+    bybitCheck.status=Date.now()-started>2500?"slow":"ok";bybitCheck.ping=Date.now()-started;bybitCheck.error=null;bybitCheck.purpose="اتصال مستقیم از مرورگر · بازار Spot";
+   }catch(directError){bybitCheck.error="اتصال مستقیم: "+String(directError?.message||"خطای شبکه").slice(0,80);}
+   finally{clearTimeout(bybitTimer);}
+  }
   const bitgetCheck=checks.get("bitget spot");
   if(bitgetCheck?.status==="down"){
    const started=Date.now(),bitgetController=new AbortController(),bitgetTimer=setTimeout(()=>bitgetController.abort(),7000);
