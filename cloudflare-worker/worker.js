@@ -414,17 +414,21 @@ async function marketFallbackKey(url){
  return "market:"+Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,"0")).join("");
 }
 async function readMarketFallback(env,key){
- if(!env.MARKET_DATA_CACHE)return null;
+ if(!env.MARKET_CACHE_DB)return null;
  try{
-  const record=await env.MARKET_DATA_CACHE.get(key,"json");
-  if(!record||!record.payload||!Number.isFinite(Number(record.cached_at)))return null;
-  const ageMs=Math.max(0,Date.now()-Number(record.cached_at));
-  return ageMs<=900000?{payload:record.payload,ageMs}:null;
+  const row=await env.MARKET_CACHE_DB.prepare("SELECT payload,cached_at FROM market_data_cache WHERE cache_key = ?").bind(key).first();
+  if(!row?.payload||!Number.isFinite(Number(row.cached_at)))return null;
+  const ageMs=Math.max(0,Date.now()-Number(row.cached_at));
+  if(ageMs>900000)return null;
+  const payload=JSON.parse(row.payload);
+  return payload&&typeof payload==="object"?{payload,ageMs}:null;
  }catch{return null;}
 }
 async function writeMarketFallback(env,key,payload){
- if(!env.MARKET_DATA_CACHE)return;
- try{await env.MARKET_DATA_CACHE.put(key,JSON.stringify({cached_at:Date.now(),payload}),{expirationTtl:900});}catch{}
+ if(!env.MARKET_CACHE_DB)return;
+ try{
+  await env.MARKET_CACHE_DB.prepare("INSERT INTO market_data_cache (cache_key,payload,cached_at) VALUES (?, ?, ?) ON CONFLICT(cache_key) DO UPDATE SET payload=excluded.payload,cached_at=excluded.cached_at").bind(key,JSON.stringify(payload),Date.now()).run();
+ }catch(error){console.warn("Market fallback cache write failed:",String(error?.message||error).slice(0,180));}
 }
 async function readPublicJson(url){
  try{
