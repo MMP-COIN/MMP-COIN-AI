@@ -431,6 +431,7 @@ jobs:
             if [ "$flow_status" != "200" ]; then cat "/tmp/flow-$market.json"; exit 1; fi
             jq -e '.symbol == "BTCUSDT" and (.trade_count | type == "number") and (.trade_count > 0) and (.buy5m >= 0) and (.sell5m >= 0) and (.provider | type == "string" and length > 0) and (.complete | type == "boolean")' "/tmp/flow-$market.json" >/dev/null
             jq -r '"$market trade-flow: " + .provider + " | " + (.trade_count|tostring) + " trades | complete=" + (.complete|tostring)' "/tmp/flow-$market.json"
+            jq -r '"$market flow fallback diagnostics: " + (.fallback_error // "none")' "/tmp/flow-$market.json"
           done
           for market in spot futures; do
             orderflow_status=$(curl --silent --show-error --retry 1 --retry-delay 2 --max-time 35 -o "/tmp/orderflow-$market.json" -w "%{http_code}" "$WORKER_URL/market-orderflow?market=$market&symbol=BTC")
