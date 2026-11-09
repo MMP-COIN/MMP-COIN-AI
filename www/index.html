@@ -5023,43 +5023,6 @@ window.mmpShareDownloadLink = async function () {
 @media(max-width:380px){.signal-drawer-copy small{display:none}}
 
 
-/* MMP HOME QUANTUM ENTRY — replace oversized hero frame with a slim command bar */
-#quantum-center-entry.quantum-command-hero{
- display:block!important;position:relative;min-height:0!important;margin:12px 0 16px!important;
- padding:12px 16px!important;border:1px solid rgba(218,183,111,.48)!important;border-radius:13px!important;
- background:linear-gradient(105deg,rgba(10,17,27,.98),rgba(23,31,43,.97) 62%,rgba(10,27,31,.98))!important;
- box-shadow:inset 0 1px rgba(255,255,255,.05),0 7px 20px rgba(0,0,0,.22)!important;
- overflow:hidden!important;
-}
-#quantum-center-entry.quantum-command-hero:before{content:"";position:absolute;inset:0 auto 0 0;width:3px;background:linear-gradient(180deg,transparent,#e6c77e,#70d8cf,transparent)}
-#quantum-center-entry .quantum-hero-art,
-#quantum-center-entry .quantum-hero-foot,
-#quantum-center-entry .quantum-hero-copy>p,
-#quantum-center-entry .quantum-hero-tags,
-#quantum-center-entry .quantum-hero-actions>.badge{display:none!important}
-#quantum-center-entry .quantum-hero-copy{
- display:grid!important;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto;
- align-items:center;gap:3px 14px;width:100%;min-width:0
-}
-#quantum-center-entry .quantum-hero-eyebrow{grid-column:1;grid-row:1;font-size:8px!important;letter-spacing:1.5px!important;margin:0 0 2px!important;color:#a9c5c4!important}
-#quantum-center-entry .quantum-live-pip{width:6px!important;height:6px!important;display:inline-block;margin-inline-end:5px;background:#70d8cf!important;box-shadow:0 0 8px #70d8cf}
-#quantum-center-entry .quantum-hero-copy h2,
-#quantum-center-entry .hero-title{grid-column:1;grid-row:2;display:flex!important;align-items:baseline;flex-wrap:wrap;gap:0 9px;margin:0!important;font-size:clamp(14px,2vw,18px)!important;line-height:1.35!important}
-#quantum-center-entry .quantum-hero-copy h2 span{display:inline!important}
-#quantum-center-entry .quantum-hero-copy h2 span+span{font-size:10px!important;font-weight:400!important;color:#9eacba!important}
-#quantum-center-entry .quantum-hero-actions{grid-column:2;grid-row:1/3;display:flex!important;align-items:center;justify-content:flex-end;margin:0!important}
-#quantum-center-entry .quantum-enter-btn{display:inline-flex!important;align-items:center;gap:10px;padding:9px 13px!important;min-height:36px;border:1px solid rgba(222,190,123,.7)!important;border-radius:9px!important;background:linear-gradient(120deg,rgba(218,183,111,.2),rgba(218,183,111,.06))!important;color:#f3dda9!important;font-size:10px!important;white-space:nowrap;box-shadow:0 0 14px rgba(218,183,111,.08)}
-#quantum-center-entry .quantum-enter-btn b{font-size:15px;color:#70d8cf}
-@media(max-width:560px){
- #quantum-center-entry.quantum-command-hero{padding:9px 10px!important;margin:9px 0 12px!important;border-radius:10px!important}
- #quantum-center-entry .quantum-hero-copy{grid-template-columns:minmax(0,1fr) auto;gap:2px 7px}
- #quantum-center-entry .quantum-hero-eyebrow{font-size:7px!important;letter-spacing:1px!important}
- #quantum-center-entry .quantum-hero-copy h2{font-size:12px!important;gap:2px 5px}
- #quantum-center-entry .quantum-hero-copy h2 span+span{font-size:8px!important}
- #quantum-center-entry .quantum-enter-btn{padding:7px 8px!important;min-height:32px;font-size:9px!important;gap:5px}
-}
-@media(max-width:360px){#quantum-center-entry .quantum-hero-copy h2 span+span{display:none!important}}
-
 </style>
 </body>
 
