@@ -106,6 +106,7 @@ body{overflow-wrap:anywhere;word-break:normal}
 <section class="engine-showcase" id="quantum-engines"><div class="engines" id="engines"></div></section>
 <div class="section-title" id="quantum-charts-section"><h2>داشبورد نموداری مرکز کوانتومی</h2><small>نمودارها فقط از نتایج واقعی ثبت‌شده ساخته می‌شوند</small></div><section class="quantum-charts" id="quantum-charts"><div class="chart-card"><div class="empty">پس از دریافت داده بازار، نمودارها به‌روزرسانی می‌شوند.</div></div></section>\n<div class="section-title" id="quantum-assets"><h2>انتخاب ارز برای تحلیل کوانتومی</h2><small>۱۰ ارز پرمعامله اول · سایر ارزها در فهرست جمع‌شونده · USDT Spot</small></div>
 <section class="panel" id="independent-search"><div class="toolbar"><input id="asset-search" autocomplete="off" placeholder="نام یا نماد ارز را جستجو کن؛ مثل BTC یا Bitcoin…"><button class="btn" id="asset-search-clear" type="button">پاک‌کردن</button><button class="btn" id="asset-search-stop" type="button" hidden>توقف پایش</button></div><div id="asset-search-status" class="muted tiny" style="margin-top:8px">در حال دریافت فهرست دارایی‌های واجد شرایط بازار…</div><div id="asset-search-results" class="asset-search-results"></div><div class="asset-more-wrap"><button class="btn" id="asset-search-more" type="button">نمایش ارزهای بیشتر</button><small id="asset-count-label" class="muted tiny"></small></div></section>
+<div class="section-title" id="quantum-candidates"><h2>نامزدهای اولیه در حال بررسی</h2><small>کشف کندلی · هنوز سیگنال معاملاتی نیست</small></div><section class="panel"><div class="muted tiny" id="candidate-summary">نامزدهای واقعی آخرین چرخه پس از دریافت داده نمایش داده می‌شوند.</div><div class="tablewrap" style="margin-top:12px"><table><thead><tr><th>نماد</th><th>قیمت</th><th>جهت</th><th>قدرت</th><th>حجم نسبی</th><th>مرحله بررسی</th></tr></thead><tbody id="candidate-rows"><tr><td colspan="6" class="muted">هنوز نامزدی ثبت نشده است.</td></tr></tbody></table></div></section>
 <div class="section-title" id="quantum-opportunities"><h2>فرصت‌های شناسایی‌شده</h2><small>امتیاز ترکیبی ۰ تا ۱۰۰</small></div>
 <section class="panel"><div class="toolbar"><input id="filter" placeholder="جستجوی نماد ارز…"><select id="direction"><option value="all">همه جهت‌ها</option><option value="bull">سناریوی صعودی</option><option value="bear">سناریوی نزولی</option></select><select id="sort"><option value="score">بالاترین امتیاز</option><option value="volume">بیشترین حجم</option><option value="change">بیشترین تغییر ۲۴ ساعته</option></select><button class="btn" id="export">خروجی CSV</button></div><div class="tablewrap" style="margin-top:12px"><table><thead><tr><th>ارز</th><th>قیمت USDT</th><th>تغییر ۲۴ساعته</th><th>حجم ۲۴ساعته USDT</th><th>جهت سناریو</th><th>امتیاز</th><th>شواهد کلیدی</th><th>جزئیات</th></tr></thead><tbody id="rows"><tr><td colspan="8" class="muted">برای شروع، اسکن بازار را اجرا کنید.</td></tr></tbody></table></div></section>
 <div class="section-title" id="quantum-analysis"><h2>تحلیل عمیق دارایی انتخاب‌شده</h2><small id="selected-label">هنوز ارزی انتخاب نشده است</small></div>
@@ -119,7 +120,7 @@ body{overflow-wrap:anywhere;word-break:normal}
 "use strict";
 const API="https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev";
 const $=id=>document.getElementById(id);
-const state={universe:[],rows:[],selected:null,busy:false,done:0,errors:0,ledger:loadLedger(),depth:new Map(),searchUniverse:[],searchBusy:false,assetLimit:10,independentStop:false,engineActivity:{}};
+const state={universe:[],rows:[],candidates:[],selected:null,busy:false,done:0,errors:0,ledger:loadLedger(),depth:new Map(),searchUniverse:[],searchBusy:false,assetLimit:10,independentStop:false,engineActivity:{}};
 const engineCapabilities=[
 ["Market Intelligence","رژیم بازار، جهت BTC و همبستگی زمینه‌ای"],["Explosion Predictor","فشردگی دامنه، افزایش حجم و شتاب اولیه"],["Early Opportunity Hunter","کشف تغییرات اولیه در کل نمادهای واجد شرایط"],["Smart Money Flow","جریان معاملات اجراشده و عدم تعادل خرید/فروش؛ بدون ادعای شناسایی هویت نهنگ"],["Liquidity Hunter","عدم تعادل دفتر سفارش و نواحی نقدینگی"],["Multi-Timeframe","هم‌جهتی ۵ دقیقه و یک ساعت"],["Volatility Intelligence","ATR، دامنه و فشردگی نوسان"],["Market Sentiment","شاخص Fear & Greed جهانی؛ زمینه کلی بازار، نه احساسات اختصاصی هر ارز"],["Scenario Simulator","سناریوی صعودی/نزولی و نقطه ابطال"],["Adaptive Learning","ثبت پیش‌بینی‌ها و سنجش نتیجه با داده‌های بعدی؛ وابسته به سابقه ثبت‌شده"],["Risk Intelligence","فاصله حدضرر، ATR و نسبت ریسک/بازده"],["Quantum Decision Engine","ترکیب شواهد، کیفیت داده و رتبه‌بندی"]];
 function log(s){const el=$("log");el.textContent=(new Date().toLocaleTimeString("fa-IR")+" · "+s+"\n"+el.textContent).slice(0,6500)}
@@ -270,6 +271,7 @@ function applyLiveSnapshot(snap){
  if(!snap||snap.status==="offline")throw new Error("موتور مرکزی در دسترس نیست");
  window.__mmpLastQuantumUpdate=Date.now();
  const signals=Array.isArray(snap.signals)?snap.signals:[];
+ state.candidates=Array.isArray(snap.candidate_details)?snap.candidate_details.map(x=>({symbol:String(x.symbol||"").toUpperCase(),price:Number(x.price)||Number(x.coin?.current_price)||0,trend:x.trend==="bull"?"bull":x.trend==="bear"?"bear":"neutral",score:Number(x.score)||0,volumeRatio:Number(x.volumeRatio)||0,flowStatus:String(x.flowStatus||"not_selected_this_batch"),flowError:x.flowError||null,flowCheck:x.flowCheck||null})):[];
  state.universe.length=Math.max(0,Number(snap.universe_count)||0);
  state.done=Math.max(0,Number(snap.scanned_count)||0);
  state.errors=Math.max(0,Number(snap.failed_count)||0);
@@ -301,12 +303,18 @@ function applyLiveSnapshot(snap){
  state.engineActivity=snap.engine_activity||{};
  const engineKeys=["regime","momentum","structure","flow","liquidity","multiTimeframe","volatility","sentiment","scenario","learning","risk","dataQuality"];
  const statuses=engineKeys.map(key=>{if(key==="learning")return state.ledger.length?"ready":"partial";const metric=state.engineActivity[key];if(metric){if(Number(metric.evidence)>0)return "ready";if(Number(metric.processed)>0)return "partial";return "idle";}return signals.some(x=>x.quantum?.componentAvailability?.[key]===true)?"ready":"idle";});
- renderEngines(statuses);renderRows();
+ renderEngines(statuses);renderCandidates();renderRows();
  const live=snap.status==="online"&&state.done>0&&Date.now()-Date.parse(snap.checked_at||snap.scanned_at||"")<120000;setStatus(live?("اسکن خودکار بازار فعال است · "+state.done+" نماد در آخرین چرخه بررسی شد"+(signals.length?" · فرصت‌های تأییدشده به‌روز شدند":" · فعلاً فرصت تأییدشده‌ای وجود ندارد")):"در انتظار چرخه بعدی اسکن مرکزی؛ نتایج قبلی حفظ می‌شوند",live?"ok":"");
  if(!window.__mmpLiveLogAt||Date.now()-window.__mmpLiveLogAt>60000){log("وضعیت مرکزی به‌روزرسانی شد · یونیورس "+state.universe.length+" · بررسی چرخه اخیر "+state.done+" · فرصت تأییدشده "+state.rows.length);window.__mmpLiveLogAt=Date.now()}
 }
 function startLiveMonitor(){scan();if(window.__mmpQuantumPoll)clearInterval(window.__mmpQuantumPoll);window.__mmpQuantumPoll=setInterval(()=>{if(!document.hidden&&!state.busy)scan()},15000)}
 
+function renderCandidates(){
+ const rows=state.candidates.slice().sort((a,b)=>b.score-a.score);
+ const labels={checking_flow:"در حال بررسی جریان",confirmed:"تأیید جریان و عمق",flow_not_confirmed:"جریان تأیید نشد",depth_not_confirmed:"عمق سفارش کافی نیست",flow_error:"خطا در بررسی جریان",not_selected_this_batch:"در صف بررسی جریان"};
+ $("candidate-summary").textContent="نامزدهای کندلی این نوبت: "+rows.length.toLocaleString("fa-IR")+" · این فهرست مستقل از فرصت‌های نهایی است؛ هیچ موردی به‌عنوان سیگنال قطعی معرفی نمی‌شود.";
+ $("candidate-rows").innerHTML=rows.length?rows.map(x=>"<tr><td><b>"+esc(x.symbol)+"</b></td><td class=\"num\">"+(x.price>0?price(x.price):"—")+"</td><td>"+(x.trend==="bull"?"صعودی":x.trend==="bear"?"نزولی":"خنثی")+"</td><td class=\"score\">"+n(x.score,0)+" / 100</td><td>"+n(x.volumeRatio,2)+"×</td><td>"+esc(labels[x.flowStatus]||x.flowStatus)+"</td></tr>").join(""):'<tr><td colspan="6" class="empty">در آخرین نوبت نامزد اولیه‌ای ثبت نشده است.</td></tr>';
+}
 function renderRows(){
  const q=$("filter").value.trim().toUpperCase(),dir=$("direction").value,sort=$("sort").value;
  let rows=state.rows.filter(x=>(!q||String(x.symbol).toUpperCase().includes(q))&&(dir==="all"||x.direction===dir));
