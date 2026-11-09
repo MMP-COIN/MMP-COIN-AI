@@ -2,22 +2,11 @@
 <defs>
  <linearGradient id="edge" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff0ad"/><stop offset=".2" stop-color="#a96b19"/><stop offset=".48" stop-color="#f8d77e"/><stop offset=".72" stop-color="#74400d"/><stop offset="1" stop-color="#f4cf70"/></linearGradient>
  <radialGradient id="face" cx="34%" cy="24%" r="78%"><stop stop-color="#fff1b0"/><stop offset=".28" stop-color="#e6b64d"/><stop offset=".62" stop-color="#b87920"/><stop offset="1" stop-color="#63370d"/></radialGradient>
- <linearGradient id="letter" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff9d8"/><stop offset=".42" stop-color="#f8dc91"/><stop offset="1" stop-color="#8e4e0c"/></linearGradient>
+ <linearGradient id="letter" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#ffffff"/><stop offset=".42" stop-color="#fff0b5"/><stop offset="1" stop-color="#c17b19"/></linearGradient>
  <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="5"/></filter>
- <filter id="shine"><feGaussianBlur stdDeviation="1.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+ <filter id="shine"><feGaussianBlur stdDeviation="2.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
 </defs>
-<g fill="none" stroke-linecap="round" opacity=".8">
- <ellipse cx="128" cy="128" rx="121" ry="47" transform="rotate(-28 128 128)" stroke="#d9b66d" stroke-width="2.8"/>
- <ellipse cx="128" cy="128" rx="121" ry="47" transform="rotate(32 128 128)" stroke="#b98a42" stroke-width="2.2"/>
- <ellipse cx="128" cy="128" rx="121" ry="47" transform="rotate(88 128 128)" stroke="#65cfc6" stroke-width="2" opacity=".55"/>
-</g>
-<g>
- <circle cx="236" cy="75" r="3.2" fill="#f4d995"/>
- <circle cx="20" cy="180" r="3" fill="#65cfc6"/>
- <circle cx="183" cy="239" r="2.8" fill="#d9b66d"/>
-</g>
 <g transform="translate(23.04 23.04) scale(.82)">
-<ellipse cx="128" cy="239" rx="83" ry="8" fill="#000" opacity=".45" filter="url(#shadow)"/>
 <circle cx="128" cy="128" r="119" fill="#392006"/>
 <circle cx="128" cy="128" r="116" fill="url(#edge)" stroke="#ffe9a0" stroke-width="2"/>
 <!-- Deep milled ridges around the coin edge -->
