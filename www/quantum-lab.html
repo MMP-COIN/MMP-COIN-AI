@@ -255,67 +255,7 @@ async function analyzeIndependent(symbol){
  state.rows=state.rows.filter(x=>x.symbol!==symbol);state.rows.push(row);state.rows.sort((a,b)=>b.score-a.score);renderRows();showDetail(symbol);status.textContent="تحلیل مستقل "+symbol+" انجام شد · امتیاز "+row.score+"/100.";
  }catch(e){status.textContent="تحلیل "+symbol+" ناموفق بود: "+e.message}finally{state.searchBusy=false}
 }
-let searchTimer=null;
-async function loadIndependentCatalog(){
- const status=$("asset-search-status");status.textContent="در حال دریافت کاتالوگ مستقل بازار…";
- try{const data=await apiJSON("/hunter-universe",60000);state.searchUniverse=Array.isArray(data.hunter_assets)?data.hunter_assets.filter(a=>a&&a.hasUsdtMarket&&Number(a.current_price)>0):[];status.textContent="کاتالوگ مستقل آماده است · "+state.searchUniverse.length.toLocaleString("fa-IR")+" دارایی واجد شرایط؛ مستقل از رتبه‌بندی فرصت‌ها.";renderAssetSearch()}
- catch(e){status.textContent="دریافت فهرست مستقل ناموفق بود: "+e.message}
-}
-function renderAssetSearch(){
- const q=$("asset-search").value.trim().toUpperCase(),host=$("asset-search-results");if(!q){host.hidden=true;host.innerHTML="";return}
- const found=state.searchUniverse.filter(a=>String(a.symbol||"").toUpperCase().includes(q)||String(a.name||"").toUpperCase().includes(q)).slice(0,12);
- host.hidden=false;host.innerHTML=found.length?found.map(a=>'<div class="asset-result"><div><b>'+esc(a.symbol)+'</b><small>'+price(a.current_price)+' USDT · تغییر ۲۴ساعته '+n(a.hunterChange24h,2)+'٪</small></div><button type="button" data-independent-analyze="'+esc(a.symbol)+'">تحلیل مستقل</button></div>').join(""):'<div class="empty">ارزی با این عبارت در کاتالوگ فعلی پیدا نشد.</div>';
-}
-async function analyzeIndependent(symbol){
- if(state.searchBusy)return;state.searchBusy=true;const status=$("asset-search-status");status.textContent="در حال تحلیل مستقل "+symbol+"…";
- try{const result=await apiJSON("/hunter-scan?market=spot&symbols="+encodeURIComponent(symbol),60000);const signal=(result.signals||[]).find(x=>String(x.symbol).toUpperCase()===symbol);
- if(!signal){status.textContent=symbol+" بررسی شد، اما سیگنال تأییدشده‌ای در این چرخه دریافت نشد؛ ارز همچنان در جستجوی مستقل باقی می‌ماند.";return}
- const asset=state.searchUniverse.find(a=>String(a.symbol).toUpperCase()===symbol)||{},flow=signal.flow||null,depth=signal.depth||null,ev=signal.evidence||{};
- const row={symbol,last:Number(signal.price)||Number(asset.current_price)||0,change:Number(asset.hunterChange24h)||0,quoteVolume:Number(asset.total_volume)||0,score:Number(signal.score)||0,direction:signal.trend==="bull"?"bull":signal.trend==="bear"?"bear":"neutral",dirScore:signal.trend==="bull"?1:signal.trend==="bear"?-1:0,explosion:Number(signal.explosionScore)||0,atrPct:Number(signal.atrPct)||null,volRatio:Number(signal.volumeRatio)||0,buyRatio:flow?.complete===true?(1+Number(flow.imbalance||0))/2:null,trend5:0,trend1:0,rsi:null,breakout:ev.breakout?1:0,compression:null,book:depth?.confirmed?{imbalance:Number(depth.imbalance)||0,bids:Number(depth.bidUsdt)||0,asks:Number(depth.askUsdt)||0}:null,flow,evidence:[ev.breakout?"شکست ساختار کوتاه‌مدت":null,flow?.complete===true?"جریان معاملات تأییدشده":null,depth?.confirmed===true?"عمق دفتر سفارش تأییدشده":null,signal.multiExchangeConfirmed?"تأیید چندصرافی":null].filter(Boolean),completeness:signal.quantum?.qualityGate?1:.6,stopDist:Number(signal.tradePlan?.riskPercent)||null,targetDist:null,high:null,low:null,time:Date.now(),provider:signal.provider||"چندصرافی",tradePlan:signal.tradePlan,depth,raw:signal};
- state.rows=state.rows.filter(x=>x.symbol!==symbol);state.rows.push(row);state.rows.sort((a,b)=>b.score-a.score);renderRows();showDetail(symbol);status.textContent="تحلیل مستقل "+symbol+" انجام شد · امتیاز "+row.score+"/100.";
- }catch(e){status.textContent="تحلیل "+symbol+" ناموفق بود: "+e.message}finally{state.searchBusy=false}
-}
-function renderRows(){
- const q=$("filter").value.trim().toUpperCase(),d=$("direction").value,sort=$("sort").value;
- let rows=state.rows.filter(x=>(!q||x.symbol.includes(q))&&(d==="all"||(d==="bull"&&x.direction==="bull")||(d==="bear"&&x.direction==="bear")));
- rows.sort((a,b)=>sort==="volume"?b.quoteVolume-a.quoteVolume:sort==="change"?Math.abs(b.change)-Math.abs(a.change):b.score-a.score);
- $("rows").innerHTML=rows.length?rows.map(x=>'<tr><td><b>'+esc(x.symbol)+'</b></td><td class="num">'+price(x.last)+'</td><td class="num '+(x.change>=0?"up":"down")+'">'+n(x.change,2)+'٪</td><td class="num">'+n(x.quoteVolume/1e6,2)+'M</td><td class="'+(x.direction==="bull"?"up":x.direction==="bear"?"down":"wait")+'">'+(x.direction==="bull"?"صعودی":x.direction==="bear"?"نزولی":"نامشخص")+'</td><td class="score">'+x.score+'</td><td>'+esc(x.evidence.slice(0,3).join(" · ")||"شواهد محدود")+'</td><td><button class="btn" data-detail="'+esc(x.symbol)+'">جزئیات</button></td></tr>').join(""):'<tr><td colspan="8" class="empty">هنوز داده‌ای برای نمایش وجود ندارد.</td></tr>';
-}
-async function showDetail(symbol){
- const x=state.rows.find(r=>r.symbol===symbol);if(!x)return;state.selected=x;$("selected-label").textContent=symbol;
- const flow=x.flow,depth=x.depth,plan=x.tradePlan,entry=Number(plan?.entry)||x.last,stop=Number(plan?.stopLoss),target=Number(plan?.target2);
- const flowText=flow?.complete===true?("خرید "+n(flow.buy5m,0)+" USDT · فروش "+n(flow.sell5m,0)+" USDT · "+n(flow.tradeCount,0)+" معامله"):"جریان معاملات واقعی در این نمونه تأیید نشده است.";
- const depthText=depth?.confirmed===true?("خرید دفتر سفارش "+n(depth.bidUsdt,0)+" USDT · فروش "+n(depth.askUsdt,0)+" USDT · منبع "+esc(depth.source||"چندصرافی")):"عمق دفتر سفارش در این نمونه تأیید نشده است.";
- $("detail").innerHTML='<div class="details">'+[
-  ["امتیاز کوانتومی",x.score+"/100"],["سناریوی غالب",x.direction==="bull"?"صعودی":"نزولی"],
-  ["قدرت انفجار",n(x.explosion,1)],["نسبت حجم",n(x.volRatio,2)+"×"],
-  ["جریان معاملات",flow?.complete===true?"تأییدشده":"ناموجود"],["عمق نقدینگی",depth?.confirmed===true?"تأییدشده":"ناموجود"],
-  ["تغییر ۲۴ ساعته",n(x.change,2)+"٪"],["حجم ۲۴ ساعته",n(x.quoteVolume/1e6,2)+"M USDT"],
-  ["منبع کندل",esc(x.provider||"چندصرافی")]
- ].map(z=>'<div class="detail"><small>'+z[0]+'</small><b>'+z[1]+'</b></div>').join("")+'</div>'+
- '<div class="section-title"><h2>نقشه معامله مشروط</h2></div><div class="details">'+[
- ["قیمت مرجع",price(entry)+" USDT"],["حد ضرر",Number.isFinite(stop)?price(stop)+" USDT":"در دسترس نیست"],["هدف دوم",Number.isFinite(target)?price(target)+" USDT":"در دسترس نیست"]
- ].map(z=>'<div class="detail"><small>'+z[0]+'</small><b>'+z[1]+'</b></div>').join("")+'</div>'+
- '<div class="section-title"><h2>جریان سفارش و نقدینگی</h2></div><p class="muted tiny" style="line-height:2">'+flowText+'</p><p class="muted tiny" style="line-height:2">'+depthText+'</p>'+
- '<div class="section-title"><h2>شواهد تأیید</h2></div><p>'+esc(x.evidence.join(" · ")||"شواهد ثبت‌شده‌ای وجود ندارد.")+'</p>'+
- '<p class="disclaimer">این مورد از فیلترهای تأیید چندصرافی، جریان معاملات و عمق دفتر سفارش عبور کرده است؛ با این حال تضمین‌کننده سود نیست. ورود فقط با رعایت حد ضرر و تأیید مجدد قیمت مجاز است.</p>';
-}
-function record(){
- const x=state.selected;if(!x){alert("ابتدا جزئیات یک ارز را انتخاب کنید.");return}
- state.ledger.push({symbol:x.symbol,entry:x.last,direction:x.direction,score:x.score,created:Date.now(),resolved:false});saveLedger();renderLedger();log("پیش‌بینی Paper ثبت شد: "+x.symbol+" · "+x.direction+" · "+x.score);
-}
-async function updateLedger(){
- const pending=state.ledger.filter(x=>!x.resolved);if(!pending.length){renderLedger();return}
- setStatus("در حال ارزیابی پیش‌بینی‌های قبلی…");
- await pool(pending,2,async p=>{try{const d=await apiJSON("/market-candles?symbol="+encodeURIComponent(p.symbol)+"&interval=5m&market=spot",18000);const last=Number(d.price);if(last>0){p.last=last;p.updated=Date.now();p.move=(p.last/p.entry-1)*100;if(Math.abs(p.move)>=1){p.resolved=true;p.outcome=(p.direction==="bull"?p.move:-p.move)>0?"درست":"نادرست";}}}catch(e){}});
- saveLedger();renderLedger();setStatus("ارزیابی دفتر پیش‌بینی به‌روزرسانی شد","ok");
-}
-function renderLedger(){
- $("ledger-count").textContent=state.ledger.length.toLocaleString("fa-IR")+" پیش‌بینی ثبت‌شده";
- $("ledger").textContent=state.ledger.length?state.ledger.slice(-40).reverse().map(p=>p.symbol+" · "+p.direction+" · امتیاز "+p.score+" · "+(p.resolved?(p.outcome==="درست"?"نتیجه: درست":"نتیجه: نادرست"):"در انتظار حرکت ۱٪")+" · "+(p.move!==undefined?n(p.move,2)+"٪":"")).join("\n"):"هنوز پیش‌بینی‌ای ثبت نشده است.";
-}
-function exportCSV(){const rows=[["symbol","price_usdt","change_24h_pct","quote_volume_usdt","direction","score","evidence"],...state.rows.map(x=>[x.symbol,x.last,x.change,x.quoteVolume,x.direction,x.score,x.evidence.join("|")])];const csv="\uFEFF"+rows.map(r=>r.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(",")).join("\n");const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));a.download="mmp-quantum-market-scan.csv";a.click();URL.revokeObjectURL(a.href)}
-$("asset-search").addEventListener("input",()=>{clearTimeout(searchTimer);searchTimer=setTimeout(renderAssetSearch,120)});$("asset-search-clear").addEventListener("click",()=>{$("asset-search").value="";renderAssetSearch();$("asset-search").focus()});$("asset-search-results").addEventListener("click",e=>{const b=e.target.closest("[data-independent-analyze]");if(b)analyzeIndependent(b.dataset.independentAnalyze)});$("asset-search").addEventListener("input",()=>{clearTimeout(searchTimer);searchTimer=setTimeout(renderAssetSearch,120)});$("asset-search-clear").addEventListener("click",()=>{$("asset-search").value="";renderAssetSearch();$("asset-search").focus()});$("asset-search-results").addEventListener("click",e=>{const b=e.target.closest("[data-independent-analyze]");if(b)analyzeIndependent(b.dataset.independentAnalyze)});$("scan").addEventListener("click",scan);$("back").addEventListener("click",()=>location.href="/");$("filter").addEventListener("input",renderRows);$("direction").addEventListener("change",renderRows);$("sort").addEventListener("change",renderRows);$("rows").addEventListener("click",e=>{const b=e.target.closest("[data-detail]");if(b)showDetail(b.dataset.detail)});$("record").addEventListener("click",record);$("history").addEventListener("click",updateLedger);$("export").addEventListener("click",exportCSV);
+$("asset-search").addEventListener("input",()=>{clearTimeout(searchTimer);searchTimer=setTimeout(renderAssetSearch,120)});$("asset-search-clear").addEventListener("click",()=>{$("asset-search").value="";renderAssetSearch();$("asset-search").focus()});$("asset-search-results").addEventListener("click",e=>{const b=e.target.closest("[data-independent-analyze]");if(b)analyzeIndependent(b.dataset.independentAnalyze)});$("scan").addEventListener("click",scan);$("back").addEventListener("click",()=>location.href="/");$("filter").addEventListener("input",renderRows);$("direction").addEventListener("change",renderRows);$("sort").addEventListener("change",renderRows);$("rows").addEventListener("click",e=>{const b=e.target.closest("[data-detail]");if(b)showDetail(b.dataset.detail)});$("record").addEventListener("click",record);$("history").addEventListener("click",updateLedger);$("export").addEventListener("click",exportCSV);
 renderEngines(null);renderLedger();restoreScanState();loadIndependentCatalog();if(state.ledger.length)log("حافظه محلی شامل "+state.ledger.length+" پیش‌بینی قبلی است.");
 })();
 </script></body></html>
