@@ -1416,7 +1416,8 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/futures-engine-heal
   let longAligned=alignmentMarket["4h"].ema_trend==="bullish"&&alignmentMarket["1d"].ema_trend!=="bearish";
   let shortAligned=alignmentMarket["4h"].ema_trend==="bearish"&&alignmentMarket["1d"].ema_trend!=="bullish";
   if(mode==="both"&&futuresMarket){longAligned=longAligned&&futuresMarket["4h"].ema_trend==="bullish"&&futuresMarket["1d"].ema_trend!=="bearish";shortAligned=shortAligned&&futuresMarket["4h"].ema_trend==="bearish"&&futuresMarket["1d"].ema_trend!=="bullish";}
-  const volumeConfirmed=Number(market["15m"]?.volume_ratio)>=1.1||Number(market["1h"]?.volume_ratio)>=1.1;\n  if(!marketDataFresh||!volumeConfirmed||(analysis.action==="BUY"&&!longAligned)||(analysis.action==="SELL"&&!shortAligned)||(mode==="spot"&&analysis.action==="SELL")){
+  const volumeConfirmed=Number(market["15m"]?.volume_ratio)>=1.1||Number(market["1h"]?.volume_ratio)>=1.1;
+  if(!marketDataFresh||!volumeConfirmed||(analysis.action==="BUY"&&!longAligned)||(analysis.action==="SELL"&&!shortAligned)||(mode==="spot"&&analysis.action==="SELL")){
    analysis.action="WAIT";analysis.confidence=Math.min(analysis.confidence,marketDataFresh?45:20);
    analysis.reasons.unshift(!marketDataFresh?"داده یکی از بازه‌های زمانی کهنه یا ناقص است؛ تا دریافت کندل‌های بسته‌شده تازه، ورود تأیید نمی‌شود.":!volumeConfirmed?"حجم معاملات در بازه کوتاه‌مدت تأیید کافی ندارد؛ ورود به تعویق می‌افتد.":"هم‌جهتی کافی میان روند ۴ ساعته و روزانه وجود ندارد؛ ورود فوری تأیید نمی‌شود.");
   }
