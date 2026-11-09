@@ -2287,7 +2287,7 @@ async function refreshLiveQuotes(){
  try{
   const updated=await enrichWithBinance(cachedCoinsData);
   const now=Date.now();
-  const fresh=updated.filter(c=>Number(c.current_price)>0&&Number.isFinite(Date.parse(c.price_updated_at||""))&&now-Date.parse(c.price_updated_at)<=45000&&(c.price_source==="Binance Spot"||c.price_source==="Bitget Spot"));
+  const fresh=updated.filter(c=>Number(c.current_price)>0&&Number.isFinite(Date.parse(c.price_updated_at||""))&&now-Date.parse(c.price_updated_at)<=45000&&(["Binance Spot","Bitget Spot","OKX Spot","Bybit Spot"].includes(c.price_source)));
   if(!fresh.length)return false;
   const byId=new Map(updated.map(c=>[String(c.id),c]));
   cachedCoinsData=cachedCoinsData.map(c=>byId.get(String(c.id))||c);
