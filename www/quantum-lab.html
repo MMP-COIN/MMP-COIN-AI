@@ -233,7 +233,7 @@ async function scan(){
    }
    state.done=scannedTotal+failedTotal;state.rejected=rejectedTotal;state.errors=failedTotal;saveScanState(false,btcTrend);
    $("scanned").textContent=scannedTotal.toLocaleString("fa-IR");
-   $("opps").textContent=state.rows.length.toLocaleString("fa-IR");
+   $("opps").textContent=state.rows.filter(x=>Number(x.score)>=55).length.toLocaleString("fa-IR");
    $("health").textContent=(state.done?Math.round((scannedTotal-rejectedTotal)/Math.max(1,state.universe.length)*100):0).toLocaleString("fa-IR")+"٪";
    $("progress").textContent=(bi+1).toLocaleString("fa-IR")+" / "+batches.length.toLocaleString("fa-IR")+" دسته · "+state.done.toLocaleString("fa-IR")+" / "+state.universe.length.toLocaleString("fa-IR");
    renderRows();
