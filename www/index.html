@@ -2515,11 +2515,18 @@ async function enrichWithBinance(coins){
   }}
  ];
  let tickers=[],priceSource="",failures=[];
- for(const provider of providers){
-  try{const rows=await provider.load();if(!Array.isArray(rows)||!rows.length)throw new Error("Empty ticker list");tickers=rows;priceSource=provider.name;break;}
-  catch(error){failures.push(provider.name+": "+String(error?.message||error).slice(0,100));}
- }
- if(!tickers.length){
+ const attempts=providers.map(provider=>provider.load().then(rows=>{
+  if(!Array.isArray(rows)||!rows.length)throw new Error("Empty ticker list");
+  return {name:provider.name,rows};
+ }).catch(error=>{
+  failures.push(provider.name+": "+String(error?.message||error).slice(0,100));
+  throw error;
+ }));
+ try{
+  const fastest=await Promise.any(attempts);
+  tickers=fastest.rows;
+  priceSource=fastest.name;
+ }catch(error){
   console.warn("All live quote routes unavailable; preserving last valid prices:",failures);
   return coins.map(c=>({...c,price_source:c.price_source||"آخرین داده معتبر"}));
  }
