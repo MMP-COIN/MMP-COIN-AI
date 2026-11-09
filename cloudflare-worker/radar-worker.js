@@ -219,7 +219,10 @@ async function runRadar(env,scheduledTime=Date.now()){
   });
   // Validate the strongest fresh candidates with real executed trades, not candle volume alone.
   const flowCandidates=[...scannedSignals.filter(x=>x.trend==="bull"&&x.coreAligned&&!x.lowLiquidity&&x.multiExchangeConfirmed&&Number(x.score)>=48).sort((a,b)=>b.score-a.score).slice(0,2),...scannedSignals.filter(x=>x.trend==="bear"&&x.coreAligned&&!x.lowLiquidity&&x.multiExchangeConfirmed&&Number(x.score)>=48).sort((a,b)=>b.score-a.score).slice(0,2)];
+  const flowCheckedSymbols=new Set(flowCandidates.map(signal=>String(signal.symbol).toUpperCase()));
+  for(const signal of scannedSignals)signal.flowStatus=flowCheckedSymbols.has(String(signal.symbol).toUpperCase())?"checking_flow":"queued_for_flow_review";
   await mapLimit(flowCandidates,2,async signal=>{
+    signal.flowStatus="checking_flow";
     try{
       let flow=await getJson(MAIN_FLOW+"?symbol="+encodeURIComponent(signal.symbol)+"&window=5",8500);
       if(flow.complete!==true){const shorter=await getJson(MAIN_FLOW+"?symbol="+encodeURIComponent(signal.symbol)+"&window=1",8500);if(shorter.complete===true&&Number(shorter.trade_count)>=10)flow=shorter;}
@@ -234,12 +237,14 @@ async function runRadar(env,scheduledTime=Date.now()){
         signal.flowAdjustment=aligned?8:opposed?-10:0;
         signal.flowPressure=Number((buyPressure*100).toFixed(1));
       }
-    }catch(error){signal.flowError=String(error?.message||error).slice(0,120);}
+      signal.flowStatus=signal.flow.complete&&signal.flow.tradeCount>=10?"flow_received":"flow_incomplete";
+    }catch(error){signal.flowStatus="flow_error";signal.flowError=String(error?.message||error).slice(0,120);}
   });
   // Re-score each candidate with the shared Quantum Intelligence core.
   for(const signal of scannedSignals){
     const flow=signal.flow||{},gross=Number(flow.buy5m||0)+Number(flow.sell5m||0),imbalance=gross>0?(Number(flow.buy5m||0)-Number(flow.sell5m||0))/gross:0;
     signal.flowConfirmed=flow.complete===true&&Number(flow.tradeCount)>=10&&(signal.trend==="bull"?imbalance>=0.045:imbalance<=-0.045);
+    if(signal.flowConfirmed)signal.flowStatus="flow_confirmed";else if(signal.flowStatus==="flow_received")signal.flowStatus="flow_not_aligned";
     const qBars=Array.isArray(signal.rows)?signal.rows.slice(-70):[],qRanges=qBars.slice(1).map((bar,i)=>Math.max(Number(bar[2])-Number(bar[3]),Math.abs(Number(bar[2])-Number(qBars[i][4])),Math.abs(Number(bar[3])-Number(qBars[i][4])))).filter(v=>Number.isFinite(v)&&v>0),qAtr=qRanges.length?qRanges.slice(-14).reduce((a,b)=>a+b,0)/Math.min(14,qRanges.length):0,qEntry=Number(signal.price),qAtrPct=qEntry>0?qAtr/qEntry*100:null,qStopPct=qEntry>0?Math.max(qAtr*1.25,qEntry*.002)/qEntry*100:null,qSmartMoneyScore=Math.max(0,Math.min(100,50+Math.sign(imbalance)*(signal.trend==="bull"?1:-1)*Math.min(25,Math.abs(imbalance)*100)+Math.min(15,Math.log2(Math.max(1,Number(flow.tradeCount)||1))*3))),qExplosionScore=Math.max(0,Math.min(100,Math.max(0,Number(signal.volumeRatio)-1)*28+Math.abs(imbalance)*45+Math.min(25,Math.log2(Math.max(1,Number(flow.tradeCount)||1))*5)));
     signal.quantum=scoreQuantumOpportunity({...signal,flowImbalance:imbalance,flowConfirmed:signal.flowConfirmed,multiExchangeConfirmed:signal.multiExchangeConfirmed,volumeRatio:signal.volumeRatio,atrPct:qAtrPct,explosionScore:qExplosionScore,smartMoneyScore:qSmartMoneyScore,smartMoneyConfirmed:signal.flowConfirmed,riskRewardRatio:2.2,stopDistancePct:qStopPct,dataAgeMs:Date.now()-Number(signal.candleTime||Date.now())});
     signal.score=Math.round(Number(signal.score||0)*0.55+signal.quantum.score*0.45);
@@ -262,11 +267,14 @@ async function runRadar(env,scheduledTime=Date.now()){
     }
   }
   const nextCursor=cursor;
+  const candidateDetails=scannedSignals.map(signal=>({id:String(signal.id),symbol:signal.symbol,trend:signal.trend,score:Number(signal.score)||0,price:Number(signal.price)||0,change1m:Number(signal.change1m)||0,change3m:Number(signal.change3m)||0,change5m:Number(signal.change5m)||0,volumeRatio:Number(signal.volumeRatio)||0,provider:signal.provider||"",multiExchangeConfirmed:signal.multiExchangeConfirmed===true,flowStatus:signal.flowStatus||"queued_for_flow_review",flowTradeCount:Number(signal.flow?.tradeCount)||0,flowComplete:signal.flow?.complete===true,flowConfirmed:signal.flowConfirmed===true,volumeConfirmed:signal.volumeConfirmed===true,qualityGate:signal.quantum?.qualityGate===true,updatedAt:Number(signal.updatedAt)||Date.now(),coin:signal.coin||null}));
+  const flowConfirmedCount=scannedSignals.filter(signal=>signal.flowConfirmed===true).length;
+  const qualityPassCount=scannedSignals.filter(signal=>signal.flowConfirmed===true&&signal.volumeConfirmed===true&&signal.quantum?.qualityGate===true&&Number(signal.score)>=RETENTION_SCORE).length;
   const snapshot={
     status:"online",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,source:"Cloudflare scheduled radar",scoring_version:4,retention_score:RETENTION_SCORE,
     universe_source:universeSource,universe_cache_age_ms:universeSource==="cached"?cacheAge:0,
     scanned_at:new Date().toISOString(),scheduled_at:new Date(Number(scheduledTime)||Date.now()).toISOString(),
-    universe_count:universe.length,scanned_count:completed,valid_count:valid,failed_count:failed,failed_samples:failedSamples,
+    universe_count:universe.length,scanned_count:completed,valid_count:valid,flow_checked_count:flowCandidates.length,flow_confirmed_count:flowConfirmedCount,quality_pass_count:qualityPassCount,candidate_details:candidateDetails,failed_count:failed,failed_samples:failedSamples,
     removed_count:removed,removed_signals:removedSignals,batch_size:BATCH_SIZE,priority_scanned_count:priorityCoins.length,next_cursor:nextCursor,
     signals:(()=>{
       const canonicalIds=new Map(universe.map(coin=>[String(coin.symbol).toUpperCase(),String(coin.id)]));
