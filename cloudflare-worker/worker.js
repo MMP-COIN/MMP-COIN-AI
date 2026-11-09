@@ -431,6 +431,12 @@ async function writeMarketFallback(env,key,payload,previous=null){
   await env.MARKET_CACHE_DB.prepare("INSERT INTO market_data_cache (cache_key,payload,cached_at) VALUES (?, ?, ?) ON CONFLICT(cache_key) DO UPDATE SET payload=excluded.payload,cached_at=excluded.cached_at").bind(key,JSON.stringify(payload),Date.now()).run();
  }catch(error){console.warn("Market fallback cache write failed:",String(error?.message||error).slice(0,180));}
 }
+async function cleanupMarketFallbackCache(env){
+ if(!env.MARKET_CACHE_DB||new Date().getUTCMinutes()!==0)return;
+ try{
+  await env.MARKET_CACHE_DB.prepare("DELETE FROM market_data_cache WHERE cached_at < ? OR cache_key NOT IN (SELECT cache_key FROM market_data_cache ORDER BY cached_at DESC LIMIT 2000)").bind(Date.now()-86400000).run();
+ }catch(error){console.warn("Market fallback cache cleanup failed:",String(error?.message||error).slice(0,160));}
+}
 async function readPublicJson(url){
  try{
   const r=await fetchWithTimeout(url,{headers:{"Accept":"application/json, text/plain, */*","User-Agent":"MMP-COIN-AI/1.0","Accept-Language":"en-US,en;q=0.9"}},7500);
@@ -1565,4 +1571,4 @@ async function runDigitalHunterCron(event,env){
  await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(id,JSON.stringify(payload),new Date(finished).toISOString()).run();
  if(!spot&&!futures)throw new Error("Quantum Spot and Futures cycles both failed: "+JSON.stringify(errors));
 }
-export default {fetch:handle,scheduled(event,env,ctx){ctx.waitUntil(runDigitalHunterCron(event,env).catch(error=>console.error("Digital Hunter scheduled cycle failed:",error?.message||error)));}};
+export default {fetch:handle,scheduled(event,env,ctx){ctx.waitUntil(runDigitalHunterCron(event,env).catch(error=>console.error("Digital Hunter scheduled cycle failed:",error?.message||error)));ctx.waitUntil(cleanupMarketFallbackCache(env));}};
