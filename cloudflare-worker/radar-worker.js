@@ -4,7 +4,7 @@ const MAIN_FLOW = "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
 const RETENTION_SCORE = 64;
 const BATCH_SIZE = 12;
 const CONCURRENCY = 2;
-const SUPPORTED = new Set(["Binance","Bybit","OKX","Bitget","Gate","KuCoin","WhiteBIT"]);
+const SUPPORTED = new Set(["Binance","Bybit","OKX","Bitget","Gate","KuCoin","WhiteBIT","MEXC"]);
 const JSON_HEADERS = { "Accept":"application/json", "User-Agent":"MMP-COIN-AI-RADAR/1.0" };
 async function getJson(url, timeoutMs = 6500) {
   const controller = new AbortController(), timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -50,6 +50,10 @@ async function loadProvider(symbol,exchange) {
       .sort((a,b)=>a[0]-b[0]);
     if(rows.length<25)throw new Error("Gate candle history insufficient");return {rows,provider:"Gate Spot"};
   }
+  if(exchange==="MEXC"){
+    const d=await getJson("https://api.mexc.com/api/v3/klines?symbol="+pair+"&interval=1m&limit=40");
+    const rows=normalizeRows(d);if(rows.length<25)throw new Error("MEXC Spot candle history insufficient");return {rows,provider:"MEXC Spot"};
+  }
   if(exchange==="KuCoin"){
     const d=await getJson("https://api.kucoin.com/api/v1/market/candles?type=1min&symbol="+symbol+"-USDT");
     if(String(d.code)!=="200000")throw new Error("KuCoin unavailable");
@@ -72,8 +76,8 @@ async function scanCoin(coin){
     :Object.entries(coin.hunterVenueVolume||{}).filter(([name,volume])=>SUPPORTED.has(name)&&Number(volume)>=5000).map(([exchange,volume])=>({exchange,volume,quote:"USDT"}));
   if(Number(coin.total_volume||0)<50000||!listed.length)return null;
   const order=[...new Map(listed.sort((a,b)=>Number(b.volume)-Number(a.volume)).map(x=>[x.exchange,x])).values()].map(x=>x.exchange);
-  const fallback=["Binance","OKX","Gate","KuCoin","WhiteBIT","Bitget","Bybit"].filter(name=>!order.includes(name));
-  const verificationOrder=[...new Set([...order,...fallback])].slice(0,5);
+  const fallback=["Binance","OKX","Gate","MEXC","KuCoin","WhiteBIT","Bitget","Bybit"].filter(name=>!order.includes(name));
+  const verificationOrder=[...new Set([...order,...fallback])].slice(0,6);
   let market=null,corroboration=null,errors=[];
   for(const venue of verificationOrder){if(corroboration)break;try{const candidate=await loadProvider(symbol,venue);if(!market)market=candidate;else corroboration=candidate;}catch(error){errors.push(venue+": "+String(error?.message||error).slice(0,80));}}
   if(!market)throw new Error(errors.join(" | ")||"No candle provider responded");
