@@ -1318,6 +1318,15 @@ body.radar-detail-open{overflow:hidden}
 @media(max-width:600px){.signal-drawer-toggle{min-height:54px;padding:9px}.signal-drawer-panel{padding:8px}.signal-drawer-panel-head small{font-size:8px}.signal-drawer-panel .radar-overflow-list{max-height:52vh}}
 @media(prefers-reduced-motion:reduce){.signal-drawer-panel{animation:none}.signal-drawer-icon{transition:none}}
 </style>
+<style id="mmp-hunter-heading-emphasis">
+/* تأکید بصری فقط روی نشان و عنوان فارسی شکارچی بازار */
+#market-hunter .hunter-heading-copy>.section-kicker{display:none!important}
+#market-hunter .hunter-quantum-mark{width:64px;height:64px;flex-basis:64px;border-width:2px;box-shadow:0 0 24px #d9b66d44,inset 0 0 16px #d9b66d33}
+#market-hunter .hunter-target-symbol{font-size:29px;font-weight:900}
+#market-hunter .hunter-heading-copy h2{font-size:clamp(23px,3vw,29px)!important;font-weight:900!important;letter-spacing:0!important;color:#f2d18a;text-shadow:0 1px 12px #d9b66d33}
+#market-hunter .hunter-heading-copy .sub{font-weight:400}
+@media(max-width:600px){#market-hunter .hunter-quantum-mark{width:58px;height:58px;flex-basis:58px}#market-hunter .hunter-heading-copy h2{font-size:23px!important}}
+</style>
 <style id="mmp-compact-quantum-section-heads">
 /* نشان کوانتومی اختصاصی شکارچی؛ نشان اصلی سکه M سایت بدون تغییر می‌ماند */
 #market-hunter .hunter-heading-wrap{display:flex;align-items:center;gap:12px;min-width:0}
