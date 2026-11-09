@@ -34,6 +34,7 @@ database_id = "dfb3ee95-ef2f-4067-a973-31b8fb1ee62f"
 [placement]
 region = "aws:eu-central-1"
 
-[[kv_namespaces]]
-binding = "MARKET_DATA_CACHE"
-id = "35f05f95cf874bd39d40958991639294"
+[[d1_databases]]
+binding = "MARKET_CACHE_DB"
+database_name = "mmp_market_data_fallback"
+database_id = "45b2a51c-49d1-4e21-b13c-86e9d8fffa6e"
