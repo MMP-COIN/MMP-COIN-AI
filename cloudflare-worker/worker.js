@@ -568,14 +568,14 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
     const rows=raw.map(map).filter(x=>x.every(Number.isFinite)&&x[1]>0&&x[2]>=x[3]&&x[3]>0&&x[4]>0&&x[5]>=0).sort((a,b)=>a[0]-b[0]);
     if(rows.length>=65)return [label,rows];
     throw new Error(label+" returned only "+rows.length+" candles");
-   }catch(error){lastError=error;}
+   }catch(error){lastError=new Error(label+": "+String(error?.message||error));}
   }
   throw lastError||new Error(label+" unavailable");
  };
  const futuresSources=[
-  async()=>tryHosts("Binance Futures",["https://fapi.binance.com"],host=>host+"/fapi/v1/klines?symbol="+pair+"&interval=1m&limit=100",d=>Array.isArray(d)?d:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],+x[7]]),
-  async()=>tryHosts("Bybit Linear",["https://api.bybit.eu"],host=>host+"/v5/market/kline?category=linear&symbol="+pair+"&interval=1&limit=100",d=>Number(d.retCode)===0?d.result?.list:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],(+x[6]||+x[5])]),
-  async()=>tryHosts("OKX USDT Swap",["https://www.okx.com"],host=>host+"/api/v5/market/candles?instId="+symbol+"-USDT-SWAP&bar=1m&limit=100",d=>String(d.code)==="0"?d.data:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],(+x[7]||+x[6])]),
+  async()=>tryHosts("Binance Futures",["https://fapi.binance.com","https://fapi1.binance.com","https://fapi2.binance.com"],host=>host+"/fapi/v1/klines?symbol="+pair+"&interval=1m&limit=100",d=>Array.isArray(d)?d:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],+x[7]]),
+  async()=>tryHosts("Bybit Linear",["https://api.bybit.eu","https://api.bybit.com"],host=>host+"/v5/market/kline?category=linear&symbol="+pair+"&interval=1&limit=100",d=>Number(d.retCode)===0?d.result?.list:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],(+x[6]||+x[5])]),
+  async()=>tryHosts("OKX USDT Swap",["https://www.okx.com","https://us.okx.com"],host=>host+"/api/v5/market/candles?instId="+symbol+"-USDT-SWAP&bar=1m&limit=100",d=>String(d.code)==="0"?d.data:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],(+x[7]||+x[6])]),
   async()=>tryHosts("Bitget USDT Futures",["https://api.bitget.com"],host=>host+"/api/v3/market/candles?category=USDT-FUTURES&symbol="+pair+"&interval=1m&limit=100",d=>String(d.code)==="00000"?d.data:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],(+x[6]||+x[5])]),
   async()=>tryHosts("Gate USDT Futures",["https://api.gateio.ws","https://api.gate.us"],host=>host+"/api/v4/futures/usdt/candlesticks?contract="+symbol+"_USDT&interval=1m&limit=100",d=>Array.isArray(d)?d:null,x=>[+x.t*1000,+x.o,+x.h,+x.l,+x.c,(+x.sum||+x.v)])
  ];
@@ -748,7 +748,7 @@ async function loadHunterDepth(symbol,marketType="spot",preferredProviders=[]){
 async function scanHunterSymbols(symbols,marketType="spot",assetList=[]){
  const assetMap=new Map((Array.isArray(assetList)?assetList:[]).map(x=>[String(x.symbol||"").toUpperCase(),x]));
  let i=0,failed=0;const candidates=[],errors=[];
- const concurrency=2;
+ const concurrency=marketType==="futures"?1:2;
  await Promise.all(Array.from({length:Math.min(concurrency,symbols.length)},async()=>{while(i<symbols.length){const symbol=symbols[i++];try{const x=await analyzeDigitalHunterSymbol(symbol,marketType,assetMap.get(symbol));if(x)candidates.push(x);}catch(e){failed++;if(errors.length<8)errors.push({symbol,error:String(e?.message||e).slice(0,120)});}}}));
  candidates.sort((a,b)=>b.score-a.score);const signals=[];
  const flowCandidates=(marketType==="futures"?[...candidates.filter(x=>x.trend==="bull"&&!x.lowLiquidity).slice(0,1),...candidates.filter(x=>x.trend==="bear"&&!x.lowLiquidity).slice(0,1)]:candidates.filter(x=>x.trend==="bull"&&!x.lowLiquidity).slice(0,2)).filter(x=>x.score>=60);
@@ -1338,10 +1338,12 @@ async function runDigitalHunterCron(event,env){
  ]),finished=Date.now();
  const spot=results[0].status==="fulfilled"?results[0].value:null,futures=results[1].status==="fulfilled"?results[1].value:null;
  const errors={};if(results[0].status==="rejected")errors.spot=String(results[0].reason?.message||results[0].reason).slice(0,220);if(results[1].status==="rejected")errors.futures=String(results[1].reason?.message||results[1].reason).slice(0,220);
- const status=spot&&futures?"success":spot||futures?"partial":"error";
+ const bothAvailable=!!spot&&!!futures;
+ const hasDataFailures=Number(spot?.failed_count||0)>0||Number(futures?.failed_count||0)>0;
+ const status=bothAvailable?(hasDataFailures?"partial":"success"):spot||futures?"partial":"error";
  const payload={status,engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,cron:event?.cron||"* * * * *",scheduledTime:event?.scheduledTime||null,startedAt:stamp,finishedAt:new Date(finished).toISOString(),markets:{
-  spot:spot?{scanned:spot.scanned_count||0,failed:spot.failed_count||0,universe:spot.universe_count||0,signals:spot.signals?.length||0}:{status:"error",error:errors.spot||"unavailable"},
-  futures:futures?{scanned:futures.scanned_count||0,failed:futures.failed_count||0,universe:futures.universe_count||0,signals:futures.signals?.length||0}:{status:"error",error:errors.futures||"unavailable"}
+  spot:spot?{scanned:spot.scanned_count||0,failed:spot.failed_count||0,universe:spot.universe_count||0,signals:spot.signals?.length||0,last_errors:spot.last_errors||[]}:{status:"error",error:errors.spot||"unavailable"},
+  futures:futures?{scanned:futures.scanned_count||0,failed:futures.failed_count||0,universe:futures.universe_count||0,signals:futures.signals?.length||0,last_errors:futures.last_errors||[]}:{status:"error",error:errors.futures||"unavailable"}
  },errors};
  await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(id,JSON.stringify(payload),new Date(finished).toISOString()).run();
  if(!spot&&!futures)throw new Error("Quantum Spot and Futures cycles both failed: "+JSON.stringify(errors));
