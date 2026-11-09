@@ -177,6 +177,14 @@ jobs:
             echo "- Quantum Futures universe: $(jq -r '.universe_count' /tmp/futures-hunter.json) contracts; last batch $(jq -r '.scanned_count // 0' /tmp/futures-hunter.json) scanned; $(jq -r '.failed_count // 0' /tmp/futures-hunter.json) failures"
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Smoke-test deployed five-provider Quantum Hunter
+        env:
+          WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 1 --retry-delay 3 --max-time 90 "$WORKER_URL/hunter-scan?market=spot&symbols=BTC%2CETH%2CSOL%2CXRP" -o /tmp/five-provider-hunter.json
+          jq -e '.requested == 4 and (.scanned // 0) >= 2 and (.failed // 4) <= 2' /tmp/five-provider-hunter.json >/dev/null
+          jq -r '"Deployed five-provider Hunter: " + (.scanned|tostring) + "/4 scanned; " + (.candidates|tostring) + " preliminary candidates; " + (.failed|tostring) + " data failures; " + (.signals|length|tostring) + " confirmed signals." ' /tmp/five-provider-hunter.json
       - name: Verify scheduled Spot and Futures hunter cycles
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
