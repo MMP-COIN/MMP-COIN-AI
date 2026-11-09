@@ -190,7 +190,7 @@ jobs:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
           set -euo pipefail
-          curl --fail --silent --show-error --retry 2 --retry-delay 3 --max-time 25 "$WORKER_URL/health" -o /tmp/health.json
+          curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-delay 10 --retry-max-time 100 --max-time 25 "$WORKER_URL/health" -o /tmp/health.json
           jq -e '.worker == "online" and .ai_binding == true and .futures_engine_binding == true' /tmp/health.json >/dev/null
           {
             echo "## Worker health"
