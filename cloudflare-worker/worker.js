@@ -1302,7 +1302,7 @@ async function handle(request,env){
   const limited=rateLimitReply(limitResult,request);if(limited)return limited;
   const url=new URL(request.url),rawSymbol=String(url.searchParams.get("symbol")||"").toUpperCase(),marketType=url.searchParams.get("market")==="futures"?"futures":"spot";
   const interval=String(url.searchParams.get("interval")||"15m");
-  if(!/^[A-Z0-9]{2,15}$/.test(rawSymbol)||!["1m","3m","5m","15m","1h","4h","1d"].includes(interval))return json({error:"نماد یا بازه زمانی نامعتبر است."},400,request);
+  if(!/^[A-Z0-9]{2,30}$/.test(rawSymbol)||!["1m","3m","5m","15m","1h","4h","1d"].includes(interval))return json({error:"نماد یا بازه زمانی نامعتبر است."},400,request);
   const symbol=splitQuotePair(rawSymbol)?rawSymbol:rawSymbol+"USDT";
   const candleCacheKey=await marketFallbackKey(url.toString());
   const staleCandles=await readMarketFallback(env,candleCacheKey);
