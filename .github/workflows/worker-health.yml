@@ -1,4 +1,5 @@
 name: MMP COIN AI Worker Health Check
+# Post-deploy verification for Worker version 154
 
 on:
   workflow_dispatch:
