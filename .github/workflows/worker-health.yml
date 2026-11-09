@@ -524,6 +524,8 @@ jobs:
             exit 1
           fi
           jq -e '.analysis.action as $a | (["BUY","SELL","WAIT"] | index($a) != null) and (.market.timeframes | has("15m") and has("1h") and has("4h") and has("1d"))' /tmp/canary-analysis.json >/dev/null
+          jq -r '"Selected AI model: " + (.analysis.ai_provider // "not reported")' /tmp/canary-analysis.json
+          jq -r '.analysis.ai_provider_fallbacks[]? | "AI fallback reason: " + .' /tmp/canary-analysis.json
           jq -r '"Canary model provider: " + (.analysis.data_source // "not reported")' /tmp/canary-analysis.json
           {
             echo "- AI analyzer: HTTP 200"
