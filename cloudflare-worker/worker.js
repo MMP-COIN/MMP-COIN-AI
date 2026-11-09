@@ -32,7 +32,7 @@ async function runAIWithFallback(env,prompt){
     const response=await fetchWithTimeout("https://api.groq.com/openai/v1/chat/completions",{
      method:"POST",
      headers:{"Authorization":"Bearer "+env.GROQ_API_KEY,"Content-Type":"application/json"},
-     body:JSON.stringify({model,messages,...entry.body,response_format:{type:"json_object"}})
+     body:JSON.stringify({model,messages,...entry.body})
     },entry.timeoutMs||18000);
     if(!response.ok){
      const body=await response.text();
@@ -53,7 +53,7 @@ async function runAIWithFallback(env,prompt){
  // Cloudflare AI remains a fallback, with a smaller output budget.
  if(env.AI){
   try{
-   const result=await env.AI.run(MODEL,{messages,max_tokens:2400,temperature:0.1,reasoning_effort:"high"});
+   const result=await env.AI.run(MODEL,{messages,max_tokens:1600,temperature:0.1,reasoning_effort:"medium"});
    if(result?.error)throw new Error(typeof result.error==="string"?result.error:JSON.stringify(result.error));
    return accept("Cloudflare Workers AI / "+MODEL,result?.response??result?.result??result?.output_text??result);
   }catch(error){failures.push("Cloudflare: "+String(error?.message||error).slice(0,260));}
