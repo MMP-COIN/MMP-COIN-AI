@@ -336,6 +336,7 @@ function applyLiveSnapshot(snap){
  if($("cycle-status"))$("cycle-status").textContent="اسکن خودکار فعال";
  $("source").textContent=(snap.universe_provider||"چندصرافی")+" · پایگاه مرکزی پایدار · "+(snap.market||"spot").toUpperCase();
  $("progress").textContent="چرخه ۶۰ ثانیه‌ای · نشانگر بازار "+Number(snap.next_cursor||0).toLocaleString("fa-IR")+" / "+state.universe.length.toLocaleString("fa-IR");
+ autoRecordSignals(signals);
  state.engineActivity=snap.engine_activity||{};
  const engineKeys=["regime","explosion","momentum","flow","liquidity","multiTimeframe","volatility","sentiment","scenario","learning","risk","dataQuality"];
  const statuses=engineKeys.map(key=>{if(key==="learning")return state.ledger.length?"ready":"partial";const metric=state.engineActivity[key];if(metric)return Number(metric.evidence)>0?"ready":"partial";return signals.some(x=>x.quantum?.componentAvailability?.[key]===true)?"ready":"partial";});
@@ -361,6 +362,11 @@ function showDetail(symbol){
 function renderLedger(){
  $("ledger-count").textContent=state.ledger.length.toLocaleString("fa-IR")+" پیش‌بینی ثبت‌شده";
  $("ledger").textContent=state.ledger.length?state.ledger.slice().reverse().map(x=>x.symbol+" · "+(x.direction==="bull"?"صعودی":x.direction==="bear"?"نزولی":"خنثی")+" · امتیاز "+x.score+" · قیمت ثبت "+price(x.entry)+" · "+new Date(x.time).toLocaleString("fa-IR")+(x.current?" · قیمت فعلی "+price(x.current)+" · تغییر "+n((x.current/x.entry-1)*100,2)+"٪":"")).join("\n"):"هنوز پیش‌بینی‌ای ثبت نشده است.";
+}
+function autoRecordSignals(signals){
+ let added=0;const now=Date.now();
+ for(const x of signals||[]){const symbol=String(x.symbol||"").toUpperCase(),entry=Number(x.price)||Number(x.coin?.current_price)||0,direction=x.trend==="bull"?"bull":x.trend==="bear"?"bear":"neutral";if(!symbol||entry<=0||x.confirmed!==true||x.quantum?.qualityGate!==true)continue;const exists=state.ledger.some(item=>item.symbol===symbol&&item.direction===direction&&now-Number(item.time||0)<3600000);if(exists)continue;state.ledger.push({symbol,direction,score:Number(x.score)||0,entry,time:Number(x.updatedAt)||now,current:null,source:"auto",tradePlan:x.tradePlan||null});added++;}
+ if(added){state.ledger=state.ledger.slice(-300);saveLedger();renderLedger();log("حافظه عملکرد: "+added.toLocaleString("fa-IR")+" سیگنال تأییدشده به‌صورت خودکار ثبت شد.");}
 }
 function record(){
  const x=state.rows.find(r=>r.symbol===state.selected);if(!x){$("ledger").textContent="ابتدا از فهرست فرصت‌ها یک ارز را باز کنید.";return}
