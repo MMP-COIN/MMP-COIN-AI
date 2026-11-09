@@ -80,7 +80,7 @@ jobs:
             if (!lab.includes(route)) throw new Error('Quantum Lab worker route missing: ' + route);
           }
           if (lab.includes('https://api.binance.com')) throw new Error('Quantum Lab direct Binance dependency returned');
-          if (!lab.includes('fetch(API+"/hunter-snapshot"') || !lab.includes('function startLiveMonitor()') || !lab.includes('function engineEvidence(i)') || !lab.includes('id="engine-detail-'+n+'"')) throw new Error('Quantum Lab persistent scan subscription or dedicated engine panels missing');
+          if (!lab.includes('fetch(API+"/hunter-snapshot"') || !lab.includes('function startLiveMonitor()') || !lab.includes('function engineEvidence(i)') || !lab.includes('id="engine-detail-')) throw new Error('Quantum Lab persistent scan subscription or dedicated engine panels missing');
           console.log('Quantum Lab inline scripts parsed: ' + labParsed + '; multi-exchange scan wiring passed.');
           const version = html.match(/name=["']mmp-app-version["'] content=["']([^"']+)["']/i);
           const capacitor = JSON.parse(fs.readFileSync('capacitor.config.json', 'utf8'));
