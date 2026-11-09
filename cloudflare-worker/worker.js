@@ -408,6 +408,24 @@ async function fetchWithTimeout(url,options={},timeoutMs=9000){
  try{return await fetch(url,{...options,signal:controller.signal});}
  finally{clearTimeout(timer);if(externalSignal)externalSignal.removeEventListener("abort",abortExternal);}
 }
+async function marketFallbackKey(url){
+ const bytes=new TextEncoder().encode(String(url));
+ const digest=await crypto.subtle.digest("SHA-256",bytes);
+ return "market:"+Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,"0")).join("");
+}
+async function readMarketFallback(env,key){
+ if(!env.MARKET_DATA_CACHE)return null;
+ try{
+  const record=await env.MARKET_DATA_CACHE.get(key,"json");
+  if(!record||!record.payload||!Number.isFinite(Number(record.cached_at)))return null;
+  const ageMs=Math.max(0,Date.now()-Number(record.cached_at));
+  return ageMs<=900000?{payload:record.payload,ageMs}:null;
+ }catch{return null;}
+}
+async function writeMarketFallback(env,key,payload){
+ if(!env.MARKET_DATA_CACHE)return;
+ try{await env.MARKET_DATA_CACHE.put(key,JSON.stringify({cached_at:Date.now(),payload}),{expirationTtl:900});}catch{}
+}
 async function readPublicJson(url){
  try{
   const r=await fetchWithTimeout(url,{headers:{"Accept":"application/json, text/plain, */*","User-Agent":"MMP-COIN-AI/1.0","Accept-Language":"en-US,en;q=0.9"}},7500);
@@ -1275,20 +1293,15 @@ async function handle(request,env){
   const interval=String(url.searchParams.get("interval")||"15m");
   if(!/^[A-Z0-9]{2,15}$/.test(rawSymbol)||!["1m","3m","5m","15m","1h","4h","1d"].includes(interval))return json({error:"نماد یا بازه زمانی نامعتبر است."},400,request);
   const symbol=splitQuotePair(rawSymbol)?rawSymbol:rawSymbol+"USDT";
-  const candleCacheKey=new Request(url.toString(),{method:"GET"});
-  let staleCandles=null;
-  try{if(typeof caches!=="undefined"&&caches.default)staleCandles=await caches.default.match(candleCacheKey);}catch{}
+  const candleCacheKey=await marketFallbackKey(url.toString());
+  const staleCandles=await readMarketFallback(env,candleCacheKey);
   try{
    const result=await candles(symbol,interval,env,marketType);
    const payload={symbol,interval,market:marketType,provider:result.data_provider,price:result.price,change_pct:result.change_pct,candles:result.candles.map(c=>({time:Math.floor(c.t/1000),open:c.o,high:c.h,low:c.l,close:c.c,volume:c.v})),data_checked_at:new Date().toISOString(),data_stale:false};
-   try{if(typeof caches!=="undefined"&&caches.default)await caches.default.put(candleCacheKey,new Response(JSON.stringify(payload),{headers:{"Content-Type":"application/json; charset=utf-8","Cache-Control":"public, max-age=900","X-MMP-Cached-At":String(Date.now())}}));}catch{}
+   await writeMarketFallback(env,candleCacheKey,payload);
    return json(payload,200,request,{"X-MMP-Cache":"fresh"});
   }catch(error){
-   if(staleCandles){
-    try{const payload=await staleCandles.json(),cachedAt=Number(staleCandles.headers.get("X-MMP-Cached-At")||0),ageMs=cachedAt?Math.max(0,Date.now()-cachedAt):null;
-     if(payload?.candles?.length&&ageMs!==null&&ageMs<=900000)return json({...payload,data_stale:true,data_age_ms:ageMs,stale_reason:String(error?.message||"upstream unavailable").slice(0,160)},200,request,{"X-MMP-Cache":"stale","X-MMP-Data-Age":String(ageMs)});
-    }catch{}
-   }
+   if(staleCandles?.payload?.candles?.length)return json({...staleCandles.payload,data_stale:true,data_age_ms:staleCandles.ageMs,stale_reason:String(error?.message||"upstream unavailable").slice(0,160)},200,request,{"X-MMP-Cache":"stale","X-MMP-Data-Age":String(staleCandles.ageMs)});
    return json({error:"داده کندلی این ارز فعلاً در دسترس نیست.",detail:String(error?.message||"upstream error").slice(0,220),symbol,interval},502,request);
   }
  }
@@ -1316,9 +1329,8 @@ async function handle(request,env){
    candidates=["https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids="+encodeURIComponent(ids)+"&order=market_cap_desc&sparkline=false&price_change_percentage=1h%2C24h%2C7d"];
   }
   if(!candidates)return json({error:"Unsupported market data source"},400,request);
-  const marketCacheKey=new Request(url.toString(),{method:"GET"});
-  let staleMarketResponse=null;
-  try{if(typeof caches!=="undefined"&&caches.default)staleMarketResponse=await caches.default.match(marketCacheKey);}catch{}
+  const marketCacheKey=await marketFallbackKey(url.toString());
+  const staleMarketResponse=await readMarketFallback(env,marketCacheKey);
   let lastError=null;
   for(const endpoint of candidates){
    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),9000);
@@ -1329,16 +1341,12 @@ async function handle(request,env){
     if(!upstream.ok){lastError="Upstream HTTP "+upstream.status;continue;}
     const data=await upstream.json();
     if(data===null||typeof data!=="object")throw new Error("Invalid upstream JSON");
-    try{if(typeof caches!=="undefined"&&caches.default)await caches.default.put(marketCacheKey,new Response(JSON.stringify(data),{headers:{"Content-Type":"application/json; charset=utf-8","Cache-Control":"public, max-age=900","X-MMP-Cached-At":String(Date.now()),"X-MMP-Data-Source":source}}));}catch{}
+    await writeMarketFallback(env,marketCacheKey,data);
     return json(data,200,request,{"X-MMP-Data-Source":source,"X-MMP-Cache":"fresh"});
    }catch(error){lastError=String(error?.message||"network error");}
    finally{clearTimeout(timer);}
   }
-  if(staleMarketResponse){
-   try{const cachedData=await staleMarketResponse.json(),cachedAt=Number(staleMarketResponse.headers.get("X-MMP-Cached-At")||0),ageMs=cachedAt?Math.max(0,Date.now()-cachedAt):null;
-    if(cachedData!==null&&typeof cachedData==="object"&&ageMs!==null&&ageMs<=900000)return json(cachedData,200,request,{"X-MMP-Data-Source":source,"X-MMP-Cache":"stale","X-MMP-Data-Age":String(ageMs),"Warning":"110 - \"Response is stale\""});
-   }catch{}
-  }
+  if(staleMarketResponse?.payload&&typeof staleMarketResponse.payload==="object")return json(staleMarketResponse.payload,200,request,{"X-MMP-Data-Source":source,"X-MMP-Cache":"stale","X-MMP-Data-Age":String(staleMarketResponse.ageMs),"Warning":"110 - \"Response is stale\""});
   return json({error:"Market data source unavailable",source,detail:String(lastError||"upstream error").slice(0,120)},502,request);
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/connections-health"){
