@@ -7,13 +7,13 @@ function esc(v){return String(v==null?"":v).replace(/[&<>"']/g,ch=>({"&":"&amp;"
 function render(data){
  const host=document.getElementById("mmp-quantum-live-opportunities");if(!host)return;
  const valid=!!(data&&Array.isArray(data.opportunities)&&Number.isFinite(Number(data.generatedAt)));
- if(!valid){host.innerHTML='<div class="mql-live-top"><div class="mql-live-title"><i class="mql-orbit"></i><div><b>هستهٔ کوانتومی MMP</b><small>QUANTUM INTELLIGENCE · خروجی اسکن</small></div></div><span class="mql-state waiting">در انتظار داده</span></div><div class="mql-empty">هنوز خروجی معتبری از چرخهٔ آزمایشگاه ثبت نشده است.</div>';return}
- const rows=data.opportunities.filter(x=>x&&Number(x.score)>=55).slice(0,6);
+ if(!valid){host.innerHTML='<div class="mql-live-top"><div class="mql-live-title"><i class="mql-orbit"></i><div><b>مرکز کوانتومی MMP</b><small>QUANTUM INTELLIGENCE · خروجی اسکن</small></div></div><span class="mql-state waiting">در انتظار داده</span></div><div class="mql-empty">هنوز خروجی معتبری از چرخهٔ آزمایشگاه ثبت نشده است.</div>';return}
+ const qualified=data.opportunities.filter(x=>x&&Number(x.score)>=55);const rows=qualified.slice(0,6);
  const scanned=Math.max(0,Number(data.scanned)||0),stamp=new Date(Number(data.generatedAt));
  const time=Number.isNaN(stamp.getTime())?"زمان نامشخص":stamp.toLocaleString("fa-IR");
  const state=scanned>0?"ثبت‌شده":"بدون چرخه";
  const cards=rows.map(x=>{const score=Math.max(0,Math.min(100,Number(x.score)||0));const dir=x.direction==="bull"?"up":x.direction==="bear"?"down":"wait";const label=dir==="up"?"صعودی":dir==="down"?"نزولی":"خنثی";return '<a class="mql-opportunity '+dir+'" href="/quantum-lab.html"><span class="mql-coin">'+esc(x.symbol)+'</span><span class="mql-direction">'+label+'</span><span class="mql-score"><b>'+score.toLocaleString("fa-IR")+'</b><i><em style="width:'+score+'%"></em></i></span></a>'}).join("");
- host.innerHTML='<div class="mql-live-top"><div class="mql-live-title"><i class="mql-orbit"></i><div><b>هستهٔ کوانتومی MMP</b><small>QUANTUM INTELLIGENCE · آخرین خروجی ثبت‌شده</small></div></div><span class="mql-state '+(scanned>0?"ready":"waiting")+'"><i></i>'+state+'</span></div><div class="mql-live-metrics"><div><small>ارز بررسی‌شده</small><b>'+scanned.toLocaleString("fa-IR")+'</b></div><div><small>فرصت‌های ۵۵+</small><b>'+rows.length.toLocaleString("fa-IR")+'</b></div><div><small>حداقل امتیاز</small><b>۵۵</b></div></div>'+(rows.length?'<div class="mql-opportunities">'+cards+'</div>':(scanned>0?'<div class="mql-empty">در این چرخه فرصت تأییدشده با امتیاز ۵۵ یا بالاتر ثبت نشده است.</div>':'<div class="mql-empty">این خروجی هنوز چرخهٔ اسکن معتبری ندارد؛ عدد صفر به معنی نبود فرصت در بازار نیست.</div>'))+'<div class="mql-live-foot"><span>آخرین ثبت: '+esc(time)+'</span><a href="/quantum-lab.html">مشاهده آزمایشگاه ←</a></div>';
+ host.innerHTML='<div class="mql-live-top"><div class="mql-live-title"><i class="mql-orbit"></i><div><b>مرکز کوانتومی MMP</b><small>QUANTUM INTELLIGENCE · آخرین خروجی ثبت‌شده · مرکز کوانتومی</small></div></div><span class="mql-state '+(scanned>0?"ready":"waiting")+'"><i></i>'+state+'</span></div><div class="mql-live-metrics"><div><small>ارز بررسی‌شده</small><b>'+scanned.toLocaleString("fa-IR")+'</b></div><div><small>فرصت‌های ۵۵+</small><b>'+qualified.length.toLocaleString("fa-IR")+'</b></div><div><small>حداقل امتیاز</small><b>۵۵</b></div></div>'+(rows.length?'<div class="mql-opportunities">'+cards+'</div>':(scanned>0?'<div class="mql-empty">در این چرخه فرصت تأییدشده با امتیاز ۵۵ یا بالاتر ثبت نشده است.</div>':'<div class="mql-empty">این خروجی هنوز چرخهٔ اسکن معتبری ندارد؛ عدد صفر به معنی نبود فرصت در بازار نیست.</div>'))+'<div class="mql-live-foot"><span>آخرین ثبت: '+esc(time)+'</span><a href="/quantum-lab.html">ورود به مرکز کوانتومی ←</a></div>';
 }
 function mount(){
  const hero=document.querySelector(".quantum-command-hero")||document.querySelector(".hero");
@@ -56,7 +56,7 @@ function mount(){
   hero.insertAdjacentElement("afterend",live);
   document.querySelectorAll(".native-app-menu,.dropdown-menu").forEach(menu=>{
    if(menu.querySelector('a[href="/quantum-lab.html"]'))return;
-   const link=document.createElement("a");link.href="/quantum-lab.html";link.textContent="◈ مرکز فرماندهی کوانتومی بازار";menu.appendChild(link);
+   const link=document.createElement("a");link.href="/quantum-lab.html";link.textContent="◈ ورود به مرکز کوانتومی MMP";menu.appendChild(link);
   });
  }
  render(read());
