@@ -86,7 +86,7 @@ function std(a){let m=mean(a);return Math.sqrt(mean(a.map(x=>(x-m)**2)))}
 function ema(a,p){if(!a.length)return 0;let k=2/(p+1),v=a[0];for(let i=1;i<a.length;i++)v=a[i]*k+v*(1-k);return v}
 function rsi(a,p=14){if(a.length<p+1)return 50;let up=0,dn=0;for(let i=a.length-p;i<a.length;i++){let d=a[i]-a[i-1];if(d>0)up+=d;else dn-=d}return dn===0?100:100-100/(1+(up/p)/(dn/p))}
 function calcATR(k,p=14){let tr=[];for(let i=1;i<k.length;i++){let h=+k[i][2],l=+k[i][3],pc=+k[i-1][4];tr.push(Math.max(h-l,Math.abs(h-pc),Math.abs(l-pc)))}return mean(tr.slice(-p))}
-function renderEngines(statuses={}){$("engines").innerHTML=engineDefs.map((e,i)=>'<div class="engine"><div class="engine-top"><b>'+String(i+1).padStart(2,"0")+". "+e[0]+'</b><span class="state '+(statuses[i]||"")+'">'+(statuses[i]==="ready"?"فعال":statuses[i]==="partial"?"محدود":"در انتظار")+'</span></div><p>'+e[1]+'</p></div>').join("")}
+function renderEngines(statuses=null){const idle=statuses===null;const current=statuses||{};$("engines").innerHTML=engineDefs.map((e,i)=>{const status=current[i]||(idle?"idle":"busy");const label=status==="ready"?"فعال":status==="partial"?"محدود":status==="busy"?"در حال اجرا":status==="idle"?"آماده اجرا":"در انتظار داده";return '<div class="engine"><div class="engine-top"><b>'+String(i+1).padStart(2,"0")+". "+e[0]+'</b><span class="state '+status+'">'+label+'</span></div><p>'+e[1]+'</p></div>'}).join("")}
 function analyze(t,k5,k1h,marketData){
  const close=k5.map(x=>+x[4]),high=k5.map(x=>+x[2]),low=k5.map(x=>+x[3]),quote=k5.map(x=>+x[7]),last=close.at(-1),prev=close.at(-2),atr=calcATR(k5),atrPct=last?atr/last*100:0;
  const fast=ema(close.slice(-60),9),slow=ema(close.slice(-60),21),r=rsi(close),volAvg=mean(quote.slice(-20,-1)),volRatio=volAvg?quote.at(-1)/volAvg:1;
@@ -136,7 +136,7 @@ async function getDepth(symbol){try{return await apiJSON("/market-orderflow?symb
 async function scan(){
  if(state.busy)return;
  state.busy=true; $("scan").disabled=true; $("scan").textContent="اسکن در حال اجرا…";
- state.rows=[];state.done=0;state.errors=0;state.universe=[];renderEngines({});
+ state.rows=[];state.done=0;state.errors=0;state.universe=[];renderEngines(Object.fromEntries(engineDefs.map((_,i)=>[i,"busy"])));
  setStatus("اتصال به کاتالوگ چندصرافی و دریافت فهرست کامل USDT Spot…");
  $("universe").textContent="…";$("scanned").textContent="۰";$("opps").textContent="۰";$("health").textContent="—";
  try{
@@ -316,6 +316,6 @@ function renderLedger(){
 }
 function exportCSV(){const rows=[["symbol","price_usdt","change_24h_pct","quote_volume_usdt","direction","score","evidence"],...state.rows.map(x=>[x.symbol,x.last,x.change,x.quoteVolume,x.direction,x.score,x.evidence.join("|")])];const csv="\uFEFF"+rows.map(r=>r.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(",")).join("\n");const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));a.download="mmp-quantum-market-scan.csv";a.click();URL.revokeObjectURL(a.href)}
 $("asset-search").addEventListener("input",()=>{clearTimeout(searchTimer);searchTimer=setTimeout(renderAssetSearch,120)});$("asset-search-clear").addEventListener("click",()=>{$("asset-search").value="";renderAssetSearch();$("asset-search").focus()});$("asset-search-results").addEventListener("click",e=>{const b=e.target.closest("[data-independent-analyze]");if(b)analyzeIndependent(b.dataset.independentAnalyze)});$("asset-search").addEventListener("input",()=>{clearTimeout(searchTimer);searchTimer=setTimeout(renderAssetSearch,120)});$("asset-search-clear").addEventListener("click",()=>{$("asset-search").value="";renderAssetSearch();$("asset-search").focus()});$("asset-search-results").addEventListener("click",e=>{const b=e.target.closest("[data-independent-analyze]");if(b)analyzeIndependent(b.dataset.independentAnalyze)});$("scan").addEventListener("click",scan);$("back").addEventListener("click",()=>location.href="/");$("filter").addEventListener("input",renderRows);$("direction").addEventListener("change",renderRows);$("sort").addEventListener("change",renderRows);$("rows").addEventListener("click",e=>{const b=e.target.closest("[data-detail]");if(b)showDetail(b.dataset.detail)});$("record").addEventListener("click",record);$("history").addEventListener("click",updateLedger);$("export").addEventListener("click",exportCSV);
-renderEngines({});renderLedger();restoreScanState();loadIndependentCatalog();loadIndependentCatalog();if(state.ledger.length)log("حافظه محلی شامل "+state.ledger.length+" پیش‌بینی قبلی است.");
+renderEngines(null);renderLedger();restoreScanState();loadIndependentCatalog();if(state.ledger.length)log("حافظه محلی شامل "+state.ledger.length+" پیش‌بینی قبلی است.");
 })();
 </script></body></html>
