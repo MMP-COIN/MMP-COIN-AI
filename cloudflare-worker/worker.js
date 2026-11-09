@@ -827,7 +827,7 @@ async function loadFuturesMarketFlow(symbol,windowMinutes=5){
  const buckets=new Map();let buy5m=0,sell5m=0;
  for(const trade of trades){const quote=trade.price*trade.size;if(!(quote>0))continue;if(trade.side==="Buy")buy5m+=quote;else sell5m+=quote;const minute=Math.floor(trade.time/60000)*60000,bucket=buckets.get(minute)||{time:minute,buy:0,sell:0,count:0};bucket[trade.side==="Buy"?"buy":"sell"]+=quote;bucket.count++;buckets.set(minute,bucket);}
  const rows=[...buckets.values()].sort((a,b)=>a.time-b.time).map(x=>[x.time,x.buy,x.sell,x.buy-x.sell]);
- return {symbol:pair,window_minutes:minutes,buy5m,sell5m,net5m:buy5m-sell5m,trade_count:trades.length,provider,exchange:provider.startsWith("Bybit")?"Bybit":provider.startsWith("Bitget")?"Bitget":provider.startsWith("Binance")?"Binance":provider.startsWith("Gate")?"Gate":"OKX",complete:!truncated,coverage_start:trades.reduce((v,x)=>Math.min(v,x.time),Infinity),window_start:cutoff,window_end:now,updated_at:now,rows};
+ return {symbol:pair,window_minutes:minutes,buy5m,sell5m,net5m:buy5m-sell5m,trade_count:trades.length,provider,exchange:provider.startsWith("Bybit")?"Bybit":provider.startsWith("Bitget")?"Bitget":provider.startsWith("Binance")?"Binance":provider.startsWith("Gate")?"Gate":provider.startsWith("MEXC")?"MEXC":"OKX",complete:!truncated,coverage_start:trades.reduce((v,x)=>Math.min(v,x.time),Infinity),window_start:cutoff,window_end:now,updated_at:now,fallback_error:lastError||null,rows};
 }
 async function loadHunterDepth(symbol,marketType="spot",preferredProviders=[]){
  const base=String(symbol||"").toUpperCase().replace(/USDT$/,""),pair=base+"USDT";
