@@ -699,7 +699,7 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
  return {provider:primary.provider,rows:alignedRows,market:marketType,multiExchangeConfirmed:true,multiExchangeEvidence:{primary:primary.provider,secondary:secondary.provider,timeDiffMs,priceDeviationPct:Number(priceDeviationPct.toFixed(4)),primaryPrice:a[4],secondaryPrice:b[4],candleTime:a[0],commonCandleAgeMs:commonCandleAge}};
 }
 async function analyzeDigitalHunterSymbol(symbol,marketType="spot",asset=null,activity=null){
- for(const key of QUANTUM_ACTIVITY_KEYS)if(activity?.[key])activity[key].processed++;
+ // هر لایه فقط هنگام اجرای واقعی و ثبت داده معتبر، شمارنده خودش را افزایش می‌دهد.
  const m=await fetchHunterCandles(symbol,marketType,asset),rows=m.rows.slice(0,-1),now=Date.now();if(rows.length<60)return null;
  const last=rows.at(-1);if(now-last[0]>210000)return null;
  const indicators=calculateQuantumIndicators(rows);if(!indicators.available)return null;
@@ -850,7 +850,7 @@ async function loadHunterDepth(symbol,marketType="spot",preferredProviders=[]){
  throw new Error("Order-book depth unavailable: "+lastError);
 }
 const QUANTUM_ACTIVITY_KEYS=["momentum","flow","structure","liquidity","multiTimeframe","regime","volatility","sentiment","smartMoney","scenario","risk","dataQuality"];
-function markQuantumEvidence(activity,key){if(activity?.[key])activity[key].evidence++;}
+function markQuantumEvidence(activity,key){if(activity?.[key]){activity[key].processed++;activity[key].evidence++;}}
 async function scanHunterSymbols(symbols,marketType="spot",assetList=[],env=null){
  const assetMap=new Map((Array.isArray(assetList)?assetList:[]).map(x=>[String(x.symbol||"").toUpperCase(),x]));
  let i=0,failed=0,rejected=0;const candidates=[],errors=[],rejections=[],engineActivity=Object.fromEntries(QUANTUM_ACTIVITY_KEYS.map(key=>[key,{processed:0,evidence:0}]));
