@@ -397,4 +397,32 @@ renderEngines(null);renderLedger();renderQuantumCharts();loadIndependentCatalog(
 @keyframes mmpEnginePulse{50%{opacity:.42}}
 @media(max-width:560px){.engine-showcase{padding:7px}.engines{gap:7px!important}.engine{flex-basis:158px!important;width:158px;min-height:78px!important;padding:9px!important}.engine b{font-size:10px!important}.engine p{font-size:8px!important}}
 </style>
+
+<style id="mmp-quantum-horizontal-engine-cards">
+/* Horizontal engine cards: apply to the actual details elements, not the unused .engine class. */
+.engine-showcase{display:block!important;max-width:100%;overflow:hidden}
+#quantum-engines.engines,.engines#engines{display:flex!important;flex-flow:row nowrap!important;align-items:stretch;gap:10px!important;overflow-x:auto!important;overflow-y:hidden!important;padding:3px 2px 12px;scroll-snap-type:x mandatory;scrollbar-width:thin;scrollbar-color:#a9874c #101722}
+.engine-drawer{flex:0 0 min(360px,82vw);width:min(360px,82vw);min-width:0;scroll-snap-align:start;display:flex;flex-direction:column;align-self:stretch}
+.engine-drawer summary{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"name state" "meta meta";align-items:center;gap:7px 10px;min-height:76px;padding:12px 14px}
+.engine-drawer summary>span:first-child{grid-area:name;min-width:0;overflow-wrap:anywhere;line-height:1.6}
+.engine-drawer summary>.state{grid-area:state;justify-self:end}
+.engine-drawer summary>.drawer-meta{grid-area:meta;margin:0;justify-self:start;font-variant-numeric:tabular-nums}
+.engine-drawer summary:after{position:absolute;right:12px;bottom:10px}
+.engine-drawer summary{position:relative;padding-bottom:27px}
+.engine-more{padding:10px 13px 13px;display:grid;grid-template-columns:minmax(0,1fr) minmax(90px,.7fr);gap:7px 12px;align-content:start}
+.engine-more>p:first-child{grid-column:1/-1;margin:0;line-height:1.8;overflow-wrap:anywhere}
+.engine-more .engine-live-meter{grid-column:1/-1;margin:3px 0}
+.engine-more .engine-live-meta{grid-column:1/-1}
+.engine-more .engine-proof{grid-column:1/-1;margin:0}
+.engine-more .engine-result-link{grid-column:1/-1;overflow-wrap:anywhere}
+@media(max-width:560px){
+ #quantum-engines.engines,.engines#engines{gap:8px!important;padding-bottom:10px}
+ .engine-drawer{flex-basis: min(310px,86vw);width:min(310px,86vw)}
+ .engine-drawer summary{min-height:72px;padding:10px 12px 25px;font-size:11px}
+ .engine-drawer summary>span:first-child{font-size:11px}
+ .engine-more{padding:9px 11px 11px}
+ .engine-proof{font-size:9px;line-height:1.75}
+}
+</style>
+
 </body></html>
