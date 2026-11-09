@@ -8,6 +8,7 @@ on:
       - "cloudflare-worker/radar-worker.js"
       - "cloudflare-worker/quantum-core.js"
       - "www/index.html"
+      - "www/quantum-lab.html"
       - ".github/workflows/asset-audit.yml"
   schedule:
     - cron: "25 16 * * *"
@@ -67,6 +68,20 @@ jobs:
             parsed++;
           }
           if (parsed < 10) throw new Error('Too few inline scripts were syntax-checked: ' + parsed);
+          const lab = fs.readFileSync('www/quantum-lab.html', 'utf8');
+          const labScripts = [...lab.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)];
+          let labParsed = 0;
+          for (let i = 0; i < labScripts.length; i++) {
+            if (/\bsrc\s*=/.test(labScripts[i][1]) || !labScripts[i][2].trim()) continue;
+            new vm.Script(labScripts[i][2], { filename: 'www/quantum-lab.html:inline-script-' + i });
+            labParsed++;
+          }
+          for (const route of ['/hunter-universe','/hunter-scan','/market-candles','/market-orderflow']) {
+            if (!lab.includes(route)) throw new Error('Quantum Lab worker route missing: ' + route);
+          }
+          if (lab.includes('https://api.binance.com')) throw new Error('Quantum Lab direct Binance dependency returned');
+          if (!lab.includes('for(let i=0;i<state.universe.length;i+=12)')) throw new Error('Quantum Lab full-universe scan batching missing');
+          console.log('Quantum Lab inline scripts parsed: ' + labParsed + '; multi-exchange scan wiring passed.');
           const version = html.match(/name=["']mmp-app-version["'] content=["']([^"']+)["']/i);
           const capacitor = JSON.parse(fs.readFileSync('capacitor.config.json', 'utf8'));
           if (!version || version[1] !== '2.0.0') throw new Error('App web version metadata changed unexpectedly');
