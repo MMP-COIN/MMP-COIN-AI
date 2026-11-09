@@ -21,8 +21,9 @@ async function runAIWithFallback(env,prompt){
  const failures=[];
  const accept=(provider,content)=>({provider,raw:extractAIJson(content)});
  const groqModels=[
-  {id:"qwen/qwen3.8-27b",body:{temperature:0.1,max_completion_tokens:800,reasoning_effort:"none"}},
-  {id:"openai/gpt-oss-20b",body:{max_completion_tokens:1200,reasoning_effort:"low"}}
+  {id:"openai/gpt-oss-120b",timeoutMs:25000,body:{temperature:0.15,max_completion_tokens:4096,reasoning_effort:"high"}},
+  {id:"qwen/qwen3.8-27b",timeoutMs:18000,body:{temperature:0.1,max_completion_tokens:2400,reasoning_effort:"high"}},
+  {id:"openai/gpt-oss-20b",timeoutMs:18000,body:{temperature:0.15,max_completion_tokens:2400,reasoning_effort:"medium"}}
  ];
  if(env.GROQ_API_KEY){
   for(const entry of groqModels){
@@ -32,7 +33,7 @@ async function runAIWithFallback(env,prompt){
      method:"POST",
      headers:{"Authorization":"Bearer "+env.GROQ_API_KEY,"Content-Type":"application/json"},
      body:JSON.stringify({model,messages,...entry.body,response_format:{type:"json_object"}})
-    });
+    },entry.timeoutMs||18000);
     if(!response.ok){
      const body=await response.text();
      let detail=body;
