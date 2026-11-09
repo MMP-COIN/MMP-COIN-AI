@@ -267,6 +267,13 @@ async function runRadar(env,scheduledTime=Date.now()){
     }
   }
   const nextCursor=cursor;
+  const sameUniverse=Number(state?.universe_count)===universe.length;
+  const previousCycleScanned=sameUniverse?Math.max(0,Number(state?.cycle_scanned_count??start)||0):start;
+  const cycleAdvance=previousCycleScanned+inspected;
+  const completedCycles=Math.floor(cycleAdvance/universe.length);
+  const cycleScannedCount=cycleAdvance%universe.length;
+  const cycleNumber=(sameUniverse?Math.max(1,Number(state?.cycle_number)||1):1)+completedCycles;
+  const cyclePercent=Math.min(100,Math.floor(cycleScannedCount/universe.length*100));
   const candidateDetails=scannedSignals.map(signal=>({id:String(signal.id),symbol:signal.symbol,trend:signal.trend,score:Number(signal.score)||0,price:Number(signal.price)||0,change1m:Number(signal.change1m)||0,change3m:Number(signal.change3m)||0,change5m:Number(signal.change5m)||0,volumeRatio:Number(signal.volumeRatio)||0,provider:signal.provider||"",multiExchangeConfirmed:signal.multiExchangeConfirmed===true,flowStatus:signal.flowStatus||"queued_for_flow_review",flowTradeCount:Number(signal.flow?.tradeCount)||0,flowComplete:signal.flow?.complete===true,flowConfirmed:signal.flowConfirmed===true,volumeConfirmed:signal.volumeConfirmed===true,qualityGate:signal.quantum?.qualityGate===true,updatedAt:Number(signal.updatedAt)||Date.now(),coin:signal.coin||null}));
   const flowConfirmedCount=scannedSignals.filter(signal=>signal.flowConfirmed===true).length;
   const qualityPassCount=scannedSignals.filter(signal=>signal.flowConfirmed===true&&signal.volumeConfirmed===true&&signal.quantum?.qualityGate===true&&Number(signal.score)>=RETENTION_SCORE).length;
@@ -274,7 +281,7 @@ async function runRadar(env,scheduledTime=Date.now()){
     status:"online",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,source:"Cloudflare scheduled radar",scoring_version:4,retention_score:RETENTION_SCORE,
     universe_source:universeSource,universe_cache_age_ms:universeSource==="cached"?cacheAge:0,
     scanned_at:new Date().toISOString(),scheduled_at:new Date(Number(scheduledTime)||Date.now()).toISOString(),
-    universe_count:universe.length,scanned_count:completed,valid_count:valid,flow_checked_count:flowCandidates.length,flow_confirmed_count:flowConfirmedCount,quality_pass_count:qualityPassCount,candidate_details:candidateDetails,failed_count:failed,failed_samples:failedSamples,
+    universe_count:universe.length,cycle_scanned_count:cycleScannedCount,cycle_total:universe.length,cycle_percent:cyclePercent,cycle_number:cycleNumber,scanned_count:completed,valid_count:valid,flow_checked_count:flowCandidates.length,flow_confirmed_count:flowConfirmedCount,quality_pass_count:qualityPassCount,candidate_details:candidateDetails,failed_count:failed,failed_samples:failedSamples,
     removed_count:removed,removed_signals:removedSignals,batch_size:BATCH_SIZE,priority_scanned_count:priorityCoins.length,next_cursor:nextCursor,
     signals:(()=>{
       const canonicalIds=new Map(universe.map(coin=>[String(coin.symbol).toUpperCase(),String(coin.id)]));
@@ -297,7 +304,7 @@ async function runRadar(env,scheduledTime=Date.now()){
     hunterChange24h:Number(coin.hunterChange24h)||0,hunterVenueVolume:coin.hunterVenueVolume||{},
     marketPairs:Array.isArray(coin.marketPairs)?coin.marketPairs:[]}));
   await env.RADAR_KV.put("radar:state",JSON.stringify({
-    cursor:nextCursor,updated_at:snapshot.scanned_at,universe_count:universe.length,removed_signals:removedSignals,
+    cursor:nextCursor,cycle_scanned_count:cycleScannedCount,cycle_number:cycleNumber,updated_at:snapshot.scanned_at,universe_count:universe.length,removed_signals:removedSignals,
     universe_cache:universeCache,
     universe_cache_updated_at:universeSource==="live"?snapshot.scanned_at:Number(state?.universe_cache_updated_at||state?.updated_at||snapshot.scanned_at)
   }));
