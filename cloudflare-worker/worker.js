@@ -1,6 +1,6 @@
 // MMP Quantum Intelligence Engine: dynamic market discovery with no fixed asset ceiling
-import { QUANTUM_ENGINE_NAME, QUANTUM_ENGINE_VERSION, normalizeQuantumUniverse, scoreQuantumOpportunity } from "./quantum-core.js";
-const HUNTER_BATCH_SIZE = 10;
+import { QUANTUM_ENGINE_NAME, QUANTUM_ENGINE_VERSION, normalizeQuantumUniverse, scoreQuantumOpportunity, calculateQuantumIndicators } from "./quantum-core.js";
+const HUNTER_BATCH_SIZE = 20;
 const FUTURES_HUNTER_BATCH_SIZE = 8;
 const MODEL = "@cf/openai/gpt-oss-120b";
 function extractAIJson(value){
@@ -698,17 +698,26 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
  const alignedRows=primary.rows.slice(0,alignedIndex+2);
  return {provider:primary.provider,rows:alignedRows,market:marketType,multiExchangeConfirmed:true,multiExchangeEvidence:{primary:primary.provider,secondary:secondary.provider,timeDiffMs,priceDeviationPct:Number(priceDeviationPct.toFixed(4)),primaryPrice:a[4],secondaryPrice:b[4],candleTime:a[0],commonCandleAgeMs:commonCandleAge}};
 }
-async function analyzeDigitalHunterSymbol(symbol,marketType="spot",asset=null){
+async function analyzeDigitalHunterSymbol(symbol,marketType="spot",asset=null,activity=null){
+ for(const key of QUANTUM_ACTIVITY_KEYS)if(activity?.[key])activity[key].processed++;
  const m=await fetchHunterCandles(symbol,marketType,asset),rows=m.rows.slice(0,-1),now=Date.now();if(rows.length<60)return null;
  const last=rows.at(-1);if(now-last[0]>210000)return null;
+ const indicators=calculateQuantumIndicators(rows);if(!indicators.available)return null;
+ markQuantumEvidence(activity,"dataQuality");markQuantumEvidence(activity,"momentum");markQuantumEvidence(activity,"multiTimeframe");markQuantumEvidence(activity,"regime");markQuantumEvidence(activity,"volatility");markQuantumEvidence(activity,"liquidity");markQuantumEvidence(activity,"structure");
  const b=[];for(let i=0;i+2<rows.length;i+=3){const g=rows.slice(i,i+3);if(g.length===3)b.push({o:g[0][1],h:Math.max(...g.map(x=>x[2])),l:Math.min(...g.map(x=>x[3])),c:g[2][4],v:g.reduce((z,x)=>z+x[5],0)});}
  if(b.length<18)return null;const x=b.at(-1),m1=(last[4]/last[1]-1)*100,m3=(last[4]/rows.at(-3)[1]-1)*100,m5=(last[4]/rows.at(-5)[1]-1)*100,m15=(last[4]/rows.at(-15)[1]-1)*100,trend=m5>=0?"bull":"bear";
  const aligned=v=>trend==="bull"?v>=-.025:v<=.025;if(!aligned(m1)||!aligned(m3))return null;
- const prior=rows.slice(-10,-5),breakout=trend==="bull"?last[4]>Math.max(...prior.map(q=>q[2])):last[4]<Math.min(...prior.map(q=>q[3])),base=b.slice(-16,-1).map(q=>q.v).filter(v=>v>0);if(base.length<10)return null;
- const avg=base.reduce((p,q)=>p+q,0)/base.length,volumeRatio=avg?x.v/avg:0,trend15=trend==="bull"?m15>.015:m15<-.015,structure=trend==="bull"?last[4]>=last[1]:last[4]<=last[1],coreAligned=Math.sign(m5)===Math.sign(m15)&&Math.abs(m5)>=.05&&Math.abs(m15)>=.08,overextended=Math.abs(m5)>=1.5||Math.abs(m1)>=.8,lowLiquidity=Number(asset?.total_volume)>0&&Number(asset.total_volume)<150000;
+ const base=b.slice(-16,-1).map(q=>q.v).filter(v=>v>0);if(base.length<10)return null;
+ const avg=base.reduce((p,q)=>p+q,0)/base.length,volumeRatio=avg?x.v/avg:0,trend15=trend==="bull"?m15>.015:m15<-.015,breakout=trend==="bull"?indicators.breakoutUp:indicators.breakoutDown;
+ const technicalAligned=trend==="bull"?indicators.trendUp&&indicators.rsi14>=50&&indicators.rsi14<=78:indicators.trendDown&&indicators.rsi14>=22&&indicators.rsi14<=50;
+ const structure=trend==="bull"?last[4]>indicators.ema21&&Number(indicators.vwapDeviationPct)>=0&&indicators.obvTrend>=0:last[4]<indicators.ema21&&Number(indicators.vwapDeviationPct)<=0&&indicators.obvTrend<=0;
+ const coreAligned=Math.sign(m5)===Math.sign(m15)&&Math.abs(m5)>=.05&&Math.abs(m15)>=.08&&technicalAligned;
+ const overextended=Math.abs(m5)>=1.5||Math.abs(m1)>=.8||(trend==="bull"?indicators.rsi14>78:indicators.rsi14<22)||Math.abs(Number(indicators.vwapDeviationPct))>1.2;
+ const lowLiquidity=Number(asset?.total_volume)>0&&Number(asset.total_volume)<150000;
  if(!coreAligned||lowLiquidity)return null;
- const quantum=scoreQuantumOpportunity({trend,currentPrice:last[4],change1m:m1,change3m:m3,change5m:m5,change15m:m15,volumeRatio,breakout,structureAligned:structure&&coreAligned,trend15,overextended,dataAgeMs:now-last[0],flowConfirmed:false,multiExchangeConfirmed:m.multiExchangeConfirmed,totalVolume24h:asset?.total_volume});const score=quantum.score;if(score<55||!quantum.candidateGate||!m.multiExchangeConfirmed)return null;
- return {symbol,trend,score,change1m:m1,change3m:m3,change5m:m5,change15m:m15,volumeRatio,breakout,price:last[4],provider:m.provider,multiExchangeConfirmed:m.multiExchangeConfirmed,multiExchangeEvidence:m.multiExchangeEvidence,lowLiquidity,rows:rows.slice(-30),updatedAt:now,candleTime:last[0],engine:"quantum-hunter-v2",market:marketType,timeframes:{m1,m3,m5,m15},evidence:{volumeRatio:+volumeRatio.toFixed(2),breakout,trend15m:trend15,structure,coreAligned,multiExchange:m.multiExchangeEvidence},overextended};
+ const quantum=scoreQuantumOpportunity({trend,currentPrice:last[4],change1m:m1,change3m:m3,change5m:m5,change15m:m15,volumeRatio,breakout,structureAligned:structure&&coreAligned,trend15,overextended,dataAgeMs:now-last[0],flowConfirmed:false,multiExchangeConfirmed:m.multiExchangeConfirmed,totalVolume24h:asset?.total_volume,rsi14:indicators.rsi14,ema9:indicators.ema9,ema21:indicators.ema21,ema50:indicators.ema50,macdHistogram:indicators.macdHistogram,atrPct:indicators.atrPct});
+ const score=quantum.score;if(score<55||!quantum.candidateGate||!m.multiExchangeConfirmed)return null;
+ return {symbol,trend,score,change1m:m1,change3m:m3,change5m:m5,change15m:m15,volumeRatio,breakout,technicalAligned,indicators,price:last[4],provider:m.provider,multiExchangeConfirmed:m.multiExchangeConfirmed,multiExchangeEvidence:m.multiExchangeEvidence,lowLiquidity,rows:rows.slice(-30),updatedAt:now,candleTime:last[0],engine:"quantum-hunter-v3",market:marketType,timeframes:{m1,m3,m5,m15},evidence:{volumeRatio:+volumeRatio.toFixed(2),breakout,trend15m:trend15,structure,coreAligned,technical:{rsi14:indicators.rsi14,ema9:indicators.ema9,ema21:indicators.ema21,ema50:indicators.ema50,macdHistogram:indicators.macdHistogram,vwapDeviationPct:indicators.vwapDeviationPct,obvTrend:indicators.obvTrend},multiExchange:m.multiExchangeEvidence},overextended};
 }
 async function loadFuturesMarketFlow(symbol,windowMinutes=5){
  const base=String(symbol||"").toUpperCase().replace(/USDT$/,""),pair=base+"USDT";
@@ -840,11 +849,13 @@ async function loadHunterDepth(symbol,marketType="spot",preferredProviders=[]){
  if(best)return best;
  throw new Error("Order-book depth unavailable: "+lastError);
 }
+const QUANTUM_ACTIVITY_KEYS=["momentum","flow","structure","liquidity","multiTimeframe","regime","volatility","sentiment","smartMoney","scenario","risk","dataQuality"];
+function markQuantumEvidence(activity,key){if(activity?.[key])activity[key].evidence++;}
 async function scanHunterSymbols(symbols,marketType="spot",assetList=[]){
  const assetMap=new Map((Array.isArray(assetList)?assetList:[]).map(x=>[String(x.symbol||"").toUpperCase(),x]));
- let i=0,failed=0,rejected=0;const candidates=[],errors=[],rejections=[];
- const concurrency=marketType==="futures"?1:2;
- await Promise.all(Array.from({length:Math.min(concurrency,symbols.length)},async()=>{while(i<symbols.length){const symbol=symbols[i++];try{const x=await analyzeDigitalHunterSymbol(symbol,marketType,assetMap.get(symbol));if(x)candidates.push(x);}catch(e){const message=String(e?.message||e);if(message.startsWith("QUALITY_REJECTED:")){rejected++;if(rejections.length<8)rejections.push({symbol,error:message.slice(0,180)});}else{failed++;if(errors.length<8)errors.push({symbol,error:message.slice(0,220)});}}}}));
+ let i=0,failed=0,rejected=0;const candidates=[],errors=[],rejections=[],engineActivity=Object.fromEntries(QUANTUM_ACTIVITY_KEYS.map(key=>[key,{processed:0,evidence:0}]));
+ const concurrency=marketType==="futures"?2:4;
+ await Promise.all(Array.from({length:Math.min(concurrency,symbols.length)},async()=>{while(i<symbols.length){const symbol=symbols[i++];try{const x=await analyzeDigitalHunterSymbol(symbol,marketType,assetMap.get(symbol),engineActivity);if(x)candidates.push(x);}catch(e){const message=String(e?.message||e);if(message.startsWith("QUALITY_REJECTED:")){rejected++;if(rejections.length<8)rejections.push({symbol,error:message.slice(0,180)});}else{failed++;if(errors.length<8)errors.push({symbol,error:message.slice(0,220)});}}}}));
  candidates.sort((a,b)=>b.score-a.score);const signals=[];
  const flowCandidates=(marketType==="futures"?[...candidates.filter(x=>x.trend==="bull"&&!x.lowLiquidity).slice(0,1),...candidates.filter(x=>x.trend==="bear"&&!x.lowLiquidity).slice(0,1)]:candidates.filter(x=>x.trend==="bull"&&!x.lowLiquidity).slice(0,2)).filter(x=>x.score>=60);
  await Promise.all(flowCandidates.map(async x=>{
@@ -852,10 +863,11 @@ async function scanHunterSymbols(symbols,marketType="spot",assetList=[]){
    let f=marketType==="futures"?await loadFuturesMarketFlow(x.symbol,5):await loadMarketFlow(x.symbol,5);
    if(f.complete!==true){const shorter=marketType==="futures"?await loadFuturesMarketFlow(x.symbol,1):await loadMarketFlow(x.symbol,1);if(shorter.complete===true&&shorter.trade_count>=8)f=shorter;}
    const gross=f.buy5m+f.sell5m,imb=gross?f.net5m/gross:0,ok=x.trend==="bull"?imb>=.045:imb<=-.045;
-   if(f.trade_count<8||!ok||f.complete===false)return;
-   const depth=await loadHunterDepth(x.symbol,marketType,[x.multiExchangeEvidence?.primary,x.multiExchangeEvidence?.secondary]);if(!depth.confirmed)return;
+   if(f.trade_count<8||!ok||f.complete===false)return;markQuantumEvidence(engineActivity,"flow");
+   const depth=await loadHunterDepth(x.symbol,marketType,[x.multiExchangeEvidence?.primary,x.multiExchangeEvidence?.secondary]);if(!depth.confirmed)return;markQuantumEvidence(engineActivity,"smartMoney");
    const qBars=Array.isArray(x.rows)?x.rows.slice(-70):[],qRanges=qBars.slice(1).map((bar,i)=>Math.max(Number(bar[2])-Number(bar[3]),Math.abs(Number(bar[2])-Number(qBars[i][4])),Math.abs(Number(bar[3])-Number(qBars[i][4])))).filter(v=>Number.isFinite(v)&&v>0),qAtr=qRanges.length?qRanges.slice(-14).reduce((a,b)=>a+b,0)/Math.min(14,qRanges.length):0,qEntry=Number(x.price),qAtrPct=qEntry>0?qAtr/qEntry*100:null,qStopPct=qEntry>0?Math.max(qAtr*1.25,qEntry*.002)/qEntry*100:null,qDepthImbalance=Number(depth.totalDepthUsdt)>0?(Number(depth.bidUsdt)-Number(depth.askUsdt))/Number(depth.totalDepthUsdt):0,qSmartMoneyScore=Math.max(0,Math.min(100,50+Math.sign(imb)*(x.trend==="bull"?1:-1)*Math.min(25,Math.abs(imb)*100)+Math.min(15,Math.log2(Math.max(1,f.trade_count))*3))),qExplosionScore=Math.max(0,Math.min(100,Math.max(0,Number(x.volumeRatio)-1)*28+Math.abs(imb)*45+Math.min(25,Math.log2(Math.max(1,f.trade_count))*5)));
-   const quantum=scoreQuantumOpportunity({...x,flowImbalance:imb,flowConfirmed:true,multiExchangeConfirmed:x.multiExchangeConfirmed,volumeRatio:x.volumeRatio,depthConfirmed:true,depthImbalance:qDepthImbalance,atrPct:qAtrPct,explosionScore:qExplosionScore,smartMoneyScore:qSmartMoneyScore,smartMoneyConfirmed:true,riskRewardRatio:2.2,stopDistancePct:qStopPct,requireDepthConfirmation:true,dataAgeMs:Date.now()-x.candleTime});if(!quantum.qualityGate)return;x.quantum=quantum;x.score=quantum.score;x.depth=depth;
+   const scenarioScore=Math.max(0,Math.min(100,42+(x.breakout?18:0)+(x.technicalAligned?18:0)+Math.min(15,Math.max(0,x.volumeRatio-1)*12)-(x.overextended?25:0)));markQuantumEvidence(engineActivity,"scenario");markQuantumEvidence(engineActivity,"risk");
+   const quantum=scoreQuantumOpportunity({...x,flowImbalance:imb,flowConfirmed:true,multiExchangeConfirmed:x.multiExchangeConfirmed,volumeRatio:x.volumeRatio,depthConfirmed:true,depthImbalance:qDepthImbalance,atrPct:qAtrPct,explosionScore:qExplosionScore,smartMoneyScore:qSmartMoneyScore,smartMoneyConfirmed:true,scenarioScore,stopDistancePct:qStopPct,requireDepthConfirmation:true,dataAgeMs:Date.now()-x.candleTime});if(!quantum.qualityGate)return;x.quantum=quantum;x.score=quantum.score;x.depth=depth;
    x.flow={buy5m:f.buy5m,sell5m:f.sell5m,net5m:f.net5m,windowMinutes:f.window_minutes||5,tradeCount:f.trade_count,provider:f.provider,complete:f.complete,coverageStart:f.coverage_start,rows:f.rows,imbalance:+imb.toFixed(4)};
    x.flowSignal=f.net5m>0?"inflow":"outflow";
    const bars=Array.isArray(x.rows)?x.rows.slice(-16):[],ranges=bars.slice(1).map((bar,i)=>Math.max(Number(bar[2])-Number(bar[3]),Math.abs(Number(bar[2])-Number(bars[i][4])),Math.abs(Number(bar[3])-Number(bars[i][4])))).filter(v=>Number.isFinite(v)&&v>0);
@@ -866,7 +878,7 @@ async function scanHunterSymbols(symbols,marketType="spot",assetList=[]){
   }catch(e){x.flowError=String(e?.message||e).slice(0,90);}
  }));
  signals.sort((a,b)=>b.score-a.score);
- return {market:marketType,requested:symbols.length,scanned:symbols.length-failed,candidates:candidates.length,failed,rejected,rejections,errors,signals,checked_at:new Date().toISOString()};
+ return {market:marketType,requested:symbols.length,scanned:symbols.length-failed,candidates:candidates.length,failed,rejected,rejections,errors,signals,engine_activity:engineActivity,checked_at:new Date().toISOString()};
 }
 
 async function loadDigitalHunterFuturesUniverse(){
@@ -927,7 +939,8 @@ export async function runDigitalHunterMarketCycle(env,marketType="spot"){
  for(const [symbol,signal] of map){if(now-Number(signal.updatedAt||0)>5*60*1000)map.delete(symbol);}
  const fresh=[...map.values()].filter(x=>now-Number(x.updatedAt||0)<=5*60*1000&&Number(x.score)>=68&&x.confirmed===true&&x.multiExchangeConfirmed===true&&x.flow?.complete===true&&Number(x.flow?.tradeCount)>=8&&Number(x.volumeRatio)>=1.1&&x.depth?.confirmed===true&&x.quantum?.qualityGate===true).sort((a,b)=>b.score-a.score);
  const selected=marketType==="futures"?[...fresh.filter(x=>x.trend==="bull").slice(0,6),...fresh.filter(x=>x.trend==="bear").slice(0,6)]:fresh.filter(x=>x.trend==="bull").slice(0,6);
- const snapshot={status:"online",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,market:marketType,checked_at:new Date().toISOString(),scanned_at:new Date().toISOString(),universe_count:assets.length,next_cursor:(cursor+batch.length)%assets.length,batch_size:batch.length,scanned_count:result.scanned,candidate_count:result.signals.length,failed_count:result.failed,rejected_count:result.rejected||0,cooldown_count:Object.keys(failureCooldown).length,universe_refreshed:false,signals:selected,last_errors:result.errors||[],last_rejections:result.rejections||[],sources:universeSources,universe_provider:universeProvider,cycle_seconds:60};
+ const nextCursor=(cursor+batch.length)%assets.length,priorActivity=cursor===0?{}:(previous.snapshot?.engine_activity||{}),engineActivity=Object.fromEntries(QUANTUM_ACTIVITY_KEYS.map(key=>{const a=priorActivity[key]||{},b=result.engine_activity?.[key]||{};return [key,{processed:Number(a.processed||0)+Number(b.processed||0),evidence:Number(a.evidence||0)+Number(b.evidence||0)}];}));
+ const snapshot={status:"online",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,market:marketType,checked_at:new Date().toISOString(),scanned_at:new Date().toISOString(),universe_count:assets.length,next_cursor:nextCursor,batch_size:batch.length,scanned_count:result.scanned,candidate_count:result.signals.length,failed_count:result.failed,rejected_count:result.rejected||0,cooldown_count:Object.keys(failureCooldown).length,universe_refreshed:false,signals:selected,engine_activity:engineActivity,last_errors:result.errors||[],last_rejections:result.rejections||[],sources:universeSources,universe_provider:universeProvider,cycle_seconds:60};
  const payload=JSON.stringify({cursor:snapshot.next_cursor,lastRun:now,assets,universeUpdatedAt,universeSources,universeProvider,failureCooldown,snapshot});
  await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(stateId,payload,new Date(now).toISOString()).run();
  return snapshot;
