@@ -82,6 +82,10 @@ body{overflow-wrap:anywhere;word-break:normal}
   :where(table){display:block;width:100%;overflow-x:auto}
 }
 </style>
+
+<style id="mmp-quantum-floating-coin">
+.quantum-art-core{width:33%!important;transform:translate(8%,-7%)!important;background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important;gap:0!important}.quantum-art-core img{width:100%!important;height:100%!important;filter:brightness(1.18) saturate(1.16) drop-shadow(0 0 7px #f5d98b) drop-shadow(0 0 17px #d9b66d99)!important}.quantum-art-core span{display:none!important}
+</style>
 </head>
 <body>
 <header><div class="brand"><div class="mark" aria-label="MMP Quantum coin">M</div><div><b>مرکز کوانتومی MMP</b><small>MMP QUANTUM CENTER · MARKET INTELLIGENCE</small></div></div><div class="actions"><button class="btn" id="back">بازگشت به ترمینال</button><button class="btn primary" id="run-all-engines">اجرای واقعی هر ۱۲ موتور</button><button class="btn" id="scan">به‌روزرسانی وضعیت</button></div></header>
@@ -427,6 +431,8 @@ async function runAllQuantumEngines(){
  finally{state.busy=false;button.disabled=false;button.textContent="اجرای مجدد هر ۱۲ موتور"}
 }
 $("run-all-engines").addEventListener("click",runAllQuantumEngines);
+const engineLaunchParams=new URLSearchParams(location.search);
+if(engineLaunchParams.get("run-engines")==="1")setTimeout(()=>{engineLaunchParams.delete("run-engines");const cleanQuery=engineLaunchParams.toString();history.replaceState(null,"",location.pathname+(cleanQuery?"?"+cleanQuery:"")+location.hash);runAllQuantumEngines();},650);
 $("asset-search").addEventListener("input",()=>{clearTimeout(searchTimer);searchTimer=setTimeout(renderAssetSearch,120)});$("asset-search-clear").addEventListener("click",()=>{$("asset-search").value="";state.assetLimit=24;renderAssetSearch();$("asset-search").focus()});$("asset-search-more").addEventListener("click",()=>{state.assetLimit+=24;renderAssetSearch()});$("asset-search-results").addEventListener("click",e=>{const b=e.target.closest("[data-independent-analyze]");if(b)analyzeIndependent(b.dataset.independentAnalyze)});$("scan").addEventListener("click",scan);$("back").addEventListener("click",()=>location.href="/");$("filter").addEventListener("input",renderRows);$("direction").addEventListener("change",renderRows);$("sort").addEventListener("change",renderRows);$("rows").addEventListener("click",e=>{const b=e.target.closest("[data-detail]");if(b)showDetail(b.dataset.detail)});$("record").addEventListener("click",record);$("history").addEventListener("click",updateLedger);$("export").addEventListener("click",exportCSV);
 renderEngines(null);renderLedger();renderQuantumCharts();loadIndependentCatalog();startLiveMonitor();if(state.ledger.length)log("حافظه محلی شامل "+state.ledger.length+" پیش‌بینی قبلی است.");
 })();
