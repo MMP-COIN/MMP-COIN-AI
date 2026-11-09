@@ -1,7 +1,7 @@
 // MMP Quantum Intelligence Engine: dynamic market discovery with no fixed asset ceiling
 import { QUANTUM_ENGINE_NAME, QUANTUM_ENGINE_VERSION, normalizeQuantumUniverse, scoreQuantumOpportunity, calculateQuantumIndicators } from "./quantum-core.js";
-const HUNTER_BATCH_SIZE = 20;
-const FUTURES_HUNTER_BATCH_SIZE = 8;
+const HUNTER_BATCH_SIZE = 6;
+const FUTURES_HUNTER_BATCH_SIZE = 4;
 const MODEL = "@cf/openai/gpt-oss-120b";
 function extractAIJson(value){
  let raw=typeof value==="string"?value:JSON.stringify(value??"");
@@ -668,12 +668,12 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
   order=unique([...(primaryTrusted&&available.includes(primary)?[primary]:[]),...available,...(!available.length?priority:[])]);
  }else{
   const indices={Binance:0,Bybit:1,Bitget:2,OKX:3,Gate:4,"Gate.io":4,KuCoin:5,WhiteBIT:6,"Binance.US":7,BinanceUS:7,MEXC:8};
-  const preferred=(Array.isArray(asset?.marketPairs)?asset.marketPairs.slice().sort((a,b)=>Number(b.volume||0)-Number(a.volume||0)):[]).map(x=>indices[String(x.exchange||"")]).filter(Number.isInteger),priority=[7,2,6,4,5,8,1,3,0],available=unique(preferred).sort((a,b)=>priority.indexOf(a)-priority.indexOf(b)),primary=preferred[0],primaryTrusted=[2,4,5,6,7,8].includes(primary);
+  const preferred=(Array.isArray(asset?.marketPairs)?asset.marketPairs.slice().sort((a,b)=>Number(b.volume||0)-Number(a.volume||0)):[]).map(x=>indices[String(x.exchange||"")]).filter(Number.isInteger),priority=[7,6,4,5,8,3,1,2,0],available=unique(preferred).sort((a,b)=>priority.indexOf(a)-priority.indexOf(b)),primary=preferred[0],primaryTrusted=[2,4,5,6,7,8].includes(primary);
   order=unique([...(primaryTrusted?[primary]:[]),...available,...(!available.length?priority:[])]);
  }
- const fallbackPriority=marketType==="futures"?[3,4,5,6,1,2,0]:[7,2,6,4,5,8,1,3,0];
+ const fallbackPriority=marketType==="futures"?[5,2,4,0,3,1]:[7,6,4,5,8,3,1,2,0];
  order=unique([...order,...fallbackPriority.filter(index=>!order.includes(index))]);
- const sourceLimit=marketType==="futures"?7:9,orderedSources=order.map(index=>sources[index]).filter(Boolean).slice(0,sourceLimit),verified=[];
+ const sourceLimit=4,orderedSources=order.map(index=>sources[index]).filter(Boolean).slice(0,sourceLimit),verified=[];
  let selectedPair=null,bestObservedPair=null;
  const evaluatePairs=()=>{
   const pairs=[];
@@ -864,7 +864,7 @@ function markQuantumEvidence(activity,key){if(activity?.[key]){activity[key].pro
 async function scanHunterSymbols(symbols,marketType="spot",assetList=[],env=null){
  const assetMap=new Map((Array.isArray(assetList)?assetList:[]).map(x=>[String(x.symbol||"").toUpperCase(),x]));
  let i=0,failed=0,rejected=0;const candidates=[],errors=[],rejections=[],engineActivity=Object.fromEntries(QUANTUM_ACTIVITY_KEYS.map(key=>[key,{processed:0,evidence:0}]));
- const concurrency=marketType==="futures"?2:4;
+ const concurrency=2;
  await Promise.all(Array.from({length:Math.min(concurrency,symbols.length)},async()=>{while(i<symbols.length){const symbol=symbols[i++];try{const x=await analyzeDigitalHunterSymbol(symbol,marketType,assetMap.get(symbol),engineActivity);if(x)candidates.push(x);}catch(e){const message=String(e?.message||e);if(message.startsWith("QUALITY_REJECTED:")){rejected++;rejections.push({symbol,error:message.slice(0,180)});}else{failed++;errors.push({symbol,error:message.slice(0,220)});}}}}));
  candidates.sort((a,b)=>b.score-a.score);const signals=[];
  const flowCandidates=(marketType==="futures"?[...candidates.filter(x=>x.trend==="bull"&&!x.lowLiquidity).slice(0,1),...candidates.filter(x=>x.trend==="bear"&&!x.lowLiquidity).slice(0,1)]:candidates.filter(x=>x.trend==="bull"&&!x.lowLiquidity).slice(0,2)).filter(x=>x.score>=60);
