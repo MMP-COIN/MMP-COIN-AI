@@ -2,7 +2,7 @@ import { QUANTUM_ENGINE_NAME, QUANTUM_ENGINE_VERSION, normalizeQuantumUniverse, 
 const MAIN_UNIVERSE = "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/hunter-universe";
 const MAIN_FLOW = "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-flow";
 const RETENTION_SCORE = 64;
-const BATCH_SIZE = 12;
+const BATCH_SIZE = 4;
 const CONCURRENCY = 2;
 const SUPPORTED = new Set(["Binance","Bybit","OKX","Bitget","Gate","KuCoin","WhiteBIT","MEXC"]);
 const JSON_HEADERS = { "Accept":"application/json", "User-Agent":"MMP-COIN-AI-RADAR/1.0" };
@@ -76,8 +76,8 @@ async function scanCoin(coin){
     :Object.entries(coin.hunterVenueVolume||{}).filter(([name])=>SUPPORTED.has(name)).map(([exchange,volume])=>({exchange,volume,quote:"USDT"}));
   if(!listed.length)return null;
   const order=[...new Map(listed.sort((a,b)=>Number(b.volume)-Number(a.volume)).map(x=>[x.exchange,x])).values()].map(x=>x.exchange);
-  const fallback=["Binance","OKX","Gate","MEXC","KuCoin","WhiteBIT","Bitget","Bybit"].filter(name=>!order.includes(name));
-  const verificationOrder=[...new Set([...order,...fallback])].slice(0,6);
+  const fallback=["OKX","Gate","MEXC","KuCoin","WhiteBIT","Binance","Bitget","Bybit"].filter(name=>!order.includes(name));
+  const verificationOrder=[...new Set([...order.filter(name=>!["Bybit","Bitget"].includes(name)),...fallback,...order])].slice(0,5);
   let market=null,corroboration=null,errors=[];
   for(const venue of verificationOrder){if(corroboration)break;try{const candidate=await loadProvider(symbol,venue);if(!market)market=candidate;else corroboration=candidate;}catch(error){errors.push(venue+": "+String(error?.message||error).slice(0,80));}}
   if(!market)throw new Error(errors.join(" | ")||"No candle provider responded");
@@ -218,7 +218,7 @@ async function runRadar(env,scheduledTime=Date.now()){
     finally{completed++;}
   });
   // Validate the strongest fresh candidates with real executed trades, not candle volume alone.
-  const flowCandidates=[...scannedSignals.filter(x=>x.trend==="bull"&&x.coreAligned&&!x.lowLiquidity&&x.multiExchangeConfirmed&&Number(x.score)>=48).sort((a,b)=>b.score-a.score).slice(0,2),...scannedSignals.filter(x=>x.trend==="bear"&&x.coreAligned&&!x.lowLiquidity&&x.multiExchangeConfirmed&&Number(x.score)>=48).sort((a,b)=>b.score-a.score).slice(0,2)];
+  const flowCandidates=[...scannedSignals.filter(x=>x.trend==="bull"&&x.coreAligned&&!x.lowLiquidity&&x.multiExchangeConfirmed&&Number(x.score)>=48).sort((a,b)=>b.score-a.score).slice(0,1),...scannedSignals.filter(x=>x.trend==="bear"&&x.coreAligned&&!x.lowLiquidity&&x.multiExchangeConfirmed&&Number(x.score)>=48).sort((a,b)=>b.score-a.score).slice(0,1)];
   const flowCheckedSymbols=new Set(flowCandidates.map(signal=>String(signal.symbol).toUpperCase()));
   for(const signal of scannedSignals)signal.flowStatus=flowCheckedSymbols.has(String(signal.symbol).toUpperCase())?"checking_flow":"queued_for_flow_review";
   await mapLimit(flowCandidates,2,async signal=>{
