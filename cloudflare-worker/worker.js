@@ -660,7 +660,7 @@ async function loadFuturesMarketFlow(symbol,windowMinutes=5){
  const minutes=Math.max(1,Math.min(15,Number(windowMinutes)||5)),now=Date.now(),cutoff=now-minutes*60000;
  let trades=null,provider="",truncated=false,lastError="";
  const normalize=(rows,mapper,oldestOf,limit)=>{const oldest=rows.reduce((v,x)=>Math.min(v,oldestOf(x)||Infinity),Infinity);truncated=rows.length>=limit&&oldest>cutoff;return rows.map(mapper).filter(x=>x.time>=cutoff&&x.time<=now&&x.price>0&&x.size>0&&["Buy","Sell"].includes(x.side));};
- for(const host of ["https://api.bybit.eu"]){
+ for(const host of ["https://api.bybit.eu","https://api.bybit.com"]){
   try{
    const d=await marketFlowJson(host+"/v5/market/recent-trade?category=linear&symbol="+pair+"&limit=1000");
    if(Number(d.retCode)!==0)throw Error(d.retMsg||"Bybit Linear trades unavailable");
@@ -683,6 +683,16 @@ async function loadFuturesMarketFlow(symbol,windowMinutes=5){
     if(!truncated)break;
    }catch(error){lastError=String(error?.message||error).slice(0,140);}
   }
+ }
+ if(!trades?.length||truncated){
+  try{
+   const d=await marketFlowJson("https://api.bitget.com/api/v2/mix/market/fills?symbol="+pair+"&productType=USDT-FUTURES&limit=100");
+   if(String(d.code)!=="00000")throw Error(d.msg||"Bitget V2 Futures fills unavailable");
+   const raw=Array.isArray(d.data)?d.data:[];
+   const oldest=raw.reduce((v,x)=>Math.min(v,Number(x.ts)||Infinity),Infinity),bitgetV2Truncated=raw.length>=100&&oldest>cutoff;
+   const rows=raw.map(x=>({time:Number(x.ts),price:Number(x.price),size:Number(x.size),side:String(x.side||"").toLowerCase()==="buy"?"Buy":"Sell"})).filter(x=>x.time>=cutoff&&x.time<=now&&x.price>0&&x.size>0);
+   if(rows.length&&(!trades?.length||!bitgetV2Truncated||rows.length>trades.length)){trades=rows;truncated=bitgetV2Truncated;provider="Bitget USDT Futures V2 · real fills";}
+  }catch(error){lastError=String(error?.message||error).slice(0,140);}
  }
  if(!trades?.length||truncated){
   for(const host of ["https://fapi.binance.com"]){
@@ -729,7 +739,7 @@ async function loadFuturesMarketFlow(symbol,windowMinutes=5){
    if(gateTrades.length&&(!trades?.length||!gateTruncated||gateTrades.length>trades.length)){trades=gateTrades;truncated=gateTruncated;provider="Gate USDT Futures · paged real trades";}
   }catch(error){lastError=String(error?.message||error).slice(0,160);}
  }
- if(!trades?.length)throw new Error("Futures trade flow unavailable from Bybit, Bitget, Binance, OKX and Gate: "+lastError);
+ if(!trades?.length)throw new Error("Futures trade flow unavailable from Bybit, Bitget V2/V3, Binance, OKX and Gate: "+lastError);
  const buckets=new Map();let buy5m=0,sell5m=0;
  for(const trade of trades){const quote=trade.price*trade.size;if(!(quote>0))continue;if(trade.side==="Buy")buy5m+=quote;else sell5m+=quote;const minute=Math.floor(trade.time/60000)*60000,bucket=buckets.get(minute)||{time:minute,buy:0,sell:0,count:0};bucket[trade.side==="Buy"?"buy":"sell"]+=quote;bucket.count++;buckets.set(minute,bucket);}
  const rows=[...buckets.values()].sort((a,b)=>a.time-b.time).map(x=>[x.time,x.buy,x.sell,x.buy-x.sell]);
