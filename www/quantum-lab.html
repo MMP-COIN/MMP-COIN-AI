@@ -44,7 +44,7 @@ header{position:sticky;top:0;z-index:10;background:#090d14ed;border-bottom:1px s
 <script>
 (function(){
 "use strict";
-const API="https://api.binance.com";
+const API="https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev";
 const $=id=>document.getElementById(id);
 const state={universe:[],rows:[],selected:null,busy:false,done:0,errors:0,ledger:loadLedger(),depth:new Map()};
 const engineDefs=[
@@ -62,63 +62,146 @@ function ema(a,p){if(!a.length)return 0;let k=2/(p+1),v=a[0];for(let i=1;i<a.len
 function rsi(a,p=14){if(a.length<p+1)return 50;let up=0,dn=0;for(let i=a.length-p;i<a.length;i++){let d=a[i]-a[i-1];if(d>0)up+=d;else dn-=d}return dn===0?100:100-100/(1+(up/p)/(dn/p))}
 function calcATR(k,p=14){let tr=[];for(let i=1;i<k.length;i++){let h=+k[i][2],l=+k[i][3],pc=+k[i-1][4];tr.push(Math.max(h-l,Math.abs(h-pc),Math.abs(l-pc)))}return mean(tr.slice(-p))}
 function renderEngines(statuses={}){$("engines").innerHTML=engineDefs.map((e,i)=>'<div class="engine"><div class="engine-top"><b>'+String(i+1).padStart(2,"0")+". "+e[0]+'</b><span class="state '+(statuses[i]||"")+'">'+(statuses[i]==="ready"?"فعال":statuses[i]==="partial"?"محدود":"در انتظار")+'</span></div><p>'+e[1]+'</p></div>').join("")}
-function analyze(t,k5,k1h,depth){
- const close=k5.map(x=>+x[4]),high=k5.map(x=>+x[2]),low=k5.map(x=>+x[3]),vol=k5.map(x=>+x[5]),quote=k5.map(x=>+x[7]),last=close.at(-1),prev=close.at(-2),atr=calcATR(k5),atrPct=last?atr/last*100:0;
+function analyze(t,k5,k1h,marketData){
+ const close=k5.map(x=>+x[4]),high=k5.map(x=>+x[2]),low=k5.map(x=>+x[3]),quote=k5.map(x=>+x[7]),last=close.at(-1),prev=close.at(-2),atr=calcATR(k5),atrPct=last?atr/last*100:0;
  const fast=ema(close.slice(-60),9),slow=ema(close.slice(-60),21),r=rsi(close),volAvg=mean(quote.slice(-20,-1)),volRatio=volAvg?quote.at(-1)/volAvg:1;
- const range=last?(Math.max(...high.slice(-12))-Math.min(...low.slice(-12)))/last*100:0;
  const momentum=prev?(last/prev-1)*100:0,trend5=fast>slow?1:fast<slow?-1:0;
  const c1=k1h.map(x=>+x[4]),trend1=ema(c1.slice(-60),9)>ema(c1.slice(-60),21)?1:-1;
- const buyRatio=mean(k5.slice(-12).map(x=>+x[10]/Math.max(+x[5],1)));
- const book=depth?(()=>{let bids=depth.bids.reduce((s,x)=>s+(+x[0]*+x[1]),0),asks=depth.asks.reduce((s,x)=>s+(+x[0]*+x[1]),0);return {imbalance:(bids-asks)/Math.max(bids+asks,1),bids,asks}})():null;
+ const flow=marketData?.flow?.available&&marketData.flow.complete===true?Number(marketData.flow.imbalance):null;
+ const buyRatio=flow===null?null:(1+flow)/2;
+ const depth=marketData?.depth?.available?marketData.depth:null;
+ const book=depth?{imbalance:Number(depth.imbalance_pct||0)/100,bids:Number(depth.bid_usdt)||0,asks:Number(depth.ask_usdt)||0}:null;
  const compression=atrPct>0?Math.min(1,Math.max(0,(1.8-atrPct)/1.8)):0;
  const breakout=last>Math.max(...high.slice(-13,-1))?1:last<Math.min(...low.slice(-13,-1))?-1:0;
- const flow=buyRatio-.5,bookSignal=book?book.imbalance:0;
- const dirScore=trend5*.24+trend1*.20+Math.max(-1,Math.min(1,flow*4))*.16+Math.max(-1,Math.min(1,momentum/Math.max(atrPct,.05)))*.16+Math.max(-1,Math.min(1,bookSignal*3))*.12+breakout*.12;
+ const bookSignal=book?book.imbalance:0;
+ const components=[{v:trend5*.24,w:.24},{v:trend1*.20,w:.20},{v:Math.max(-1,Math.min(1,momentum/Math.max(atrPct,.05)))*.16,w:.16},{v:breakout*.12,w:.12}];
+ if(flow!==null)components.push({v:Math.max(-1,Math.min(1,flow*2))*.16,w:.16});
+ if(book)components.push({v:Math.max(-1,Math.min(1,bookSignal*3))*.12,w:.12});
+ const weight=components.reduce((s,x)=>s+x.w,0),dirScore=weight?components.reduce((s,x)=>s+x.v,0)/weight:0;
  const direction=dirScore>.12?"bull":dirScore<-.12?"bear":"neutral";
- const explosion=Math.min(1,compression*.32+Math.min(volRatio/3,1)*.35+Math.min(Math.abs(momentum)/Math.max(atrPct,.05),1)*.18+Math.abs(flow)*.6*.15);
+ const explosion=Math.min(1,compression*.4+Math.min(volRatio/3,1)*.4+Math.min(Math.abs(momentum)/Math.max(atrPct,.05),1)*.2);
  const liquidity=book?Math.min(1,Math.abs(book.imbalance)*2):null;
- const evidence=[volRatio>1.8?"افزایش حجم":null,compression>.45?"فشردگی نوسان":null,breakout===1?"شکست سقف کوتاه‌مدت":breakout===-1?"شکست کف کوتاه‌مدت":null,trend5===trend1?"هم‌جهتی تایم‌فریم":"تعارض تایم‌فریم",buyRatio>.57?"غلبه taker buy":buyRatio<.43?"غلبه taker sell":null,book&&Math.abs(book.imbalance)>.15?"عدم‌تعادل دفتر سفارش":null].filter(Boolean);
- const completeness=(k5.length>=30?0.45:0)+(k1h.length>=20?0.35:0)+(depth?0.2:0);
+ const evidence=[volRatio>1.8?"افزایش حجم نسبی":null,compression>.45?"فشردگی نوسان":null,breakout===1?"شکست سقف کوتاه‌مدت":breakout===-1?"شکست کف کوتاه‌مدت":null,trend5===trend1?"هم‌جهتی تایم‌فریم":"تعارض تایم‌فریم",flow!==null?(flow>.14?"غلبه خرید در معاملات واقعی":flow<-.14?"غلبه فروش در معاملات واقعی":"جریان معاملات متعادل"): "جریان معاملات در دسترس نیست",book&&Math.abs(book.imbalance)>.15?"عدم‌تعادل دفتر سفارش":null].filter(Boolean);
+ const completeness=(k5.length>=30?0.45:0)+(k1h.length>=20?0.35:0)+(book?0.1:0)+(flow!==null?0.1:0);
  const raw=50+Math.abs(dirScore)*28+explosion*20+(book?liquidity*4:0);
- const score=Math.round(Math.max(0,Math.min(100,raw))*Math.max(.55,completeness));
+ const score=Math.round(Math.max(0,Math.min(100,raw))*Math.max(.45,completeness));
  const stopDist=Math.max(atrPct*1.5,.35),targetDist=stopDist*2;
- return {symbol:t.symbol,last,change:+t.priceChangePercent,quoteVolume:+t.quoteVolume,score,direction,dirScore,explosion,atrPct,volRatio,buyRatio,trend5,trend1,rsi:r,breakout,compression,book,evidence,completeness,stopDist,targetDist,high:Math.max(...high.slice(-20)),low:Math.min(...low.slice(-20)),time:Date.now(),k5,k1h};
+ return {symbol:t.symbol,last,change:Number(t.hunterChange24h)||0,quoteVolume:Number(t.total_volume)||0,score,direction,dirScore,explosion,atrPct,volRatio,buyRatio,trend5,trend1,rsi:r,breakout,compression,book,flow:marketData?.flow||null,evidence,completeness,stopDist,targetDist,high:Math.max(...high.slice(-20)),low:Math.min(...low.slice(-20)),time:Date.now(),k5,k1h};
 }
-async function fetchJSON(url,timeout=12000){const c=new AbortController(),tm=setTimeout(()=>c.abort(),timeout);try{const r=await fetch(url,{cache:"no-store",signal:c.signal});if(!r.ok)throw Error("HTTP "+r.status);return await r.json()}finally{clearTimeout(tm)}}
+async function fetchJSON(url,timeout=30000){
+ const c=new AbortController(),tm=setTimeout(()=>c.abort(),timeout);
+ try{const r=await fetch(url,{cache:"no-store",signal:c.signal,headers:{"Accept":"application/json"}});if(!r.ok){const e=new Error("HTTP "+r.status);e.status=r.status;e.retryAfter=Number(r.headers.get("Retry-After"))||0;throw e;}return await r.json()}finally{clearTimeout(tm)}
+}
+const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+async function apiJSON(path,timeout=45000){
+ let last;
+ for(let attempt=0;attempt<4;attempt++){
+  try{return await fetchJSON(API+path,timeout)}
+  catch(e){last=e;const wait=e.status===429?Math.max(e.retryAfter*1000,15000*Math.pow(2,attempt)):Math.min(12000,1500*Math.pow(2,attempt));if(attempt<3)await sleep(wait);}
+ }
+ throw last||new Error("سرویس بازار پاسخ نداد");
+}
+function toWorkerRows(payload){
+ const rows=Array.isArray(payload?.candles)?payload.candles:[];
+ return rows.map(x=>{const close=Number(x.close),volume=Number(x.volume)||0;return [Number(x.time)*1000,String(x.open),String(x.high),String(x.low),String(x.close),String(volume),String((Number(x.time)+300)*1000),String(close*volume),"0","0","0"];}).filter(x=>x.slice(1,5).every(v=>Number(v)>0));
+}
 async function pool(items,limit,fn){let i=0;const workers=Array.from({length:limit},async()=>{while(i<items.length){const x=items[i++];await fn(x)}});await Promise.all(workers)}
-async function getDepth(symbol){try{return await fetchJSON(API+"/api/v3/depth?symbol="+encodeURIComponent(symbol)+"&limit=100",9000)}catch(e){return null}}
+async function getDepth(symbol){try{return await apiJSON("/market-orderflow?symbol="+encodeURIComponent(symbol)+"&market=spot",18000)}catch(e){return null}}
+
 async function scan(){
- if(state.busy)return;state.busy=true;$("scan").disabled=true;$("scan").textContent="اسکن در حال اجرا…";state.rows=[];state.done=0;state.errors=0;renderEngines({});
- setStatus("دریافت فهرست کامل نمادهای Spot/USDT…");
+ if(state.busy)return;
+ state.busy=true; $("scan").disabled=true; $("scan").textContent="اسکن در حال اجرا…";
+ state.rows=[];state.done=0;state.errors=0;state.universe=[];renderEngines({});
+ setStatus("اتصال به کاتالوگ چندصرافی و دریافت فهرست کامل USDT Spot…");
+ $("universe").textContent="…";$("scanned").textContent="۰";$("opps").textContent="۰";$("health").textContent="—";
  try{
-  const [info,tickers]=await Promise.all([fetchJSON(API+"/api/v3/exchangeInfo"),fetchJSON(API+"/api/v3/ticker/24hr")]);
-  const tradable=new Set(info.symbols.filter(s=>s.status==="TRADING"&&s.isSpotTradingAllowed&&s.quoteAsset==="USDT"&&s.permissions?.includes?.("SPOT")!==false).map(s=>s.symbol));
-  const tickMap=new Map(tickers.filter(t=>tradable.has(t.symbol)).map(t=>[t.symbol,t]));
-  state.universe=[...tickMap.values()].filter(t=>+t.quoteVolume>0).sort((a,b)=>+b.quoteVolume-+a.quoteVolume);
-  $("universe").textContent=state.universe.length.toLocaleString("fa-IR");$("scanned").textContent="۰";$("opps").textContent="۰";$("health").textContent="در حال سنجش";
-  log("فهرست پویا دریافت شد: "+state.universe.length+" جفت USDT Spot؛ بدون سقف ثابت تعداد ارز.");
-  const btc=await fetchJSON(API+"/api/v3/klines?symbol=BTCUSDT&interval=1h&limit=80").catch(()=>[]);
-  const btcClose=btc.map(x=>+x[4]),btcTrend=btcClose.length>30?(ema(btcClose.slice(-50),9)>ema(btcClose.slice(-50),21)?"صعودی":"نزولی"):"نامشخص";
-  $("source").textContent="Binance Spot · "+state.universe.length+" جفت · زمینه BTC: "+btcTrend;
-  const symbols=state.universe.map(t=>t.symbol);
-  setStatus("اسکن تدریجی تمام نمادهای واجد شرایط آغاز شد…");
-  await pool(symbols,5,async symbol=>{
-   const t=tickMap.get(symbol);try{
-    const [k5,k1h]=await Promise.all([
-     fetchJSON(API+"/api/v3/klines?symbol="+symbol+"&interval=5m&limit=80",11000),
-     fetchJSON(API+"/api/v3/klines?symbol="+symbol+"&interval=1h&limit=60",11000)
-    ]);
-    if(k5.length<30||k1h.length<20)throw Error("داده کندلی ناکافی");
-    const row=analyze(t,k5,k1h,null);state.rows.push(row);
-   }catch(e){state.errors++}
-   state.done++;if(state.done%10===0||state.done===symbols.length){$("scanned").textContent=state.done.toLocaleString("fa-IR");$("progress").textContent=state.done.toLocaleString("fa-IR")+" / "+symbols.length.toLocaleString("fa-IR");renderRows()}
-  });
-  const candidates=state.rows.filter(x=>x.score>=55&&x.direction!=="neutral").sort((a,b)=>b.score-a.score).slice(0,35);
-  await pool(candidates,3,async row=>{const d=await getDepth(row.symbol);if(d){row.book={bids:d.bids.reduce((s,x)=>s+(+x[0]*+x[1]),0),asks:d.asks.reduce((s,x)=>s+(+x[0]*+x[1]),0)};const total=row.book.bids+row.book.asks;row.book.imbalance=total?(row.book.bids-row.book.asks)/total:0;row.completeness=Math.min(1,row.completeness+.1);row.score=Math.round(Math.min(100,row.score+Math.abs(row.book.imbalance)*4));row.evidence.push("دفتر سفارش زنده");}});
-  state.rows.sort((a,b)=>b.score-a.score);publishSnapshot(btcTrend);$("health").textContent=Math.round((state.done-state.errors)/Math.max(1,state.done)*100)+"٪";$("opps").textContent=state.rows.filter(x=>x.score>=70&&x.direction!=="neutral").length.toLocaleString("fa-IR");
-  const st=Array(12).fill("ready");st[4]=candidates.length?"ready":"partial";st[7]="partial";st[8]="ready";st[9]="partial";renderEngines(st);renderRows();setStatus("اسکن پایان یافت · "+state.done+" ارز بررسی شد · "+state.errors+" خطای داده","ok");log("پایان اسکن؛ فرصت‌های امتیاز ۷۰+: "+$("opps").textContent+" · خطا: "+state.errors);
- }catch(e){setStatus("خطا در دریافت بازار: "+e.message,"bad");log("خطای اصلی: "+e.message)}
- finally{state.busy=false;$("scan").disabled=false;$("scan").textContent="اجرای دوباره اسکن کامل"}
+  const catalog=await apiJSON("/hunter-universe",60000);
+  const assets=Array.isArray(catalog.hunter_assets)?catalog.hunter_assets:[];
+  const seen=new Set();
+  state.universe=assets.filter(a=>{const s=String(a.symbol||"").toUpperCase();if(!/^[A-Z0-9]{2,24}$/.test(s)||seen.has(s)||!(Number(a.current_price)>0)||!a.hasUsdtMarket)return false;seen.add(s);return true;}).sort((a,b)=>Number(b.total_volume||0)-Number(a.total_volume||0));
+  if(!state.universe.length)throw new Error("کاتالوگ چندصرافی هیچ جفت USDT Spot واجد شرایطی برنگرداند.");
+  $("universe").textContent=state.universe.length.toLocaleString("fa-IR");
+  const btcAsset=state.universe.find(x=>String(x.symbol).toUpperCase()==="BTC");
+  let btcTrend="نامشخص";
+  try{const btc=await apiJSON("/market-candles?symbol=BTC&interval=1h&market=spot",20000);const closes=(btc.candles||[]).map(x=>Number(x.close));if(closes.length>30)btcTrend=ema(closes.slice(-50),9)>ema(closes.slice(-50),21)?"صعودی":"نزولی";}catch{}
+  const sourceNames=Object.entries(catalog.sources||{}).filter(([,v])=>v&&v.ok).map(([k])=>k);
+  $("source").textContent=(catalog.metadata_provider||"کاتالوگ چندصرافی")+" · "+sourceNames.length+" منبع پاسخ‌گو · زمینه BTC: "+btcTrend;
+  log("کاتالوگ چندصرافی دریافت شد: "+state.universe.length+" جفت USDT Spot؛ منابع پاسخ‌گو: "+sourceNames.join("، "));
+  setStatus("اسکن تأییدی QIE روی تمام نمادهای واجد شرایط آغاز شد…");
+  const batches=[];for(let i=0;i<state.universe.length;i+=12)batches.push(state.universe.slice(i,i+12));
+  let candidateTotal=0,confirmedTotal=0,failedTotal=0,scannedTotal=0,flowConfirmed=0,depthConfirmed=0;
+  for(let bi=0;bi<batches.length;bi++){
+   const batch=batches[bi],symbols=batch.map(x=>x.symbol).join(",");
+   try{
+    const result=await apiJSON("/hunter-scan?market=spot&symbols="+encodeURIComponent(symbols),60000);
+    scannedTotal+=Number(result.scanned)||0;failedTotal+=Number(result.failed)||0;candidateTotal+=Number(result.candidates)||0;
+    const bySymbol=new Map(batch.map(x=>[String(x.symbol).toUpperCase(),x]));
+    for(const signal of (result.signals||[])){
+     const asset=bySymbol.get(String(signal.symbol||"").toUpperCase())||{};
+     const flow=signal.flow||null,depth=signal.depth||null,trade=signal.tradePlan||null;
+     if(flow?.complete===true)flowConfirmed++;
+     if(depth?.confirmed===true)depthConfirmed++;
+     const evidence=[];
+     const ev=signal.evidence||{};
+     if(Number(signal.volumeRatio)>=1.1)evidence.push("افزایش حجم نسبی "+Number(signal.volumeRatio).toFixed(2)+"×");
+     if(ev.breakout)evidence.push("شکست ساختار کوتاه‌مدت");
+     if(ev.trend15m)evidence.push("هم‌جهتی روند ۵ و ۱۵ دقیقه");
+     if(flow?.complete===true)evidence.push("جریان معاملات واقعی تأیید شد");
+     if(depth?.confirmed===true)evidence.push("عمق دفتر سفارش تأیید شد");
+     if(signal.multiExchangeConfirmed)evidence.push("تأیید چندصرافی");
+     const imbalance=Number(flow?.imbalance)||0;
+     state.rows.push({
+      symbol:signal.symbol,last:Number(signal.price)||Number(asset.current_price)||0,
+      change:Number(asset.hunterChange24h)||0,quoteVolume:Number(asset.total_volume)||0,
+      score:Number(signal.score)||0,direction:signal.trend==="bull"?"bull":signal.trend==="bear"?"bear":"neutral",
+      dirScore:signal.trend==="bull"?1:signal.trend==="bear"?-1:0,
+      explosion:Number(signal.explosionScore)||0,atrPct:Number(signal.atrPct)||null,
+      volRatio:Number(signal.volumeRatio)||0,buyRatio:flow?.complete===true?(1+imbalance)/2:null,
+      trend5:signal.trend==="bull"?1:-1,trend1:signal.trend==="bull"?1:-1,rsi:null,
+      breakout:ev.breakout?1:0,compression:null,
+      book:depth?.confirmed?{imbalance:Number(depth.imbalance)||0,bids:Number(depth.bidUsdt)||0,asks:Number(depth.askUsdt)||0}:null,
+      flow,evidence,completeness:signal.quantum?.qualityGate?1:(flow?.complete?0.8:0.6),
+      stopDist:Number(trade?.riskPercent)||null,targetDist:null,
+      high:null,low:null,time:Date.now(),provider:signal.provider||"چندصرافی",
+      tradePlan:trade,depth,raw:signal
+     });
+    }
+   }catch(e){
+    failedTotal+=batch.length;
+    if(state.errors<100)log("خطای دسته "+(bi+1)+"/"+batches.length+": "+e.message);
+   }
+   state.done=scannedTotal+failedTotal;
+   $("scanned").textContent=scannedTotal.toLocaleString("fa-IR");
+   $("opps").textContent=state.rows.length.toLocaleString("fa-IR");
+   $("health").textContent=(state.done?Math.round(scannedTotal/state.done*100):0).toLocaleString("fa-IR")+"٪";
+   $("progress").textContent=(bi+1).toLocaleString("fa-IR")+" / "+batches.length.toLocaleString("fa-IR")+" دسته · "+state.done.toLocaleString("fa-IR")+" / "+state.universe.length.toLocaleString("fa-IR");
+   renderRows();
+   if(bi%4===3)log("پیشرفت اسکن: "+state.done+"/"+state.universe.length+" · نامزدها "+candidateTotal+" · فرصت‌های تأییدشده "+state.rows.length);
+   if(bi<batches.length-1)await sleep(1200);
+  }
+  state.errors=failedTotal;
+  state.rows.sort((a,b)=>b.score-a.score);
+  publishSnapshot(btcTrend);
+  $("scanned").textContent=scannedTotal.toLocaleString("fa-IR");
+  $("opps").textContent=state.rows.length.toLocaleString("fa-IR");
+  $("health").textContent=Math.round(scannedTotal/Math.max(1,state.universe.length)*100).toLocaleString("fa-IR")+"٪";
+  const statuses=Array(12).fill("partial");
+  statuses[0]="ready";statuses[1]=candidateTotal>0?"ready":"partial";statuses[2]="ready";
+  statuses[3]=flowConfirmed>0?"ready":"partial";statuses[4]=depthConfirmed>0?"ready":"partial";
+  statuses[5]="ready";statuses[6]="ready";statuses[7]="partial";statuses[8]=state.rows.length?"ready":"partial";
+  statuses[9]="partial";statuses[10]=state.rows.some(x=>x.tradePlan)?"ready":"partial";
+  statuses[11]=state.rows.length?"ready":"partial";renderEngines(statuses);
+  renderRows();
+  const failedBatches=failedTotal>0;
+  setStatus("اسکن پایان یافت · "+scannedTotal+" ارز بررسی شد · "+failedTotal+" خطای داده",failedBatches?"bad":"ok");
+  log("پایان اسکن کامل · یونیورس "+state.universe.length+" · بررسی موفق "+scannedTotal+" · نامزد اولیه "+candidateTotal+" · فرصت تأییدشده "+state.rows.length+" · خطا "+failedTotal);
+  if(!scannedTotal)throw new Error("هیچ نمادی در این چرخه با موفقیت بررسی نشد؛ نتیجه معتبر نیست.");
+ }catch(e){
+  setStatus("اسکن کامل نشد: "+e.message,"bad");log("خطای اصلی آزمایشگاه: "+e.message);
+  $("health").textContent="نامعتبر";
+ }finally{
+  state.busy=false;$("scan").disabled=false;$("scan").textContent="اجرای دوباره اسکن کامل";
+ }
 }
 function publishSnapshot(btcTrend){
  const snapshot={version:"QIE-2.0.0",generatedAt:Date.now(),universe:state.universe.length,scanned:state.done,errors:state.errors,btcTrend:btcTrend||"نامشخص",opportunities:state.rows.slice(0,50).map(x=>({symbol:x.symbol,price:x.last,change24h:x.change,quoteVolume:x.quoteVolume,direction:x.direction,score:x.score,explosion:x.explosion,atrPct:x.atrPct,evidence:x.evidence.slice(0,5),quality:x.completeness}))};
@@ -133,12 +216,23 @@ function renderRows(){
  $("rows").innerHTML=rows.length?rows.map(x=>'<tr><td><b>'+esc(x.symbol)+'</b></td><td class="num">'+price(x.last)+'</td><td class="num '+(x.change>=0?"up":"down")+'">'+n(x.change,2)+'٪</td><td class="num">'+n(x.quoteVolume/1e6,2)+'M</td><td class="'+(x.direction==="bull"?"up":x.direction==="bear"?"down":"wait")+'">'+(x.direction==="bull"?"صعودی":x.direction==="bear"?"نزولی":"نامشخص")+'</td><td class="score">'+x.score+'</td><td>'+esc(x.evidence.slice(0,3).join(" · ")||"شواهد محدود")+'</td><td><button class="btn" data-detail="'+esc(x.symbol)+'">جزئیات</button></td></tr>').join(""):'<tr><td colspan="8" class="empty">هنوز داده‌ای برای نمایش وجود ندارد.</td></tr>';
 }
 async function showDetail(symbol){
- let x=state.rows.find(r=>r.symbol===symbol);if(!x)return;state.selected=x;$("selected-label").textContent=symbol;
- const d=await getDepth(symbol);if(d){x.book={bids:d.bids.reduce((s,z)=>s+(+z[0]*+z[1]),0),asks:d.asks.reduce((s,z)=>s+(+z[0]*+z[1]),0)};let total=x.book.bids+x.book.asks;x.book.imbalance=total?(x.book.bids-x.book.asks)/total:0}
- const sign=x.direction==="bear"?-1:1,entry=x.last,stop=entry*(1-sign*x.stopDist/100),target=entry*(1+sign*x.targetDist/100),invalid=x.direction==="bull"?"بسته‌شدن زیر کف ساختار و EMA کوتاه":"بسته‌شدن بالای سقف ساختار و EMA کوتاه";
+ const x=state.rows.find(r=>r.symbol===symbol);if(!x)return;state.selected=x;$("selected-label").textContent=symbol;
+ const flow=x.flow,depth=x.depth,plan=x.tradePlan,entry=Number(plan?.entry)||x.last,stop=Number(plan?.stopLoss),target=Number(plan?.target2);
+ const flowText=flow?.complete===true?("خرید "+n(flow.buy5m,0)+" USDT · فروش "+n(flow.sell5m,0)+" USDT · "+n(flow.tradeCount,0)+" معامله"):"جریان معاملات واقعی در این نمونه تأیید نشده است.";
+ const depthText=depth?.confirmed===true?("خرید دفتر سفارش "+n(depth.bidUsdt,0)+" USDT · فروش "+n(depth.askUsdt,0)+" USDT · منبع "+esc(depth.source||"چندصرافی")):"عمق دفتر سفارش در این نمونه تأیید نشده است.";
  $("detail").innerHTML='<div class="details">'+[
- ["امتیاز کوانتومی",x.score+"/100"],["سناریوی غالب",x.direction==="bull"?"صعودی":x.direction==="bear"?"نزولی":"نامشخص"],["قدرت حرکت",n(x.explosion*100,0)+" از ۱۰۰"],["RSI ۱۴",n(x.rsi,1)],["نسبت حجم اخیر",n(x.volRatio,2)+"x"],["سهم taker buy",n(x.buyRatio*100,1)+"٪"],["ATR پنج‌دقیقه",n(x.atrPct,3)+"٪"],["عدم‌تعادل دفتر سفارش",x.book?n(x.book.imbalance*100,1)+"٪":"داده در دسترس نیست"],["کیفیت داده",n(x.completeness*100,0)+"٪"]
- ].map(z=>'<div class="detail"><small>'+z[0]+'</small><b>'+z[1]+'</b></div>').join("")+'</div><div class="section-title"><h2>سناریوی مشروط، نه سیگنال قطعی</h2></div><div class="details"><div class="detail"><small>قیمت مرجع ورود</small><b>'+price(entry)+' USDT</b></div><div class="detail"><small>حد ابطال تقریبی</small><b>'+price(stop)+' USDT</b></div><div class="detail"><small>هدف سناریوی ۲R</small><b>'+price(target)+' USDT</b></div></div><p class="muted tiny" style="line-height:2">شرط ابطال: '+invalid+'. این سطوح صرفاً از ATR محاسبه شده‌اند و باید با ساختار واقعی نمودار بررسی شوند.</p><div class="section-title"><h2>شواهد و محدودیت‌ها</h2></div><p>'+esc(x.evidence.join(" · ")||"شواهد کافی برای تأیید مستقل وجود ندارد.")+'</p><p class="disclaimer">این امتیاز پیش‌بینی آماری کالیبره‌شده نیست. داده احساسات خبری و جریان کیف‌پول در این نسخه متصل نیست؛ موتور مربوطه با وضعیت محدود نمایش داده می‌شود.</p>';
+  ["امتیاز کوانتومی",x.score+"/100"],["سناریوی غالب",x.direction==="bull"?"صعودی":"نزولی"],
+  ["قدرت انفجار",n(x.explosion,1)],["نسبت حجم",n(x.volRatio,2)+"×"],
+  ["جریان معاملات",flow?.complete===true?"تأییدشده":"ناموجود"],["عمق نقدینگی",depth?.confirmed===true?"تأییدشده":"ناموجود"],
+  ["تغییر ۲۴ ساعته",n(x.change,2)+"٪"],["حجم ۲۴ ساعته",n(x.quoteVolume/1e6,2)+"M USDT"],
+  ["منبع کندل",esc(x.provider||"چندصرافی")]
+ ].map(z=>'<div class="detail"><small>'+z[0]+'</small><b>'+z[1]+'</b></div>').join("")+'</div>'+
+ '<div class="section-title"><h2>نقشه معامله مشروط</h2></div><div class="details">'+[
+ ["قیمت مرجع",price(entry)+" USDT"],["حد ضرر",Number.isFinite(stop)?price(stop)+" USDT":"در دسترس نیست"],["هدف دوم",Number.isFinite(target)?price(target)+" USDT":"در دسترس نیست"]
+ ].map(z=>'<div class="detail"><small>'+z[0]+'</small><b>'+z[1]+'</b></div>').join("")+'</div>'+
+ '<div class="section-title"><h2>جریان سفارش و نقدینگی</h2></div><p class="muted tiny" style="line-height:2">'+flowText+'</p><p class="muted tiny" style="line-height:2">'+depthText+'</p>'+
+ '<div class="section-title"><h2>شواهد تأیید</h2></div><p>'+esc(x.evidence.join(" · ")||"شواهد ثبت‌شده‌ای وجود ندارد.")+'</p>'+
+ '<p class="disclaimer">این مورد از فیلترهای تأیید چندصرافی، جریان معاملات و عمق دفتر سفارش عبور کرده است؛ با این حال تضمین‌کننده سود نیست. ورود فقط با رعایت حد ضرر و تأیید مجدد قیمت مجاز است.</p>';
 }
 function record(){
  const x=state.selected;if(!x){alert("ابتدا جزئیات یک ارز را انتخاب کنید.");return}
@@ -147,7 +241,7 @@ function record(){
 async function updateLedger(){
  const pending=state.ledger.filter(x=>!x.resolved);if(!pending.length){renderLedger();return}
  setStatus("در حال ارزیابی پیش‌بینی‌های قبلی…");
- await pool(pending,4,async p=>{try{const t=await fetchJSON(API+"/api/v3/ticker/price?symbol="+p.symbol);p.last=+t.price;p.updated=Date.now();p.move=(p.last/p.entry-1)*100;if(Math.abs(p.move)>=1){p.resolved=true;p.outcome=(p.direction==="bull"?p.move:-p.move)>0?"درست":"نادرست"}}catch(e){}});
+ await pool(pending,2,async p=>{try{const d=await apiJSON("/market-candles?symbol="+encodeURIComponent(p.symbol)+"&interval=5m&market=spot",18000);const last=Number(d.price);if(last>0){p.last=last;p.updated=Date.now();p.move=(p.last/p.entry-1)*100;if(Math.abs(p.move)>=1){p.resolved=true;p.outcome=(p.direction==="bull"?p.move:-p.move)>0?"درست":"نادرست";}}}catch(e){}});
  saveLedger();renderLedger();setStatus("ارزیابی دفتر پیش‌بینی به‌روزرسانی شد","ok");
 }
 function renderLedger(){
