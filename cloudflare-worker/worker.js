@@ -779,7 +779,7 @@ async function loadFuturesMarketFlow(symbol,windowMinutes=5){
     if(!binanceTrades.length)throw Error("Binance Futures returned no recent trades");
     if(!trades?.length||!binanceTruncated||binanceTrades.length>trades.length){trades=binanceTrades;truncated=binanceTruncated;provider="Binance USD-M Futures · aggregate trades";}
     if(!truncated)break;
-   }catch(error){lastError=String(error?.message||error).slice(0,140);}
+   }catch(error){lastError="Binance: "+String(error?.message||error).slice(0,120);}
   }
  }
  if(!trades?.length||truncated){
@@ -793,7 +793,7 @@ async function loadFuturesMarketFlow(symbol,windowMinutes=5){
     if(!okxTrades.length)throw Error("OKX returned no recent Futures trades");
     if(!trades?.length||!okxTruncated||okxTrades.length>trades.length){trades=okxTrades;truncated=okxTruncated;provider="OKX USDT Swap · recent trades";}
     if(!truncated)break;
-   }catch(error){lastError=String(error?.message||error).slice(0,140);}
+   }catch(error){lastError="OKX recent: "+String(error?.message||error).slice(0,120);}
   }
  }
  if(!trades?.length||truncated){
@@ -803,7 +803,7 @@ async function loadFuturesMarketFlow(symbol,windowMinutes=5){
    const raw=d.data,oldest=raw.reduce((v,x)=>Math.min(v,Number(x.t)||Infinity),Infinity),mexcTruncated=Number.isFinite(oldest)&&oldest>cutoff+5000;
    const rows=raw.map(x=>({time:Number(x.t),price:Number(x.p),size:Number(x.v),side:Number(x.T)===1?"Buy":"Sell"})).filter(x=>x.time>=cutoff&&x.time<=now&&x.price>0&&x.size>0);
    if(rows.length&&(!trades?.length||!mexcTruncated||rows.length>trades.length)){trades=rows;truncated=mexcTruncated;provider="MEXC USDT Futures · real deals";}
-  }catch(error){lastError=String(error?.message||error).slice(0,140);}
+  }catch(error){lastError="MEXC: "+String(error?.message||error).slice(0,120);}
  }
  if(!trades?.length||truncated){
   try{
@@ -841,7 +841,7 @@ async function loadFuturesMarketFlow(symbol,windowMinutes=5){
    const oldest=raw.reduce((v,x)=>Math.min(v,Number(x.create_time_ms)||Number(x.create_time)*1000||Infinity),Infinity),gateTruncated=Number.isFinite(oldest)&&oldest>cutoff+5000;
    const gateTrades=raw.map(x=>({time:Number(x.create_time_ms)||Number(x.create_time)*1000,price:Number(x.price),size:Math.abs(Number(x.size))*multiplier,side:Number(x.size)>0?"Buy":"Sell"})).filter(x=>x.time>=cutoff&&x.time<=now&&x.price>0&&x.size>0);
    if(gateTrades.length&&(!trades?.length||!gateTruncated||gateTrades.length>trades.length)){trades=gateTrades;truncated=gateTruncated;provider="Gate USDT Futures · paged real trades";}
-  }catch(error){lastError=String(error?.message||error).slice(0,160);}
+  }catch(error){lastError="Gate: "+String(error?.message||error).slice(0,120);}
  }
  if(!trades?.length)throw new Error("Futures trade flow unavailable from Bybit, Bitget V2/V3, Binance, OKX and Gate: "+lastError);
  const buckets=new Map();let buy5m=0,sell5m=0;
