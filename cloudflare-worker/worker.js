@@ -742,7 +742,7 @@ async function loadFuturesMarketFlow(symbol,windowMinutes=5){
    const rows=d.result?.list||[],normalized=normalize(rows,x=>({time:Number(x.time),price:Number(x.price),size:Number(x.size),side:String(x.side||"")}),x=>Number(x.time));
    if(!normalized.length)throw Error("Bybit Futures returned no recent trades");
    trades=normalized;provider="Bybit Linear · real trades";if(!truncated)break;
-  }catch(error){lastError=String(error?.message||error).slice(0,140);}
+  }catch(error){lastError="Bybit: "+String(error?.message||error).slice(0,120);}
  }
  if(!trades?.length||truncated){
   for(const host of ["https://api.bitget.com"]){
@@ -756,7 +756,7 @@ async function loadFuturesMarketFlow(symbol,windowMinutes=5){
     if(!bitgetTrades.length)throw Error("Bitget returned no recent Futures fills");
     if(!trades?.length||!bitgetTruncated||bitgetTrades.length>trades.length){trades=bitgetTrades;truncated=bitgetTruncated;provider="Bitget USDT Futures · real fills";}
     if(!truncated)break;
-   }catch(error){lastError=String(error?.message||error).slice(0,140);}
+   }catch(error){lastError="Bitget V3: "+String(error?.message||error).slice(0,120);}
   }
  }
  if(!trades?.length||truncated){
@@ -767,7 +767,7 @@ async function loadFuturesMarketFlow(symbol,windowMinutes=5){
    const oldest=raw.reduce((v,x)=>Math.min(v,Number(x.ts)||Infinity),Infinity),bitgetV2Truncated=Number.isFinite(oldest)&&oldest>cutoff+5000;
    const rows=raw.map(x=>({time:Number(x.ts),price:Number(x.price),size:Number(x.size),side:String(x.side||"").toLowerCase()==="buy"?"Buy":"Sell"})).filter(x=>x.time>=cutoff&&x.time<=now&&x.price>0&&x.size>0);
    if(rows.length&&(!trades?.length||!bitgetV2Truncated||rows.length>trades.length)){trades=rows;truncated=bitgetV2Truncated;provider="Bitget USDT Futures V2 · real fills";}
-  }catch(error){lastError=String(error?.message||error).slice(0,140);}
+  }catch(error){lastError="Bitget V2: "+String(error?.message||error).slice(0,120);}
  }
  if(!trades?.length||truncated){
   for(const host of ["https://fapi.binance.com"]){
@@ -804,6 +804,26 @@ async function loadFuturesMarketFlow(symbol,windowMinutes=5){
    const rows=raw.map(x=>({time:Number(x.t),price:Number(x.p),size:Number(x.v),side:Number(x.T)===1?"Buy":"Sell"})).filter(x=>x.time>=cutoff&&x.time<=now&&x.price>0&&x.size>0);
    if(rows.length&&(!trades?.length||!mexcTruncated||rows.length>trades.length)){trades=rows;truncated=mexcTruncated;provider="MEXC USDT Futures · real deals";}
   }catch(error){lastError=String(error?.message||error).slice(0,140);}
+ }
+ if(!trades?.length||truncated){
+  try{
+   const instId=base+"-USDT-SWAP",history=[],seen=new Set();let after="",historyTruncated=true;
+   for(let page=0;page<15;page++){
+    const query="https://www.okx.com/api/v5/market/history-trades?instId="+encodeURIComponent(instId)+"&limit=100"+(after?"&after="+encodeURIComponent(after):"");
+    const d=await marketFlowJson(query,8500);
+    if(String(d.code)!=="0")throw Error(d.msg||"OKX history Futures trades unavailable");
+    const batch=Array.isArray(d.data)?d.data:[];
+    if(!batch.length)break;
+    for(const x of batch){const id=String(x.tradeId||x.ts);if(!seen.has(id)){seen.add(id);history.push(x);}}
+    const oldest=batch.reduce((v,x)=>Math.min(v,Number(x.ts)||Infinity),Infinity);
+    if(Number.isFinite(oldest)&&oldest<=cutoff+5000){historyTruncated=false;break;}
+    const nextAfter=String(batch[batch.length-1]?.tradeId||"");
+    if(!nextAfter||nextAfter===after)break;
+    after=nextAfter;
+   }
+   const rows=history.map(x=>({time:Number(x.ts),price:Number(x.px),size:Number(x.sz),side:String(x.side||"").toLowerCase()==="buy"?"Buy":"Sell"})).filter(x=>x.time>=cutoff&&x.time<=now&&x.price>0&&x.size>0);
+   if(rows.length&&(!trades?.length||!historyTruncated||rows.length>trades.length)){trades=rows;truncated=historyTruncated;provider="OKX USDT Swap · paged real trades";}
+  }catch(error){lastError="OKX history: "+String(error?.message||error).slice(0,120);}
  }
  if(!trades?.length||truncated){
   try{
