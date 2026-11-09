@@ -180,14 +180,24 @@ jobs:
             const parsed = pairParts(pair);
             if (!parsed) return {ok:false,error:"Invalid "+market+" pair: "+String(pair||"")};
             const url = WORKER + "/market-candles?symbol=" + encodeURIComponent(parsed.compact) + "&interval=" + encodeURIComponent(timeframe) + "&market=" + encodeURIComponent(market);
-            try {
-              const data = await getJson(url, 15000);
-              const rows = Array.isArray(data.candles) ? data.candles : [];
-              if (rows.length < minRows(timeframe)) throw new Error("Worker returned only " + rows.length + " candles");
-              return {ok:true,provider:data.provider||"MMP Worker",candles:rows.length};
-            } catch (error) {
-              return {ok:false,error:String(error?.message||error).slice(0,180)};
+            const errors = [];
+            for (let attempt = 0; attempt < 3; attempt++) {
+              try {
+                const data = await getJson(url, 20000);
+                const rows = Array.isArray(data.candles) ? data.candles : [];
+                if (rows.length < minRows(timeframe)) throw new Error("Worker returned only " + rows.length + " candles");
+                return {ok:true,provider:data.provider||"MMP Worker",candles:rows.length,data_stale:data.data_stale===true};
+              } catch (error) {
+                const message=String(error?.message||error);
+                errors.push(message.slice(0,500));
+                if (attempt < 2 && /HTTP (?:429|500|502|503|504)|timed out|abort|network|fetch failed/i.test(message)) {
+                  await new Promise(resolve=>setTimeout(resolve, 1200*(attempt+1)));
+                  continue;
+                }
+                break;
+              }
             }
+            return {ok:false,error:errors.join(" || ").slice(0,1200)};
           }
           async function checkAsset(asset, support, fastAudit=false) {
             const symbol=String(asset.symbol).toUpperCase();
