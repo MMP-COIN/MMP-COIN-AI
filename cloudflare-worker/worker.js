@@ -328,11 +328,18 @@ async function candles(symbol,interval,env,marketType="spot"){
   const whitebitInterval={"1m":"1m","3m":"3m","5m":"5m","15m":"15m","1h":"1h","4h":"4h","1d":"1d"}[interval];
   for(const host of ["https://whitebit.com","https://whitebit.eu","https://whitebit.tr","https://whitebit.ge"]){
    try{
+    // Confirm the exact market is currently listed before requesting its candles.
+    // This avoids sending stale/unsupported symbols to WhiteBIT's instrument resolver.
+    const symbolsResponse=await fetchWithTimeout(host+"/api/v1/public/symbols",{headers});
+    if(!symbolsResponse.ok)throw new Error("WhiteBIT symbols HTTP "+symbolsResponse.status);
+    const symbolsPayload=await symbolsResponse.json();
+    const availableSymbols=symbolsPayload?.success===true&&Array.isArray(symbolsPayload.result)?symbolsPayload.result:[];
+    if(!availableSymbols.includes(market))throw new Error("WhiteBIT market is not listed: "+market);
     const url=host+"/api/v1/public/kline?market="+encodeURIComponent(market)+"&interval="+whitebitInterval+"&limit=250";
     const r=await fetchWithTimeout(url,{headers});
     if(!r.ok)throw new Error("WhiteBIT HTTP "+r.status);
     const payload=await r.json(),rows=payload?.success===true?payload.result:null;
-    if(!validRows(rows))throw new Error(payload?.message||"insufficient WhiteBIT candle history");
+    if(!validRows(rows))throw new Error(typeof payload?.message==="string"?payload.message:"insufficient WhiteBIT candle history");
     const normalized=rows.map(x=>[Number(x[0])*1000,x[1],x[3],x[4],x[2],x[5]||"0","0","0","0","0"]).sort((a,b)=>a[0]-b[0]);
     const result=analyzeClosedKlines(normalized,interval);result.data_provider="WhiteBIT Spot";return result;
    }catch(e){whitebitError=e;}
