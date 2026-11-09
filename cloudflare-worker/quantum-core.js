@@ -1,5 +1,5 @@
 export const QUANTUM_ENGINE_NAME = "MMP QUANTUM INTELLIGENCE ENGINE";
-export const QUANTUM_ENGINE_VERSION = "QIE-2.0.0";
+export const QUANTUM_ENGINE_VERSION = "QIE-3.0.0";
 
 /* Legacy weights retain their relative influence. New specialist engines join
    only when their underlying evidence is actually supplied and validated. */
@@ -11,6 +11,30 @@ export const QUANTUM_SCORE_WEIGHTS = Object.freeze({
 const clamp=(value,min=0,max=100)=>Math.max(min,Math.min(max,Number.isFinite(Number(value))?Number(value):min));
 const finite=value=>Number.isFinite(Number(value))?Number(value):0;
 const has=(input,key)=>input[key]!==undefined&&input[key]!==null&&Number.isFinite(Number(input[key]));
+
+export function calculateQuantumIndicators(rows=[]){
+ const bars=(Array.isArray(rows)?rows:[]).map(x=>({t:Number(x?.[0]),o:Number(x?.[1]),h:Number(x?.[2]),l:Number(x?.[3]),c:Number(x?.[4]),v:Number(x?.[5])}))
+  .filter(x=>Number.isFinite(x.c)&&x.c>0&&Number.isFinite(x.h)&&Number.isFinite(x.l)&&x.h>=x.l&&x.l>0&&Number.isFinite(x.v)&&x.v>=0);
+ if(bars.length<55)return {available:false,reason:"insufficient_closed_candles"};
+ const closes=bars.map(x=>x.c);
+ const emaSeries=(values,period)=>{const k=2/(period+1),out=[];let prev=values.slice(0,period).reduce((a,b)=>a+b,0)/period;for(let i=0;i<values.length;i++){if(i<period-1){out.push(null);continue;}if(i===period-1){out.push(prev);continue;}prev=values[i]*k+prev*(1-k);out.push(prev);}return out;};
+ const e9=emaSeries(closes,9),e12=emaSeries(closes,12),e21=emaSeries(closes,21),e26=emaSeries(closes,26),e50=emaSeries(closes,50);
+ const gains=[],losses=[],trs=[];
+ for(let i=1;i<bars.length;i++){const d=closes[i]-closes[i-1];gains.push(Math.max(0,d));losses.push(Math.max(0,-d));trs.push(Math.max(bars[i].h-bars[i].l,Math.abs(bars[i].h-closes[i-1]),Math.abs(bars[i].l-closes[i-1])));}
+ let avgGain=gains.slice(0,14).reduce((a,b)=>a+b,0)/14,avgLoss=losses.slice(0,14).reduce((a,b)=>a+b,0)/14;
+ for(let i=14;i<gains.length;i++){avgGain=(avgGain*13+gains[i])/14;avgLoss=(avgLoss*13+losses[i])/14;}
+ const rsi14=avgLoss===0?100:100-(100/(1+avgGain/avgLoss));
+ const macdValues=closes.map((_,i)=>e12[i]!==null&&e26[i]!==null?e12[i]-e26[i]:null).filter(Number.isFinite);
+ const macdSignal=emaSeries(macdValues,9),macd=macdValues.at(-1),signal=macdSignal.at(-1),macdHistogram=macd-signal;
+ const atr14=trs.slice(-14).reduce((a,b)=>a+b,0)/Math.min(14,trs.length),last=bars.at(-1),atrPct=last.c>0?atr14/last.c*100:null;
+ const recent=bars.slice(-30),vwapVolume=recent.reduce((a,b)=>a+b.v,0),vwap=vwapVolume>0?recent.reduce((a,b)=>a+((b.h+b.l+b.c)/3)*b.v,0)/vwapVolume:null;
+ const vwapDeviationPct=vwap>0?(last.c/vwap-1)*100:null;
+ const prior=bars.slice(-21,-1),priorHigh=Math.max(...prior.map(x=>x.h)),priorLow=Math.min(...prior.map(x=>x.l));
+ const obv=[];let running=0;for(let i=1;i<bars.length;i++){running+=bars[i].c>bars[i-1].c?bars[i].v:bars[i].c<bars[i-1].c?-bars[i].v:0;obv.push(running);}
+ const obvChange=obv.length>=20?obv.at(-1)-obv.at(-20):0;
+ const ema9=e9.at(-1),ema21=e21.at(-1),ema50=e50.at(-1);
+ return {available:[ema9,ema21,ema50,rsi14,macdHistogram,atrPct].every(Number.isFinite),ema9,ema21,ema50,rsi14,macdHistogram,atr14,atrPct,vwap,vwapDeviationPct,obvChange,obvTrend:Math.sign(obvChange),breakoutUp:last.c>priorHigh,breakoutDown:last.c<priorLow,trendUp:ema9>ema21&&ema21>ema50&&macdHistogram>=0,trendDown:ema9<ema21&&ema21<ema50&&macdHistogram<=0};
+}
 
 export function scoreQuantumOpportunity(input={}){
  const direction=input.trend==="bull"?1:input.trend==="bear"?-1:0;
@@ -26,8 +50,10 @@ export function scoreQuantumOpportunity(input={}){
  const flowAvailable=input.flowConfirmed===true&&has(input,"flowImbalance");
  const flowImbalance=flowAvailable?finite(input.flowImbalance):0;
  const flow=flowAvailable&&direction?clamp(50+flowImbalance*direction*250):0;
- const structureAvailable=input.breakout!==undefined||input.structureAligned!==undefined||input.structure!==undefined;
- const structure=structureAvailable?(input.breakout===true?100:input.structureAligned===true||input.structure===true?68:38):0;
+ const technicalAvailable=has(input,"rsi14")&&has(input,"ema9")&&has(input,"ema21")&&has(input,"ema50")&&has(input,"macdHistogram");
+ const technicalAligned=technicalAvailable&&direction!==0&&(direction>0?Number(input.ema9)>Number(input.ema21)&&Number(input.ema21)>Number(input.ema50)&&Number(input.macdHistogram)>=0&&Number(input.rsi14)>=50&&Number(input.rsi14)<=78:Number(input.ema9)<Number(input.ema21)&&Number(input.ema21)<Number(input.ema50)&&Number(input.macdHistogram)<=0&&Number(input.rsi14)>=22&&Number(input.rsi14)<=50);
+ const structureAvailable=(input.breakout!==undefined||input.structureAligned!==undefined||input.structure!==undefined)&&technicalAvailable;
+ const structure=structureAvailable?(input.breakout===true&&technicalAligned?100:input.structureAligned===true&&technicalAligned?82:technicalAligned?68:28):0;
  const volumeAvailable=has(input,"volumeRatio");
  const volumeRatio=volumeAvailable?Math.max(0,finite(input.volumeRatio)):0;
  const depthAvailable=input.depthConfirmed===true&&has(input,"depthImbalance");
@@ -71,14 +97,14 @@ export function scoreQuantumOpportunity(input={}){
  const confidence=Math.round(clamp((dataQualityAvailable?dataQuality*.35:0)+(multiTimeframeAvailable?multiTimeframe*.25:0)+(liquidityAvailable?liquidity*.20:0)+(flowAvailable?20:0)+(volatilityAvailable?5:0)+(smartMoneyAvailable?5:0)));
  const totalVolumeAvailable=has(input,"totalVolume24h");
  const liquidityConfirmed=totalVolumeAvailable&&finite(input.totalVolume24h)>=150000;
- const candidateGate=priceAvailable&&fresh&&changesAvailable&&direction!==0&&structureAvailable&&volumeAvailable&&dataQuality>=80&&multiTimeframe>=50&&liquidity>=25&&liquidityConfirmed&&volumeRatio>=1.1&&input.overextended!==true;
+ const candidateGate=priceAvailable&&fresh&&changesAvailable&&direction!==0&&structureAvailable&&technicalAligned&&volumeAvailable&&dataQuality>=80&&multiTimeframe>=50&&liquidity>=25&&liquidityConfirmed&&volumeRatio>=1.1&&input.overextended!==true;
  const flowAligned=flowAvailable&&direction!==0&&flowImbalance*direction>=0.045;
  const volumeConfirmed=volumeAvailable&&volumeRatio>=1.1;
  const multiExchangeConfirmed=input.multiExchangeConfirmed===true;
  const depthConfirmed=input.requireDepthConfirmation===true?input.depthConfirmed===true:null;
  const depthGate=input.requireDepthConfirmation!==true||depthConfirmed===true;
  const qualityGate=candidateGate&&flowAligned&&volumeConfirmed&&multiExchangeConfirmed&&depthGate;
- const missingEvidence=Object.entries({price:priceAvailable,dataAge:ageAvailable&&fresh,multiTimeframe:changesAvailable,trend:direction!==0,structure:structureAvailable,volume:volumeAvailable,marketLiquidity:liquidityConfirmed,multiExchange:multiExchangeConfirmed,executedFlow:flowAvailable}).filter(([,ok])=>!ok).map(([key])=>key);
+ const missingEvidence=Object.entries({price:priceAvailable,dataAge:ageAvailable&&fresh,multiTimeframe:changesAvailable,trend:direction!==0,structure:structureAvailable,technicalAlignment:technicalAligned,volume:volumeAvailable,marketLiquidity:liquidityConfirmed,multiExchange:multiExchangeConfirmed,executedFlow:flowAvailable}).filter(([,ok])=>!ok).map(([key])=>key);
  return {
   engine:QUANTUM_ENGINE_NAME,version:QUANTUM_ENGINE_VERSION,score:clamp(score,0,99),confidence,
   components:Object.fromEntries(Object.entries(parts).map(([key,value])=>[key,Math.round(value)])),
