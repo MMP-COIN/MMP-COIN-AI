@@ -573,11 +573,13 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
   throw lastError||new Error(label+" unavailable");
  };
  const futuresSources=[
-  async()=>tryHosts("Binance Futures",["https://fapi.binance.com","https://fapi1.binance.com","https://fapi2.binance.com"],host=>host+"/fapi/v1/klines?symbol="+pair+"&interval=1m&limit=100",d=>Array.isArray(d)?d:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],+x[7]]),
-  async()=>tryHosts("Bybit Linear",["https://api.bybit.eu","https://api.bybit.com"],host=>host+"/v5/market/kline?category=linear&symbol="+pair+"&interval=1&limit=100",d=>Number(d.retCode)===0?d.result?.list:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],(+x[6]||+x[5])]),
+  async()=>tryHosts("Bitget USDT Futures",["https://api.bitget.com"],host=>host+"/api/v2/mix/market/candles?symbol="+pair+"&productType=USDT-FUTURES&granularity=1m&limit=100",d=>["00000","0"].includes(String(d.code))?d.data:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],(+x[6]||+x[5])]),
+  async()=>tryHosts("Gate USDT Futures",["https://api.gateio.ws","https://api.gate.us"],host=>host+"/api/v4/futures/usdt/candlesticks?contract="+symbol+"_USDT&interval=1m&limit=100",d=>Array.isArray(d)?d:null,x=>[+x.t*1000,+x.o,+x.h,+x.l,+x.c,(+x.sum||+x.v)]),
+  async()=>tryHosts("MEXC USDT Futures",["https://contract.mexc.com"],host=>host+"/api/v1/contract/kline/"+symbol+"_USDT?interval=Min1",d=>d?.success===true&&Array.isArray(d.data?.time)?d.data.time.map((time,i)=>[Number(time)*1000,Number(d.data.open?.[i]),Number(d.data.high?.[i]),Number(d.data.low?.[i]),Number(d.data.close?.[i]),Number(d.data.amount?.[i]??d.data.vol?.[i])]):null,x=>x),
+  async()=>tryHosts("KuCoin USDT Futures",["https://api-futures.kucoin.com"],host=>{const now=Date.now();const kucoinSymbol=(symbol==="BTC"?"XBT":symbol)+"USDTM";return host+"/api/v1/kline/query?symbol="+encodeURIComponent(kucoinSymbol)+"&granularity=1&from="+(now-100*60*1000)+"&to="+now;},d=>String(d.code)==="200000"?d.data:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],(+x[6]||+x[5])]),
+  async()=>tryHosts("Bybit Linear",["https://api.bybit.eu","https://api.bybit.com"],host=>host+"/v5/market/kline?category=linear&symbol="+pair+"&interval=1&limit=100",d=>{if(Number(d.retCode)!==0)throw new Error(d.retMsg||"Bybit retCode "+d.retCode);return d.result?.list||null;},x=>[+x[0],+x[1],+x[2],+x[3],+x[4],(+x[6]||+x[5])]),
   async()=>tryHosts("OKX USDT Swap",["https://www.okx.com","https://us.okx.com"],host=>host+"/api/v5/market/candles?instId="+symbol+"-USDT-SWAP&bar=1m&limit=100",d=>String(d.code)==="0"?d.data:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],(+x[7]||+x[6])]),
-  async()=>tryHosts("Bitget USDT Futures",["https://api.bitget.com"],host=>host+"/api/v3/market/candles?category=USDT-FUTURES&symbol="+pair+"&interval=1m&limit=100",d=>String(d.code)==="00000"?d.data:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],(+x[6]||+x[5])]),
-  async()=>tryHosts("Gate USDT Futures",["https://api.gateio.ws","https://api.gate.us"],host=>host+"/api/v4/futures/usdt/candlesticks?contract="+symbol+"_USDT&interval=1m&limit=100",d=>Array.isArray(d)?d:null,x=>[+x.t*1000,+x.o,+x.h,+x.l,+x.c,(+x.sum||+x.v)])
+  async()=>tryHosts("Binance Futures",["https://fapi.binance.com","https://fapi1.binance.com","https://fapi2.binance.com"],host=>host+"/fapi/v1/klines?symbol="+pair+"&interval=1m&limit=100",d=>Array.isArray(d)?d:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],+x[7]])
  ];
  const spotSources=[
   async()=>tryHosts("Binance Spot",["https://api.binance.com"],host=>host+"/api/v3/klines?symbol="+pair+"&interval=1m&limit=100",d=>Array.isArray(d)?d:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],+x[7]]),
@@ -601,9 +603,9 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
   const preferred=(Array.isArray(asset?.marketPairs)?asset.marketPairs.slice().sort((a,b)=>Number(b.volume||0)-Number(a.volume||0)):[]).map(x=>indices[String(x.exchange||"")]).filter(Number.isInteger),priority=[7,2,6,4,5,1,3,0],available=unique(preferred).sort((a,b)=>priority.indexOf(a)-priority.indexOf(b)),primary=preferred[0],primaryTrusted=[2,4,5,6,7].includes(primary);
   order=unique([...(primaryTrusted?[primary]:[]),...available,...(!available.length?priority:[])]);
  }
- const fallbackPriority=marketType==="futures"?[3,4,1,2,0]:[7,2,6,4,5,1,3,0];
+ const fallbackPriority=marketType==="futures"?[0,1,2,3,4,5,6]:[7,2,6,4,5,1,3,0];
  order=unique([...order,...fallbackPriority.filter(index=>!order.includes(index))]);
- const orderedSources=order.map(index=>sources[index]).filter(Boolean).slice(0,5),verified=[];
+ const orderedSources=order.map(index=>sources[index]).filter(Boolean).slice(0,7),verified=[];
  for(let offset=0;offset<orderedSources.length&&verified.length<2;offset+=2){
   const attempts=await Promise.allSettled(orderedSources.slice(offset,offset+2).map(fn=>fn()));
   for(const result of attempts){if(result.status==="fulfilled"){const [provider,rows]=result.value;verified.push({provider,rows});}else errors.push(String(result.reason?.message||result.reason).slice(0,130));}
