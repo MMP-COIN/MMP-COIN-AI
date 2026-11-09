@@ -4991,6 +4991,37 @@ window.mmpShareDownloadLink = async function () {
 @media(max-width:600px){.signal-drawer-toggle{min-height:60px;grid-template-columns:34px minmax(0,1fr) auto 12px;gap:8px;padding:9px}.signal-drawer-icon{width:32px;height:32px}.signal-drawer-copy b{font-size:11px}.signal-drawer-copy small{font-size:9px}.signal-drawer-toggle>strong{font-size:9px;padding:5px 7px}.signal-drawer-panel{padding:9px}.signal-drawer-panel-head small{font-size:8px}.signal-drawer-panel .radar-overflow-list{max-height:52vh}}
 @media(prefers-reduced-motion:reduce){.signal-drawer-panel{animation:none}.signal-drawer-icon,.signal-drawer-icon:before{transition:none}}
 
+
+/* MMP QUANTUM ENGINE BAR — slim compact menu identity */
+.signal-drawer{margin:8px 0 3px;border:1px solid rgba(205,170,94,.48);border-radius:10px;overflow:hidden;background:linear-gradient(105deg,rgba(13,20,30,.98),rgba(24,31,42,.96) 58%,rgba(12,24,31,.98));box-shadow:inset 0 1px rgba(255,255,255,.045),0 5px 16px rgba(0,0,0,.2);position:relative}
+.signal-drawer:before{content:"";position:absolute;inset:0 auto 0 0;width:2px;background:linear-gradient(180deg,transparent,#e4c47d,#73d6d0,transparent);opacity:.9}
+.signal-drawer-toggle{position:relative;min-height:42px;height:42px;grid-template-columns:27px minmax(0,1fr) auto 10px;gap:8px;padding:5px 9px 5px 10px;background:linear-gradient(90deg,rgba(211,174,97,.09),transparent 48%,rgba(91,190,190,.045));}
+.signal-drawer-toggle:hover{background:linear-gradient(90deg,rgba(211,174,97,.16),rgba(91,190,190,.08))}
+.signal-drawer-icon{width:25px;height:25px;flex-basis:25px;border-radius:8px;position:relative;font-size:0;overflow:hidden;background:radial-gradient(circle at 50% 50%,rgba(225,194,125,.24),rgba(8,17,27,.9) 70%);border-color:rgba(222,190,123,.72)}
+.signal-drawer-icon:before{content:"";position:absolute;width:8px;height:8px;border:1px solid #f0d99d;border-radius:50%;transform:none;box-shadow:0 0 7px rgba(226,194,125,.7)}
+.signal-drawer-icon:after{content:"";position:absolute;width:18px;height:8px;border:1px solid rgba(112,218,212,.9);border-radius:50%;transform:rotate(-35deg);box-shadow:0 0 6px rgba(112,218,212,.24)}
+.signal-drawer-toggle.is-open .signal-drawer-icon:before{transform:scale(1.12)}
+.signal-drawer-toggle.is-open .signal-drawer-icon:after{transform:rotate(35deg)}
+.signal-drawer-copy{display:flex;align-items:center;gap:8px;min-width:0}
+.signal-drawer-copy b{font-size:11px;line-height:1.2;white-space:nowrap;color:#f1dfb5}
+.signal-drawer-copy small{font-size:8px;line-height:1;white-space:nowrap;color:#8fa6b2;letter-spacing:.65px;text-transform:uppercase}
+.signal-drawer-toggle>strong{padding:4px 7px;border-radius:7px;font-size:9px;line-height:1;letter-spacing:.1px}
+.signal-drawer-toggle:after{width:5px;height:5px;box-shadow:0 0 8px #70d8ce;background:#70d8ce}
+.signal-drawer-panel{padding:9px 10px 10px}
+.signal-drawer-panel-head{padding:1px 3px 8px;font-size:10px}
+.signal-drawer-panel-head small{font-size:8px}
+@media(max-width:600px){
+ .signal-drawer{margin:7px 0 2px;border-radius:9px}
+ .signal-drawer-toggle{min-height:39px;height:39px;grid-template-columns:25px minmax(0,1fr) auto 8px;gap:6px;padding:4px 7px}
+ .signal-drawer-icon{width:23px;height:23px;flex-basis:23px}
+ .signal-drawer-icon:after{width:16px;height:7px}
+ .signal-drawer-copy{gap:6px}
+ .signal-drawer-copy b{font-size:10px}
+ .signal-drawer-copy small{font-size:7px;letter-spacing:.3px}
+ .signal-drawer-toggle>strong{font-size:8px;padding:4px 6px}
+}
+@media(max-width:380px){.signal-drawer-copy small{display:none}}
+
 </style>
 </body>
 
