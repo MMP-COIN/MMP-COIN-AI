@@ -5686,3 +5686,26 @@ window.mmpShareDownloadLink = async function () {
 #whale-panel .whale-empty b{color:#f2d69b;font-size:12px}#whale-panel .whale-empty p{margin:5px 0;color:#9eafbf;font-size:10px;line-height:1.8}#whale-panel .whale-empty a{color:#7bd2df;font-size:10px;text-decoration:none}
 @media(max-width:620px){#whale-panel .whale-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}#whale-panel .whale-metric{padding:9px}#whale-panel .whale-metric b{font-size:18px}#whale-panel .whale-transfers{grid-template-columns:1fr}#whale-panel .intel-panel-head{align-items:flex-start}}
 </style>
+<style id="mmp-quantum-market-panels-v2">
+#market-intelligence .intel-suite-head{margin-bottom:16px}
+#market-intelligence .intel-suite-head h2{letter-spacing:-.5px}
+#derivatives-panel,#orderflow-panel{position:relative;overflow:hidden;border:1px solid rgba(198,158,83,.32)!important;background:radial-gradient(ellipse at 95% 0%,rgba(212,166,76,.12),transparent 42%),linear-gradient(145deg,#172330,#0c141e 75%)!important;box-shadow:0 14px 36px #0005,inset 0 1px #ffffff08!important}
+#derivatives-panel:before,#orderflow-panel:before{content:"";position:absolute;inset:0 0 auto;height:2px;background:linear-gradient(90deg,transparent,#d7ad5b,#68c8bc,transparent)}
+#derivatives-panel .intel-panel-head small,#orderflow-panel .intel-panel-head small{color:#d9b76e!important;letter-spacing:1.15px;font-size:9px}
+#derivatives-panel .intel-panel-head h3,#orderflow-panel .intel-panel-head h3{font-size:16px!important;color:#f2e4c8}
+#derivatives-panel .intel-refresh,#orderflow-panel .intel-refresh{border:1px solid #98783f!important;border-radius:10px!important;background:linear-gradient(135deg,#554323,#1a2732)!important;color:#f9dfaa!important;padding:8px 12px!important}
+#derivatives-panel .intel-symbol-row,#orderflow-panel .intel-symbol-row{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:10px 11px;margin:12px 0;border:1px solid #344657;border-radius:11px;background:#0d1722}
+#derivatives-panel .intel-symbol-row label,#orderflow-panel .intel-symbol-row label{color:#9fb0c1;font-size:11px}
+#derivatives-panel .intel-symbol-row input,#orderflow-panel .intel-symbol-row select{min-width:0;flex:1;background:#172534!important;border:1px solid #43566a!important;color:#f4e5c6!important;border-radius:8px;padding:9px}
+#derivatives-panel .intel-metrics,#orderflow-panel .intel-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:12px 0}
+#derivatives-panel .intel-metrics>div,#orderflow-panel .intel-metrics>div{min-width:0;position:relative;padding:13px 12px;border:1px solid #334657;border-radius:12px;background:linear-gradient(145deg,#1b2b3a,#111b27);box-shadow:inset 0 1px #ffffff08}
+#derivatives-panel .intel-metrics small,#orderflow-panel .intel-metrics small{display:block;color:#9db0c1;font-size:10px;line-height:1.7}
+#derivatives-panel .intel-metrics b,#orderflow-panel .intel-metrics b{display:block;margin:6px 0;color:#f3d18a;font-size:clamp(16px,2vw,21px);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+#derivatives-panel .intel-metrics em,#orderflow-panel .intel-metrics em{display:block;color:#6f879b;font-size:9px;font-style:normal}
+#derivatives-panel .intel-foot,#orderflow-panel .intel-foot{padding:10px 12px;border:1px solid #34485a;border-radius:10px;background:#0e1924;color:#a9bac9;font-size:10px;line-height:1.9}
+#orderflow-panel .intel-flow-track{height:9px!important;display:flex;overflow:hidden;border-radius:20px;background:#263341;margin:13px 0}
+#orderflow-buy-bar{background:linear-gradient(90deg,#1e9b7b,#55d4ad)!important;transition:width .4s}
+#orderflow-sell-bar{background:linear-gradient(90deg,#c45d67,#ef8c80)!important;transition:width .4s}
+@media(min-width:760px){#derivatives-panel .intel-metrics,#orderflow-panel .intel-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){#derivatives-panel .intel-panel-head,#orderflow-panel .intel-panel-head{align-items:flex-start;gap:8px}#derivatives-panel .intel-metrics>div,#orderflow-panel .intel-metrics>div{padding:10px}#derivatives-panel .intel-metrics b,#orderflow-panel .intel-metrics b{font-size:16px}}
+</style>
