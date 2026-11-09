@@ -212,6 +212,7 @@ jobs:
       - name: Smoke-test deployed five-provider Quantum Hunter
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
+          CANARY_URL: https://qie-canary-mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
           set -euo pipefail
           curl --fail --silent --show-error --retry 1 --retry-delay 3 --max-time 90 "$WORKER_URL/hunter-scan?market=spot&symbols=BTC%2CETH%2CSOL%2CXRP" -o /tmp/five-provider-hunter.json
