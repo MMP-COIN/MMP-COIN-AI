@@ -52,6 +52,31 @@ const engineDefs=[
 function log(s){const el=$("log");el.textContent=(new Date().toLocaleTimeString("fa-IR")+" · "+s+"\n"+el.textContent).slice(0,6500)}
 function setStatus(s,kind){$("status").textContent=s;$("dot").className="dot "+(kind||"")}
 function loadLedger(){try{return JSON.parse(localStorage.getItem("mmp_quantum_ledger_v1")||"[]")}catch(e){return[]}}
+function saveScanState(completed,btcTrend){
+ try{
+  const payload={version:1,completed:!!completed,savedAt:Date.now(),universe:state.universe.length,scanned:state.done,errors:state.errors||0,rejected:state.rejected||0,btcTrend:btcTrend||"نامشخص",rows:state.rows.map(x=>{const y={...x};delete y.k5;delete y.k1h;return y;})};
+  localStorage.setItem("mmp_quantum_fullscan_v1",JSON.stringify(payload));
+ }catch(e){log("ذخیره حافظه اسکن ناموفق بود: "+e.message)}
+}
+function restoreScanState(){
+ try{
+  const saved=JSON.parse(localStorage.getItem("mmp_quantum_fullscan_v1")||"null");
+  if(!saved||saved.version!==1||!Array.isArray(saved.rows)||!saved.savedAt||Date.now()-saved.savedAt>7*24*60*60*1000)return false;
+  state.rows=saved.rows;state.done=Number(saved.scanned)||0;state.errors=Number(saved.errors)||0;state.rejected=Number(saved.rejected)||0;
+  $("universe").textContent=Number(saved.universe||0).toLocaleString("fa-IR");
+  $("scanned").textContent=state.done.toLocaleString("fa-IR");
+  $("opps").textContent=state.rows.length.toLocaleString("fa-IR");
+  $("health").textContent=Math.round((state.done-state.rejected)/Math.max(1,Number(saved.universe)||1)*100).toLocaleString("fa-IR")+"٪";
+  $("progress").textContent="نتایج ذخیره‌شده · "+new Date(saved.savedAt).toLocaleString("fa-IR");
+  $("source").textContent="حافظه محلی آزمایشگاه · زمینه BTC: "+(saved.btcTrend||"نامشخص");
+  renderRows();
+  setStatus(saved.completed?"آخرین اسکن کامل بازیابی شد":"نتایج آخرین اسکن بازیابی شد؛ برای اسکن تازه دکمه را بزنید",saved.completed?"ok":"");
+  $("scan").textContent="اجرای اسکن تازه";
+  log("نتایج اسکن قبلی از حافظه بازیابی شد: "+state.rows.length+" فرصت · "+state.done+" بررسی");
+  return true;
+ }catch(e){return false}
+}
+
 function saveLedger(){try{localStorage.setItem("mmp_quantum_ledger_v1",JSON.stringify(state.ledger.slice(-300)))}catch(e){}}
 function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function n(v,d=2){return Number.isFinite(Number(v))?Number(v).toLocaleString("en-US",{maximumFractionDigits:d}):"—"}
@@ -170,7 +195,7 @@ async function scan(){
     failedTotal+=batch.length;
     if(state.errors<100)log("خطای دسته "+(bi+1)+"/"+batches.length+": "+e.message);
    }
-   state.done=scannedTotal+failedTotal;state.rejected=rejectedTotal;
+   state.done=scannedTotal+failedTotal;state.rejected=rejectedTotal;state.errors=failedTotal;saveScanState(false,btcTrend);
    $("scanned").textContent=scannedTotal.toLocaleString("fa-IR");
    $("opps").textContent=state.rows.length.toLocaleString("fa-IR");
    $("health").textContent=(state.done?Math.round((scannedTotal-rejectedTotal)/Math.max(1,state.universe.length)*100):0).toLocaleString("fa-IR")+"٪";
@@ -182,6 +207,7 @@ async function scan(){
   state.errors=failedTotal;
   state.rows.sort((a,b)=>b.score-a.score);
   publishSnapshot(btcTrend);
+  saveScanState(true,btcTrend);
   $("scanned").textContent=scannedTotal.toLocaleString("fa-IR");
   $("opps").textContent=state.rows.length.toLocaleString("fa-IR");
   $("health").textContent=Math.round((scannedTotal-rejectedTotal)/Math.max(1,state.universe.length)*100).toLocaleString("fa-IR")+"٪";
@@ -250,6 +276,6 @@ function renderLedger(){
 }
 function exportCSV(){const rows=[["symbol","price_usdt","change_24h_pct","quote_volume_usdt","direction","score","evidence"],...state.rows.map(x=>[x.symbol,x.last,x.change,x.quoteVolume,x.direction,x.score,x.evidence.join("|")])];const csv="\uFEFF"+rows.map(r=>r.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(",")).join("\n");const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));a.download="mmp-quantum-market-scan.csv";a.click();URL.revokeObjectURL(a.href)}
 $("scan").addEventListener("click",scan);$("back").addEventListener("click",()=>location.href="/");$("filter").addEventListener("input",renderRows);$("direction").addEventListener("change",renderRows);$("sort").addEventListener("change",renderRows);$("rows").addEventListener("click",e=>{const b=e.target.closest("[data-detail]");if(b)showDetail(b.dataset.detail)});$("record").addEventListener("click",record);$("history").addEventListener("click",updateLedger);$("export").addEventListener("click",exportCSV);
-renderEngines({});renderLedger();if(state.ledger.length)log("حافظه محلی شامل "+state.ledger.length+" پیش‌بینی قبلی است.");
+renderEngines({});renderLedger();restoreScanState();if(state.ledger.length)log("حافظه محلی شامل "+state.ledger.length+" پیش‌بینی قبلی است.");
 })();
 </script></body></html>
