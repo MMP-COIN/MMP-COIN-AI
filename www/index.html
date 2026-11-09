@@ -5844,7 +5844,7 @@ window.mmpShareDownloadLink = async function () {
  const root=document.getElementById("mmp-command-progress");if(!root||root.dataset.bound==="1")return;root.dataset.bound="1";
  const endpoint="https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/hunter-snapshot";
  const el=id=>document.getElementById(id),fmt=v=>Number(v).toLocaleString("fa-IR");
- const keys=["regime","explosion","momentum","flow","liquidity","multiTimeframe","volatility","sentiment","scenario","learning","risk","dataQuality"];
+ const keys=["momentum","flow","structure","liquidity","multiTimeframe","regime","volatility","sentiment","smartMoney","scenario","risk","dataQuality"];
  function fail(message){
   root.classList.add("is-error");el("mcp-state").textContent="وضعیت موتور مرکزی دریافت نشد";
   ["mcp-percent","mcp-done","mcp-total","mcp-batch","mcp-engines","mcp-errors"].forEach(id=>el(id).textContent="—");
@@ -5860,7 +5860,7 @@ window.mmpShareDownloadLink = async function () {
    const total=Number(snap.universe_count),batchDone=Math.max(0,Number(snap.scanned_count)||0),batchSize=Math.max(0,Number(snap.batch_size)||0),cursor=Math.max(0,Number(snap.next_cursor)||0);
    if(!Number.isFinite(total)||total<=0||!Number.isFinite(batchDone))throw new Error("شمارنده معتبر اسکن در snapshot موجود نیست");
    const covered=cursor===0&&batchDone>0?total:Math.min(total,cursor||batchDone),pct=Math.max(0,Math.min(100,Math.round(covered/total*100))),signals=Array.isArray(snap.signals)?snap.signals:[],activity=snap.engine_activity&&typeof snap.engine_activity==="object"?snap.engine_activity:{};
-   const evidenced=keys.filter(key=>{const m=activity[key];return !!(m&&(Number(m.processed)>0||Number(m.evidence)>0))||signals.some(x=>x?.quantum?.componentAvailability?.[key]===true)}).length;
+   const evidenced=keys.filter(key=>{const m=activity[key];return !!(m&&Number(m.evidence)>0)||signals.some(x=>x?.quantum?.componentAvailability?.[key]===true)}).length;
    const stamp=Date.parse(snap.checked_at||snap.scanned_at||""),stale=!stamp||Date.now()-stamp>120000;
    el("mcp-state").textContent=stale?"آخرین چرخه ثبت‌شده · نیازمند به‌روزرسانی":pct>=100?"پوشش کامل بازار · چرخه آماده تکرار":"موتور مرکزی · پوشش چرخه در حال تکمیل";
    el("mcp-percent").textContent=fmt(pct)+"٪";el("mcp-done").textContent=fmt(covered);el("mcp-total").textContent=fmt(total);
