@@ -2280,9 +2280,30 @@ function renderHeroCards() {
   const ethCoin=cachedCoinsData.find(x=>x.id==='ethereum'||String(x?.symbol||"").toUpperCase()==='ETH');
   const btcUsd=Number(lastMarket.crypto?.BTC?.usd||btcCoin?.current_price);
   const ethUsd=Number(lastMarket.crypto?.ETH?.usd||ethCoin?.current_price);
+  const describe=(usd,change,source)=>{
+    const counterpart=currentCurrency==='IRT'
+      ? '$'+money(usd,usd<1?6:2)
+      : (currentTetherPrice>0?toman(usd*currentTetherPrice)+' تومان':'معادل تومانی در دسترس نیست');
+    const changeText=Number.isFinite(Number(change))
+      ? '۲۴ ساعت: '+(Number(change)>=0?'+':'')+Number(change).toFixed(2)+'%'
+      : 'تغییر ۲۴ ساعته ناموجود';
+    return [counterpart,changeText,source?'منبع: '+source:''].filter(Boolean).join(' · ');
+  };
   if(Number.isFinite(btcUsd)&&btcUsd>0){
-    $('btc').textContent = formatVal(btcUsd);
-    $('btc-sub').textContent = (currentCurrency === 'IRT' ? 'معادل: 
+    $('btc').textContent=formatVal(btcUsd);
+    $('btc-sub').textContent=describe(btcUsd,lastMarket.crypto?.BTC?.change24h??btcCoin?.price_change_percentage_24h,btcCoin?.price_source||'CoinGecko');
+  }else{
+    $('btc').textContent='—';
+    $('btc-sub').textContent='داده معتبر BTC هنوز دریافت نشده است';
+  }
+  if(Number.isFinite(ethUsd)&&ethUsd>0){
+    $('eth').textContent=formatVal(ethUsd);
+    $('eth-sub').textContent=describe(ethUsd,lastMarket.crypto?.ETH?.change24h??ethCoin?.price_change_percentage_24h,ethCoin?.price_source||'CoinGecko');
+  }else{
+    $('eth').textContent='—';
+    $('eth-sub').textContent='داده معتبر ETH هنوز دریافت نشده است';
+  }
+}
 
 
 function renderCoinsTables(data) {
