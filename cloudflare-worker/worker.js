@@ -983,7 +983,7 @@ async function handle(request,env){
   const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"market-flow"),request);if(limited)return limited;
   const url=new URL(request.url),symbol=String(url.searchParams.get("symbol")||"").toUpperCase(),marketType=url.searchParams.get("market")==="futures"?"futures":"spot";
   if(!/^[A-Z0-9]{2,24}(USDT)?$/.test(symbol))return json({error:"نماد نامعتبر است."},400,request);
-  try{return json(marketType==="futures"?await loadFuturesMarketFlow(symbol,url.searchParams.get("window")||5):await loadMarketFlow(symbol,url.searchParams.get("window")||5),200,request);}
+  const flowWindow=url.searchParams.get("window")||(marketType==="futures"?1:5);try{return json(marketType==="futures"?await loadFuturesMarketFlow(symbol,flowWindow):await loadMarketFlow(symbol,flowWindow),200,request);}
   catch(error){return json({error:String(error?.message||"دریافت جریان معاملات ناموفق بود").slice(0,260)},502,request);}
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-snapshot"){
@@ -1229,7 +1229,7 @@ async function handle(request,env){
    for(const [p,q] of depth.asks||[])if(mid&&Number(p)<=mid*1.01)ask+=Number(p)*Number(q);
   }
   let flowData=null,flowError=null;
-  try{flowData=marketType==="futures"?await loadFuturesMarketFlow(base,5):await loadMarketFlow(base,5);}
+  const flowWindow=marketType==="futures"?1:5;try{flowData=marketType==="futures"?await loadFuturesMarketFlow(base,flowWindow):await loadMarketFlow(base,flowWindow);}
   catch(error){flowError=String(error?.message||error).slice(0,220);}
   const imbalance=bid+ask?(bid-ask)/(bid+ask)*100:null;
   return json({
