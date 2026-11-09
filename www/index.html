@@ -1893,6 +1893,33 @@ body:before{opacity:.23;background-size:34px 34px}
 }
 @media(max-width:390px){#opportunities .radar-item{padding:7px;gap:5px 7px}#opportunities .radar-asset img{width:22px;height:22px;flex-basis:22px}#opportunities .radar-stats span{font-size:7px}#opportunities .radar-stats b{font-size:8px}}
 </style>
+
+<style id="mmp-header-spacing-final-fix-20261109">
+/* Remove the hidden-sidebar offset that was leaving an empty strip in the header. */
+header.top,.mmp-app-mode header.top{
+ box-sizing:border-box!important;width:100%!important;max-width:100%!important;
+ padding-inline:clamp(8px,2vw,24px)!important;
+ gap:clamp(6px,1vw,12px)!important;
+}
+header.top>.brand{flex:0 1 auto!important;min-width:0!important}
+header.top>.top-actions{flex:0 0 auto!important;min-width:0!important;margin-inline-start:auto!important;gap:clamp(4px,.8vw,9px)!important}
+header.top .brand>div:last-child{min-width:0!important}
+header.top .brand small{white-space:nowrap}
+@media(max-width:560px){
+ header.top,.mmp-app-mode header.top{padding-inline:8px!important;gap:5px!important}
+ header.top>.top-actions{gap:4px!important}
+ header.top .brand{gap:6px!important}
+ header.top .brand .logo{flex:0 0 34px!important;width:34px!important;height:34px!important}
+ header.top .brand b{font-size:10px!important;letter-spacing:.2px!important}
+ header.top .brand small{font-size:7px!important}
+ header.top .top-actions .currency-switch .curr-btn{min-width:42px!important;padding:6px 7px!important}
+ header.top .top-actions #refresh-all-btn{min-width:0!important;padding:7px 6px!important;font-size:9px!important;white-space:nowrap}
+}
+@media(max-width:370px){
+ header.top .brand small{display:none!important}
+ header.top .top-actions #refresh-all-btn{display:none!important}
+}
+</style>
 </head>
 <body class="mmp-app-mode">
 
@@ -3878,6 +3905,25 @@ function closeHunterChart(){
  modal.classList.remove("show");document.body.classList.remove("hunter-chart-open");
 }
 
+function hunter4hParse(payload){
+ const source=Array.isArray(payload)?payload:(Array.isArray(payload?.data)?payload.data:Array.isArray(payload?.result?.list)?payload.result.list:Array.isArray(payload?.result)?payload.result:Array.isArray(payload?.rows)?payload.rows:[]);
+ const rows=source.map(row=>{
+  if(Array.isArray(row)){
+   const t=Number(row[0]),o=Number(row[1]),h=Number(row[2]),l=Number(row[3]),c=Number(row[4]),v=Number(row[5]),quoteVol=Number(row[7]??row[6]??(v*c)),takerBuyQuote=Number(row[10]);
+   if(![t,o,h,l,c,v].every(Number.isFinite))return null;
+   return {t,o,h,l,c,v,quoteVol:Number.isFinite(quoteVol)?quoteVol:v*c,takerBuyQuote:Number.isFinite(takerBuyQuote)?takerBuyQuote:undefined};
+  }
+  if(row&&typeof row==="object"){
+   const t=Number(row.t??row.time??row.timestamp??row.startTime),o=Number(row.o??row.open),h=Number(row.h??row.high),l=Number(row.l??row.low),c=Number(row.c??row.close),v=Number(row.v??row.volume??row.vol);
+   if(![t,o,h,l,c,v].every(Number.isFinite))return null;
+   const q=Number(row.quoteVol??row.turnover??row.quoteVolume??v*c),buy=Number(row.takerBuyQuote??row.taker_buy_quote);
+   return {t,o,h,l,c,v,quoteVol:Number.isFinite(q)?q:v*c,takerBuyQuote:Number.isFinite(buy)?buy:undefined};
+  }
+  return null;
+ }).filter(Boolean);
+ rows.sort((a,b)=>a.t-b.t);
+ return rows.filter((row,index)=>index===0||row.t!==rows[index-1].t);
+}
 let hunterDetailState={symbol:"",market:"spot",coin:null,signal:null,interval:"60",busy:false,rows:[]};
 function hunterDetailPrice(v){return hunterPrice(v);}
 async function hunterDetailFetch(symbol,market,interval){
