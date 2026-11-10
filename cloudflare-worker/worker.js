@@ -307,7 +307,7 @@ async function candles(symbol,interval,env,marketType="spot"){
    if(!r.ok)throw new Error("KuCoin Spot HTTP "+r.status);
    const payload=await r.json(),rows=payload?.code==="200000"?payload.data:null;
    if(!validRows(rows))throw new Error(payload?.msg||"insufficient KuCoin spot candle history");
-   const normalized=rows.map(x=>[Number(x[0])*1000,x[1],x[3],x[4],x[2],x[5]||"0","0","0","0","0"]).sort((a,b)=>a[0]-b[0]);
+   const normalized=rows.map(x=>Array.isArray(x)?[Number(x[0])*1000,x[1],x[3],x[4],x[2],x[5]||"0","0","0","0","0"]:[Number(x.time)*1000,x.open,x.highest,x.lowest,x.close,x.volume||"0","0","0","0","0"]).sort((a,b)=>a[0]-b[0]);
    const result=analyzeClosedKlines(normalized,interval);result.data_provider="KuCoin Spot (fallback)";return result;
   }catch(e){lastError=new Error((lastError?.message||"Binance unavailable")+"; "+e.message);}
   try{
@@ -339,7 +339,7 @@ async function candles(symbol,interval,env,marketType="spot"){
     const url=host+"/api/v1/public/kline?market="+encodeURIComponent(market)+"&interval="+whitebitInterval+"&limit=250";
     const r=await fetchWithTimeout(url,{headers});
     if(!r.ok)throw new Error("WhiteBIT HTTP "+r.status);
-    const payload=await r.json(),rows=payload?.success===true?payload.result:null;
+    const payload=await r.json(),rows=payload?.success===true?(Array.isArray(payload.result)?payload.result:Array.isArray(payload.result?.kline)?payload.result.kline:null):null;
     if(!validRows(rows))throw new Error(typeof payload?.message==="string"?payload.message:"insufficient WhiteBIT candle history");
     const normalized=rows.map(x=>[Number(x[0])*1000,x[1],x[3],x[4],x[2],x[5]||"0","0","0","0","0"]).sort((a,b)=>a[0]-b[0]);
     const result=analyzeClosedKlines(normalized,interval);result.data_provider="WhiteBIT Spot";return result;
