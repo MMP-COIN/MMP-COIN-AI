@@ -1,4 +1,4 @@
-import { QUANTUM_ENGINE_NAME, QUANTUM_ENGINE_VERSION, normalizeQuantumUniverse, scoreQuantumOpportunity, calculateQuantumIndicators } from "./quantum-core.js";
+import { QUANTUM_ENGINE_NAME, QUANTUM_ENGINE_VERSION, normalizeQuantumUniverse, scoreQuantumOpportunity, calculateQuantumIndicators, calculateMarketScanPriority } from "./quantum-core.js";
 const MAIN_UNIVERSE = "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/hunter-universe";
 const MAIN_FLOW = "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-flow";
 const RETENTION_SCORE = 64;
@@ -196,7 +196,7 @@ async function runRadar(env,scheduledTime=Date.now()){
       const venues=Array.isArray(coin.marketPairs)?coin.marketPairs.some(x=>String(x.quote||"").toUpperCase()==="USDT"&&SUPPORTED.has(String(x.exchange))):
         Object.keys(coin.hunterVenueVolume||{}).some(name=>SUPPORTED.has(name));
       return venues&&/^[A-Z0-9]{2,20}$/.test(String(coin.symbol||""));
-    }).sort((a,b)=>Number(b.total_volume||0)-Number(a.total_volume||0));
+    }).sort((a,b)=>calculateMarketScanPriority(b)-calculateMarketScanPriority(a)||Number(b.total_volume||0)-Number(a.total_volume||0));
     const seen=new Set();
     return eligible.filter(coin=>{
       const symbol=String(coin.symbol||"").toUpperCase();
@@ -212,7 +212,7 @@ async function runRadar(env,scheduledTime=Date.now()){
   const retentionNow=Date.now();
   const expiredSignals=previousSignals.filter(x=>retentionNow-Number(x?.updatedAt||0)>5*60*1000);
   const signals=new Map(previousSignals.filter(x=>Number(x?.score)>=RETENTION_SCORE&&retentionNow-Number(x?.updatedAt||0)<=5*60*1000).map(x=>[String(x.id),x]));
-  const start=Math.max(0,Number(state?.cursor)||0)%universe.length;
+  const scanPriorityVersion=1;\n  const start=(state?.scan_priority_version===scanPriorityVersion?Math.max(0,Number(state?.cursor)||0):0)%universe.length;
   const byId=new Map(universe.map(coin=>[String(coin.id),coin]));
   const bySymbol=new Map(universe.map(coin=>[String(coin.symbol).toUpperCase(),coin]));
   const prioritySignals=[...signals.values()]
@@ -310,7 +310,7 @@ async function runRadar(env,scheduledTime=Date.now()){
   const flowConfirmedCount=scannedSignals.filter(signal=>signal.flowConfirmed===true).length;
   const qualityPassCount=scannedSignals.filter(signal=>signal.flowConfirmed===true&&signal.volumeConfirmed===true&&signal.quantum?.qualityGate===true&&Number(signal.score)>=RETENTION_SCORE).length;
   const snapshot={
-    status:"online",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,source:"Cloudflare scheduled radar",scoring_version:5,retention_score:RETENTION_SCORE,
+    status:"online",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,source:"Cloudflare scheduled radar",scoring_version:5,scan_priority_version:scanPriorityVersion,retention_score:RETENTION_SCORE,
     universe_source:universeSource,universe_cache_age_ms:universeSource==="cached"?cacheAge:0,
     scanned_at:new Date().toISOString(),scheduled_at:new Date(Number(scheduledTime)||Date.now()).toISOString(),
     universe_count:universe.length,cycle_scanned_count:cycleScannedCount,cycle_total:universe.length,cycle_percent:cyclePercent,cycle_number:cycleNumber,scanned_count:completed,valid_count:valid,flow_checked_count:flowCandidates.length,flow_confirmed_count:flowConfirmedCount,quality_pass_count:qualityPassCount,candidate_details:candidateDetails,failed_count:failed,failed_samples:failedSamples,
@@ -336,7 +336,7 @@ async function runRadar(env,scheduledTime=Date.now()){
     hunterChange24h:Number(coin.hunterChange24h)||0,hunterVenueVolume:coin.hunterVenueVolume||{},
     marketPairs:Array.isArray(coin.marketPairs)?coin.marketPairs:[]}));
   await env.RADAR_KV.put("radar:state",JSON.stringify({
-    cursor:nextCursor,cycle_scanned_count:cycleScannedCount,cycle_number:cycleNumber,updated_at:snapshot.scanned_at,universe_count:universe.length,removed_signals:removedSignals,
+    cursor:nextCursor,scan_priority_version:scanPriorityVersion,cycle_scanned_count:cycleScannedCount,cycle_number:cycleNumber,updated_at:snapshot.scanned_at,universe_count:universe.length,removed_signals:removedSignals,
     universe_cache:universeCache,
     universe_cache_updated_at:universeSource==="live"?snapshot.scanned_at:Number(state?.universe_cache_updated_at||state?.updated_at||snapshot.scanned_at)
   }));
