@@ -2,7 +2,7 @@ import { QUANTUM_ENGINE_NAME, QUANTUM_ENGINE_VERSION, normalizeQuantumUniverse, 
 const MAIN_UNIVERSE = "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/hunter-universe";
 const MAIN_FLOW = "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-flow";
 const RETENTION_SCORE = 64;
-const BATCH_SIZE = 14;
+const BATCH_SIZE = 16;
 const CONCURRENCY = 4;
 const SUPPORTED = new Set(["Binance","Bybit","OKX","Bitget","Gate","KuCoin","WhiteBIT","MEXC"]);
 const JSON_HEADERS = { "Accept":"application/json", "User-Agent":"MMP-COIN-AI-RADAR/1.0" };
@@ -207,6 +207,7 @@ async function runRadar(env,scheduledTime=Date.now()){
   let universe=buildUniverse(source);
   if(!universe.length&&universeSource==="live"&&cachedUniverse){universe=buildUniverse(cachedUniverse);universeSource="cached";}
   if(!universe.length)throw new Error("No eligible USDT spot symbols; previous snapshot retained");
+   const batchSize=universe.length>500?14:BATCH_SIZE;
   const previousSignals=[...(Array.isArray(oldSnapshot?.signals)?oldSnapshot.signals:[]),...(Array.isArray(oldSnapshot?.legacy_signals)?oldSnapshot.legacy_signals:[])];
   const retentionNow=Date.now();
   const expiredSignals=previousSignals.filter(x=>retentionNow-Number(x?.updatedAt||0)>5*60*1000);
@@ -226,7 +227,7 @@ async function runRadar(env,scheduledTime=Date.now()){
     if(priorityCoins.length>=4)break;
   }
   // Recheck the strongest live candidates every minute, while the rotating tail discovers new movers.
-  const rotationTarget=Math.max(0,Math.min(BATCH_SIZE,universe.length)-priorityCoins.length);
+  const rotationTarget=Math.max(0,Math.min(batchSize,universe.length)-priorityCoins.length);
   const rotatingCoins=[],rotatingSymbols=new Set(prioritySymbols);
   let cursor=start,inspected=0;
   while(rotatingCoins.length<rotationTarget&&inspected<universe.length){
@@ -313,7 +314,7 @@ async function runRadar(env,scheduledTime=Date.now()){
     universe_source:universeSource,universe_cache_age_ms:universeSource==="cached"?cacheAge:0,
     scanned_at:new Date().toISOString(),scheduled_at:new Date(Number(scheduledTime)||Date.now()).toISOString(),
     universe_count:universe.length,cycle_scanned_count:cycleScannedCount,cycle_total:universe.length,cycle_percent:cyclePercent,cycle_number:cycleNumber,scanned_count:completed,valid_count:valid,flow_checked_count:flowCandidates.length,flow_confirmed_count:flowConfirmedCount,quality_pass_count:qualityPassCount,candidate_details:candidateDetails,failed_count:failed,failed_samples:failedSamples,
-    removed_count:removed,removed_signals:removedSignals,batch_size:BATCH_SIZE,priority_scanned_count:priorityCoins.length,next_cursor:nextCursor,
+    removed_count:removed,removed_signals:removedSignals,batch_size:batchSize,priority_scanned_count:priorityCoins.length,next_cursor:nextCursor,
     signals:(()=>{
       const canonicalIds=new Map(universe.map(coin=>[String(coin.symbol).toUpperCase(),String(coin.id)]));
       const unique=new Map();
