@@ -7289,5 +7289,33 @@ html body #chart-section .chart-actions > button{
 }
 </style>
 
+
+<style id="mmp-market-snapshot-mini-four-20261110">
+/* Only the four top benchmark cards: reduce footprint without changing data or behavior. */
+html body section#market-snapshot.mmp-market-snapshot{gap:9px!important;margin-block:8px 13px!important}
+html body section#market-snapshot.mmp-market-snapshot>article.mmp-market-card{
+ height:126px!important;min-height:126px!important;max-height:126px!important;
+ padding:8px 10px 7px!important;border-radius:13px!important
+}
+html body section#market-snapshot .mmp-card-top{min-height:25px!important;margin:0 0 4px!important;gap:5px!important}
+html body section#market-snapshot .mmp-asset-icon{width:25px!important;height:25px!important;min-width:25px!important;flex-basis:25px!important;border-radius:7px!important;font-size:13px!important}
+html body section#market-snapshot .mmp-card-tag{font-size:9px!important;line-height:1.2!important}
+html body section#market-snapshot .mmp-card-spark{font-size:13px!important}
+html body section#market-snapshot .stat-label{font-size:10px!important;line-height:1.3!important}
+html body section#market-snapshot .stat-value{font-size:clamp(14px,1.8vw,18px)!important;line-height:1.2!important;margin:3px 0 2px!important}
+html body section#market-snapshot .sub{font-size:9px!important;line-height:1.3!important;margin:0!important;-webkit-line-clamp:2!important}
+html body section#market-snapshot .mmp-card-track{height:2px!important;padding-top:0!important}
+@media(max-width:560px){
+ html body section#market-snapshot.mmp-market-snapshot{gap:7px!important;margin-block:7px 11px!important}
+ html body section#market-snapshot.mmp-market-snapshot>article.mmp-market-card{height:116px!important;min-height:116px!important;max-height:116px!important;padding:7px 8px 6px!important}
+ html body section#market-snapshot .mmp-card-top{min-height:23px!important;margin-bottom:3px!important}
+ html body section#market-snapshot .mmp-asset-icon{width:23px!important;height:23px!important;min-width:23px!important;flex-basis:23px!important;font-size:12px!important}
+ html body section#market-snapshot .mmp-card-tag{font-size:8px!important}
+ html body section#market-snapshot .stat-label{font-size:9px!important}
+ html body section#market-snapshot .stat-value{font-size:clamp(13px,3.8vw,16px)!important}
+ html body section#market-snapshot .sub{font-size:8px!important;line-height:1.25!important}
+}
+</style>
+
 </body>
 </html>
