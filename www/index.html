@@ -6296,3 +6296,21 @@ html body .wrap{padding-top:8px!important;margin-top:0!important}
 @media(min-width:760px){#derivatives-panel .intel-metrics,#orderflow-panel .intel-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){#derivatives-panel .intel-panel-head,#orderflow-panel .intel-panel-head{align-items:flex-start;gap:8px}#derivatives-panel .intel-metrics>div,#orderflow-panel .intel-metrics>div{padding:10px}#derivatives-panel .intel-metrics b,#orderflow-panel .intel-metrics b{font-size:16px}}
 </style>
+<style id="mmp-zero-gap-before-main-header-20261110">
+/* Hard reset for the unwanted blank band above the primary site header. */
+html,html body,body.mmp-app-mode{
+  margin-top:0!important;
+  padding-top:0!important;
+}
+body.mmp-app-mode>header.top{
+  display:flex!important;
+  position:sticky!important;
+  top:0!important;
+  inset-block-start:0!important;
+  margin-block-start:0!important;
+  transform:none!important;
+}
+@media(max-width:900px){
+  body.mmp-app-mode>header.top{top:0!important;inset-block-start:0!important}
+}
+</style>
