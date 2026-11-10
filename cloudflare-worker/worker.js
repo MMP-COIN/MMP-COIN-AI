@@ -735,17 +735,17 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
   order=unique([...(primaryTrusted&&available.includes(primary)?[primary]:[]),...available]);
  }else{
   const indices={Binance:0,Bybit:1,Bitget:2,OKX:3,Gate:4,"Gate.io":4,KuCoin:5,WhiteBIT:6,"Binance.US":7,BinanceUS:7,MEXC:8};
-  const preferred=(Array.isArray(asset?.marketPairs)?asset.marketPairs.slice().sort((a,b)=>Number(b.volume||0)-Number(a.volume||0)):[]).map(x=>indices[String(x.exchange||"")]).filter(Number.isInteger),priority=[4,3,1,0,2,8,5,6,7],available=unique(preferred).sort((a,b)=>priority.indexOf(a)-priority.indexOf(b)),primary=preferred[0],primaryTrusted=[4,5,6,8,7].includes(primary);
+  const preferred=(Array.isArray(asset?.marketPairs)?asset.marketPairs.slice().sort((a,b)=>Number(b.volume||0)-Number(a.volume||0)):[]).map(x=>indices[String(x.exchange||"")]).filter(Number.isInteger),priority=[4,8,6,7,2,5,3,1,0],available=unique(preferred).sort((a,b)=>priority.indexOf(a)-priority.indexOf(b)),primary=preferred[0],primaryTrusted=[4,5,6,8,7].includes(primary);
   order=unique([...(primaryTrusted&&available.includes(primary)?[primary]:[]),...available]);
  }
  const fallbackPriority=marketType==="futures"?[4,2,1,5,6,3,0]:[4,3,1,0,2,8,5,6,7];
  const preferredOrder=unique(order);
- const fallbackOrder=unique([...fallbackPriority.filter(index=>!preferredOrder.includes(index)),...sources.map((_,index)=>index).filter(index=>!preferredOrder.includes(index)&&!fallbackPriority.includes(index))]);
- const fallbackPool=unique([...preferredOrder.slice(2),...fallbackOrder]);
+ const primaryOrder=preferredOrder.slice(0,2);
+ const fallbackPool=unique([...fallbackPriority.filter(index=>!primaryOrder.includes(index)),...preferredOrder.slice(2),...sources.map((_,index)=>index)]).filter(index=>!primaryOrder.includes(index));
  const symbolHash=String(symbol).split("").reduce((sum,char)=>sum+char.charCodeAt(0),0);
  const rotation=fallbackPool.length?(symbolHash+Math.floor(Date.now()/60000))%fallbackPool.length:0;
  const stableFallback=fallbackPool.slice(0,2),rotatingFallback=fallbackPool.slice(2),rotatedFallback=[...stableFallback,...rotatingFallback.slice(rotation),...rotatingFallback.slice(0,rotation)];
- const sourceLimit=Math.min(4,sources.length),orderedIndices=unique([...preferredOrder.slice(0,2),...rotatedFallback]),orderedSources=orderedIndices.map(index=>sources[index]).filter(Boolean).slice(0,sourceLimit),verified=[];
+ const sourceLimit=Math.min(4,sources.length),orderedIndices=unique([...primaryOrder,...rotatedFallback]),orderedSources=orderedIndices.map(index=>sources[index]).filter(Boolean).slice(0,sourceLimit),verified=[];
  let selectedPair=null,bestObservedPair=null;
  const evaluatePairs=()=>{
   const pairs=[];
