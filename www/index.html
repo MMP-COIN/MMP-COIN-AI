@@ -4685,7 +4685,8 @@ async function loadDigitalHunterSnapshot(force=false){
   if(!response.ok)throw new Error("HTTP "+response.status);
   const snapshot=await response.json();
   if(snapshot.status==="error")throw new Error(snapshot.error||"Spot Hunter snapshot unavailable");
-  window.__mmpDigitalHunterSnapshot=snapshot;
+  window.__mmpDigitalHunterSnapshot=snapshot;window.__mmpQuantumHomeSnapshot=snapshot;
+  document.dispatchEvent(new Event("mmp-hunter-snapshot-updated"));
   hunterSpotSnapshotLast=Date.now();
   renderMarketHunter();
   return snapshot;
