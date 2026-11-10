@@ -9,7 +9,7 @@ This folder contains the secure backend for the market-analysis section on GitHu
 - Adds Fear & Greed sentiment and CoinGecko global market context when those public endpoints respond.
 - Sends the structured snapshot to GPT-OSS 120B through Groq when configured, with Cloudflare Workers AI as fallback, for a Persian BUY / SELL / WAIT report.
 - Exposes `/market-flow?symbol=BTC&window=5` as a shared real-trade flow service. It aggregates actual Bybit Spot public trades first, then Binance aggregate trades as fallback; it reports trade count, provider, and whether the 1,000-record window may be truncated.
-- Quantum Hunter 3.0 runs independently on the analyzer Worker every minute, uses the full validated liquid Spot/Futures universe without a fixed asset-count ceiling, scans bounded rotating batches (16 Spot / 12 Futures per cycle), and refreshes its universe on the existing schedule. It writes one compact state/snapshot row per completed cycle, avoiding the daily Workers KV write quota. It derives 1m/3m/5m/15m momentum and structure from real 1m OHLCV candles across Binance, Bybit, Bitget, Gate, KuCoin and OKX; only candidates confirmed by real aggressive-buy/sell trade flow are published.
+- Quantum Hunter 3.0 runs through the separate `mmp-coin-ai-hunter-cron` Worker every minute. That scheduler calls the analyzer's shared scan functions for bounded rotating Spot/Futures batches (16 Spot / 12 Futures per cycle), refreshes the full validated liquid universe without a fixed asset-count ceiling, and stores compact state in `ADMIN_DB`. Keep its Cron trigger at `* * * * *`; do not add a second Cron trigger to this analyzer Worker.
 - `/hunter-snapshot` serves the persistent Hunter results; `/hunter-run` triggers a bounded manual cycle; `/hunter-scan?symbols=BTC,ETH` is the direct diagnostic scan endpoint. The browser only renders server snapshots and does not run its own scanner or ticker WebSockets.
 - The scheduled Quantum Radar 3.0 Worker remains independent, consumes the shared executed-flow service, and requires order-book depth confirmation for its final quality gate.
 - `market-data-core.js` provides shared OHLCV normalization, duplicate removal, freshness checks and closed-candle cross-exchange alignment for Hunter and Radar.
@@ -20,11 +20,10 @@ This folder contains the secure backend for the market-analysis section on GitHu
 1. Sign in to Cloudflare and open **Workers & Pages**.
 2. Create a Worker named `mmp-coin-ai-analyzer`.
 3. Open the Worker editor and paste the contents of `worker.js` from this folder, then deploy.
-4. In the Worker settings, open **Bindings** → **Add binding** → **Workers AI**. Set the variable name to exactly `AI`, save, and deploy again.
-   Also add Rate Limiting bindings `AI_ANALYSIS_LIMITER` (15 requests per 60 seconds) and `PUBLIC_API_LIMITER` (300 requests per 60 seconds). The matching configuration is already in `wrangler.toml`.
-5. Keep the existing D1 binding `ADMIN_DB` connected to `mmp_coin_ai_private_admin`; Hunter stores its cursor and snapshot in the isolated `hunter_engine_state` table. Configure the `* * * * *` Cron trigger from `wrangler.toml`. The Radar Worker and its KV namespace remain separate.
-6. Copy the Worker URL. The endpoint is the same URL with `/analyze` appended only if you later add a route; for this code the root URL itself handles POST requests.
-7. In `index.html`, set `AI_ANALYSIS_ENDPOINT` to the deployed Worker root URL (including https://), commit, and wait for GitHub Pages deployment.
+4. In the Worker settings, verify the `AI` Workers AI binding, `AI_ANALYSIS_LIMITER` (15 requests per 60 seconds), and `PUBLIC_API_LIMITER` (300 requests per 60 seconds). Keep `ADMIN_DB` connected to `mmp_coin_ai_private_admin` and `MARKET_CACHE_DB` connected to `mmp_market_data_fallback`. The matching bindings are declared in `wrangler.toml`.
+5. Keep the independent `mmp-coin-ai-hunter-cron` Worker deployed with the same `ADMIN_DB` binding and its `* * * * *` Cron trigger. Keep `mmp-coin-ai-radar` separately deployed with `RADAR_KV` and its own `* * * * *` trigger.
+6. Copy the analyzer Worker URL. The endpoint is the same URL with `/analyze` appended only if you later add a route; for this code the root URL itself handles POST requests.
+7. In `www/index.html`, keep `AI_ANALYSIS_ENDPOINT` pointed to the deployed analyzer Worker root URL (including https://), commit, and wait for GitHub Pages deployment.
 
 The `wrangler.toml` file is included for Wrangler-based deployment from this folder.
 
@@ -35,6 +34,6 @@ The `wrangler.toml` file is included for Wrangler-based deployment from this fol
 
 ## Security hardening
 - Browser CORS is limited to the public GitHub Pages origin and supported Capacitor localhost origins.
-- AI analysis is rate-limited to 5 requests per minute per client IP; health and exchange-support routes are limited to 60 requests per minute per client IP. Cloudflare Worker rate limits are approximate and scoped by Cloudflare location.
+- AI requests are rate-limited per client IP; health, market-data and exchange-support routes use the separate public API limiter. Cloudflare Worker rate limits are approximate and scoped by Cloudflare location.
 - AI requests must be JSON and are capped at 16 KB. The Worker fails closed if its rate-limit bindings are missing.
-- Never put API tokens or secrets in `index.html`; keep any future credentials in Cloudflare Worker secrets.
+- Never put API tokens or secrets in `www/index.html`; keep any future credentials in Cloudflare Worker secrets.
