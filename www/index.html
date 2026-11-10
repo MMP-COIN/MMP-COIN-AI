@@ -2218,6 +2218,54 @@ body.mmp-app-mode #mmp-home-hero .mmp-refresh-button{padding:7px 10px!important;
 }
 @media(max-width:390px){body.mmp-app-mode #mmp-home-hero.mmp-home-hero{grid-template-columns:minmax(0,1fr) 58px!important;padding:9px!important}body.mmp-app-mode #mmp-home-hero .mmp-hero-emblem{width:66px!important;height:66px!important;transform:scale(.6)!important}body.mmp-app-mode #mmp-home-hero .mmp-hero-title{font-size:19px!important}}
 </style>
+
+<style id="mmp-hero-size-and-top-gap-hard-fix-20261110">
+/* Hard correction for the first homepage hero: compact on desktop and mobile. */
+html,html body,html body.mmp-app-mode{margin:0!important;padding:0!important;scroll-padding-top:64px!important}
+html body.mmp-app-mode>header.top{position:sticky!important;top:0!important;inset-block-start:0!important;margin:0!important;padding-block:0!important;height:62px!important;min-height:62px!important;max-height:62px!important;border-top:0!important;transform:none!important}
+html body.mmp-app-mode>header.top:before{top:0!important}
+html body.mmp-app-mode>main.wrap{margin-block-start:0!important;padding-block-start:0!important}
+html body.mmp-app-mode #mmp-home-hero.mmp-home-hero{
+ display:grid!important;grid-template-columns:minmax(0,1fr) 104px!important;align-items:center!important;
+ min-height:0!important;height:auto!important;max-height:none!important;
+ margin:0 0 10px!important;padding:9px 17px!important;gap:8px!important;
+ border-radius:13px!important;border-width:1px!important;box-shadow:0 8px 22px #0005!important;
+}
+html body.mmp-app-mode #mmp-home-hero .mmp-hero-copy{min-width:0!important;max-width:none!important}
+html body.mmp-app-mode #mmp-home-hero .mmp-hero-kicker{font-size:7px!important;line-height:1.25!important;letter-spacing:1px!important;gap:5px!important;margin:0!important}
+html body.mmp-app-mode #mmp-home-hero .mmp-live-pulse{width:6px!important;height:6px!important;flex-basis:6px!important}
+html body.mmp-app-mode #mmp-home-hero .mmp-hero-title{font-size:22px!important;line-height:1.3!important;letter-spacing:0!important;margin:3px 0!important}
+html body.mmp-app-mode #mmp-home-hero .mmp-hero-title span{display:inline!important;white-space:normal!important}
+html body.mmp-app-mode #mmp-home-hero .mmp-hero-copy>p{max-width:900px!important;margin:2px 0 0!important;font-size:9px!important;line-height:1.55!important;color:#c1ced8!important}
+html body.mmp-app-mode #mmp-home-hero .mmp-hero-actions{display:flex!important;align-items:center!important;gap:6px!important;flex-wrap:wrap!important;margin:5px 0 0!important}
+html body.mmp-app-mode #mmp-home-hero .mmp-market-status{min-height:23px!important;padding:3px 7px!important;font-size:8px!important}
+html body.mmp-app-mode #mmp-home-hero .mmp-refresh-button{min-height:24px!important;padding:4px 8px!important;font-size:8px!important;border-radius:7px!important}
+html body.mmp-app-mode #mmp-home-hero .mmp-hero-emblem{display:grid!important;place-items:center!important;min-height:0!important;height:82px!important;width:104px!important;overflow:visible!important}
+html body.mmp-app-mode #mmp-home-hero .mmp-emblem-coin{width:72px!important;height:72px!important;border-width:3px!important}
+html body.mmp-app-mode #mmp-home-hero .mmp-emblem-ring{width:106px!important;height:66px!important}
+html body.mmp-app-mode #mmp-home-hero .mmp-ring-two{width:96px!important;height:75px!important}
+html body.mmp-app-mode #mmp-home-hero .mmp-emblem-caption{bottom:-2px!important;font-size:5px!important;letter-spacing:.55px!important}
+html body.mmp-app-mode #mmp-home-hero .mmp-hero-index{display:none!important}
+@media(max-width:900px){
+ html body.mmp-app-mode>header.top{height:56px!important;min-height:56px!important;max-height:56px!important;padding-inline:9px!important}
+ html body.mmp-app-mode>main.wrap{padding-block-start:0!important}
+ html body.mmp-app-mode #mmp-home-hero.mmp-home-hero{grid-template-columns:minmax(0,1fr) 82px!important;gap:5px!important;padding:8px 11px!important;margin:0 0 8px!important}
+ html body.mmp-app-mode #mmp-home-hero .mmp-hero-title{font-size:20px!important;line-height:1.3!important}
+ html body.mmp-app-mode #mmp-home-hero .mmp-hero-copy>p{font-size:8.5px!important;line-height:1.5!important}
+ html body.mmp-app-mode #mmp-home-hero .mmp-hero-emblem{width:82px!important;height:72px!important}
+ html body.mmp-app-mode #mmp-home-hero .mmp-emblem-coin{width:62px!important;height:62px!important}
+ html body.mmp-app-mode #mmp-home-hero .mmp-emblem-ring{width:88px!important;height:55px!important}
+ html body.mmp-app-mode #mmp-home-hero .mmp-ring-two{width:80px!important;height:63px!important}
+}
+@media(max-width:390px){
+ html body.mmp-app-mode #mmp-home-hero.mmp-home-hero{grid-template-columns:minmax(0,1fr) 62px!important;padding:7px 9px!important}
+ html body.mmp-app-mode #mmp-home-hero .mmp-hero-title{font-size:18px!important}
+ html body.mmp-app-mode #mmp-home-hero .mmp-hero-emblem{width:62px!important;height:60px!important}
+ html body.mmp-app-mode #mmp-home-hero .mmp-emblem-coin{width:52px!important;height:52px!important}
+ html body.mmp-app-mode #mmp-home-hero .mmp-emblem-ring{width:72px!important;height:45px!important}
+ html body.mmp-app-mode #mmp-home-hero .mmp-ring-two{width:66px!important;height:51px!important}
+}
+</style>
 </head>
 <body class="mmp-app-mode">
 
