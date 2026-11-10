@@ -1124,8 +1124,9 @@ export async function runDigitalHunterMarketCycle(env,marketType="spot"){
  const batchLimit=marketType==="futures"?FUTURES_HUNTER_BATCH_SIZE:HUNTER_BATCH_SIZE;
  const cacheId=stateId+"-universe-cache",cachedRow=await env.ADMIN_DB.prepare("SELECT payload FROM hunter_engine_state WHERE id = ?").bind(cacheId).first(),cached=cachedRow?.payload?JSON.parse(cachedRow.payload):null;
  let assets=Array.isArray(previous.assets)?previous.assets:[],universeUpdatedAt=Number(previous.universeUpdatedAt)||0,universeSources=previous.universeSources||{},universeProvider=previous.universeProvider||"multi-exchange",adoptedUniverse=false;
- if(Array.isArray(cached?.assets)&&cached.assets.length&&(!assets.length||Number(cached.universeUpdatedAt)>universeUpdatedAt)){
-  assets=cached.assets;universeUpdatedAt=Number(cached.universeUpdatedAt)||now;universeSources=cached.universeSources||{};universeProvider=cached.universeProvider||"multi-exchange";adoptedUniverse=true;
+ const cacheIsNewer=Number(cached?.universeUpdatedAt)>universeUpdatedAt;
+ if(Array.isArray(cached?.assets)&&cached.assets.length&&(!assets.length||cacheIsNewer)){
+  assets=cached.assets;universeUpdatedAt=Number(cached.universeUpdatedAt)||now;universeSources=cached.universeSources||{};universeProvider=cached.universeProvider||"multi-exchange";adoptedUniverse=cacheIsNewer;
  }
  if(!assets.length){
   const universe=await loadDigitalHunterUniverse(env,marketType);
