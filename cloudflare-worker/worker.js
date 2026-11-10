@@ -771,7 +771,7 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
   throw new Error("QUALITY_REJECTED: اختلاف قیمت چندصرافی "+bestObservedPair.deviationPct.toFixed(3)+"٪");
  }
  const {primary,secondary,alignedIndex,a,b,ageMs:commonCandleAge,deviationPct:priceDeviationPct}=selectedPair,timeDiffMs=0;
- const alignedRows=primary.rows.slice(0,alignedIndex+2);
+ const alignedRows=normalizeMarketCandles(primary.rows).slice(0,alignedIndex+2);
  return {provider:primary.provider,rows:alignedRows,market:marketType,multiExchangeConfirmed:true,multiExchangeEvidence:{primary:primary.provider,secondary:secondary.provider,timeDiffMs,priceDeviationPct:Number(priceDeviationPct.toFixed(4)),primaryPrice:a[4],secondaryPrice:b[4],candleTime:a[0],commonCandleAgeMs:commonCandleAge}};
 }
 async function analyzeDigitalHunterSymbol(symbol,marketType="spot",asset=null,activity=null){
