@@ -51,7 +51,8 @@ export function updateLearningLedger(previous={},options={}){
   records.push({id,engine,market,symbol,direction,entry_price:price,signal_at:candleTime,score:finite(signal.score),confidence:finite(signal.quantum?.confidence),
    engine_version:String(signal.quantum?.version||signal.quantum?.engine||"QIE"),
    evidence:{volumeRatio:finite(signal.volumeRatio),flowTrades:finite(signal.flow?.tradeCount),flowProvider:String(signal.flow?.provider||""),depthSource:String(signal.depth?.source||signal.depth?.provider||"")},
-   outcome_5m:null,outcome_15m:null,outcome_60m:null,status:"open"});\n  changed=true;
+   outcome_5m:null,outcome_15m:null,outcome_60m:null,status:"open"});
+  changed=true;
  }
  records.sort((a,b)=>Number(a.signal_at)-Number(b.signal_at));records=records.slice(-1000);
  const summary=summarizeLearningLedger(records,market);summary.processed=observations.length;
