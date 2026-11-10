@@ -447,6 +447,7 @@ jobs:
             flow_status=$(curl --silent --show-error --retry 1 --retry-delay 2 --max-time 30 -o "/tmp/flow-$market.json" -w "%{http_code}" "$WORKER_URL/market-flow?market=$market&symbol=BTC&window=$flow_window")
             echo "$market real-trade flow HTTP $flow_status"
             if [ "$flow_status" != "200" ]; then cat "/tmp/flow-$market.json"; exit 1; fi
+            jq '{symbol,trade_count,provider,complete,window_minutes,buy5m,sell5m,fallback_error}' "/tmp/flow-$market.json"
             jq -e '.symbol == "BTCUSDT" and (.trade_count | type == "number") and (.trade_count > 0) and (.buy5m >= 0) and (.sell5m >= 0) and (.provider | type == "string" and length > 0) and (.complete == true)' "/tmp/flow-$market.json" >/dev/null
             jq -r '"$market trade-flow: " + .provider + " | " + (.trade_count|tostring) + " trades | complete=" + (.complete|tostring)' "/tmp/flow-$market.json"
             jq -r '"$market flow fallback diagnostics: " + (.fallback_error // "none")' "/tmp/flow-$market.json"
