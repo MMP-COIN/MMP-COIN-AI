@@ -1111,7 +1111,17 @@ export async function runDigitalHunterMarketCycle(env,marketType="spot"){
   await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(stateId,payload,new Date(now).toISOString()).run();
   return snapshot;
  }
- const cursor=(Number(previous.cursor)||0)%assets.length,failureCooldown={...(previous.failureCooldown||{})};
+ // Prioritize the active edge of the market instead of scanning only by 24h turnover.
+ // This changes queue order, never the final evidence/quality gates.
+ const scanPriority=item=>{
+  const move=Math.min(35,Math.abs(Number(item.hunterChange24h)||0));
+  const volume=Math.max(50000,Number(item.total_volume)||50000);
+  const liquidity=Math.min(18,Math.max(0,Math.log10(volume/50000))*3.6);
+  return move*.78+liquidity;
+ };
+ assets.sort((a,b)=>scanPriority(b)-scanPriority(a)||Number(b.total_volume||0)-Number(a.total_volume||0));
+ const priorityVersion=1;
+ const cursor=(previous.scanPriorityVersion===priorityVersion?Number(previous.cursor)||0:0)%assets.length,failureCooldown={...(previous.failureCooldown||{})};
  for(const [symbol,until] of Object.entries(failureCooldown))if(Number(until)<=now)delete failureCooldown[symbol];
  // Do not put cooling-down symbols back into the batch: the old fallback below
  // accidentally re-added them and caused repeated failures every cycle.
@@ -1144,7 +1154,7 @@ export async function runDigitalHunterMarketCycle(env,marketType="spot"){
  const selected=[...fresh.filter(x=>x.trend==="bull").slice(0,6),...fresh.filter(x=>x.trend==="bear").slice(0,6)];
  const nextCursor=(cursor+Math.max(1,examined))%assets.length,priorActivity=cursor===0?{}:(previous.snapshot?.engine_activity||{}),engineActivity=Object.fromEntries(QUANTUM_ACTIVITY_KEYS.map(key=>{const a=priorActivity[key]||{},b=result.engine_activity?.[key]||{};return [key,{processed:Number(a.processed||0)+Number(b.processed||0),evidence:Number(a.evidence||0)+Number(b.evidence||0)}];}));
  const snapshot={status:"online",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,market:marketType,checked_at:new Date().toISOString(),scanned_at:new Date().toISOString(),universe_count:assets.length,next_cursor:nextCursor,queue_position:nextCursor===0?assets.length:nextCursor,queue_total:assets.length,batch_size:batch.length,scanned_count:result.scanned,candidate_count:result.candidates,failed_count:result.failed,rejected_count:result.rejected||0,cooldown_count:Object.keys(failureCooldown).length,universe_refreshed:false,signals:selected,preliminary_signals:preliminary,flow_review_count:result.flow_review_count||0,flow_checked_count:result.flow_checked_count||0,flow_review_symbols:result.flow_review_symbols||[],engine_activity:engineActivity,last_errors:result.errors||[],last_rejections:result.rejections||[],sources:universeSources,universe_provider:universeProvider,cycle_seconds:60};
- const payload=JSON.stringify({cursor:snapshot.next_cursor,lastRun:now,assets,universeUpdatedAt,universeSources,universeProvider,failureCooldown,snapshot});
+ const payload=JSON.stringify({cursor:snapshot.next_cursor,lastRun:now,assets,universeUpdatedAt,universeSources,universeProvider,failureCooldown,scanPriorityVersion:priorityVersion,snapshot});
  await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(stateId,payload,new Date(now).toISOString()).run();
  return snapshot;
 }
