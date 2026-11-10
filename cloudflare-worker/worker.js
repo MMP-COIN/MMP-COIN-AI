@@ -660,7 +660,21 @@ async function loadMarketFlow(symbol,windowMinutes=5){
    if(rows.length&&betterFlow(rows,kucoinTruncated)){trades=rows;truncated=kucoinTruncated;provider="KuCoin Spot · معاملات واقعی";}
   }catch(error){lastError="KuCoin: "+String(error?.message||error).slice(0,160);}
  }
- if(!trades?.length)throw new Error("داده معاملات از Bybit، Binance، OKX، Gate، MEXC و KuCoin دریافت نشد: "+lastError);
+ if(!trades?.length||truncated||trades.length<20){
+ try{
+  const market=pair.replace(/USDT$/,"")+"_USDT";
+  const [buyRows,sellRows]=await Promise.all([
+   marketFlowJson("https://whitebit.com/api/v4/public/trades/"+encodeURIComponent(market)+"?type=buy",7500),
+   marketFlowJson("https://whitebit.com/api/v4/public/trades/"+encodeURIComponent(market)+"?type=sell",7500)
+  ]);
+  if(!Array.isArray(buyRows)||!Array.isArray(sellRows))throw new Error("WhiteBIT trades response invalid");
+  const normalize=(rows,side)=>rows.map(x=>{let time=Number(x.trade_timestamp);if(time>0&&time<1e12)time*=1000;return {time,price:Number(x.price),size:Number(x.quote_volume),side};}).filter(x=>x.time>=cutoff&&x.time<=now&&x.price>0&&x.size>0);
+  const rows=[...normalize(buyRows,"Buy"),...normalize(sellRows,"Sell")].sort((a,b)=>b.time-a.time);
+  const oldest=rows.reduce((v,x)=>Math.min(v,x.time),Infinity),whitebitTruncated=Number.isFinite(oldest)&&oldest>cutoff+5000;
+  if(rows.length&&betterFlow(rows,whitebitTruncated)){trades=rows;truncated=whitebitTruncated;provider="WhiteBIT Spot · معاملات واقعی";}
+ }catch(error){lastError="WhiteBIT: "+String(error?.message||error).slice(0,160);}
+}
+if(!trades?.length)throw new Error("داده معاملات از Bybit، Binance، OKX، Gate، MEXC، KuCoin و WhiteBIT دریافت نشد: "+lastError);
  const buckets=new Map();let buy5m=0,sell5m=0;
  for(const trade of trades){
   const quote=trade.price*trade.size;if(!Number.isFinite(quote)||quote<=0)continue;
