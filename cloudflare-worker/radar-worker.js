@@ -77,7 +77,7 @@ async function scanCoin(coin){
   if(!listed.length)return null;
   const order=[...new Map(listed.sort((a,b)=>Number(b.volume)-Number(a.volume)).map(x=>[x.exchange,x])).values()].map(x=>x.exchange);
   const fallback=["OKX","Gate","MEXC","KuCoin","WhiteBIT","Binance","Bitget","Bybit"].filter(name=>!order.includes(name));
-  const verificationOrder=[...new Set([...order.filter(name=>!["Bybit","Bitget"].includes(name)),...fallback,...order])].slice(0,5);
+  const verificationOrder=[...new Set([...order,...fallback])].slice(0,6);
   let market=null,corroboration=null,errors=[];
   for(const venue of verificationOrder){if(corroboration)break;try{const candidate=await loadProvider(symbol,venue);if(!market)market=candidate;else corroboration=candidate;}catch(error){errors.push(venue+": "+String(error?.message||error).slice(0,80));}}
   if(!market)throw new Error(errors.join(" | ")||"No candle provider responded");
