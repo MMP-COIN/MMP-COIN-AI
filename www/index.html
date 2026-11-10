@@ -2324,6 +2324,100 @@ body.mmp-app-mode #mmp-home-hero .mmp-hero-index{display:none!important}
  body.mmp-app-mode #mmp-home-hero .mmp-emblem-caption{font-size:4px!important;letter-spacing:.4px!important}
 }
 </style>
+
+<style id="mmp-hard-reset-viewport-top-20261110">
+/* Final cascade after all legacy styles: no top inset, fixed bar at y=0, content starts immediately below it. */
+html,html body,body.mmp-app-mode{margin:0!important;padding:0!important}
+body.mmp-app-mode>header.top{
+ position:fixed!important;inset:0 0 auto!important;top:0!important;
+ height:62px!important;min-height:62px!important;max-height:62px!important;
+ margin:0!important;transform:none!important;z-index:5000!important;
+}
+body.mmp-app-mode>.mmp-sidebar{top:62px!important}
+body.mmp-app-mode>main.wrap{
+ margin-top:62px!important;margin-block-start:62px!important;
+ padding-top:0!important;padding-block-start:0!important;
+}
+body.mmp-app-mode>main.wrap>#mmp-home-hero{margin-top:0!important;margin-block-start:0!important}
+@media(max-width:900px){
+ body.mmp-app-mode>header.top{height:62px!important;min-height:62px!important;max-height:62px!important}
+ body.mmp-app-mode>main.wrap{margin-top:62px!important;margin-block-start:62px!important;padding-top:0!important;padding-block-start:0!important}
+}
+</style>
+
+<style id="mmp-whale-dashboard-visual-v4">
+#whale-panel{position:relative;overflow:hidden;background:radial-gradient(ellipse at 90% 0%,rgba(247,181,56,.13),transparent 42%),linear-gradient(145deg,#121c29 0%,#0b111a 62%,#111925 100%)!important;border:1px solid rgba(211,164,76,.35)!important;box-shadow:0 14px 38px rgba(0,0,0,.24),inset 0 1px rgba(255,255,255,.035)!important}
+#whale-panel:before{content:"";position:absolute;inset:0 0 auto;height:2px;background:linear-gradient(90deg,transparent,#e5b85d,#7ce0cb,transparent);opacity:.85}
+#whale-panel .intel-panel-head{align-items:center;flex-wrap:wrap}#whale-panel .intel-panel-head h3{font-size:clamp(15px,2vw,19px)!important;letter-spacing:-.3px}
+#whale-panel .intel-panel-head small{color:#d9b66d!important;letter-spacing:1.2px}
+#whale-panel .whale-refresh{border:1px solid #b88e45!important;background:linear-gradient(135deg,#5b4725,#1b2530)!important;color:#ffe7b1!important;border-radius:10px!important;padding:9px 13px!important;box-shadow:0 5px 16px #0004}
+#whale-panel .whale-state{display:flex;align-items:center;gap:13px;padding:13px 15px!important;margin:12px 0!important;border:1px solid #35475a;border-radius:13px;background:linear-gradient(110deg,#172637,#111b27)!important}
+#whale-panel .whale-orbit{width:48px!important;height:48px!important;flex:0 0 48px!important;display:grid;place-items:center;border-radius:14px;background:radial-gradient(circle at 35% 25%,#f8d98b,#a8752c 58%,#4b351c)!important;color:#111!important;font-size:25px!important;box-shadow:0 0 22px #d9a94b30,inset 0 1px #fff8}
+#whale-panel .whale-state b{font-size:13px!important;color:#f6e4bd!important}#whale-panel .whale-state p{font-size:10px!important;line-height:1.8!important;color:#aab8c8!important}
+#whale-panel .whale-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:10px 0}
+#whale-panel .whale-metric{min-width:0;padding:11px 10px;border:1px solid #354454;border-radius:11px;background:linear-gradient(145deg,#1a2734,#111923);box-shadow:inset 0 1px #ffffff08}
+#whale-panel .whale-metric small,#whale-panel .whale-metric span{display:block;color:#94a5b8;font-size:9px;line-height:1.6}
+#whale-panel .whale-metric b{display:block;margin:5px 0;color:#f4d58f;font-size:20px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+#whale-panel .whale-metric span{color:#73869a}
+#whale-panel .whale-transfers{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}
+#whale-panel .whale-transfer{min-width:0;padding:12px!important;border:1px solid #35495a!important;border-radius:11px!important;background:linear-gradient(115deg,#172534,#101923)!important;color:#b7c6d5!important}
+#whale-panel .whale-transfer b{color:#f4d58f;font-size:15px!important}#whale-panel .whale-transfer a{color:#77c9dc!important}
+#whale-panel .whale-empty{display:flex;align-items:center;gap:13px;padding:16px;border:1px dashed #8d754b;border-radius:13px;background:linear-gradient(110deg,#29251d88,#14202b)}
+#whale-panel .whale-empty-icon{display:grid;place-items:center;width:42px;height:42px;flex:0 0 42px;border-radius:12px;background:#d9a94b20;color:#f0c56f;font-size:25px}
+#whale-panel .whale-empty b{color:#f2d69b;font-size:12px}#whale-panel .whale-empty p{margin:5px 0;color:#9eafbf;font-size:10px;line-height:1.8}#whale-panel .whale-empty a{color:#7bd2df;font-size:10px;text-decoration:none}
+@media(max-width:620px){#whale-panel .whale-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}#whale-panel .whale-metric{padding:9px}#whale-panel .whale-metric b{font-size:18px}#whale-panel .whale-transfers{grid-template-columns:1fr}#whale-panel .intel-panel-head{align-items:flex-start}}
+</style>
+<style id="mmp-quantum-market-panels-v2">
+#market-intelligence .intel-suite-head{margin-bottom:16px}
+#market-intelligence .intel-suite-head h2{letter-spacing:-.5px}
+#derivatives-panel,#orderflow-panel{position:relative;overflow:hidden;border:1px solid rgba(198,158,83,.32)!important;background:radial-gradient(ellipse at 95% 0%,rgba(212,166,76,.12),transparent 42%),linear-gradient(145deg,#172330,#0c141e 75%)!important;box-shadow:0 14px 36px #0005,inset 0 1px #ffffff08!important}
+#derivatives-panel:before,#orderflow-panel:before{content:"";position:absolute;inset:0 0 auto;height:2px;background:linear-gradient(90deg,transparent,#d7ad5b,#68c8bc,transparent)}
+#derivatives-panel .intel-panel-head small,#orderflow-panel .intel-panel-head small{color:#d9b76e!important;letter-spacing:1.15px;font-size:9px}
+#derivatives-panel .intel-panel-head h3,#orderflow-panel .intel-panel-head h3{font-size:16px!important;color:#f2e4c8}
+#derivatives-panel .intel-refresh,#orderflow-panel .intel-refresh{border:1px solid #98783f!important;border-radius:10px!important;background:linear-gradient(135deg,#554323,#1a2732)!important;color:#f9dfaa!important;padding:8px 12px!important}
+#derivatives-panel .intel-symbol-row,#orderflow-panel .intel-symbol-row{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:10px 11px;margin:12px 0;border:1px solid #344657;border-radius:11px;background:#0d1722}
+#derivatives-panel .intel-symbol-row label,#orderflow-panel .intel-symbol-row label{color:#9fb0c1;font-size:11px}
+#derivatives-panel .intel-symbol-row input,#orderflow-panel .intel-symbol-row select{min-width:0;flex:1;background:#172534!important;border:1px solid #43566a!important;color:#f4e5c6!important;border-radius:8px;padding:9px}
+#derivatives-panel .intel-metrics,#orderflow-panel .intel-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:12px 0}
+#derivatives-panel .intel-metrics>div,#orderflow-panel .intel-metrics>div{min-width:0;position:relative;padding:13px 12px;border:1px solid #334657;border-radius:12px;background:linear-gradient(145deg,#1b2b3a,#111b27);box-shadow:inset 0 1px #ffffff08}
+#derivatives-panel .intel-metrics small,#orderflow-panel .intel-metrics small{display:block;color:#9db0c1;font-size:10px;line-height:1.7}
+#derivatives-panel .intel-metrics b,#orderflow-panel .intel-metrics b{display:block;margin:6px 0;color:#f3d18a;font-size:clamp(16px,2vw,21px);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+#derivatives-panel .intel-metrics em,#orderflow-panel .intel-metrics em{display:block;color:#6f879b;font-size:9px;font-style:normal}
+#derivatives-panel .intel-foot,#orderflow-panel .intel-foot{padding:10px 12px;border:1px solid #34485a;border-radius:10px;background:#0e1924;color:#a9bac9;font-size:10px;line-height:1.9}
+#orderflow-panel .intel-flow-track{height:9px!important;display:flex;overflow:hidden;border-radius:20px;background:#263341;margin:13px 0}
+#orderflow-buy-bar{background:linear-gradient(90deg,#1e9b7b,#55d4ad)!important;transition:width .4s}
+#orderflow-sell-bar{background:linear-gradient(90deg,#c45d67,#ef8c80)!important;transition:width .4s}
+@media(min-width:760px){#derivatives-panel .intel-metrics,#orderflow-panel .intel-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){#derivatives-panel .intel-panel-head,#orderflow-panel .intel-panel-head{align-items:flex-start;gap:8px}#derivatives-panel .intel-metrics>div,#orderflow-panel .intel-metrics>div{padding:10px}#derivatives-panel .intel-metrics b,#orderflow-panel .intel-metrics b{font-size:16px}}
+</style>
+
+
+
+<style id="mmp-market-snapshot-white-cards-dark-type-20261110">
+/* Canonical source fix: first four market cards are white, so typography must be dark. */
+html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-card{
+ background:#fff!important;
+ background-image:linear-gradient(145deg,#ffffff 0%,#f4f7fa 100%)!important;
+ color:#172633!important;border:1px solid #cbd5df!important;
+ box-shadow:0 5px 18px rgba(15,35,52,.10)!important;
+}
+html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-card .mmp-card-tag,
+html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-card .stat-label,
+html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-card .sub{
+ color:#334654!important;text-shadow:none!important;font-weight:750!important;
+}
+html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-card .stat-label b{
+ color:#805b13!important;font-weight:950!important;
+}
+html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-card .stat-value{
+ color:#101f2b!important;text-shadow:none!important;font-weight:950!important;
+}
+html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-card .sub .positive,
+html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-card .positive{color:#08784f!important}
+html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-card .sub .negative,
+html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-card .negative{color:#bd293d!important}
+html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-card:after{opacity:.35!important}
+</style>
 </head>
 <body class="mmp-app-mode">
 
@@ -6821,99 +6915,6 @@ html body.mmp-app-mode>header.top{
 }
 </style>
 
-<style id="mmp-hard-reset-viewport-top-20261110">
-/* Pin the main bar to the actual viewport edge; reserve exactly its height in the content flow. */
-html,html body,body.mmp-app-mode{margin:0!important;padding:0!important}
-body.mmp-app-mode{position:relative!important}
-body.mmp-app-mode>header.top{
- position:fixed!important;top:0!important;inset:0 0 auto!important;
- height:62px!important;min-height:62px!important;max-height:62px!important;
- margin:0!important;transform:none!important;z-index:5000!important;
-}
-body.mmp-app-mode>.mmp-sidebar{top:62px!important}
-body.mmp-app-mode>main.wrap{
- margin-top:62px!important;margin-block-start:62px!important;
- padding-top:0!important;padding-block-start:0!important;
-}
-body.mmp-app-mode>main.wrap>#mmp-home-hero{margin-top:0!important;margin-block-start:0!important}
-@media(max-width:900px){
- body.mmp-app-mode>header.top{height:62px!important;min-height:62px!important;max-height:62px!important}
- body.mmp-app-mode>main.wrap{margin-top:62px!important;margin-block-start:62px!important;padding-top:0!important;padding-block-start:0!important}
-}
-</style>
+
 </body>
 </html>
-
-<style id="mmp-whale-dashboard-visual-v4">
-#whale-panel{position:relative;overflow:hidden;background:radial-gradient(ellipse at 90% 0%,rgba(247,181,56,.13),transparent 42%),linear-gradient(145deg,#121c29 0%,#0b111a 62%,#111925 100%)!important;border:1px solid rgba(211,164,76,.35)!important;box-shadow:0 14px 38px rgba(0,0,0,.24),inset 0 1px rgba(255,255,255,.035)!important}
-#whale-panel:before{content:"";position:absolute;inset:0 0 auto;height:2px;background:linear-gradient(90deg,transparent,#e5b85d,#7ce0cb,transparent);opacity:.85}
-#whale-panel .intel-panel-head{align-items:center;flex-wrap:wrap}#whale-panel .intel-panel-head h3{font-size:clamp(15px,2vw,19px)!important;letter-spacing:-.3px}
-#whale-panel .intel-panel-head small{color:#d9b66d!important;letter-spacing:1.2px}
-#whale-panel .whale-refresh{border:1px solid #b88e45!important;background:linear-gradient(135deg,#5b4725,#1b2530)!important;color:#ffe7b1!important;border-radius:10px!important;padding:9px 13px!important;box-shadow:0 5px 16px #0004}
-#whale-panel .whale-state{display:flex;align-items:center;gap:13px;padding:13px 15px!important;margin:12px 0!important;border:1px solid #35475a;border-radius:13px;background:linear-gradient(110deg,#172637,#111b27)!important}
-#whale-panel .whale-orbit{width:48px!important;height:48px!important;flex:0 0 48px!important;display:grid;place-items:center;border-radius:14px;background:radial-gradient(circle at 35% 25%,#f8d98b,#a8752c 58%,#4b351c)!important;color:#111!important;font-size:25px!important;box-shadow:0 0 22px #d9a94b30,inset 0 1px #fff8}
-#whale-panel .whale-state b{font-size:13px!important;color:#f6e4bd!important}#whale-panel .whale-state p{font-size:10px!important;line-height:1.8!important;color:#aab8c8!important}
-#whale-panel .whale-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:10px 0}
-#whale-panel .whale-metric{min-width:0;padding:11px 10px;border:1px solid #354454;border-radius:11px;background:linear-gradient(145deg,#1a2734,#111923);box-shadow:inset 0 1px #ffffff08}
-#whale-panel .whale-metric small,#whale-panel .whale-metric span{display:block;color:#94a5b8;font-size:9px;line-height:1.6}
-#whale-panel .whale-metric b{display:block;margin:5px 0;color:#f4d58f;font-size:20px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
-#whale-panel .whale-metric span{color:#73869a}
-#whale-panel .whale-transfers{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}
-#whale-panel .whale-transfer{min-width:0;padding:12px!important;border:1px solid #35495a!important;border-radius:11px!important;background:linear-gradient(115deg,#172534,#101923)!important;color:#b7c6d5!important}
-#whale-panel .whale-transfer b{color:#f4d58f;font-size:15px!important}#whale-panel .whale-transfer a{color:#77c9dc!important}
-#whale-panel .whale-empty{display:flex;align-items:center;gap:13px;padding:16px;border:1px dashed #8d754b;border-radius:13px;background:linear-gradient(110deg,#29251d88,#14202b)}
-#whale-panel .whale-empty-icon{display:grid;place-items:center;width:42px;height:42px;flex:0 0 42px;border-radius:12px;background:#d9a94b20;color:#f0c56f;font-size:25px}
-#whale-panel .whale-empty b{color:#f2d69b;font-size:12px}#whale-panel .whale-empty p{margin:5px 0;color:#9eafbf;font-size:10px;line-height:1.8}#whale-panel .whale-empty a{color:#7bd2df;font-size:10px;text-decoration:none}
-@media(max-width:620px){#whale-panel .whale-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}#whale-panel .whale-metric{padding:9px}#whale-panel .whale-metric b{font-size:18px}#whale-panel .whale-transfers{grid-template-columns:1fr}#whale-panel .intel-panel-head{align-items:flex-start}}
-</style>
-<style id="mmp-quantum-market-panels-v2">
-#market-intelligence .intel-suite-head{margin-bottom:16px}
-#market-intelligence .intel-suite-head h2{letter-spacing:-.5px}
-#derivatives-panel,#orderflow-panel{position:relative;overflow:hidden;border:1px solid rgba(198,158,83,.32)!important;background:radial-gradient(ellipse at 95% 0%,rgba(212,166,76,.12),transparent 42%),linear-gradient(145deg,#172330,#0c141e 75%)!important;box-shadow:0 14px 36px #0005,inset 0 1px #ffffff08!important}
-#derivatives-panel:before,#orderflow-panel:before{content:"";position:absolute;inset:0 0 auto;height:2px;background:linear-gradient(90deg,transparent,#d7ad5b,#68c8bc,transparent)}
-#derivatives-panel .intel-panel-head small,#orderflow-panel .intel-panel-head small{color:#d9b76e!important;letter-spacing:1.15px;font-size:9px}
-#derivatives-panel .intel-panel-head h3,#orderflow-panel .intel-panel-head h3{font-size:16px!important;color:#f2e4c8}
-#derivatives-panel .intel-refresh,#orderflow-panel .intel-refresh{border:1px solid #98783f!important;border-radius:10px!important;background:linear-gradient(135deg,#554323,#1a2732)!important;color:#f9dfaa!important;padding:8px 12px!important}
-#derivatives-panel .intel-symbol-row,#orderflow-panel .intel-symbol-row{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:10px 11px;margin:12px 0;border:1px solid #344657;border-radius:11px;background:#0d1722}
-#derivatives-panel .intel-symbol-row label,#orderflow-panel .intel-symbol-row label{color:#9fb0c1;font-size:11px}
-#derivatives-panel .intel-symbol-row input,#orderflow-panel .intel-symbol-row select{min-width:0;flex:1;background:#172534!important;border:1px solid #43566a!important;color:#f4e5c6!important;border-radius:8px;padding:9px}
-#derivatives-panel .intel-metrics,#orderflow-panel .intel-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:12px 0}
-#derivatives-panel .intel-metrics>div,#orderflow-panel .intel-metrics>div{min-width:0;position:relative;padding:13px 12px;border:1px solid #334657;border-radius:12px;background:linear-gradient(145deg,#1b2b3a,#111b27);box-shadow:inset 0 1px #ffffff08}
-#derivatives-panel .intel-metrics small,#orderflow-panel .intel-metrics small{display:block;color:#9db0c1;font-size:10px;line-height:1.7}
-#derivatives-panel .intel-metrics b,#orderflow-panel .intel-metrics b{display:block;margin:6px 0;color:#f3d18a;font-size:clamp(16px,2vw,21px);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
-#derivatives-panel .intel-metrics em,#orderflow-panel .intel-metrics em{display:block;color:#6f879b;font-size:9px;font-style:normal}
-#derivatives-panel .intel-foot,#orderflow-panel .intel-foot{padding:10px 12px;border:1px solid #34485a;border-radius:10px;background:#0e1924;color:#a9bac9;font-size:10px;line-height:1.9}
-#orderflow-panel .intel-flow-track{height:9px!important;display:flex;overflow:hidden;border-radius:20px;background:#263341;margin:13px 0}
-#orderflow-buy-bar{background:linear-gradient(90deg,#1e9b7b,#55d4ad)!important;transition:width .4s}
-#orderflow-sell-bar{background:linear-gradient(90deg,#c45d67,#ef8c80)!important;transition:width .4s}
-@media(min-width:760px){#derivatives-panel .intel-metrics,#orderflow-panel .intel-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:560px){#derivatives-panel .intel-panel-head,#orderflow-panel .intel-panel-head{align-items:flex-start;gap:8px}#derivatives-panel .intel-metrics>div,#orderflow-panel .intel-metrics>div{padding:10px}#derivatives-panel .intel-metrics b,#orderflow-panel .intel-metrics b{font-size:16px}}
-</style>
-
-
-
-<style id="mmp-market-snapshot-white-cards-dark-type-20261110">
-/* Canonical source fix: first four market cards are white, so typography must be dark. */
-html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-card{
- background:#fff!important;
- background-image:linear-gradient(145deg,#ffffff 0%,#f4f7fa 100%)!important;
- color:#172633!important;border:1px solid #cbd5df!important;
- box-shadow:0 5px 18px rgba(15,35,52,.10)!important;
-}
-html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-card .mmp-card-tag,
-html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-card .stat-label,
-html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-card .sub{
- color:#334654!important;text-shadow:none!important;font-weight:750!important;
-}
-html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-card .stat-label b{
- color:#805b13!important;font-weight:950!important;
-}
-html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-card .stat-value{
- color:#101f2b!important;text-shadow:none!important;font-weight:950!important;
-}
-html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-card .sub .positive,
-html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-card .positive{color:#08784f!important}
-html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-card .sub .negative,
-html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-card .negative{color:#bd293d!important}
-html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-card:after{opacity:.35!important}
-</style>
