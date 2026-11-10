@@ -367,9 +367,30 @@ function publishSnapshot(btcTrend){
 }
 let searchTimer=null;
 async function loadIndependentCatalog(){
- const status=$("asset-search-status");status.textContent="در حال دریافت کاتالوگ مستقل بازار…";
- try{const data=await apiJSON("/hunter-universe",60000);state.searchUniverse=Array.isArray(data.hunter_assets)?data.hunter_assets.filter(a=>a&&a.hasUsdtMarket&&Number(a.current_price)>0):[];status.textContent="یک ارز را انتخاب کن؛ پایش مستقل تا دریافت داده معتبر و سیگنال تأییدشده ادامه پیدا می‌کند · "+state.searchUniverse.length.toLocaleString("fa-IR")+" جفت واجد شرایط USDT Spot.";renderAssetSearch()}
- catch(e){status.textContent="دریافت فهرست مستقل ناموفق بود: "+e.message}
+ const status=$("asset-search-status"),host=$("asset-search-results");
+ status.textContent="در حال دریافت کاتالوگ مستقل بازار…";
+ if(host){host.hidden=false;host.innerHTML='<div class="empty">در حال دریافت فهرست واقعی بازار USDT Spot…</div>'}
+ try{
+  const data=await apiJSON("/hunter-universe",60000);
+  // /hunter-universe already returns hunter_assets pre-filtered to valid USDT Spot pairs.
+  // Do not re-filter that canonical list by optional metadata flags: older Worker
+  // responses may omit hasUsdtMarket even though the asset is already eligible.
+  const canonical=Array.isArray(data.hunter_assets)?data.hunter_assets:null;
+  const fallback=Array.isArray(data.assets)?data.assets:[];
+  const source=canonical||fallback;
+  state.searchUniverse=source.filter(a=>{
+   if(!a||!String(a.symbol||"").trim())return false;
+   if(canonical)return true;
+   const pairs=Array.isArray(a.marketPairs)?a.marketPairs:[];
+   return a.hasUsdtMarket===true||pairs.some(p=>String(p.quote||p.quoteAsset||"").toUpperCase()==="USDT");
+  }).map(a=>({...a,symbol:String(a.symbol).toUpperCase(),current_price:Number(a.current_price)||0,total_volume:Number(a.total_volume)||0}));
+  if(!state.searchUniverse.length)throw new Error("پاسخ Worker فهرست دارایی قابل‌نمایشی ندارد؛ hunter_count="+String(data.hunter_count??"نامشخص")+" · count="+String(data.count??"نامشخص"));
+  status.textContent="فهرست بازار دریافت شد · "+state.searchUniverse.length.toLocaleString("fa-IR")+" جفت USDT Spot · مرتب‌شده بر اساس حجم ۲۴ساعته.";
+  renderAssetSearch();
+ }catch(e){
+  status.textContent="دریافت فهرست ارزها ناموفق بود: "+e.message;
+  if(host){host.hidden=false;host.innerHTML='<div class="empty">فهرست ارزها بارگذاری نشد. اتصال Worker یا پاسخ کاتالوگ بازار را بررسی کن.<br><button class="btn" type="button" data-catalog-retry="1">تلاش دوباره برای دریافت فهرست</button></div>'}
+ }
 }
 function renderAssetSearch(){
  const q=$("asset-search").value.trim().toUpperCase(),host=$("asset-search-results");
@@ -435,7 +456,7 @@ async function runAllQuantumEngines(){
 $("run-all-engines").addEventListener("click",runAllQuantumEngines);
 const engineLaunchParams=new URLSearchParams(location.search);
 if(engineLaunchParams.get("run-engines")==="1")setTimeout(()=>{engineLaunchParams.delete("run-engines");const cleanQuery=engineLaunchParams.toString();history.replaceState(null,"",location.pathname+(cleanQuery?"?"+cleanQuery:"")+location.hash);runAllQuantumEngines();},650);
-$("asset-search").addEventListener("input",()=>{clearTimeout(searchTimer);searchTimer=setTimeout(renderAssetSearch,120)});$("asset-search-clear").addEventListener("click",()=>{state.independentStop=true;$("asset-search").value="";state.assetLimit=10;renderAssetSearch();$("asset-search").focus()});$("asset-search-stop").addEventListener("click",()=>{state.independentStop=true});$("asset-search-results").addEventListener("click",e=>{const b=e.target.closest("[data-independent-analyze]");if(b)analyzeIndependent(b.dataset.independentAnalyze)});$("scan").addEventListener("click",scan);$("back").addEventListener("click",()=>location.href="/");$("filter").addEventListener("input",renderRows);$("direction").addEventListener("change",renderRows);$("sort").addEventListener("change",renderRows);$("rows").addEventListener("click",e=>{const b=e.target.closest("[data-detail]");if(b)showDetail(b.dataset.detail)});$("record").addEventListener("click",record);$("history").addEventListener("click",updateLedger);$("export").addEventListener("click",exportCSV);
+$("asset-search").addEventListener("input",()=>{clearTimeout(searchTimer);searchTimer=setTimeout(renderAssetSearch,120)});$("asset-search-clear").addEventListener("click",()=>{state.independentStop=true;$("asset-search").value="";state.assetLimit=10;renderAssetSearch();$("asset-search").focus()});$("asset-search-stop").addEventListener("click",()=>{state.independentStop=true});$("asset-search-results").addEventListener("click",e=>{const retry=e.target.closest("[data-catalog-retry]");if(retry){loadIndependentCatalog();return;}const b=e.target.closest("[data-independent-analyze]");if(b)analyzeIndependent(b.dataset.independentAnalyze)});$("scan").addEventListener("click",scan);$("back").addEventListener("click",()=>location.href="/");$("filter").addEventListener("input",renderRows);$("direction").addEventListener("change",renderRows);$("sort").addEventListener("change",renderRows);$("rows").addEventListener("click",e=>{const b=e.target.closest("[data-detail]");if(b)showDetail(b.dataset.detail)});$("record").addEventListener("click",record);$("history").addEventListener("click",updateLedger);$("export").addEventListener("click",exportCSV);
 renderEngines(null);renderLedger();renderQuantumCharts();loadIndependentCatalog();startLiveMonitor();if(state.ledger.length)log("حافظه محلی شامل "+state.ledger.length+" پیش‌بینی قبلی است.");
 })();
 </script>
