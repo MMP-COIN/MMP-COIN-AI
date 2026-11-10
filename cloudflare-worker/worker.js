@@ -2,8 +2,8 @@
 import { QUANTUM_ENGINE_NAME, QUANTUM_ENGINE_VERSION, normalizeQuantumUniverse, scoreQuantumOpportunity, calculateQuantumIndicators, calculateMarketScanPriority } from "./quantum-core.js";
 import { normalizeMarketCandles, alignMarketCandles, assessMarketDataFreshness } from "./market-data-core.js";
 import { updateLearningLedger, applyLearningCalibration } from "./learning-engine.js";
-const HUNTER_BATCH_SIZE = 16;
-const FUTURES_HUNTER_BATCH_SIZE = 12;
+const HUNTER_BATCH_SIZE = 8; // per-cycle budget; the full rotating universe remains uncapped
+const FUTURES_HUNTER_BATCH_SIZE = 8; // per-cycle budget; the full rotating universe remains uncapped
 const MODEL = "@cf/openai/gpt-oss-120b";
 function extractAIJson(value){
  let raw=typeof value==="string"?value:JSON.stringify(value??"");
@@ -695,7 +695,7 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
  const pair=symbol+"USDT",get=url=>marketFlowJson(url,4500);
  const tryHosts=async(label,hosts,build,extract,map)=>{
   let lastError=null;
-  for(const host of hosts){
+  for(const host of hosts.slice(0,2)){
    try{
     const payload=await get(build(host)),raw=extract(payload);
     if(!Array.isArray(raw))throw new Error(label+" returned an invalid candle payload");
@@ -745,7 +745,7 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
  const symbolHash=String(symbol).split("").reduce((sum,char)=>sum+char.charCodeAt(0),0);
  const rotation=fallbackPool.length?(symbolHash+Math.floor(Date.now()/60000))%fallbackPool.length:0;
  const rotatedFallback=[...fallbackPool.slice(rotation),...fallbackPool.slice(0,rotation)];
- const sourceLimit=Math.min(4,sources.length),orderedIndices=unique([...primaryOrder,...rotatedFallback]),orderedSources=orderedIndices.map(index=>sources[index]).filter(Boolean).slice(0,sourceLimit),verified=[];
+ const sourceLimit=Math.min(2,sources.length),orderedIndices=unique([...primaryOrder,...rotatedFallback]),orderedSources=orderedIndices.map(index=>sources[index]).filter(Boolean).slice(0,sourceLimit),verified=[];
  let selectedPair=null,bestObservedPair=null;
  const evaluatePairs=()=>{
   const pairs=[];
@@ -1020,7 +1020,7 @@ function markQuantumEvidence(activity,key){if(activity?.[key]){activity[key].pro
 async function scanHunterSymbols(symbols,marketType="spot",assetList=[],env=null,options={}){
  const assetMap=new Map((Array.isArray(assetList)?assetList:[]).map(x=>[String(x.symbol||"").toUpperCase(),x]));
  let i=0,failed=0,rejected=0,flowChecked=0;const candidates=[],errors=[],rejections=[],engineActivity=Object.fromEntries(QUANTUM_ACTIVITY_KEYS.map(key=>[key,{processed:0,evidence:0}]));
- const concurrency=8;
+ const concurrency=4;
  await Promise.all(Array.from({length:Math.min(concurrency,symbols.length)},async()=>{while(i<symbols.length){const symbol=symbols[i++];try{const x=await analyzeDigitalHunterSymbol(symbol,marketType,assetMap.get(symbol),engineActivity);if(x)candidates.push(x);}catch(e){const message=String(e?.message||e);if(message.startsWith("QUALITY_REJECTED:")){rejected++;rejections.push({symbol,error:message.slice(0,180)});}else{failed++;errors.push({symbol,error:message.slice(0,220)});}}}}));
  candidates.sort((a,b)=>b.score-a.score);const signals=[];
  const flowEligible=x=>!x.lowLiquidity&&(x.candidateGate===true||(x.earlyCoreAligned===true&&x.score>=(marketType==="futures"?62:60)));const flowCandidates=(marketType==="futures"?[...candidates.filter(flowEligible)].sort((a,b)=>b.score-a.score).slice(0,1):["bull","bear"].flatMap(trend=>candidates.filter(x=>x.trend===trend&&flowEligible(x)).sort((a,b)=>b.score-a.score).slice(0,1))).filter(x=>x.score>=50);
