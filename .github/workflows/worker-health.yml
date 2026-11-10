@@ -47,7 +47,7 @@ jobs:
           import fs from "node:fs";
           const source = fs.readFileSync("cloudflare-worker/quantum-core.js", "utf8");
           const mod = await import("data:text/javascript;base64," + Buffer.from(source).toString("base64"));
-          if (mod.QUANTUM_ENGINE_VERSION !== "QIE-4.0.0" || typeof mod.calculateQuantumIndicators !== "function") throw new Error("QIE 3 technical-indicator engine is missing");
+          if (mod.QUANTUM_ENGINE_VERSION !== "QIE-4.0.0" || typeof mod.calculateQuantumIndicators !== "function") throw new Error("QIE 4 technical-indicator engine is missing");
           if (typeof mod.calculateMarketScanPriority !== "function") throw new Error("Shared market-mover priority engine is missing");
           const activeMover = mod.calculateMarketScanPriority({hunterChange24h:20,total_volume:35000000});
           const megaLiquid = mod.calculateMarketScanPriority({hunterChange24h:0,total_volume:2000000000});
