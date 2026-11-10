@@ -23,6 +23,7 @@ concurrency:
 
 jobs:
   audit:
+    if: false # Emergency stop: full-universe audit consumes the exhausted Workers request quota
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
