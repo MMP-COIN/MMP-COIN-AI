@@ -2701,7 +2701,7 @@ html body #ai-section .tf-card{min-width:0!important;max-width:100%!important;ov
 </section>
 
 <section class="card ai-terminal" id="ai-section" data-quantum-module="analyzer">
- <div class="section-head"><div><div class="mmp-section-heading-content"><img class="mmp-module-logo" src="assets/logos/mmp-analyzer.svg" alt="نشان تحلیلگر کوانتومی"><div class="section-kicker">QUANTUM AI ANALYZER · MULTI-LAYER</div><h2>تحلیلگر کوانتومی چندلایه بازار</h2></div><span class="badge">تحلیل داده‌محور</span></div>
+ <div class="section-head"><div><div class="mmp-section-heading-content"><img class="mmp-module-logo" src="assets/logos/mmp-analyzer.svg" alt="نشان تحلیلگر کوانتومی"><div class="section-kicker">QUANTUM AI ANALYZER · MULTI-LAYER</div><h2>تحلیلگر کوانتومی چندلایه بازار</h2></div><span class="badge">تحلیل داده‌محور</span></div></div>
  <p class="sub ai-intro">یک ارز را انتخاب کن تا روند، سطوح کلیدی و سناریوهای احتمالی بازار بررسی شود؛ تصمیم نهایی با خودت است.</p>
  <div class="ai-toolbar">
   <div class="ai-coin-picker" id="ai-coin-picker"><select id="ai-coin-select" class="sr-only" aria-label="انتخاب ارز برای تحلیل"><option value="">انتخاب ارز…</option></select><button type="button" class="ai-coin-picker-trigger" id="ai-coin-picker-trigger" aria-expanded="false" aria-controls="ai-coin-picker-menu"><span class="ai-coin-picker-current" id="ai-coin-picker-current"><span class="ai-coin-picker-placeholder">انتخاب ارز دیجیتال برای تحلیل</span></span><span class="ai-coin-picker-chevron">⌄</span></button><div class="ai-coin-picker-menu" id="ai-coin-picker-menu" hidden><input id="ai-coin-picker-search" type="search" placeholder="جست‌وجوی نام یا نماد ارز…" autocomplete="off"><div class="ai-coin-picker-options" id="ai-coin-picker-options"><div class="ai-empty">در انتظار دریافت فهرست ارزها…</div></div><div class="ai-coin-picker-manual"><input id="ai-manual-coin" maxlength="20" placeholder="نماد دلخواه؛ مثل SOL"><button type="button" id="ai-manual-coin-add">＋ افزودن دستی</button></div></div></div>
@@ -7177,40 +7177,41 @@ main,.app-main,.container,.terminal-grid,.intel-suite{min-width:0}
 #ai-section .ai-report .ai-level b{font-size:10px}
 #ai-section .ai-report .ai-pill{font-size:9px;padding:3px 7px;margin:2px}
 @media(max-width:760px){
- #ai-section{padding:10px!important}
- #ai-section>.section-head{align-items:center;gap:7px;margin-bottom:5px!important}
- #ai-section .mmp-section-heading-content{padding-inline-start:42px;min-height:36px}
- #ai-section .mmp-module-logo{width:34px;height:34px}
- #ai-section .section-head h2{font-size:16px!important;line-height:1.35!important}
- #ai-section .ai-intro{font-size:10px!important;line-height:1.55;margin:3px 0 8px!important}
- #ai-section .ai-toolbar{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:7px!important;padding:8px!important}
- #ai-section .ai-toolbar>.ai-coin-picker{grid-column:1/-1!important}
- #ai-section .ai-toolbar>#ai-market-mode{grid-column:1!important}
- #ai-section .ai-toolbar>#ai-run-btn{grid-column:2!important}
- #ai-section .ai-coin-picker-trigger,#ai-section .ai-toolbar .dropdown-select-box,#ai-section #ai-run-btn{min-height:42px!important;height:42px!important;padding:6px 9px!important;font-size:11px!important}
+ #ai-section{padding:10px!important;overflow:visible!important}
+ #ai-section>.section-head{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:7px!important;margin:0 0 6px!important}
+ #ai-section>.section-head>div{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:6px!important;min-width:0!important;width:100%!important}
+ #ai-section .mmp-section-heading-content{padding-inline-start:40px!important;min-height:36px!important;flex:1 1 auto!important}
+ #ai-section .mmp-module-logo{width:32px!important;height:32px!important}
+ #ai-section .section-head h2{font-size:15px!important;line-height:1.35!important}
+ #ai-section .section-head>.badge,#ai-section>.section-head>div>.badge{font-size:8px!important;padding:4px 6px!important;white-space:nowrap!important}
+ #ai-section .ai-intro{font-size:10px!important;line-height:1.55!important;margin:3px 0 8px!important}
+ #ai-section .ai-toolbar{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:6px!important;padding:8px!important}
+ #ai-section .ai-toolbar>*{grid-column:1!important;width:100%!important;min-width:0!important}
+ #ai-section .ai-coin-picker-trigger,#ai-section .ai-toolbar .dropdown-select-box,#ai-section #ai-run-btn{min-height:40px!important;height:40px!important;padding:6px 9px!important;font-size:11px!important}
  #ai-section .ai-coin-picker-menu{min-width:0!important;width:100%!important;max-width:100%!important}
- #ai-section .ai-coin-picker-options{grid-template-columns:repeat(2,minmax(0,1fr))!important;max-height:32vh}
- #ai-section .ai-coin-picker-option{min-height:38px;padding:5px;font-size:10px}
- #ai-section .ai-grid.ai-grid-compact{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:8px 0 5px}
- #ai-section .ai-metric{padding:7px 6px;text-align:center}
- #ai-section .ai-metric small{font-size:8px;line-height:1.4}
- #ai-section .ai-metric b{font-size:10px;line-height:1.4}
- #ai-section .ai-status{margin:4px 1px;font-size:9px;line-height:1.5}
- #ai-section .ai-confidence-box{padding:8px 9px;margin:6px 0}
+ #ai-section .ai-coin-picker-options{grid-template-columns:repeat(2,minmax(0,1fr))!important;max-height:30vh!important}
+ #ai-section .ai-coin-picker-option{min-height:36px!important;padding:5px!important;font-size:10px!important}
+ #ai-section .ai-grid.ai-grid-compact{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:6px!important;margin:8px 0 5px!important}
+ #ai-section .ai-metric{padding:7px 5px!important;text-align:center!important}
+ #ai-section .ai-metric small{font-size:8px!important;line-height:1.4!important}
+ #ai-section .ai-metric b{font-size:10px!important;line-height:1.4!important}
+ #ai-section .ai-status{margin:4px 1px!important;font-size:9px!important;line-height:1.5!important}
+ #ai-section .ai-confidence-box{padding:8px 9px!important;margin:6px 0!important}
  #ai-section .ai-timeframe-panel{padding:9px!important;margin-top:7px!important}
  #ai-section .ai-timeframe-title{font-size:11px!important}
  #ai-section .ai-timeframe-subtitle{font-size:9px!important;margin-bottom:6px!important}
- #ai-section .tf-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:6px}
- #ai-section .tf-card{padding:7px}
- #ai-section .ai-report .ai-levels{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #ai-section .tf-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:6px!important}
+ #ai-section .tf-card{padding:7px!important}
+ #ai-section .ai-report .ai-levels{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ #ai-section .ai-report{padding:10px!important;font-size:10px!important}
 }
 @media(max-width:380px){
- #ai-section>.section-head>.badge{display:none}
- #ai-section .ai-toolbar{gap:6px!important;padding:7px!important}
+ #ai-section .section-head>.badge,#ai-section>.section-head>div>.badge{display:none!important}
+ #ai-section .ai-toolbar{gap:5px!important;padding:7px!important}
  #ai-section .ai-coin-picker-trigger,#ai-section .ai-toolbar .dropdown-select-box,#ai-section #ai-run-btn{font-size:10px!important;padding-inline:6px!important}
- #ai-section .ai-grid.ai-grid-compact{grid-template-columns:repeat(3,minmax(0,1fr))}
- #ai-section .ai-metric small{font-size:7px}
- #ai-section .ai-metric b{font-size:9px}
+ #ai-section .ai-grid.ai-grid-compact{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+ #ai-section .ai-metric small{font-size:7px!important}
+ #ai-section .ai-metric b{font-size:9px!important}
 }
 </style>
 
