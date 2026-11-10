@@ -930,7 +930,21 @@ async function loadFuturesMarketFlow(symbol,windowMinutes=5){
    if(rows.length&&betterFlow(rows,kucoinTruncated)){trades=rows;truncated=kucoinTruncated;provider="KuCoin USDT Futures · real trades";}
   }catch(error){lastError="KuCoin Futures: "+String(error?.message||error).slice(0,120);}
  }
- if(!trades?.length)throw new Error("Futures trade flow unavailable from Bybit, Bitget V2/V3, Binance, OKX, Gate and KuCoin: "+lastError);
+ if(!trades?.length||truncated||trades.length<20){
+ try{
+  const market=base+"_PERP";
+  const [buyRows,sellRows]=await Promise.all([
+   marketFlowJson("https://whitebit.com/api/v4/public/trades/"+encodeURIComponent(market)+"?type=buy",7500),
+   marketFlowJson("https://whitebit.com/api/v4/public/trades/"+encodeURIComponent(market)+"?type=sell",7500)
+  ]);
+  if(!Array.isArray(buyRows)||!Array.isArray(sellRows))throw new Error("WhiteBIT Futures trades response invalid");
+  const normalizeWhitebit=(rows,side)=>rows.map(x=>{let time=Number(x.trade_timestamp);if(time>0&&time<1e12)time*=1000;return {time,price:Number(x.price),size:Number(x.quote_volume),side};}).filter(x=>x.time>=cutoff&&x.time<=now&&x.price>0&&x.size>0);
+  const rows=[...normalizeWhitebit(buyRows,"Buy"),...normalizeWhitebit(sellRows,"Sell")].sort((a,b)=>b.time-a.time);
+  const oldest=rows.reduce((v,x)=>Math.min(v,x.time),Infinity),whitebitTruncated=Number.isFinite(oldest)&&oldest>cutoff+5000;
+  if(rows.length&&betterFlow(rows,whitebitTruncated)){trades=rows;truncated=whitebitTruncated;provider="WhiteBIT USDT Futures · real trades";}
+ }catch(error){lastError="WhiteBIT Futures: "+String(error?.message||error).slice(0,120);}
+}
+if(!trades?.length)throw new Error("Futures trade flow unavailable from Bybit, Bitget V2/V3, Binance, OKX, Gate, KuCoin and WhiteBIT: "+lastError);
  const buckets=new Map();let buy5m=0,sell5m=0;
  for(const trade of trades){const quote=trade.price*trade.size;if(!(quote>0))continue;if(trade.side==="Buy")buy5m+=quote;else sell5m+=quote;const minute=Math.floor(trade.time/60000)*60000,bucket=buckets.get(minute)||{time:minute,buy:0,sell:0,count:0};bucket[trade.side==="Buy"?"buy":"sell"]+=quote;bucket.count++;buckets.set(minute,bucket);}
  const rows=[...buckets.values()].sort((a,b)=>a.time-b.time).map(x=>[x.time,x.buy,x.sell,x.buy-x.sell]);
