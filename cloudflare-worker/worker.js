@@ -1214,6 +1214,18 @@ async function handle(request,env){
   const flowWindow=url.searchParams.get("window")||(marketType==="futures"?1:5);try{return json(marketType==="futures"?await loadFuturesMarketFlow(symbol,flowWindow):await loadMarketFlow(symbol,flowWindow),200,request);}
   catch(error){return json({error:String(error?.message||"دریافت جریان معاملات ناموفق بود").slice(0,260)},502,request);}
  }
+ if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-combined-snapshot"){
+  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-combined-snapshot"),request);if(limited)return limited;
+  if(!env.ADMIN_DB)return json({status:"offline",error:"ADMIN_DB binding missing"},503,request);
+  const [spotRow,futuresRow]=await Promise.all([
+   env.ADMIN_DB.prepare("SELECT payload,updated_at FROM hunter_engine_state WHERE id = ?").bind("digital-hunter-v2").first(),
+   env.ADMIN_DB.prepare("SELECT payload,updated_at FROM hunter_engine_state WHERE id = ?").bind("digital-hunter-v2-futures").first()
+  ]);
+  let spotSaved=null,futuresSaved=null;try{spotSaved=spotRow?.payload?JSON.parse(spotRow.payload):null;}catch{}try{futuresSaved=futuresRow?.payload?JSON.parse(futuresRow.payload):null;}catch{}
+  const spot=spotSaved?.snapshot||{status:"warming_up",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,signals:[],scanned_count:0,universe_count:0};
+  const futures=futuresSaved?.snapshot||{status:"warming_up",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,market:"futures",signals:[],scanned_count:0,universe_count:0};
+  return json({status:spot.status==="online"&&futures.status==="online"?"online":"warming_up",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,spot,futures,updated_at:{spot:spotRow?.updated_at||null,futures:futuresRow?.updated_at||null}},200,request);
+ }
  if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-snapshot"){
   const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-snapshot"),request);if(limited)return limited;if(!env.ADMIN_DB)return json({status:"offline",error:"ADMIN_DB binding missing"},503,request);
   const row=await env.ADMIN_DB.prepare("SELECT payload FROM hunter_engine_state WHERE id = ?").bind("digital-hunter-v2").first();let saved=null;try{saved=row?.payload?JSON.parse(row.payload):null;}catch{}
