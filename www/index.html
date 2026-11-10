@@ -6822,27 +6822,23 @@ html body.mmp-app-mode>header.top{
 </style>
 
 <style id="mmp-hard-reset-viewport-top-20261110">
-/* Final viewport-edge reset: remove the 18px top inset that reappeared from legacy responsive rules. */
-html,html body,body.mmp-app-mode{
- margin:0!important;padding:0!important;
-}
-body.mmp-app-mode{
- position:relative!important;inset-block-start:0!important;
-}
+/* Pin the main bar to the actual viewport edge; reserve exactly its height in the content flow. */
+html,html body,body.mmp-app-mode{margin:0!important;padding:0!important}
+body.mmp-app-mode{position:relative!important}
 body.mmp-app-mode>header.top{
- position:sticky!important;top:0!important;inset-block-start:0!important;
- margin:0!important;transform:none!important;
+ position:fixed!important;top:0!important;inset:0 0 auto!important;
+ height:62px!important;min-height:62px!important;max-height:62px!important;
+ margin:0!important;transform:none!important;z-index:5000!important;
 }
+body.mmp-app-mode>.mmp-sidebar{top:62px!important}
 body.mmp-app-mode>main.wrap{
- margin-block-start:0!important;margin-top:0!important;
- padding-block-start:0!important;padding-top:0!important;
+ margin-top:62px!important;margin-block-start:62px!important;
+ padding-top:0!important;padding-block-start:0!important;
 }
-body.mmp-app-mode>main.wrap>#mmp-home-hero{
- margin-block-start:0!important;margin-top:0!important;
-}
+body.mmp-app-mode>main.wrap>#mmp-home-hero{margin-top:0!important;margin-block-start:0!important}
 @media(max-width:900px){
- body.mmp-app-mode>header.top{top:0!important;inset-block-start:0!important}
- body.mmp-app-mode>main.wrap{padding-top:0!important;padding-block-start:0!important}
+ body.mmp-app-mode>header.top{height:62px!important;min-height:62px!important;max-height:62px!important}
+ body.mmp-app-mode>main.wrap{margin-top:62px!important;margin-block-start:62px!important;padding-top:0!important;padding-block-start:0!important}
 }
 </style>
 </body>
