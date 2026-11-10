@@ -1018,12 +1018,13 @@ async function loadHunterFundingSentiment(symbol,trend){
 function markQuantumEvidence(activity,key){if(activity?.[key]){activity[key].processed++;activity[key].evidence++;}}
 async function scanHunterSymbols(symbols,marketType="spot",assetList=[],env=null){
  const assetMap=new Map((Array.isArray(assetList)?assetList:[]).map(x=>[String(x.symbol||"").toUpperCase(),x]));
- let i=0,failed=0,rejected=0;const candidates=[],errors=[],rejections=[],engineActivity=Object.fromEntries(QUANTUM_ACTIVITY_KEYS.map(key=>[key,{processed:0,evidence:0}]));
+ let i=0,failed=0,rejected=0,flowChecked=0;const candidates=[],errors=[],rejections=[],engineActivity=Object.fromEntries(QUANTUM_ACTIVITY_KEYS.map(key=>[key,{processed:0,evidence:0}]));
  const concurrency=4;
  await Promise.all(Array.from({length:Math.min(concurrency,symbols.length)},async()=>{while(i<symbols.length){const symbol=symbols[i++];try{const x=await analyzeDigitalHunterSymbol(symbol,marketType,assetMap.get(symbol),engineActivity);if(x)candidates.push(x);}catch(e){const message=String(e?.message||e);if(message.startsWith("QUALITY_REJECTED:")){rejected++;rejections.push({symbol,error:message.slice(0,180)});}else{failed++;errors.push({symbol,error:message.slice(0,220)});}}}}));
  candidates.sort((a,b)=>b.score-a.score);const signals=[];
  const flowCandidates=(marketType==="futures"?[...candidates.filter(x=>x.candidateGate===true&&!x.lowLiquidity)].sort((a,b)=>b.score-a.score).slice(0,1):["bull","bear"].flatMap(trend=>candidates.filter(x=>x.trend===trend&&x.candidateGate===true&&!x.lowLiquidity).sort((a,b)=>b.score-a.score).slice(0,1))).filter(x=>x.score>=50);
  await Promise.all(flowCandidates.map(async x=>{
+  flowChecked++;x.flowReviewAttempted=true;
   try{
    let sentiment={available:false,score:null,sourceCount:0,sources:[]};
    if(marketType==="futures"){
@@ -1070,7 +1071,7 @@ async function scanHunterSymbols(symbols,marketType="spot",assetList=[],env=null
   catch(error){x.aiReview={status:"unavailable",reason:String(error?.message||error).slice(0,180)};}
  }
  const preliminary_signals=candidates.filter(x=>x.confirmed!==true).slice(0,12).map(x=>({...x,stage:"preliminary",missingEvidence:x.quantum?.missingEvidence||[],preliminaryReason:x.candidateGate?"نامزد فنی قوی؛ هنوز جریان واقعی معاملات و عمق سفارش تأیید نشده است":"نامزد زودهنگام؛ هم‌جهتی ۱۵ دقیقه یا بخشی از شروط فنی هنوز کامل نیست"}));
- return {market:marketType,requested:symbols.length,scanned:symbols.length-failed,candidates:candidates.length,failed,rejected,rejections,errors,signals,preliminary_signals,engine_activity:engineActivity,checked_at:new Date().toISOString()};
+ return {market:marketType,requested:symbols.length,scanned:symbols.length-failed,candidates:candidates.length,failed,rejected,rejections,errors,signals,preliminary_signals,flow_review_count:flowCandidates.length,flow_checked_count:flowChecked,flow_review_symbols:flowCandidates.map(x=>x.symbol),engine_activity:engineActivity,checked_at:new Date().toISOString()};
 }
 
 async function loadDigitalHunterFuturesUniverse(){
