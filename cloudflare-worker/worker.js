@@ -758,12 +758,9 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
   if(pairs.length)bestObservedPair=pairs[0];
   return pairs.find(x=>x.ageMs<=210000&&x.deviationPct<=0.4)||null;
  };
- for(let offset=0;offset<orderedSources.length;offset+=2){
-  const attempts=await Promise.allSettled(orderedSources.slice(offset,offset+2).map(fn=>fn()));
-  for(const result of attempts){if(result.status==="fulfilled"){const [provider,rows]=result.value;verified.push({provider,rows});}else errors.push(String(result.reason?.message||result.reason).slice(0,180));}
-  selectedPair=evaluatePairs();
-  if(selectedPair)break;
- }
+ const attempts=await Promise.allSettled(orderedSources.map(fn=>fn()));
+ for(const result of attempts){if(result.status==="fulfilled"){const [provider,rows]=result.value;verified.push({provider,rows});}else errors.push(String(result.reason?.message||result.reason).slice(0,180));}
+ selectedPair=evaluatePairs();
  if(!selectedPair){
   if(verified.length<2)throw new Error((marketType==="futures"?"Futures":"Spot")+" candles unavailable or only one exchange responded: "+errors.join(" | "));
   if(!bestObservedPair)throw new Error("QUALITY_REJECTED: کندل بسته‌شده مشترک برای تأیید چندصرافی پیدا نشد");
@@ -1023,23 +1020,30 @@ function markQuantumEvidence(activity,key){if(activity?.[key]){activity[key].pro
 async function scanHunterSymbols(symbols,marketType="spot",assetList=[],env=null){
  const assetMap=new Map((Array.isArray(assetList)?assetList:[]).map(x=>[String(x.symbol||"").toUpperCase(),x]));
  let i=0,failed=0,rejected=0,flowChecked=0;const candidates=[],errors=[],rejections=[],engineActivity=Object.fromEntries(QUANTUM_ACTIVITY_KEYS.map(key=>[key,{processed:0,evidence:0}]));
- const concurrency=6;
+ const concurrency=8;
  await Promise.all(Array.from({length:Math.min(concurrency,symbols.length)},async()=>{while(i<symbols.length){const symbol=symbols[i++];try{const x=await analyzeDigitalHunterSymbol(symbol,marketType,assetMap.get(symbol),engineActivity);if(x)candidates.push(x);}catch(e){const message=String(e?.message||e);if(message.startsWith("QUALITY_REJECTED:")){rejected++;rejections.push({symbol,error:message.slice(0,180)});}else{failed++;errors.push({symbol,error:message.slice(0,220)});}}}}));
  candidates.sort((a,b)=>b.score-a.score);const signals=[];
  const flowEligible=x=>!x.lowLiquidity&&(x.candidateGate===true||(x.earlyCoreAligned===true&&x.score>=(marketType==="futures"?62:60)));const flowCandidates=(marketType==="futures"?[...candidates.filter(flowEligible)].sort((a,b)=>b.score-a.score).slice(0,1):["bull","bear"].flatMap(trend=>candidates.filter(x=>x.trend===trend&&flowEligible(x)).sort((a,b)=>b.score-a.score).slice(0,1))).filter(x=>x.score>=50);
  await Promise.all(flowCandidates.map(async x=>{
   flowChecked++;x.flowReviewAttempted=true;
-  const flowController=new AbortController(),flowTimer=setTimeout(()=>flowController.abort(),15000);
+  const flowController=new AbortController(),flowTimer=setTimeout(()=>flowController.abort(),12000);
   try{
-   let sentiment={available:false,score:null,sourceCount:0,sources:[]};
+   const preferred=[x.multiExchangeEvidence?.primary,x.multiExchangeEvidence?.secondary];
+   if(marketType==="futures"&&engineActivity?.sentiment)engineActivity.sentiment.processed++;
+   const [sentimentResult,flowResult,depthResult]=await Promise.allSettled([
+    marketType==="futures"?loadHunterFundingSentiment(x.symbol,x.trend,preferred,flowController.signal):Promise.resolve({available:false,score:null,sourceCount:0,sources:[]}),
+    marketType==="futures"?loadFuturesMarketFlow(x.symbol,5,flowController.signal):loadMarketFlow(x.symbol,5,flowController.signal),
+    loadHunterDepth(x.symbol,marketType,preferred,flowController.signal)
+   ]);
+   const sentiment=sentimentResult.status==="fulfilled"?sentimentResult.value:{available:false,score:null,sourceCount:0,sources:[]};
+   let f=flowResult.status==="fulfilled"?flowResult.value:null;
+   const depth=depthResult.status==="fulfilled"?depthResult.value:null;
    if(marketType==="futures"){
-    if(engineActivity?.sentiment)engineActivity.sentiment.processed++;
-    sentiment=await loadHunterFundingSentiment(x.symbol,x.trend,[x.multiExchangeEvidence?.primary,x.multiExchangeEvidence?.secondary],flowController.signal);
     if(sentiment.available&&engineActivity?.sentiment)engineActivity.sentiment.evidence++;
     x.sentiment=sentiment.available?sentiment:null;
     if(sentiment.available){const earlyQuantum=scoreQuantumOpportunity({...x,sentimentScore:sentiment.score,sentimentConfirmed:true,sentimentSource:sentiment.sources.join(" + ")});x.quantum=earlyQuantum;x.score=earlyQuantum.score;}
    }
-   let f=marketType==="futures"?await loadFuturesMarketFlow(x.symbol,5,flowController.signal):await loadMarketFlow(x.symbol,5,flowController.signal);
+   if(!f)f={buy5m:0,sell5m:0,net5m:0,trade_count:0,provider:null,complete:false,window_minutes:5};
    if(f.complete!==true&&!flowController.signal.aborted){const shorter=marketType==="futures"?await loadFuturesMarketFlow(x.symbol,1,flowController.signal):await loadMarketFlow(x.symbol,1,flowController.signal);if(shorter.complete===true&&shorter.trade_count>=8)f=shorter;}
    const gross=f.buy5m+f.sell5m,imb=gross?f.net5m/gross:0,ok=x.trend==="bull"?imb>=.045:imb<=-.045;
    x.flow={buy5m:f.buy5m,sell5m:f.sell5m,net5m:f.net5m,windowMinutes:f.window_minutes||5,tradeCount:f.trade_count,provider:f.provider,complete:f.complete,coverageStart:f.coverage_start,imbalance:+imb.toFixed(4)};
@@ -1047,9 +1051,7 @@ async function scanHunterSymbols(symbols,marketType="spot",assetList=[],env=null
    x.flowStatus=flowController.signal.aborted?"flow_timeout":f.complete!==true?"flow_incomplete":f.trade_count<8?"insufficient_trades":!ok?"flow_direction_mismatch":"flow_confirmed_pending_depth";
    if(f.trade_count<8||!ok||f.complete===false)return;
    markQuantumEvidence(engineActivity,"flow");
-   let depth;
-   try{depth=await loadHunterDepth(x.symbol,marketType,[x.multiExchangeEvidence?.primary,x.multiExchangeEvidence?.secondary],flowController.signal);}
-   catch(depthError){x.depthError=String(depthError?.message||depthError).slice(0,140);x.flowStatus="depth_unavailable";return;}
+   if(depthResult.status==="rejected"||!depth){x.depthError=String(depthResult.reason?.message||"Order-book depth unavailable").slice(0,140);x.flowStatus="depth_unavailable";return;}
    x.depth=depth;
    if(!depth.confirmed){x.flowStatus="depth_not_confirmed";return;}
    x.flowStatus="depth_confirmed_pending_quality";
@@ -1755,8 +1757,8 @@ async function runDigitalHunterCron(event,env,ctx){
  await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(id,JSON.stringify({status:"started",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,cron:event?.cron||"* * * * *",scheduledTime:event?.scheduledTime||null,markets:["spot","futures-service-binding"]}),stamp).run();
  const futuresController=new AbortController();
  const results=await Promise.all([
-  settleHunterCycle(()=>runDigitalHunterMarketCycle(env,"spot"),"spot",42000),
-  settleHunterCycle(async()=>{if(!env.FUTURES_ENGINE)throw new Error("FUTURES_ENGINE service binding missing");const response=await env.FUTURES_ENGINE.fetch(new Request("https://futures-engine/run",{method:"POST",headers:{"Accept":"application/json","X-MMP-FUTURES-TOKEN":env.FUTURES_ENGINE_TOKEN||""},signal:futuresController.signal}));if(!response.ok)throw new Error("Futures engine HTTP "+response.status);return await response.json();},"futures",50000,()=>futuresController.abort())
+  settleHunterCycle(()=>runDigitalHunterMarketCycle(env,"spot"),"spot",26000),
+  settleHunterCycle(async()=>{if(!env.FUTURES_ENGINE)throw new Error("FUTURES_ENGINE service binding missing");const response=await env.FUTURES_ENGINE.fetch(new Request("https://futures-engine/run",{method:"POST",headers:{"Accept":"application/json","X-MMP-FUTURES-TOKEN":env.FUTURES_ENGINE_TOKEN||""},signal:futuresController.signal}));if(!response.ok)throw new Error("Futures engine HTTP "+response.status);return await response.json();},"futures",28000,()=>futuresController.abort())
  ]),finished=Date.now();
  const spot=results[0].status==="fulfilled"?results[0].value:null,futures=results[1].status==="fulfilled"?results[1].value:null;
  const errors={};if(results[0].status==="rejected")errors.spot=String(results[0].reason?.message||results[0].reason).slice(0,220);if(results[1].status==="rejected")errors.futures=String(results[1].reason?.message||results[1].reason).slice(0,220);
@@ -1772,6 +1774,6 @@ async function runDigitalHunterCron(event,env,ctx){
  await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(id,JSON.stringify(payload),new Date(finished).toISOString()).run();
  if(!spot&&!futures)throw new Error("Quantum Spot and Futures cycles both failed: "+JSON.stringify(errors));
  const scheduledAt=new Date(Number(event?.scheduledTime)||Date.now());
- if(ctx?.waitUntil&&scheduledAt.getUTCMinutes()%10===0)ctx.waitUntil(refreshDigitalHunterUniverses(env).catch(error=>console.error("Digital Hunter universe refresh failed:",error?.message||error)));
+ if(ctx?.waitUntil&&scheduledAt.getUTCMinutes()%30===5){const refresh=refreshDigitalHunterUniverses(env).catch(error=>console.error("Digital Hunter universe refresh failed:",error?.message||error));ctx.waitUntil(Promise.race([refresh,new Promise(resolve=>setTimeout(resolve,8000))]));}
 }
 export default {fetch:handle,scheduled(event,env,ctx){ctx.waitUntil(runDigitalHunterCron(event,env,ctx).catch(error=>console.error("Digital Hunter scheduled cycle failed:",error?.message||error)));ctx.waitUntil(cleanupMarketFallbackCache(env));}};
