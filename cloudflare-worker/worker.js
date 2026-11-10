@@ -741,10 +741,11 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
  const fallbackPriority=marketType==="futures"?[4,2,1,5,6,3,0]:[4,3,1,0,2,8,5,6,7];
  const preferredOrder=unique(order);
  const fallbackOrder=unique([...fallbackPriority.filter(index=>!preferredOrder.includes(index)),...sources.map((_,index)=>index).filter(index=>!preferredOrder.includes(index)&&!fallbackPriority.includes(index))]);
+ const fallbackPool=unique([...preferredOrder.slice(2),...fallbackOrder]);
  const symbolHash=String(symbol).split("").reduce((sum,char)=>sum+char.charCodeAt(0),0);
- const rotation=fallbackOrder.length?(symbolHash+Math.floor(Date.now()/60000))%fallbackOrder.length:0;
- const stableFallback=fallbackOrder.slice(0,2),rotatingFallback=fallbackOrder.slice(2),rotatedFallback=[...stableFallback,...rotatingFallback.slice(rotation),...rotatingFallback.slice(0,rotation)];
-  const sourceLimit=sources.length,orderedIndices=unique([...preferredOrder.slice(0,2),...preferredOrder.slice(2),...rotatedFallback]),orderedSources=orderedIndices.map(index=>sources[index]).filter(Boolean).slice(0,sourceLimit),verified=[];
+ const rotation=fallbackPool.length?(symbolHash+Math.floor(Date.now()/60000))%fallbackPool.length:0;
+ const stableFallback=fallbackPool.slice(0,2),rotatingFallback=fallbackPool.slice(2),rotatedFallback=[...stableFallback,...rotatingFallback.slice(rotation),...rotatingFallback.slice(0,rotation)];
+ const sourceLimit=Math.min(4,sources.length),orderedIndices=unique([...preferredOrder.slice(0,2),...rotatedFallback]),orderedSources=orderedIndices.map(index=>sources[index]).filter(Boolean).slice(0,sourceLimit),verified=[];
  let selectedPair=null,bestObservedPair=null;
  const evaluatePairs=()=>{
   const pairs=[];
@@ -1028,7 +1029,7 @@ async function scanHunterSymbols(symbols,marketType="spot",assetList=[],env=null
  const flowEligible=x=>!x.lowLiquidity&&(x.candidateGate===true||(x.earlyCoreAligned===true&&x.score>=(marketType==="futures"?62:60)));const flowCandidates=(marketType==="futures"?[...candidates.filter(flowEligible)].sort((a,b)=>b.score-a.score).slice(0,1):["bull","bear"].flatMap(trend=>candidates.filter(x=>x.trend===trend&&flowEligible(x)).sort((a,b)=>b.score-a.score).slice(0,1))).filter(x=>x.score>=50);
  await Promise.all(flowCandidates.map(async x=>{
   flowChecked++;x.flowReviewAttempted=true;
-  const flowController=new AbortController(),flowTimer=setTimeout(()=>flowController.abort(),18000);
+  const flowController=new AbortController(),flowTimer=setTimeout(()=>flowController.abort(),15000);
   try{
    let sentiment={available:false,score:null,sourceCount:0,sources:[]};
    if(marketType==="futures"){
