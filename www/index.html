@@ -3773,7 +3773,7 @@ function checkConnections(force=false){
  connectionCheckLastAt=now;
  const task=(async()=>{
  const endpoint="https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/connections-health";
- const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),22000);
+ const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),30000);
  try{
   const response=await fetch(endpoint,{cache:"no-store",signal:controller.signal});
   if(!response.ok)throw new Error("HTTP "+response.status);
@@ -3781,6 +3781,8 @@ function checkConnections(force=false){
   if(!Array.isArray(payload?.checks))throw new Error("پاسخ بررسی اتصال کامل نیست");
   const expected=["binance spot","okx spot","gate.io spot","nobitex","bybit spot","bitget spot","kucoin spot","wallex","mexc spot","whitebit spot","binance futures","bybit futures","okx futures","bitget futures","gate futures","mexc futures","kucoin futures","whitebit futures"];
   const checks=new Map(payload.checks.map(c=>[String(c?.name||"").trim().toLowerCase(),c]));
+  await Promise.all([
+   (async()=>{
   const bybitCheck=checks.get("bybit spot");
   if(bybitCheck?.status==="down"){
    const started=Date.now(),bybitController=new AbortController(),bybitTimer=setTimeout(()=>bybitController.abort(),6500);
@@ -3793,6 +3795,8 @@ function checkConnections(force=false){
    }catch(directError){bybitCheck.error="اتصال مستقیم: "+String(directError?.message||"خطای شبکه").slice(0,80);}
    finally{clearTimeout(bybitTimer);}
   }
+   })(),
+   (async()=>{
   const bitgetCheck=checks.get("bitget spot");
   if(bitgetCheck?.status==="down"){
    const started=Date.now(),bitgetController=new AbortController(),bitgetTimer=setTimeout(()=>bitgetController.abort(),7000);
@@ -3808,6 +3812,8 @@ function checkConnections(force=false){
    }catch(directError){bitgetCheck.error="اتصال مستقیم: "+String(directError?.message||"خطای شبکه").slice(0,80);}
    finally{clearTimeout(bitgetTimer);}
   }
+   })(),
+   (async()=>{
   const wallexCheck=checks.get("wallex");
   if(wallexCheck?.status==="down"){
    const started=Date.now(),wallexController=new AbortController(),wallexTimer=setTimeout(()=>wallexController.abort(),9000);
@@ -3820,6 +3826,8 @@ function checkConnections(force=false){
    }catch(directError){wallexCheck.error="اتصال مستقیم: "+String(directError?.message||"خطای شبکه").slice(0,80);}
    finally{clearTimeout(wallexTimer);}
   }
+   })()
+  ]);
   const probeDirectFallback=async(check,urls,valid,purpose)=>{
    if(!check||check.status!=="down")return;
    const started=Date.now(),controller=new AbortController(),timer=setTimeout(()=>controller.abort(),6500);
@@ -3866,6 +3874,7 @@ function checkConnections(force=false){
   connectionCheckCache=ordered;
   return ordered;
  }catch(error){
+  connectionCheckLastAt=Date.now()-19*60*1000;
   const message=error.name==="AbortError"?"مهلت بررسی اتصال تمام شد":"سرویس بررسی اتصال پاسخ نداد";
   $("connections").innerHTML='<div class="conn"><div class="conn-name">'+message+'</div><small class="conn-purpose">چند لحظه دیگر دوباره تلاش کنید</small></div>';
   $("connections-extra").innerHTML="";
