@@ -2325,25 +2325,7 @@ body.mmp-app-mode #mmp-home-hero .mmp-hero-index{display:none!important}
 }
 </style>
 
-<style id="mmp-hard-reset-viewport-top-20261110">
-/* Final cascade after all legacy styles: no top inset, fixed bar at y=0, content starts immediately below it. */
-html,html body,body.mmp-app-mode{margin:0!important;padding:0!important}
-body.mmp-app-mode>header.top{
- position:fixed!important;inset:0 0 auto!important;top:0!important;
- height:62px!important;min-height:62px!important;max-height:62px!important;
- margin:0!important;transform:none!important;z-index:5000!important;
-}
-body.mmp-app-mode>.mmp-sidebar{top:62px!important}
-body.mmp-app-mode>main.wrap{
- margin-top:62px!important;margin-block-start:62px!important;
- padding-top:0!important;padding-block-start:0!important;
-}
-body.mmp-app-mode>main.wrap>#mmp-home-hero{margin-top:0!important;margin-block-start:0!important}
-@media(max-width:900px){
- body.mmp-app-mode>header.top{height:62px!important;min-height:62px!important;max-height:62px!important}
- body.mmp-app-mode>main.wrap{margin-top:62px!important;margin-block-start:62px!important;padding-top:0!important;padding-block-start:0!important}
-}
-</style>
+
 
 <style id="mmp-whale-dashboard-visual-v4">
 #whale-panel{position:relative;overflow:hidden;background:radial-gradient(ellipse at 90% 0%,rgba(247,181,56,.13),transparent 42%),linear-gradient(145deg,#121c29 0%,#0b111a 62%,#111925 100%)!important;border:1px solid rgba(211,164,76,.35)!important;box-shadow:0 14px 38px rgba(0,0,0,.24),inset 0 1px rgba(255,255,255,.035)!important}
@@ -2417,6 +2399,26 @@ html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-ca
 html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-card .sub .negative,
 html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-card .negative{color:#bd293d!important}
 html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-card:after{opacity:.35!important}
+</style>
+
+<style id="mmp-hard-reset-viewport-top-20261110">
+/* Final high-specificity reset, independent of app-mode classes. */
+html,html body{margin:0!important;padding:0!important}
+html body>header.top{
+ position:fixed!important;top:0!important;inset:0 0 auto!important;
+ height:62px!important;min-height:62px!important;max-height:62px!important;
+ margin:0!important;transform:none!important;z-index:5000!important;
+}
+html body>aside.mmp-sidebar{top:62px!important}
+html body>main.wrap{
+ margin-top:62px!important;margin-block-start:62px!important;
+ padding-top:0!important;padding-block-start:0!important;
+}
+html body>main.wrap>#mmp-home-hero{margin-top:0!important;margin-block-start:0!important}
+@media(max-width:900px){
+ html body>header.top{height:62px!important;min-height:62px!important;max-height:62px!important}
+ html body>main.wrap{margin-top:62px!important;margin-block-start:62px!important;padding-top:0!important;padding-block-start:0!important}
+}
 </style>
 </head>
 <body class="mmp-app-mode">
