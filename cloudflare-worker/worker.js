@@ -148,7 +148,7 @@ function analyzeClosedKlines(rows,interval){
  const result=analyzeKlines(closed),lastOpen=Number(closed[closed.length-1][0]),closedAt=lastOpen+duration;
  result.candle_time=new Date(lastOpen).toISOString();
  result.candle_closed_at=new Date(closedAt).toISOString();
- const freshness=assessMarketDataFreshness(closedAt,now,180000);result.data_age_ms=freshness.ageMs;result.data_fresh=freshness.fresh;result.data_freshness_reason=freshness.reason;
+ const freshness=assessMarketDataFreshness(closedAt,now,duration*2);result.data_age_ms=freshness.ageMs;result.data_fresh=freshness.fresh;result.data_freshness_reason=freshness.reason;
  result.candle_interval=interval;
  return result;
 }
