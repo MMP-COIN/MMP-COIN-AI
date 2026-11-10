@@ -1,7 +1,7 @@
 // MMP Quantum Intelligence Engine: dynamic market discovery with no fixed asset ceiling
 import { QUANTUM_ENGINE_NAME, QUANTUM_ENGINE_VERSION, normalizeQuantumUniverse, scoreQuantumOpportunity, calculateQuantumIndicators } from "./quantum-core.js";
 const HUNTER_BATCH_SIZE = 16;
-const FUTURES_HUNTER_BATCH_SIZE = 16;
+const FUTURES_HUNTER_BATCH_SIZE = 12;
 const MODEL = "@cf/openai/gpt-oss-120b";
 function extractAIJson(value){
  let raw=typeof value==="string"?value:JSON.stringify(value??"");
