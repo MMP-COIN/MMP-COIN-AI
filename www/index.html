@@ -7113,8 +7113,11 @@ main,.app-main,.container,.terminal-grid,.intel-suite{min-width:0}
  #ai-section .ai-report .ai-levels{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media(max-width:380px){
- #ai-section .ai-toolbar{grid-template-columns:1fr}
- #ai-section #ai-run-btn{grid-column:auto}
+ /* Keep analyzer controls usable on narrow phones: picker and market mode side by side. */
+ #ai-section .ai-toolbar{grid-template-columns:minmax(0,1fr) minmax(0,.78fr);gap:6px}
+ #ai-section .ai-coin-picker,#ai-section .ai-toolbar .dropdown-select-box{width:100%;min-width:0}
+ #ai-section .ai-coin-picker-trigger{width:100%;min-width:0;justify-content:space-between}
+ #ai-section #ai-run-btn{grid-column:1/-1;width:100%;min-width:0}
  #ai-section>.section-head>.badge{display:none}
  #ai-section .ai-metric b{font-size:10px}
 }
