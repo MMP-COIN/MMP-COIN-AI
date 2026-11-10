@@ -86,8 +86,9 @@ async function loadProvider(symbol,exchange) {
   }
   if(exchange==="WhiteBIT"){
     const d=await getJson("https://whitebit.com/api/v1/public/kline?market="+symbol+"_USDT&interval=1m&limit=80");
-    if(d?.success!==true)throw new Error(d?.message||"WhiteBIT unavailable");
-    const rows=normalizeRows(Array.isArray(d.result)?d.result.map(x=>[Number(x[0])*1000,x[1],x[3],x[4],x[2],x[5]]):[]);
+    if(d?.success!==true)throw new Error(typeof d?.message==="string"?d.message:JSON.stringify(d?.message??d).slice(0,140));
+    const raw=Array.isArray(d.result)?d.result:Array.isArray(d.result?.kline)?d.result.kline:[];
+    const rows=normalizeRows(raw.map(x=>Array.isArray(x)?[Number(x[0])*1000,x[1],x[3],x[4],x[2],x[5]]:[Number(x.time)*1000,x.open,x.highest,x.lowest,x.close,x.volume]));
     if(rows.length<55)throw new Error("WhiteBIT candle history insufficient");return {rows,provider:"WhiteBIT Spot"};
   }
   throw new Error("Unsupported venue");
@@ -100,7 +101,7 @@ async function scanCoin(coin){
     :Object.entries(coin.hunterVenueVolume||{}).filter(([name])=>SUPPORTED.has(name)).map(([exchange,volume])=>({exchange,volume,quote:"USDT"}));
   if(!listed.length)return null;
   const order=[...new Map(listed.sort((a,b)=>Number(b.volume)-Number(a.volume)).map(x=>[x.exchange,x])).values()].map(x=>x.exchange);
-  const fallback=["OKX","Gate","MEXC","KuCoin","WhiteBIT","Binance","Bitget","Bybit"].filter(name=>!order.includes(name));
+  const fallback=["Gate","WhiteBIT","KuCoin","MEXC","OKX","Bitget","Bybit","Binance"].filter(name=>!order.includes(name));
   const verificationOrder=[...new Set([...order,...fallback])].slice(0,4);
   let market=null,corroboration=null,errors=[];
   for(const venue of verificationOrder){if(corroboration)break;try{const candidate=await loadProvider(symbol,venue);if(!market)market=candidate;else corroboration=candidate;}catch(error){errors.push(venue+": "+String(error?.message||error).slice(0,80));}}
