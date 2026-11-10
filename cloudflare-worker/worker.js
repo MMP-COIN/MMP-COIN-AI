@@ -1,7 +1,7 @@
 // MMP Quantum Intelligence Engine: dynamic market discovery with no fixed asset ceiling
 import { QUANTUM_ENGINE_NAME, QUANTUM_ENGINE_VERSION, normalizeQuantumUniverse, scoreQuantumOpportunity, calculateQuantumIndicators } from "./quantum-core.js";
-const HUNTER_BATCH_SIZE = 6;
-const FUTURES_HUNTER_BATCH_SIZE = 4;
+const HUNTER_BATCH_SIZE = 18;
+const FUTURES_HUNTER_BATCH_SIZE = 12;
 const MODEL = "@cf/openai/gpt-oss-120b";
 function extractAIJson(value){
  let raw=typeof value==="string"?value:JSON.stringify(value??"");
@@ -922,7 +922,7 @@ function markQuantumEvidence(activity,key){if(activity?.[key]){activity[key].pro
 async function scanHunterSymbols(symbols,marketType="spot",assetList=[],env=null){
  const assetMap=new Map((Array.isArray(assetList)?assetList:[]).map(x=>[String(x.symbol||"").toUpperCase(),x]));
  let i=0,failed=0,rejected=0;const candidates=[],errors=[],rejections=[],engineActivity=Object.fromEntries(QUANTUM_ACTIVITY_KEYS.map(key=>[key,{processed:0,evidence:0}]));
- const concurrency=2;
+ const concurrency=4;
  await Promise.all(Array.from({length:Math.min(concurrency,symbols.length)},async()=>{while(i<symbols.length){const symbol=symbols[i++];try{const x=await analyzeDigitalHunterSymbol(symbol,marketType,assetMap.get(symbol),engineActivity);if(x)candidates.push(x);}catch(e){const message=String(e?.message||e);if(message.startsWith("QUALITY_REJECTED:")){rejected++;rejections.push({symbol,error:message.slice(0,180)});}else{failed++;errors.push({symbol,error:message.slice(0,220)});}}}}));
  candidates.sort((a,b)=>b.score-a.score);const signals=[];
  const flowCandidates=(marketType==="futures"?[...candidates.filter(x=>!x.lowLiquidity)].sort((a,b)=>b.score-a.score).slice(0,2):["bull","bear"].flatMap(trend=>candidates.filter(x=>x.trend===trend&&!x.lowLiquidity).sort((a,b)=>b.score-a.score).slice(0,1))).filter(x=>x.score>=60);
@@ -951,7 +951,8 @@ async function scanHunterSymbols(symbols,marketType="spot",assetList=[],env=null
   try{const review=await runAIWithFallback(env,prompt),parsed=JSON.parse(review.raw);if(!["confirm","caution","reject"].includes(parsed.verdict)||!Number.isFinite(Number(parsed.confidence))||typeof parsed.thesis!=="string")throw new Error("AI review schema invalid");x.aiReview={status:"reviewed",provider:review.provider,verdict:parsed.verdict,confidence:Math.max(0,Math.min(100,Number(parsed.confidence))),thesis:parsed.thesis.slice(0,700),risks:Array.isArray(parsed.risks)?parsed.risks.slice(0,6).map(v=>String(v).slice(0,180)):[],invalidation:String(parsed.invalidation||"").slice(0,300),fallbacks:review.fallbacks};}
   catch(error){x.aiReview={status:"unavailable",reason:String(error?.message||error).slice(0,180)};}
  }
- return {market:marketType,requested:symbols.length,scanned:symbols.length-failed,candidates:candidates.length,failed,rejected,rejections,errors,signals,engine_activity:engineActivity,checked_at:new Date().toISOString()};
+ const preliminary_signals=candidates.slice(0,12).map(x=>({...x,stage:"preliminary",missingEvidence:["executedFlow","orderBookDepth"],preliminaryReason:"نامزد فنی چندتایم‌فریمی؛ هنوز جریان واقعی معاملات و عمق سفارش تأیید نشده است"}));
+ return {market:marketType,requested:symbols.length,scanned:symbols.length-failed,candidates:candidates.length,failed,rejected,rejections,errors,signals,preliminary_signals,engine_activity:engineActivity,checked_at:new Date().toISOString()};
 }
 
 async function loadDigitalHunterFuturesUniverse(){
@@ -985,7 +986,7 @@ export async function runDigitalHunterMarketCycle(env,marketType="spot"){
   assets=normalizeQuantumUniverse(universe.assets||[],marketType).map(x=>({id:String(x.id||x.symbol),symbol:x.symbol,name:x.name||x.symbol,image:x.image||"",current_price:Number(x.current_price)||0,total_volume:Number(x.total_volume)||0,hunterExchange:x.hunterExchange||"",hunterPriceExchange:x.hunterPriceExchange||"",hunterChange24h:Number(x.hunterChange24h)||0,marketPairs:(x.marketPairs||[]).slice(0,4),hunterVenueVolume:x.hunterVenueVolume||{}}));
   if(!assets.length)throw Error("No liquid USDT "+(marketType==="futures"?"perpetual":"Spot")+" assets");
   universeUpdatedAt=now;universeSources=universe.sources||{};universeProvider=universe.metadata_provider||"multi-exchange";
-  const prior=previous.snapshot||{},snapshot={...prior,status:"online",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,market:marketType,checked_at:new Date(now).toISOString(),universe_count:assets.length,batch_size:batchLimit,candidate_count:0,scanned_count:0,failed_count:0,rejected_count:0,cooldown_count:0,universe_refreshed:true,signals:Array.isArray(prior.signals)?prior.signals:[],last_errors:[],last_rejections:[],sources:universeSources,universe_provider:universeProvider,cycle_seconds:60};
+  const prior=previous.snapshot||{},snapshot={...prior,status:"online",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,market:marketType,checked_at:new Date(now).toISOString(),universe_count:assets.length,batch_size:batchLimit,candidate_count:0,scanned_count:0,failed_count:0,rejected_count:0,cooldown_count:0,universe_refreshed:true,signals:Array.isArray(prior.signals)?prior.signals:[],preliminary_signals:Array.isArray(prior.preliminary_signals)?prior.preliminary_signals:[],last_errors:[],last_rejections:[],sources:universeSources,universe_provider:universeProvider,cycle_seconds:60};
   const payload=JSON.stringify({cursor:0,lastRun:now,assets,universeUpdatedAt,universeSources,universeProvider,failureCooldown:{},snapshot});
   await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(stateId,payload,new Date(now).toISOString()).run();
   return snapshot;
@@ -1011,10 +1012,16 @@ export async function runDigitalHunterMarketCycle(env,marketType="spot"){
  for(const signal of result.signals){const asset=batch.find(x=>x.symbol===signal.symbol)||assets.find(x=>x.symbol===signal.symbol);signal.coin=asset?{...asset,current_price:Number(asset.current_price)||signal.price}:{id:signal.symbol,symbol:signal.symbol,name:signal.symbol,current_price:signal.price};signal.dailyChange24h=Number(asset?.hunterChange24h)||0;signal.weakScans=0;map.set(signal.symbol,signal);}
  for(const symbol of scanned){const old=map.get(symbol);if(old&&!(result.signals||[]).some(x=>x.symbol===symbol)&&Number(old.weakScans||0)>=2)map.delete(symbol);}
  for(const [symbol,signal] of map){if(now-Number(signal.updatedAt||0)>5*60*1000)map.delete(symbol);}
+ const preliminaryMap=new Map((previous.snapshot?.preliminary_signals||[]).map(x=>[x.symbol,x]));
+ for(const symbol of scanned){const old=preliminaryMap.get(symbol);if(old)old.weakScans=Number(old.weakScans||0)+1;}
+ for(const candidate of result.preliminary_signals||[]){const asset=batch.find(x=>x.symbol===candidate.symbol)||assets.find(x=>x.symbol===candidate.symbol);candidate.coin=asset?{...asset,current_price:Number(asset.current_price)||candidate.price}:{id:candidate.symbol,symbol:candidate.symbol,name:candidate.symbol,current_price:candidate.price};candidate.weakScans=0;preliminaryMap.set(candidate.symbol,candidate);}
+ for(const symbol of scanned){const old=preliminaryMap.get(symbol);if(old&&!(result.preliminary_signals||[]).some(x=>x.symbol===symbol)&&Number(old.weakScans||0)>=2)preliminaryMap.delete(symbol);}
+ for(const [symbol,candidate] of preliminaryMap){if(now-Number(candidate.updatedAt||0)>3*60*1000)preliminaryMap.delete(symbol);}
+ const preliminary=[...preliminaryMap.values()].filter(x=>now-Number(x.updatedAt||0)<=3*60*1000).sort((a,b)=>b.score-a.score).slice(0,12);
  const fresh=[...map.values()].filter(x=>now-Number(x.updatedAt||0)<=5*60*1000&&Number(x.score)>=68&&x.confirmed===true&&x.multiExchangeConfirmed===true&&x.flow?.complete===true&&Number(x.flow?.tradeCount)>=8&&Number(x.volumeRatio)>=1.1&&x.depth?.confirmed===true&&x.quantum?.qualityGate===true).sort((a,b)=>b.score-a.score);
  const selected=[...fresh.filter(x=>x.trend==="bull").slice(0,6),...fresh.filter(x=>x.trend==="bear").slice(0,6)];
  const nextCursor=(cursor+Math.max(1,examined))%assets.length,priorActivity=cursor===0?{}:(previous.snapshot?.engine_activity||{}),engineActivity=Object.fromEntries(QUANTUM_ACTIVITY_KEYS.map(key=>{const a=priorActivity[key]||{},b=result.engine_activity?.[key]||{};return [key,{processed:Number(a.processed||0)+Number(b.processed||0),evidence:Number(a.evidence||0)+Number(b.evidence||0)}];}));
- const snapshot={status:"online",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,market:marketType,checked_at:new Date().toISOString(),scanned_at:new Date().toISOString(),universe_count:assets.length,next_cursor:nextCursor,batch_size:batch.length,scanned_count:result.scanned,candidate_count:result.candidates,failed_count:result.failed,rejected_count:result.rejected||0,cooldown_count:Object.keys(failureCooldown).length,universe_refreshed:false,signals:selected,engine_activity:engineActivity,last_errors:result.errors||[],last_rejections:result.rejections||[],sources:universeSources,universe_provider:universeProvider,cycle_seconds:60};
+ const snapshot={status:"online",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,market:marketType,checked_at:new Date().toISOString(),scanned_at:new Date().toISOString(),universe_count:assets.length,next_cursor:nextCursor,queue_position:nextCursor===0?assets.length:nextCursor,queue_total:assets.length,batch_size:batch.length,scanned_count:result.scanned,candidate_count:result.candidates,failed_count:result.failed,rejected_count:result.rejected||0,cooldown_count:Object.keys(failureCooldown).length,universe_refreshed:false,signals:selected,preliminary_signals:preliminary,engine_activity:engineActivity,last_errors:result.errors||[],last_rejections:result.rejections||[],sources:universeSources,universe_provider:universeProvider,cycle_seconds:60};
  const payload=JSON.stringify({cursor:snapshot.next_cursor,lastRun:now,assets,universeUpdatedAt,universeSources,universeProvider,failureCooldown,snapshot});
  await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(stateId,payload,new Date(now).toISOString()).run();
  return snapshot;
@@ -1565,8 +1572,8 @@ async function runDigitalHunterCron(event,env){
  const hasIncompleteCycle=!!spot?.universe_refreshed||!!futures?.universe_refreshed||Number(spot?.scanned_count||0)===0||Number(futures?.scanned_count||0)===0;
  const status=bothAvailable?(hasDataFailures||hasQualityRejections||hasIncompleteCycle?"partial":"success"):spot||futures?"partial":"error";
  const payload={status,engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,cron:event?.cron||"* * * * *",scheduledTime:event?.scheduledTime||null,startedAt:stamp,finishedAt:new Date(finished).toISOString(),markets:{
-  spot:spot?{scanned:spot.scanned_count||0,failed:spot.failed_count||0,rejected:spot.rejected_count||0,cooldown_count:spot.cooldown_count||0,universe_refreshed:spot.universe_refreshed===true,universe:spot.universe_count||0,signals:spot.signals?.length||0,last_errors:spot.last_errors||[],last_rejections:spot.last_rejections||[]}:{status:"error",error:errors.spot||"unavailable"},
-  futures:futures?{scanned:futures.scanned_count||0,failed:futures.failed_count||0,rejected:futures.rejected_count||0,cooldown_count:futures.cooldown_count||0,universe_refreshed:futures.universe_refreshed===true,universe:futures.universe_count||0,signals:futures.signals?.length||0,last_errors:futures.last_errors||[],last_rejections:futures.last_rejections||[]}:{status:"error",error:errors.futures||"unavailable"}
+  spot:spot?{queue_position:spot.queue_position||0,scanned:spot.scanned_count||0,preliminary:spot.preliminary_signals?.length||0,failed:spot.failed_count||0,rejected:spot.rejected_count||0,cooldown_count:spot.cooldown_count||0,universe_refreshed:spot.universe_refreshed===true,universe:spot.universe_count||0,signals:spot.signals?.length||0,last_errors:spot.last_errors||[],last_rejections:spot.last_rejections||[]}:{status:"error",error:errors.spot||"unavailable"},
+  futures:futures?{queue_position:futures.queue_position||0,scanned:futures.scanned_count||0,preliminary:futures.preliminary_signals?.length||0,failed:futures.failed_count||0,rejected:futures.rejected_count||0,cooldown_count:futures.cooldown_count||0,universe_refreshed:futures.universe_refreshed===true,universe:futures.universe_count||0,signals:futures.signals?.length||0,last_errors:futures.last_errors||[],last_rejections:futures.last_rejections||[]}:{status:"error",error:errors.futures||"unavailable"}
  },errors};
  await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(id,JSON.stringify(payload),new Date(finished).toISOString()).run();
  if(!spot&&!futures)throw new Error("Quantum Spot and Futures cycles both failed: "+JSON.stringify(errors));
