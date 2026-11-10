@@ -100,7 +100,7 @@ jobs:
           if (!radarSource.includes("calculateMarketScanPriority") || !radarSource.includes("scan_priority_version:scanPriorityVersion") || !radarSource.includes("const BATCH_SIZE = 16;") || !radarSource.includes("const CONCURRENCY = 4;")) throw new Error("Radar scan throughput regression");
           if (radarSource.includes("const verificationOrder=[...order,...fallback].slice(0,4)") || !radarSource.includes("Number(x[5]),Number(x[3]),Number(x[4]),Number(x[2]),Number(x[1])")) throw new Error("Radar exchange fallback or Gate Spot OHLCV mapping regression");
           if (workerSource.includes("order.map(index=>sources[index]).filter(Boolean).slice(0,4)") || workerSource.includes("[...new Set([...preferred,...sources.map((_,index)=>index)])].slice(0,4)")) throw new Error("Hunter exchange fallback list was artificially truncated");
-          if (!workerSource.includes('const sourceLimit=Math.min(4,sources.length)') || !workerSource.includes('const symbolHash=String(symbol).split("").reduce((sum,char)=>sum+char.charCodeAt(0),0);') || !workerSource.includes('const rotation=fallbackOrder.length?(symbolHash+Math.floor(Date.now()/60000))%fallbackOrder.length:0;') || !workerSource.includes('value.startsWith("kucoin")?6') || !radarSource.includes('const verificationOrder=[...new Set([...order,...fallback])].slice(0,4);')) throw new Error("Rotating full-universe exchange fallback coverage regressed");
+          if (!workerSource.includes('const sourceLimit=sources.length') || !workerSource.includes('...preferredOrder.slice(2),...rotatedFallback') || !workerSource.includes('const symbolHash=String(symbol).split("").reduce((sum,char)=>sum+char.charCodeAt(0),0);') || !workerSource.includes('const rotation=fallbackOrder.length?(symbolHash+Math.floor(Date.now()/60000))%fallbackOrder.length:0;') || !workerSource.includes('value.startsWith("kucoin")?6') || !radarSource.includes('const verificationOrder=[...new Set([...order,...fallback])].slice(0,4);')) throw new Error("Rotating full-universe exchange fallback coverage regressed");
           if (workerSource.includes("!available.length?priority")) throw new Error("Missing venue metadata must use the rotating fallback set");
           for (const provider of ["api.mexc.com/api/v3/trades","api.kucoin.com/api/v1/market/histories","api-futures.kucoin.com/api/v1/trade/history","contractInfo?.data?.multiplier"]) { if (!workerSource.includes(provider)) throw new Error("Executed-flow fallback/contract normalization missing: " + provider); }
           for (const provider of ["contract.mexc.com","api-futures.kucoin.com","api/v2/mix/market/candles","api/v2/mix/market/fills","api.mexc.com/api/v3/klines"]) { if (!workerSource.includes(provider)) throw new Error("Market provider fallback missing: " + provider); }
@@ -266,7 +266,7 @@ jobs:
 
       - name: Smoke-test deployed five-provider Quantum Hunter
         env:
-          WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
+          WORKER_URL: ${{ github.event_name == 'pull_request' && 'https://mmp-coin-ai-analyzer-preview.mehrdadmohammadi1988.workers.dev' || 'https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev' }}
         run: |
           set -euo pipefail
           curl --fail --silent --show-error --retry 1 --retry-delay 3 --max-time 90 "$WORKER_URL/hunter-scan?market=spot&symbols=BTC%2CETH%2CSOL%2CXRP" -o /tmp/five-provider-hunter.json
@@ -278,6 +278,7 @@ jobs:
           jq -e '.requested == 6 and (.scanned // 0) >= 4 and (.failed // 6) <= 2' /tmp/futures-provider-hunter.json >/dev/null
           jq -r '"Deployed Futures fallback: " + (.scanned|tostring) + "/6 scanned; " + (.failed|tostring) + " data failures; " + (.signals|length|tostring) + " flow-confirmed signals." ' /tmp/futures-provider-hunter.json
       - name: Verify scheduled Spot and Futures hunter cycles
+        if: github.event_name != 'pull_request'
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
@@ -300,6 +301,7 @@ jobs:
           echo "- Scheduled Spot and Futures engines: both completed a live scan without cycle errors" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Verify independent server-side fast radar scan
+        if: github.event_name != 'pull_request'
         env:
           RADAR_WORKER_URL: https://mmp-coin-ai-radar.mehrdadmohammadi1988.workers.dev
         run: |
@@ -324,6 +326,7 @@ jobs:
           echo "- Independent server-side radar: live scan and snapshot verified" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Check private analytics Worker
+        if: github.event_name != 'pull_request'
         env:
           ADMIN_WORKER_URL: https://mmp-coin-ai-admin.mehrdadmohammadi1988.workers.dev
         run: |
@@ -335,6 +338,7 @@ jobs:
           echo "- Private analytics Worker: online; admin API responds without a session" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Diagnose exchange API access from GitHub runner
+        if: github.event_name != 'pull_request'
         continue-on-error: true
         run: |
           set -u
@@ -361,6 +365,7 @@ jobs:
           probe_cors "Bitget" "https://api.bitget.com/api/v3/market/tickers?category=SPOT&symbol=BTCUSDT"
 
       - name: Check exchange connection monitor
+        if: github.event_name != 'pull_request'
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
@@ -376,6 +381,7 @@ jobs:
           fi
 
       - name: Check expanded multi-exchange hunter universe
+        if: github.event_name != 'pull_request'
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
@@ -390,6 +396,7 @@ jobs:
           echo "- Canonical catalog: $count assets; independent Hunter universe: $hunter_count instruments ($discovered outside metadata catalog) across $venues" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Check market data proxy
+        if: github.event_name != 'pull_request'
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
@@ -420,6 +427,7 @@ jobs:
           echo "- CoinLore fallback proxy: responding with ranked assets and live USD prices" >> "$GITHUB_STEP_SUMMARY"
  
       - name: Smoke-test live spot candlestick endpoint
+        if: github.event_name != 'pull_request'
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
@@ -438,6 +446,7 @@ jobs:
 
 
       - name: Run and verify the scheduled Quantum Hunter snapshot
+        if: github.event_name != 'pull_request'
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
@@ -452,6 +461,7 @@ jobs:
           jq -r '"Quantum Hunter snapshot: scanned " + (.scanned_count|tostring) + "/" + (.universe_count|tostring) + " liquid instruments; " + (.signals|length|tostring) + " confirmed signals; failures " + (.failed_count|tostring)' /tmp/hunter-snapshot.json >> "$GITHUB_STEP_SUMMARY"
 
       - name: Verify 1m/3m/5m and Futures candle endpoints
+        if: github.event_name != 'pull_request'
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
@@ -467,6 +477,7 @@ jobs:
           echo "- Spot 3m/5m and Futures 15m OHLCV endpoints: verified" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Smoke-test Spot/Futures trade flow, order book and analysis
+        if: github.event_name != 'pull_request'
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
@@ -535,6 +546,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Smoke-test market intelligence endpoints
+        if: github.event_name != 'pull_request'
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
@@ -562,6 +574,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Live AI analyzer end-to-end smoke test
+        if: github.event_name != 'pull_request'
         if: github.event_name == 'push' || github.event_name == 'pull_request'
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
