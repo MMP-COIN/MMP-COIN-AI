@@ -2057,6 +2057,131 @@ body.mmp-app-mode :where(.card,.panel,.radar-card,.chart-box-wrapper,.intel-pane
  body.mmp-app-mode .top-actions{gap:5px}
 }
 </style>
+
+<style id="mmp-qie41-command-redesign">
+/* QIE 4.1 — visible command-terminal redesign for desktop, mobile and Android WebView */
+:root{--q41-bg:#050a11;--q41-panel:#0d1723;--q41-panel2:#122131;--q41-gold:#e9c77e;--q41-teal:#45dfc3;--q41-line:#304357;--q41-muted:#9aabba}
+html{scroll-behavior:smooth;scroll-padding-top:92px}
+body.mmp-app-mode{background:
+ radial-gradient(ellipse at 76% 2%,#c19a4b20,transparent 29%),
+ radial-gradient(ellipse at 8% 28%,#16a58f15,transparent 28%),
+ linear-gradient(180deg,#080f19 0%,#050a11 60%,#09121c 100%)!important;color:#eef4f8}
+body.mmp-app-mode:before{opacity:.2;background-size:36px 36px;background-image:linear-gradient(#9ab4c20c 1px,transparent 1px),linear-gradient(90deg,#9ab4c20c 1px,transparent 1px)}
+body.mmp-app-mode>header.top{height:76px!important;min-height:76px;padding-inline:28px calc(var(--sidebar,252px) + 28px)!important;background:linear-gradient(100deg,#07111df5,#0b1723f5)!important;border-bottom:1px solid #b99a5b55!important;box-shadow:0 12px 36px #0008!important}
+body.mmp-app-mode .brand{gap:13px}
+body.mmp-app-mode .brand .logo{width:48px;height:48px;border-radius:15px;background:linear-gradient(145deg,#f8df9e,#9a7135)!important;box-shadow:0 0 0 5px #e9c77e12,0 0 34px #e9c77e45!important}
+body.mmp-app-mode .brand b{font-size:15px;letter-spacing:2px;color:#f7dda0!important}
+body.mmp-app-mode .brand small{font-size:10px;letter-spacing:.3px;color:#9db0c2}
+body.mmp-app-mode .top-actions{gap:10px}
+body.mmp-app-mode .top-actions .btn,body.mmp-app-mode .top-actions .pill{border:1px solid #40566a;background:#101e2c;color:#e9f0f5;border-radius:12px;padding:10px 14px}
+body.mmp-app-mode .currency-switch{border-color:#40566a;background:#0a1420;border-radius:12px}
+body.mmp-app-mode .curr-btn.active{background:linear-gradient(120deg,#b58b48,#f0d796);color:#111923}
+body.mmp-app-mode .mmp-sidebar{top:76px!important;width:252px!important;padding:22px 15px 18px!important;background:linear-gradient(180deg,#0c1b29f7,#08111bf9 75%)!important;border-left:1px solid #3b5368!important;box-shadow:-18px 0 48px #0008!important}
+body.mmp-app-mode .side-brand{padding-bottom:20px;border-bottom-color:#d6b66d33}
+body.mmp-app-mode .side-brand b{font-size:14px;letter-spacing:1.7px}
+body.mmp-app-mode .side-caption{color:#c3a76e;letter-spacing:2.4px}
+body.mmp-app-mode .side-link{min-height:46px;border-radius:12px;font-size:12px}
+body.mmp-app-mode .side-link.active{background:linear-gradient(100deg,#d4ad5b30,#173143);border-color:#d4ad5b88;box-shadow:inset -3px 0 #e9c77e,0 7px 20px #0005}
+body.mmp-app-mode .side-footer{background:#102a2b;border-color:#287c6d}
+body.mmp-app-mode main.wrap{width:calc(100% - 252px)!important;max-width:none!important;margin:0 0 0 auto!important;padding:24px clamp(18px,2.7vw,44px) 90px!important}
+body.mmp-app-mode #mmp-home-hero.mmp-home-hero{min-height:330px!important;grid-template-columns:minmax(0,1fr) minmax(250px,330px)!important;gap:34px!important;margin:5px 0 22px!important;padding:clamp(26px,4vw,54px)!important;border:1px solid #b8955580!important;border-radius:28px!important;background:
+ radial-gradient(ellipse at 77% 48%,#2bc7b52c,transparent 36%),
+ radial-gradient(ellipse at 10% 5%,#f0ce7b25,transparent 38%),
+ linear-gradient(112deg,#102333 0%,#153544 48%,#111e2c 100%)!important;
+ box-shadow:0 24px 65px #0008,inset 0 1px #fff3!important}
+body.mmp-app-mode #mmp-home-hero .mmp-hero-title{font-size:clamp(30px,3.4vw,49px)!important;line-height:1.55!important;letter-spacing:-1px!important}
+body.mmp-app-mode #mmp-home-hero .mmp-hero-title span{color:#f4d58e!important}
+body.mmp-app-mode #mmp-home-hero .mmp-hero-copy>p{max-width:680px;color:#d0dce4;font-size:14px;line-height:2.1}
+body.mmp-app-mode #mmp-home-hero .mmp-hero-kicker{font-size:10px;letter-spacing:2.2px;color:#f0d38f}
+body.mmp-app-mode #mmp-home-hero .mmp-emblem-coin{width:158px;height:158px;box-shadow:0 0 0 11px #e6c47712,0 22px 55px #02070caa,inset 0 5px 9px #fff9,inset 0 -10px 16px #39250e}
+body.mmp-app-mode #mmp-home-hero .mmp-emblem-ring{width:250px;height:160px}
+body.mmp-app-mode #market-snapshot{gap:13px!important;margin:0 0 24px}
+body.mmp-app-mode #market-snapshot>.card{height:auto!important;min-height:144px!important;max-height:none!important;padding:17px!important;border-radius:18px!important;border:1px solid #34495b!important;background:linear-gradient(145deg,#142333,#0c1621)!important;box-shadow:0 13px 32px #0006,inset 0 1px #fff1!important}
+body.mmp-app-mode #market-snapshot>.card:after{content:"";display:block;height:2px;margin-top:13px;border-radius:4px;background:linear-gradient(90deg,transparent,#d8b56d99,transparent)}
+body.mmp-app-mode #market-snapshot .stat-value{font-size:clamp(18px,2vw,26px)!important;color:#f3d998}
+body.mmp-app-mode .quantum-command-hero{min-height:350px!important;border-radius:26px!important;border:1px solid #a98c55!important;background:
+ radial-gradient(ellipse at 82% 40%,#b68b3b2b,transparent 35%),
+ radial-gradient(ellipse at 5% 95%,#168e8370,transparent 40%),
+ linear-gradient(115deg,#121c29,#0a111b 58%,#19160f)!important;box-shadow:0 24px 60px #0008,inset 0 1px #fff2!important}
+body.mmp-app-mode .quantum-hero-copy{padding:4px}
+body.mmp-app-mode .quantum-hero-eyebrow{color:#f0d28e;letter-spacing:2.2px}
+body.mmp-app-mode .quantum-command-hero .hero-title{font-size:clamp(27px,3vw,40px)!important;line-height:1.55!important}
+body.mmp-app-mode .quantum-gold-title{color:#f2d18b!important;text-shadow:0 4px 22px #d9b66d44}
+body.mmp-app-mode .quantum-enter-btn{background:linear-gradient(115deg,#9b7138,#f0d38e 58%,#c09650)!important;color:#111923!important;border:0!important;box-shadow:0 10px 26px #c69a4a33!important}
+body.mmp-app-mode .quantum-hero-art{min-height:250px}
+body.mmp-app-mode .quantum-art-core{filter:drop-shadow(0 0 24px #d8b66d55)}
+body.mmp-app-mode .quantum-engine-board{border:1px solid #43576a!important;border-radius:16px!important;background:#0a1520!important}
+body.mmp-app-mode .quantum-engine-link{background:linear-gradient(145deg,#142535,#0d1722)!important;border-color:#354b60!important}
+body.mmp-app-mode .card,body.mmp-app-mode .chart-box-wrapper,body.mmp-app-mode .collapsible-coins-container,body.mmp-app-mode .intel-panel{border:1px solid #30465a!important;border-radius:19px!important;background:linear-gradient(145deg,#111e2b,#0b131e)!important;box-shadow:0 16px 42px #0006,inset 0 1px #fff1!important}
+body.mmp-app-mode .section-head h2,body.mmp-app-mode .hunter-heading-copy h2{color:#f0d38e}
+body.mmp-app-mode .section-kicker{color:#58d9c2!important;letter-spacing:2px}
+body.mmp-app-mode #opportunities .radar-core-console{border:1px solid #3d5c68;border-radius:18px;background:linear-gradient(120deg,#0d1d2a,#10232a 55%,#101721);padding:18px}
+body.mmp-app-mode #opportunities .radar-item{border-radius:15px;border-color:#3a4b5e;background:linear-gradient(110deg,#152638,#0c1722)}
+body.mmp-app-mode #market-hunter{border-color:#a1844e!important;background:radial-gradient(ellipse at 12% 0%,#b08b3b24,transparent 34%),linear-gradient(145deg,#101f2c,#09121c 72%)!important}
+body.mmp-app-mode #market-hunter .hunter-stat{border:1px solid #3c5263;border-radius:14px;background:#0b1925;padding:13px}
+body.mmp-app-mode #market-hunter .hunter-stat b{color:#f0d38e;font-size:23px}
+body.mmp-app-mode #ai-section .ai-metric{border:1px solid #3c5063;background:linear-gradient(145deg,#142434,#0b1520);border-radius:14px}
+body.mmp-app-mode #chart-section .chart-box-wrapper,body.mmp-app-mode #chart-container{border-radius:18px!important;border:1px solid #3b5265!important;overflow:hidden}
+body.mmp-app-mode .dropdown-menu{border:1px solid #51677a!important;border-radius:16px!important;background:#0b1723!important;box-shadow:0 22px 60px #000b!important;padding:10px!important}
+body.mmp-app-mode .dropdown-menu a{border-radius:10px!important;padding:12px!important}
+body.mmp-app-mode .dropdown-menu a:hover{background:#1a3343!important;color:#f5d992!important}
+body.mmp-app-mode :where(button,a,input,select){transition:border-color .18s ease,background-color .18s ease,box-shadow .18s ease,transform .18s ease}
+body.mmp-app-mode :where(button,a):focus-visible{outline:2px solid #e9c77e!important;outline-offset:3px!important}
+@media(max-width:1100px) and (min-width:901px){
+ body.mmp-app-mode main.wrap{width:calc(100% - 224px)!important;padding-inline:17px!important}
+ body.mmp-app-mode .mmp-sidebar{width:224px!important}
+ body.mmp-app-mode #mmp-home-hero.mmp-home-hero{grid-template-columns:minmax(0,1fr) 230px!important}
+}
+@media(max-width:900px){
+ body.mmp-app-mode>header.top{height:auto!important;min-height:64px;padding:9px 12px!important;gap:8px}
+ body.mmp-app-mode .mmp-sidebar{display:none!important}
+ body.mmp-app-mode main.wrap{width:100%!important;max-width:100%!important;margin:0!important;padding:14px 12px calc(45px + env(safe-area-inset-bottom))!important}
+ body.mmp-app-mode .menu-btn{display:grid!important;place-items:center;width:42px;height:42px;border:1px solid #526b7e;border-radius:12px;background:#122232;color:#f2d38f;font-size:20px}
+ body.mmp-app-mode .dropdown-menu{display:none!important;position:fixed!important;z-index:1200!important;top:65px!important;right:10px!important;left:10px!important;width:auto!important;max-height:calc(100dvh - 80px)!important;overflow-y:auto!important}
+ body.mmp-app-mode .dropdown-menu.show{display:block!important}
+ body.mmp-app-mode #mmp-home-hero.mmp-home-hero{grid-template-columns:minmax(0,1fr) 190px!important;min-height:270px!important;padding:22px!important;gap:10px!important}
+ body.mmp-app-mode #mmp-home-hero .mmp-emblem-coin{width:118px;height:118px}
+ body.mmp-app-mode #mmp-home-hero .mmp-emblem-ring{width:180px;height:120px}
+}
+@media(max-width:620px){
+ body.mmp-app-mode>header.top{align-items:center;flex-wrap:wrap}
+ body.mmp-app-mode .brand{flex:1 1 auto;min-width:0}
+ body.mmp-app-mode .brand .logo{width:39px;height:39px}
+ body.mmp-app-mode .brand b{font-size:12px}
+ body.mmp-app-mode .top-actions{flex:0 0 auto;gap:6px}
+ body.mmp-app-mode .top-actions #refresh-all-btn{display:none}
+ body.mmp-app-mode .top-actions .pill{display:none}
+ body.mmp-app-mode .top-actions .curr-btn{padding:7px 8px;font-size:10px}
+ body.mmp-app-mode main.wrap{padding-inline:9px!important}
+ body.mmp-app-mode #mmp-home-hero.mmp-home-hero{grid-template-columns:minmax(0,1fr)!important;min-height:0!important;padding:23px 18px!important}
+ body.mmp-app-mode #mmp-home-hero .mmp-hero-title{font-size:clamp(24px,7vw,33px)!important;line-height:1.55!important}
+ body.mmp-app-mode #mmp-home-hero .mmp-hero-copy>p{font-size:12px;line-height:2}
+ body.mmp-app-mode #mmp-home-hero .mmp-hero-emblem{min-height:145px;grid-row:1}
+ body.mmp-app-mode #mmp-home-hero .mmp-emblem-coin{width:105px;height:105px}
+ body.mmp-app-mode #mmp-home-hero .mmp-emblem-ring{width:155px;height:98px}
+ body.mmp-app-mode #mmp-home-hero .mmp-hero-index{display:none}
+ body.mmp-app-mode #market-snapshot{gap:8px!important}
+ body.mmp-app-mode #market-snapshot>.card{min-height:122px!important;padding:12px!important;border-radius:14px!important}
+ body.mmp-app-mode #market-snapshot .stat-value{font-size:17px!important}
+ body.mmp-app-mode .quantum-command-hero{grid-template-columns:minmax(0,1fr)!important;padding:19px!important;min-height:0!important}
+ body.mmp-app-mode .quantum-hero-art{min-height:170px;grid-row:1}
+ body.mmp-app-mode .quantum-command-hero .hero-title{font-size:24px!important}
+ body.mmp-app-mode .quantum-hero-actions{display:grid;grid-template-columns:minmax(0,1fr);gap:9px}
+ body.mmp-app-mode .quantum-enter-btn,body.mmp-app-mode .quantum-run-compact{width:100%;justify-content:space-between}
+ body.mmp-app-mode .section-head{align-items:flex-start;flex-wrap:wrap;gap:8px}
+ body.mmp-app-mode .hunter-topline{align-items:flex-start;flex-wrap:wrap}
+ body.mmp-app-mode .hunter-head-actions{width:100%;justify-content:space-between}
+ body.mmp-app-mode .hunter-overview{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:360px){
+ body.mmp-app-mode .brand small{font-size:9px}
+ body.mmp-app-mode .top-actions .currency-switch{display:none}
+ body.mmp-app-mode #market-snapshot{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ body.mmp-app-mode #market-snapshot>.card{min-height:112px!important}
+ body.mmp-app-mode .hunter-overview{grid-template-columns:minmax(0,1fr)}
+}
+@media(prefers-reduced-motion:reduce){body.mmp-app-mode *{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style>
 </head>
 <body class="mmp-app-mode">
 
@@ -2121,8 +2246,8 @@ body.mmp-app-mode :where(.card,.panel,.radar-card,.chart-box-wrapper,.intel-pane
 <section class="hero mmp-home-hero" id="mmp-home-hero">
   <div class="mmp-hero-copy">
     <div class="mmp-hero-kicker"><span class="mmp-live-pulse"></span>MMP QUANTUM INTELLIGENCE NETWORK</div>
-    <h1 class="mmp-hero-title">ترمینال جامع و هوشمند <span>بازارهای مالی</span></h1>
-    <p>نبض بازار را زنده دنبال کن؛ داده‌های لحظه‌ای، رادار فرصت‌ها و تحلیل چندلایه برای تصمیم‌گیری دقیق‌تر.</p>
+    <h1 class="mmp-hero-title">مرکز هوشمند فرماندهی <span>بازار رمزارزها</span></h1>
+    <p>یک نمای فرماندهی یکپارچه برای قیمت‌های زنده، کشف زودهنگام حرکت‌ها، رادار فرصت‌ها، شکار اسپات و فیوچرز و تحلیل چندلایه؛ همه‌چیز در یک ترمینال سریع و خوانا.</p>
     <div class="mmp-hero-actions">
       <span class="mmp-market-status" id="updated">در حال دریافت داده…</span>
       <button class="mmp-refresh-button" id="market-refresh-btn" type="button"><span aria-hidden="true">↻</span> بروزرسانی بازار</button>
