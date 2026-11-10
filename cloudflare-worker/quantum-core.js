@@ -10,6 +10,12 @@ export const QUANTUM_SCORE_WEIGHTS = Object.freeze({
 });
 const clamp=(value,min=0,max=100)=>Math.max(min,Math.min(max,Number.isFinite(Number(value))?Number(value):min));
 const finite=value=>Number.isFinite(Number(value))?Number(value):0;
+export function calculateMarketScanPriority(item={}){
+ const move=Math.min(35,Math.abs(finite(item.hunterChange24h??item.price_change_percentage_24h??item.change24h)));
+ const volume=Math.max(50000,finite(item.total_volume??item.totalVolume24h));
+ const liquidity=Math.min(18,Math.max(0,Math.log10(volume/50000))*3.6);
+ return Number((move*.78+liquidity).toFixed(6));
+}
 const has=(input,key)=>input[key]!==undefined&&input[key]!==null&&Number.isFinite(Number(input[key]));
 
 export function calculateQuantumIndicators(rows=[]){
