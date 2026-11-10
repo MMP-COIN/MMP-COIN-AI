@@ -127,6 +127,11 @@ jobs:
             checked++;
           }
           if (!html.includes("data-hunter-detail=") || !html.includes("slice(0,6)") || !html.includes("/market-flow?")) throw new Error("Hunter card, six-per-direction cap, or Radar flow wiring missing");
+          if (!html.includes("Funding sentiment:") || !html.includes("x.sentiment?.available")) throw new Error("Early Futures cards must show validated funding sentiment");
+          const candidateLoop = workerSource.indexOf("await Promise.all(flowCandidates.map(async x=>{");
+          const sentimentCall = workerSource.indexOf("sentiment=await loadHunterFundingSentiment", candidateLoop);
+          const flowCall = workerSource.indexOf("let f=marketType===\"futures\"?await loadFuturesMarketFlow", candidateLoop);
+          if (candidateLoop < 0 || sentimentCall < 0 || flowCall < 0 || sentimentCall > flowCall) throw new Error("Futures sentiment must run before trade-flow confirmation for early candidates");
           if (!html.includes("while(!finished)") || !html.includes("hunterUniverseCache?.coins") || html.includes('pageNumbers=marketMetadataSource==="CoinLore"?[2,3,4,5,6,7,8,9,10]:[2,3,4,5]')) throw new Error("Full paginated market universe regression");
           if (workerSource.includes("requestedTopPage>5") || workerSource.includes("requestedOffset>5000")) throw new Error("Fixed market catalog page ceiling was reintroduced");
           console.log("Parsed " + checked + " inline browser scripts; Hunter UI wiring checks passed");
