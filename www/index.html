@@ -3504,9 +3504,8 @@ async function refreshAll(){
   renderHeroCards();
   renderCoinsTables(data);
   updateDropdowns(data);  renderOpportunities();
-  // رادار فقط snapshot موتور هوشمند مرکزی را می‌خواند؛ اسکن محلی مستقل برای شکارچی حفظ شده است.
+  // رادار و شکارچی فقط Snapshotهای از پیش محاسبه‌شده‌ی سمت سرور را می‌خوانند؛ مرورگر اسکن موازی نمادها اجرا نمی‌کند.
   setTimeout(()=>loadUnifiedRadarSnapshot(),0);
-  setTimeout(()=>runFastRadarScan(),0);
 
   // قیمت XAU از ابتدای چرخه و مستقل از کاتالوگ بازار دریافت شده است.
 
@@ -4681,7 +4680,7 @@ async function runDedicatedHunterScan(force=false){
  if(!force&&Date.now()-dualHunterState.lastScan<4*60*1000)return;
  dualHunterState.busy=true;const status=$("hunter-feed-status"),button=$("hunter-refresh-btn");
  try{
-  const response=await fetch("https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/hunter-futures-run",{cache:"no-store"});
+  const response=await fetch("https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/hunter-futures-snapshot",{cache:"no-store"});
   const snapshot=await response.json();if(!response.ok||snapshot.status==="error")throw new Error(snapshot.error||"Futures Hunter unavailable");
   window.__mmpDigitalHunterFuturesSnapshot=snapshot;dualHunterState.lastScan=Date.now();renderMarketHunter();
  }catch(error){if(status)status.textContent="به‌روزرسانی موتور Futures ناموفق بود: "+String(error?.message||error).slice(0,140);}
@@ -4901,11 +4900,9 @@ setInterval(()=>{if(document.visibilityState!=="hidden")refreshBenchmarkQuotes()
 setInterval(()=>{if(document.visibilityState!=="hidden")refreshLiveQuotes();},60000);
 setInterval(()=>{if(document.visibilityState!=="hidden")refreshGoldQuote();},30000);
 setTimeout(()=>loadUnifiedRadarSnapshot(),12000);
-setInterval(()=>{if(document.visibilityState!=="hidden")loadUnifiedRadarSnapshot();},30000);
-setTimeout(()=>runFastRadarScan(),12000);
+setInterval(()=>{if(document.visibilityState!=="hidden")loadUnifiedRadarSnapshot();},60000);
 setTimeout(()=>runDedicatedHunterScan(),18000);
 setInterval(()=>{if(document.visibilityState!=="hidden")runDedicatedHunterScan();},5*60*1000);
-setInterval(()=>runFastRadarScan(),60000);
 </script>
 
 
