@@ -2,7 +2,7 @@ import { QUANTUM_ENGINE_NAME, QUANTUM_ENGINE_VERSION, normalizeQuantumUniverse, 
 const MAIN_UNIVERSE = "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/hunter-universe";
 const MAIN_FLOW = "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-flow";
 const RETENTION_SCORE = 64;
-const BATCH_SIZE = 18;
+const BATCH_SIZE = 14;
 const CONCURRENCY = 4;
 const SUPPORTED = new Set(["Binance","Bybit","OKX","Bitget","Gate","KuCoin","WhiteBIT","MEXC"]);
 const JSON_HEADERS = { "Accept":"application/json", "User-Agent":"MMP-COIN-AI-RADAR/1.0" };
@@ -14,7 +14,7 @@ async function getJson(url, timeoutMs = 6500) {
       const response = await fetch(url,{headers:JSON_HEADERS,signal:controller.signal});
       if (!response.ok) {
         const error = new Error("HTTP "+response.status);
-        if (attempt === 0 && (response.status === 429 || response.status >= 500)) {
+        if (attempt === 0 && response.status >= 500) {
           const retryAfter = Number(response.headers.get("retry-after"));
           const delay = Math.min(900,Math.max(250,Number.isFinite(retryAfter)&&retryAfter>0?retryAfter*1000:350));
           await new Promise(resolve => setTimeout(resolve,delay));
@@ -101,7 +101,7 @@ async function scanCoin(coin){
   if(!listed.length)return null;
   const order=[...new Map(listed.sort((a,b)=>Number(b.volume)-Number(a.volume)).map(x=>[x.exchange,x])).values()].map(x=>x.exchange);
   const fallback=["OKX","Gate","MEXC","KuCoin","WhiteBIT","Binance","Bitget","Bybit"].filter(name=>!order.includes(name));
-  const verificationOrder=[...new Set([...order,...fallback])].slice(0,6);
+  const verificationOrder=[...new Set([...order,...fallback])].slice(0,5);
   let market=null,corroboration=null,errors=[];
   for(const venue of verificationOrder){if(corroboration)break;try{const candidate=await loadProvider(symbol,venue);if(!market)market=candidate;else corroboration=candidate;}catch(error){errors.push(venue+": "+String(error?.message||error).slice(0,80));}}
   if(!market)throw new Error(errors.join(" | ")||"No candle provider responded");
@@ -248,7 +248,7 @@ async function runRadar(env,scheduledTime=Date.now()){
   // Check early, multi-exchange candidates for executed flow before full 15m alignment.
   // These remain watch-only until the unchanged final quality gate passes.
   const flowEligible=x=>x.multiExchangeConfirmed&&Math.abs(Number(x.change5m)||0)<2.5&&Math.abs(Number(x.change1m)||0)<1.2&&Number(x.coin?.total_volume||0)>=75000&&Number(x.volumeRatio)>=0.9&&Number(x.score)>=42;
-  const flowCandidates=[...scannedSignals.filter(x=>x.trend==="bull"&&flowEligible(x)).sort((a,b)=>b.score-a.score).slice(0,2),...scannedSignals.filter(x=>x.trend==="bear"&&flowEligible(x)).sort((a,b)=>b.score-a.score).slice(0,2)];
+  const flowCandidates=[...scannedSignals.filter(x=>x.trend==="bull"&&flowEligible(x)).sort((a,b)=>b.score-a.score).slice(0,1),...scannedSignals.filter(x=>x.trend==="bear"&&flowEligible(x)).sort((a,b)=>b.score-a.score).slice(0,1)];
   const flowCheckedSymbols=new Set(flowCandidates.map(signal=>String(signal.symbol).toUpperCase()));
   for(const signal of scannedSignals)signal.flowStatus=flowCheckedSymbols.has(String(signal.symbol).toUpperCase())?"checking_flow":"queued_for_flow_review";
   await mapLimit(flowCandidates,2,async signal=>{
