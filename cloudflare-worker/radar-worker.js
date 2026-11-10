@@ -44,8 +44,12 @@ function normalizeRows(rows) {
 }
 async function readRadarRecord(env,id,kvKey){
   if(env.ADMIN_DB){
-    const row=await env.ADMIN_DB.prepare("SELECT payload,updated_at FROM hunter_engine_state WHERE id = ?").bind(id).first();
-    if(row?.payload){try{return JSON.parse(row.payload);}catch{}}
+    try{
+      const row=await env.ADMIN_DB.prepare("SELECT payload,updated_at FROM hunter_engine_state WHERE id = ?").bind(id).first();
+      if(row?.payload){try{return JSON.parse(row.payload);}catch{}}
+    }catch(error){
+      console.warn("Radar D1 read unavailable; trying KV fallback:",String(error?.message||error).slice(0,140));
+    }
   }
   return env.RADAR_KV?await env.RADAR_KV.get(kvKey,{type:"json"}):null;
 }
@@ -397,7 +401,14 @@ export default {
     return json({error:"Not found"},404);
   },
   async scheduled(controller,env){
-    try{await runRadar(env,controller.scheduledTime);}
+    try{
+      await runRadar(env,controller.scheduledTime);
+      // Clear a previously persisted failure after the first successful cycle.
+      try{
+        const prior=await readRadarRecord(env,"radar:last-error","radar:last-error");
+        if(prior&&env.ADMIN_DB)await env.ADMIN_DB.prepare("DELETE FROM hunter_engine_state WHERE id = ?").bind("radar:last-error").run();
+      }catch(error){console.warn("Radar recovered but could not clear old error record:",String(error?.message||error).slice(0,140));}
+    }
     catch(error){
       const message=String(error?.message||error).slice(0,500),now=Date.now();
       try{
