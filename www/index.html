@@ -3814,7 +3814,7 @@ function checkConnections(force=false){
    probeDirectFallback(checks.get("okx spot"),["https://us.okx.com/api/v5/market/ticker?instId=BTC-USDT","https://openapi.okx.com/api/v5/market/ticker?instId=BTC-USDT"],d=>d?.code==="0"&&Number(d?.data?.[0]?.last)>0,"قیمت لحظه‌ای Spot"),
    probeDirectFallback(checks.get("gate.io spot"),["https://api.gate.us/api/v4/spot/tickers?currency_pair=BTC_USDT"],d=>Array.isArray(d)&&Number(d?.[0]?.last)>0,"قیمت لحظه‌ای Spot"),
    probeDirectFallback(checks.get("kucoin spot"),["https://api.kucoin.tr/api/v1/market/orderbook/level1?symbol=BTC-USDT"],d=>d?.code==="200000"&&Number(d?.data?.price)>0,"قیمت لحظه‌ای Spot"),
-   probeDirectFallback(checks.get("nobitex"),["https://api.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls"],d=>d?.status==="ok"&&Number(d?.stats?.["usdt-rls"]?.latest)>0,"نرخ تتر به تومان")
+   probeDirectFallback(checks.get("nobitex"),[AI_ANALYSIS_ENDPOINT+"/market-proxy?source=nobitex-tether"],d=>d?.status==="ok"&&Number(d?.stats?.["usdt-rls"]?.latest)>0,"نرخ تتر به تومان · مسیر سروری امن")
   ]);
   const ordered=expected.map(name=>checks.get(name)).filter(Boolean);
   if(ordered.length!==expected.length)throw new Error("پاسخ بررسی اتصال کامل نیست");
