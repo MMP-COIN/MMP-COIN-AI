@@ -1781,14 +1781,20 @@ async function runDigitalHunterCron(event,env){
  const id="digital-hunter-cron-heartbeat",started=Date.now(),stamp=new Date(started).toISOString();
  const save=payload=>env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(id,JSON.stringify(payload),payload.updated_at||new Date().toISOString()).run();
  await save({status:"started",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,cron:event?.cron||"* * * * *",scheduledTime:event?.scheduledTime||null,markets:["spot","futures-independent-cron"],updated_at:stamp});
- const result=await settleHunterCycle(()=>runDigitalHunterMarketCycle(env,"spot"),"spot",48000);
- const finished=Date.now(),spot=result.status==="fulfilled"?result.value:null;
- const errors={};if(result.status==="rejected")errors.spot=String(result.reason?.message||result.reason).slice(0,220);
- const hasDataFailures=Number(spot?.failed_count||0)>0,hasQualityRejections=Number(spot?.rejected_count||0)>0,hasIncompleteCycle=!!spot?.universe_refreshed||!!spot?.universe_stale||Number(spot?.scanned_count||0)===0;
- const status=!spot?"error":hasDataFailures||hasQualityRejections||hasIncompleteCycle?"partial":"success";
- const payload={status,engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,cron:event?.cron||"* * * * *",scheduledTime:event?.scheduledTime||null,startedAt:stamp,finishedAt:new Date(finished).toISOString(),updated_at:new Date(finished).toISOString(),markets:{spot:spot?{queue_position:spot.queue_position||0,scanned:spot.scanned_count||0,preliminary:spot.preliminary_signals?.length||0,failed:spot.failed_count||0,rejected:spot.rejected_count||0,cooldown_count:spot.cooldown_count||0,universe_refreshed:spot.universe_refreshed===true,universe:spot.universe_count||0,signals:spot.signals?.length||0,last_errors:spot.last_errors||[],last_rejections:spot.last_rejections||[]}:{status:"error",error:errors.spot||"unavailable"}},errors};
- await save(payload);
- if(!spot)throw new Error("Quantum Spot cycle failed: "+JSON.stringify(errors));
+ try{
+  const result=await settleHunterCycle(()=>runDigitalHunterMarketCycle(env,"spot"),"spot",48000);
+  const finished=Date.now(),spot=result.status==="fulfilled"?result.value:null;
+  if(!spot)throw result.reason||new Error("Spot Hunter cycle returned no result");
+  const hasDataFailures=Number(spot.failed_count||0)>0,hasQualityRejections=Number(spot.rejected_count||0)>0,hasIncompleteCycle=!!spot.universe_refreshed||!!spot.universe_stale||Number(spot.scanned_count||0)===0;
+  const status=hasDataFailures||hasQualityRejections||hasIncompleteCycle?"partial":"success";
+  const payload={status,engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,cron:event?.cron||"* * * * *",scheduledTime:event?.scheduledTime||null,startedAt:stamp,finishedAt:new Date(finished).toISOString(),updated_at:new Date(finished).toISOString(),markets:{spot:{queue_position:spot.queue_position||0,scanned:spot.scanned_count||0,preliminary:spot.preliminary_signals?.length||0,failed:spot.failed_count||0,rejected:spot.rejected_count||0,cooldown_count:spot.cooldown_count||0,universe_refreshed:spot.universe_refreshed===true,universe:spot.universe_count||0,signals:spot.signals?.length||0,last_errors:spot.last_errors||[],last_rejections:spot.last_rejections||[]}},errors:{}};
+  await save(payload);
+ }catch(error){
+  const finished=Date.now(),message=String(error?.message||error).slice(0,240);
+  const payload={status:"error",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,cron:event?.cron||"* * * * *",scheduledTime:event?.scheduledTime||null,startedAt:stamp,finishedAt:new Date(finished).toISOString(),updated_at:new Date(finished).toISOString(),markets:{spot:{status:"error",error:message}},errors:{spot:message}};
+  try{await save(payload);}catch(saveError){console.error("Spot Hunter error heartbeat write failed:",saveError?.message||saveError);}
+  throw error;
+ }
 }
 export default {
  fetch:handle,
