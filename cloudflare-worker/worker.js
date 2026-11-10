@@ -593,6 +593,7 @@ async function loadMarketFlow(symbol,windowMinutes=5){
  if(!/^[A-Z0-9]{2,24}USDT$/.test(pair))throw new Error("نماد نامعتبر است.");
  const minutes=Math.max(1,Math.min(15,Number(windowMinutes)||5)),now=Date.now(),cutoff=now-minutes*60000;
  let trades=null,provider="",truncated=false,lastError="";
+ const betterFlow=(candidate,candidateTruncated)=>!trades?.length||(truncated&&!candidateTruncated)||(truncated===candidateTruncated&&candidate.length>trades.length);
  for(const host of ["https://api.bybit.com","https://api.bytick.com","https://api.bybit.eu"]){
   try{
    const d=await marketFlowJson(host+"/v5/market/recent-trade?category=spot&symbol="+pair+"&limit=60");
@@ -605,7 +606,7 @@ async function loadMarketFlow(symbol,windowMinutes=5){
    break;
   }catch(error){lastError=String(error?.message||error).slice(0,160);}
  }
- if(!trades?.length||truncated){
+ if(!trades?.length||truncated||trades.length<20){
   for(const host of ["https://api.binance.com"]){
    try{
     const d=await marketFlowJson(host+"/api/v3/aggTrades?symbol="+pair+"&startTime="+cutoff+"&endTime="+now+"&limit=1000");
@@ -613,23 +614,23 @@ async function loadMarketFlow(symbol,windowMinutes=5){
     const oldest=d.reduce((value,x)=>Math.min(value,Number(x.T)||Infinity),Infinity);
     const binanceTruncated=Number.isFinite(oldest)&&oldest>cutoff+5000;
     const binanceTrades=d.map(x=>({time:Number(x.T),price:Number(x.p),size:Number(x.q),side:x.m?"Sell":"Buy"})).filter(x=>x.time>=cutoff&&x.time<=now&&x.price>0&&x.size>0);
-    if(binanceTrades.length&&(!trades||!binanceTruncated||binanceTrades.length>trades.length)){trades=binanceTrades;truncated=binanceTruncated;provider="Binance Spot · معاملات تجمیعی واقعی";}
+    if(binanceTrades.length&&betterFlow(binanceTrades,binanceTruncated)){trades=binanceTrades;truncated=binanceTruncated;provider="Binance Spot · معاملات تجمیعی واقعی";}
     break;
    }catch(error){lastError=String(error?.message||error).slice(0,160);}
   }
  }
- if(!trades?.length||truncated){
+ if(!trades?.length||truncated||trades.length<20){
   try{
    const d=await marketFlowJson("https://www.okx.com/api/v5/market/trades?instId="+encodeURIComponent(pair.replace(/USDT$/,"")+"-USDT")+"&limit=500");
    if(String(d.code)!=="0")throw new Error(d.msg||"OKX trades unavailable");
    const raw=Array.isArray(d.data)?d.data:[];
    const oldest=raw.reduce((v,x)=>Math.min(v,Number(x.ts)||Infinity),Infinity);
-   truncated=Number.isFinite(oldest)&&oldest>cutoff+5000;
-   trades=raw.map(x=>({time:Number(x.ts),price:Number(x.px),size:Number(x.sz),side:String(x.side||"").toLowerCase()==="buy"?"Buy":"Sell"})).filter(x=>x.time>=cutoff&&x.time<=now&&x.price>0&&x.size>0);
-   provider="OKX Spot · معاملات واقعی";
+   const okxTruncated=Number.isFinite(oldest)&&oldest>cutoff+5000;
+   const okxTrades=raw.map(x=>({time:Number(x.ts),price:Number(x.px),size:Number(x.sz),side:String(x.side||"").toLowerCase()==="buy"?"Buy":"Sell"})).filter(x=>x.time>=cutoff&&x.time<=now&&x.price>0&&x.size>0);
+   if(okxTrades.length&&betterFlow(okxTrades,okxTruncated)){trades=okxTrades;truncated=okxTruncated;provider="OKX Spot · معاملات واقعی";}
   }catch(error){lastError=String(error?.message||error).slice(0,160);}
  }
- if(!trades?.length||truncated){
+ if(!trades?.length||truncated||trades.length<20){
   try{
    const gatePair=pair.replace(/USDT$/,"")+"_USDT";
    const d=await marketFlowJson("https://api.gateio.ws/api/v4/spot/trades?currency_pair="+encodeURIComponent(gatePair)+"&limit=1000");
@@ -637,10 +638,29 @@ async function loadMarketFlow(symbol,windowMinutes=5){
    const raw=d,oldest=raw.reduce((v,x)=>Math.min(v,Number(x.create_time_ms)||Number(x.create_time)*1000||Infinity),Infinity);
    const gateTruncated=Number.isFinite(oldest)&&oldest>cutoff+5000;
    const gateTrades=raw.map(x=>({time:Number(x.create_time_ms)||Number(x.create_time)*1000,price:Number(x.price),size:Number(x.amount),side:String(x.side||"").toLowerCase()==="buy"?"Buy":"Sell"})).filter(x=>x.time>=cutoff&&x.time<=now&&x.price>0&&x.size>0);
-   if(gateTrades.length&&(!trades||!gateTruncated||gateTrades.length>trades.length)){trades=gateTrades;truncated=gateTruncated;provider="Gate Spot · معاملات واقعی";}
+   if(gateTrades.length&&betterFlow(gateTrades,gateTruncated)){trades=gateTrades;truncated=gateTruncated;provider="Gate Spot · معاملات واقعی";}
   }catch(error){lastError=String(error?.message||error).slice(0,160);}
  }
- if(!trades?.length)throw new Error("داده معاملات از Bybit، Binance، OKX و Gate دریافت نشد: "+lastError);
+ if(!trades?.length||truncated||trades.length<20){
+  try{
+   const d=await marketFlowJson("https://api.mexc.com/api/v3/trades?symbol="+pair+"&limit=1000");
+   if(!Array.isArray(d))throw new Error("MEXC Spot trades response invalid");
+   const oldest=d.reduce((v,x)=>Math.min(v,Number(x.time)||Infinity),Infinity),mexcTruncated=Number.isFinite(oldest)&&oldest>cutoff+5000;
+   const rows=d.map(x=>({time:Number(x.time),price:Number(x.price),size:Number(x.qty),side:x.isBuyerMaker?"Sell":"Buy"})).filter(x=>x.time>=cutoff&&x.time<=now&&x.price>0&&x.size>0);
+   if(rows.length&&betterFlow(rows,mexcTruncated)){trades=rows;truncated=mexcTruncated;provider="MEXC Spot · معاملات واقعی";}
+  }catch(error){lastError="MEXC: "+String(error?.message||error).slice(0,160);}
+ }
+ if(!trades?.length||truncated||trades.length<20){
+  try{
+   const d=await marketFlowJson("https://api.kucoin.com/api/v1/market/histories?symbol="+encodeURIComponent(pair.replace(/USDT$/,"")+"-USDT"));
+   if(String(d.code)!=="200000"||!Array.isArray(d.data))throw new Error(d.msg||"KuCoin Spot trade history unavailable");
+   const raw=d.data,stamp=x=>{const t=Number(x.time);return t>1e15?t/1e6:t>1e12?t:t*1000;};
+   const oldest=raw.reduce((v,x)=>Math.min(v,stamp(x)||Infinity),Infinity),kucoinTruncated=Number.isFinite(oldest)&&oldest>cutoff+5000;
+   const rows=raw.map(x=>({time:stamp(x),price:Number(x.price),size:Number(x.size),side:String(x.side||"").toLowerCase()==="buy"?"Buy":"Sell"})).filter(x=>x.time>=cutoff&&x.time<=now&&x.price>0&&x.size>0);
+   if(rows.length&&betterFlow(rows,kucoinTruncated)){trades=rows;truncated=kucoinTruncated;provider="KuCoin Spot · معاملات واقعی";}
+  }catch(error){lastError="KuCoin: "+String(error?.message||error).slice(0,160);}
+ }
+ if(!trades?.length)throw new Error("داده معاملات از Bybit، Binance، OKX، Gate، MEXC و KuCoin دریافت نشد: "+lastError);
  const buckets=new Map();let buy5m=0,sell5m=0;
  for(const trade of trades){
   const quote=trade.price*trade.size;if(!Number.isFinite(quote)||quote<=0)continue;
@@ -651,7 +671,7 @@ async function loadMarketFlow(symbol,windowMinutes=5){
  }
  const rows=[...buckets.values()].sort((a,b)=>a.time-b.time).map(x=>[x.time,x.buy,x.sell,x.buy-x.sell]);
  const oldestTrade=trades.reduce((v,x)=>Math.min(v,x.time),Infinity);
- return {symbol:pair,window_minutes:minutes,buy5m,sell5m,net5m:buy5m-sell5m,trade_count:trades.length,provider,exchange:provider.startsWith("Bybit")?"Bybit":provider.startsWith("Binance")?"Binance":provider.startsWith("OKX")?"OKX":"Gate",complete:!truncated,coverage_start:Number.isFinite(oldestTrade)?oldestTrade:null,window_start:cutoff,window_end:now,updated_at:now,rows};
+ return {symbol:pair,window_minutes:minutes,buy5m,sell5m,net5m:buy5m-sell5m,trade_count:trades.length,provider,exchange:provider.startsWith("Bybit")?"Bybit":provider.startsWith("Binance")?"Binance":provider.startsWith("OKX")?"OKX":provider.startsWith("MEXC")?"MEXC":provider.startsWith("KuCoin")?"KuCoin":"Gate",complete:!truncated,coverage_start:Number.isFinite(oldestTrade)?oldestTrade:null,window_start:cutoff,window_end:now,updated_at:now,rows};
 }
 async function fetchHunterCandles(symbol,marketType="spot",asset=null){
  const pair=symbol+"USDT",get=url=>marketFlowJson(url,6500);
