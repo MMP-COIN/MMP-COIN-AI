@@ -1940,6 +1940,15 @@ header.top .brand small{white-space:nowrap}
 }
 </style>
 </style>
+<style id="mmp-zero-gap-before-main-header-20261110">
+/* Hard reset for the unwanted blank band above the primary site header. */
+html,html body,body.mmp-app-mode{margin-top:0!important;padding-top:0!important}
+body.mmp-app-mode>header.top{
+ display:flex!important;position:sticky!important;top:0!important;
+ inset-block-start:0!important;margin-block-start:0!important;transform:none!important
+}
+@media(max-width:900px){body.mmp-app-mode>header.top{top:0!important;inset-block-start:0!important}}
+</style>
 </head>
 <body class="mmp-app-mode">
 
