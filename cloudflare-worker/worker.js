@@ -1,6 +1,6 @@
 // MMP Quantum Intelligence Engine: dynamic market discovery with no fixed asset ceiling
 import { QUANTUM_ENGINE_NAME, QUANTUM_ENGINE_VERSION, normalizeQuantumUniverse, scoreQuantumOpportunity, calculateQuantumIndicators, calculateMarketScanPriority } from "./quantum-core.js";
-import { normalizeMarketCandles, alignMarketCandles } from "./market-data-core.js";
+import { normalizeMarketCandles, alignMarketCandles, assessMarketDataFreshness } from "./market-data-core.js";
 import { updateLearningLedger, applyLearningCalibration } from "./learning-engine.js";
 const HUNTER_BATCH_SIZE = 16;
 const FUTURES_HUNTER_BATCH_SIZE = 12;
@@ -148,7 +148,7 @@ function analyzeClosedKlines(rows,interval){
  const result=analyzeKlines(closed),lastOpen=Number(closed[closed.length-1][0]),closedAt=lastOpen+duration;
  result.candle_time=new Date(lastOpen).toISOString();
  result.candle_closed_at=new Date(closedAt).toISOString();
- result.data_age_ms=Math.max(0,now-closedAt);
+ const freshness=assessMarketDataFreshness(closedAt,now,180000);result.data_age_ms=freshness.ageMs;result.data_fresh=freshness.fresh;result.data_freshness_reason=freshness.reason;
  result.candle_interval=interval;
  return result;
 }
