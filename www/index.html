@@ -6037,7 +6037,7 @@ body{background:radial-gradient(ellipse at 74% 0,#1b626755,transparent 29%),radi
  }
  $("market-heatmap-refresh")?.addEventListener("click",loadMarketHeatmap);
  $("performance-refresh")?.addEventListener("click",loadPublicPerformance);
- mmpWhenVisible("#market-intelligence",()=>{loadMarketHeatmap();loadPublicPerformance();setInterval(()=>{if(!document.hidden&&document.querySelector("#market-intelligence")?.getBoundingClientRect().top<window.innerHeight+700){loadMarketHeatmap();loadPublicPerformance();}},900000);},{rootMargin:"550px 0px"});
+ mmpWhenVisible("#market-intelligence",()=>{loadMarketHeatmap();loadPublicPerformance();setInterval(()=>{if(!document.hidden&&document.querySelector("#market-intelligence")?.getBoundingClientRect().top<window.innerHeight+700)loadMarketHeatmap();},900000);setInterval(()=>{if(!document.hidden&&document.querySelector("#market-intelligence")?.getBoundingClientRect().top<window.innerHeight+700)loadPublicPerformance();},1800000);},{rootMargin:"550px 0px"});
  orderButton?.addEventListener("click",loadOrderflowViaWorker);
  derivButton?.addEventListener("click",loadOrderflowViaWorker);
  $("intel-symbol")?.addEventListener("change",loadOrderflowViaWorker);
