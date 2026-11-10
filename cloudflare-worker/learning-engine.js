@@ -54,5 +54,5 @@ export function applyLearningCalibration(signal,summary={}){
  if(!signal||typeof signal!=="object"||!signal.quantum)return signal;
  const adjustment=summary.calibrationStatus==="calibrated"?clamp(summary.calibrationAdjustment,-5,5):0;
  const confidence=clamp(finite(signal.quantum.confidence)+adjustment,0,100);
- return {...signal,quantum:{...signal.quantum,calibratedConfidence:Math.round(confidence),learningCalibration:{status:summary.calibrationStatus||"collecting",samples:Number(summary.matured5m)||0,adjustment:Number(adjustment.toFixed(2)),basis:"5m forward outcomes; minimum 30 matured samples"}}};
+ return {...signal,quantum:{...signal.quantum,rawConfidence:finite(signal.quantum.confidence),confidence:Math.round(confidence),calibratedConfidence:Math.round(confidence),learningCalibration:{status:summary.calibrationStatus||"collecting",samples:Number(summary.matured5m)||0,adjustment:Number(adjustment.toFixed(2)),basis:"5m forward outcomes; minimum 30 matured samples"}}};
 }
