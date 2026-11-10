@@ -448,7 +448,8 @@ jobs:
             echo "$market real-trade flow HTTP $flow_status"
             if [ "$flow_status" != "200" ]; then cat "/tmp/flow-$market.json"; exit 1; fi
             jq '{symbol,trade_count,provider,complete,window_minutes,buy5m,sell5m,fallback_error}' "/tmp/flow-$market.json"
-            jq -e '.symbol == "BTCUSDT" and (.trade_count | type == "number") and (.trade_count > 0) and (.buy5m >= 0) and (.sell5m >= 0) and (.provider | type == "string" and length > 0) and (.complete == true)' "/tmp/flow-$market.json" >/dev/null
+            jq -e '.symbol == "BTCUSDT" and (.trade_count | type == "number") and (.trade_count > 0) and (.buy5m >= 0) and (.sell5m >= 0) and (.provider | type == "string" and length > 0) and (.complete | type == "boolean") and (.window_minutes == '$flow_window')' "/tmp/flow-$market.json" >/dev/null
+            if [ "$market" = "futures" ] && jq -e '.complete == false' "/tmp/flow-$market.json" >/dev/null; then echo "::warning::BTC Futures trade sample is incomplete for the 1m window; Hunter must keep it out of confirmed signals."; fi
             jq -r '"$market trade-flow: " + .provider + " | " + (.trade_count|tostring) + " trades | complete=" + (.complete|tostring)' "/tmp/flow-$market.json"
             jq -r '"$market flow fallback diagnostics: " + (.fallback_error // "none")' "/tmp/flow-$market.json"
           done
@@ -456,7 +457,8 @@ jobs:
             orderflow_status=$(curl --silent --show-error --retry 1 --retry-delay 2 --max-time 35 -o "/tmp/orderflow-$market.json" -w "%{http_code}" "$WORKER_URL/market-orderflow?market=$market&symbol=BTC")
             echo "$market order-book/flow HTTP $orderflow_status"
             if [ "$orderflow_status" != "200" ]; then cat "/tmp/orderflow-$market.json"; exit 1; fi
-            jq -e '.market == "'$market'" and (.depth.available == true) and (.depth.source | type == "string") and (.flow.available == true) and (.flow.trade_count > 0) and (.flow.source | type == "string") and (if "'$market'" == "futures" then (.flow.complete == true and .flow.window_minutes == 1) else true end)' "/tmp/orderflow-$market.json" >/dev/null
+            jq -e '.market == "'$market'" and (.depth.available == true) and (.depth.source | type == "string") and (.flow.available == true) and (.flow.trade_count > 0) and (.flow.source | type == "string") and (.flow.complete | type == "boolean") and (if "'$market'" == "futures" then .flow.window_minutes == 1 else true end)' "/tmp/orderflow-$market.json" >/dev/null
+            if [ "$market" = "futures" ] && jq -e '.flow.complete == false' "/tmp/orderflow-$market.json" >/dev/null; then echo "::warning::Futures orderflow endpoint has a partial trade window; confirmation gate remains closed."; fi
             jq -r '"$market order book: " + .depth.source + " | trade flow: " + .flow.source + " | trades: " + (.flow.trade_count|tostring) + " | complete=" + (.flow.complete|tostring)' "/tmp/orderflow-$market.json"
           done
           support_status=$(curl --silent --show-error --retry 1 --retry-delay 2 --max-time 35 -o /tmp/futures-support.json -w "%{http_code}" "$WORKER_URL/support-check?symbols=BTC,ETH")
