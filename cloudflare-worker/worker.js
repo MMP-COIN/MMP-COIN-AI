@@ -951,7 +951,7 @@ async function scanHunterSymbols(symbols,marketType="spot",assetList=[],env=null
   try{const review=await runAIWithFallback(env,prompt),parsed=JSON.parse(review.raw);if(!["confirm","caution","reject"].includes(parsed.verdict)||!Number.isFinite(Number(parsed.confidence))||typeof parsed.thesis!=="string")throw new Error("AI review schema invalid");x.aiReview={status:"reviewed",provider:review.provider,verdict:parsed.verdict,confidence:Math.max(0,Math.min(100,Number(parsed.confidence))),thesis:parsed.thesis.slice(0,700),risks:Array.isArray(parsed.risks)?parsed.risks.slice(0,6).map(v=>String(v).slice(0,180)):[],invalidation:String(parsed.invalidation||"").slice(0,300),fallbacks:review.fallbacks};}
   catch(error){x.aiReview={status:"unavailable",reason:String(error?.message||error).slice(0,180)};}
  }
- const preliminary_signals=candidates.slice(0,12).map(x=>({...x,stage:"preliminary",missingEvidence:["executedFlow","orderBookDepth"],preliminaryReason:"نامزد فنی چندتایم‌فریمی؛ هنوز جریان واقعی معاملات و عمق سفارش تأیید نشده است"}));
+ const preliminary_signals=candidates.filter(x=>x.confirmed!==true).slice(0,12).map(x=>({...x,stage:"preliminary",missingEvidence:["executedFlow","orderBookDepth"],preliminaryReason:"نامزد فنی چندتایم‌فریمی؛ هنوز جریان واقعی معاملات و عمق سفارش تأیید نشده است"}));
  return {market:marketType,requested:symbols.length,scanned:symbols.length-failed,candidates:candidates.length,failed,rejected,rejections,errors,signals,preliminary_signals,engine_activity:engineActivity,checked_at:new Date().toISOString()};
 }
 
