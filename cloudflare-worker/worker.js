@@ -704,7 +704,7 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
  };
  const futuresSources=[
   async()=>tryHosts("Binance Futures",["https://fapi.binance.com","https://fapi1.binance.com","https://fapi2.binance.com","https://fapi3.binance.com"],host=>host+"/fapi/v1/klines?symbol="+pair+"&interval=1m&limit=100",d=>Array.isArray(d)?d:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],+x[7]]),
-  async()=>tryHosts("Bybit Linear",["https://api.bybit.eu","https://api.bytick.eu","https://api.bybit.com","https://api.bytick.com"],host=>host+"/v5/market/kline?category=linear&symbol="+pair+"&interval=1&limit=100",d=>{if(Number(d.retCode)!==0)throw new Error(d.retMsg||"Bybit retCode "+d.retCode);return d.result?.list||null;},x=>[+x[0],+x[1],+x[2],+x[3],+x[4],(+x[6]||+x[5])]),
+  async()=>tryHosts("Bybit Linear",["https://api.bybit.eu","https://api.bytick.eu","https://api.bybit.com","https://api.bytick.com"],host=>host+"/v5/market/kline?category=linear&symbol="+pair+"&interval=1&limit=100",d=>{if(Number(d.retCode)!==0)throw new Error(d.retMsg||"Bybit retCode "+d.retCode);return d.result?.list||null;},x=>[+x[0]*1000,+x[1],+x[2],+x[3],+x[4],(+x[6]||+x[5])]),
   async()=>tryHosts("OKX USDT Swap",["https://www.okx.com","https://us.okx.com"],host=>host+"/api/v5/market/candles?instId="+symbol+"-USDT-SWAP&bar=1m&limit=100",d=>String(d.code)==="0"?d.data:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],(+x[7]||+x[6])]),
   async()=>tryHosts("Bitget USDT Futures",["https://api.bitget.com"],host=>host+"/api/v2/mix/market/candles?symbol="+pair+"&productType=USDT-FUTURES&granularity=1m&limit=100",d=>["00000","0"].includes(String(d.code))?d.data:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],(+x[6]||+x[5])]),
   async()=>tryHosts("Gate USDT Futures",["https://api.gateio.ws","https://api.gate.us"],host=>host+"/api/v4/futures/usdt/candlesticks?contract="+symbol+"_USDT&interval=1m&limit=100",d=>Array.isArray(d)?d:null,x=>[+x.t*1000,+x.o,+x.h,+x.l,+x.c,(+x.sum||+x.v)]),
@@ -734,14 +734,14 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
   const preferred=(Array.isArray(asset?.marketPairs)?asset.marketPairs.slice().sort((a,b)=>Number(b.volume||0)-Number(a.volume||0)):[]).map(x=>indices[String(x.exchange||"")]).filter(Number.isInteger),priority=[3,8,2,5,6,4,7,1,0],available=unique(preferred).sort((a,b)=>priority.indexOf(a)-priority.indexOf(b)),primary=preferred[0],primaryTrusted=[2,4,5,6,7,8].includes(primary);
   order=unique([...(primaryTrusted?[primary]:[]),...available]);
  }
- const fallbackPriority=marketType==="futures"?[2,3,4,5,6,1,0]:[3,8,2,5,6,4,7,1,0];
+ const fallbackPriority=marketType==="futures"?[4,6,5,3,2,1,0]:[3,8,2,5,6,4,7,1,0];
  const preferredOrder=unique(order);
  const fallbackOrder=unique([...fallbackPriority.filter(index=>!preferredOrder.includes(index)),...sources.map((_,index)=>index).filter(index=>!preferredOrder.includes(index)&&!fallbackPriority.includes(index))]);
  const symbolHash=String(symbol).split("").reduce((sum,char)=>sum+char.charCodeAt(0),0);
  const rotation=fallbackOrder.length?(symbolHash+Math.floor(Date.now()/60000))%fallbackOrder.length:0;
  const rotatedFallback=[...fallbackOrder.slice(rotation),...fallbackOrder.slice(0,rotation)];
- const orderedIndices=unique([...preferredOrder.slice(0,1),...rotatedFallback]);
- const sourceLimit=Math.min(3,sources.length),orderedSources=orderedIndices.map(index=>sources[index]).filter(Boolean).slice(0,sourceLimit),verified=[];
+ const orderedIndices=marketType==="futures"?unique([...preferredOrder.slice(0,1),...fallbackOrder]):unique([...preferredOrder.slice(0,1),...rotatedFallback]);
+ const sourceLimit=Math.min(marketType==="futures"?5:3,sources.length),orderedSources=orderedIndices.map(index=>sources[index]).filter(Boolean).slice(0,sourceLimit),verified=[];
  let selectedPair=null,bestObservedPair=null;
  const evaluatePairs=()=>{
   const pairs=[];
