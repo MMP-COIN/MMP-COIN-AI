@@ -159,7 +159,7 @@ jobs:
           }
           if (!html.includes("data-hunter-detail=") || !html.includes("slice(0,6)") || !html.includes("/market-flow?")) throw new Error("Hunter card, six-per-direction cap, or Radar flow wiring missing");
           if (!html.includes("Funding sentiment:") || !html.includes("x.sentiment?.available")) throw new Error("Early Futures cards must show validated funding sentiment");
-          const candidateLoop = workerSource.indexOf("await Promise.all(flowCandidates.map(async x=>{"));
+          const candidateLoop = workerSource.indexOf("await Promise.all(flowCandidates.map(async x=>{");
           const parallelEvidence = workerSource.indexOf("const [sentimentResult,flowResult,depthResult]=await Promise.allSettled([", candidateLoop);
           if (candidateLoop < 0 || parallelEvidence < 0 || !workerSource.includes("loadHunterFundingSentiment(x.symbol", parallelEvidence) || !workerSource.includes("loadFuturesMarketFlow(x.symbol,5", parallelEvidence) || !workerSource.includes("loadHunterDepth(x.symbol,marketType,preferred", parallelEvidence) || workerSource.includes("sentiment=await loadHunterFundingSentiment", candidateLoop)) throw new Error("Futures sentiment, flow and depth must be gathered concurrently for early candidates");
           if (!html.includes("while(!finished)") || !html.includes("hunterUniverseCache?.coins") || html.includes('pageNumbers=marketMetadataSource==="CoinLore"?[2,3,4,5,6,7,8,9,10]:[2,3,4,5]')) throw new Error("Full paginated market universe regression");
