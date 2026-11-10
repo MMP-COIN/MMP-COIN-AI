@@ -1,5 +1,7 @@
 // MMP Quantum Intelligence Engine: dynamic market discovery with no fixed asset ceiling
 import { QUANTUM_ENGINE_NAME, QUANTUM_ENGINE_VERSION, normalizeQuantumUniverse, scoreQuantumOpportunity, calculateQuantumIndicators, calculateMarketScanPriority } from "./quantum-core.js";
+import { normalizeMarketCandles, alignMarketCandles, assessMarketDataFreshness } from "./market-data-core.js";
+import { updateLearningLedger, applyLearningCalibration } from "./learning-engine.js";
 const HUNTER_BATCH_SIZE = 16;
 const FUTURES_HUNTER_BATCH_SIZE = 12;
 const MODEL = "@cf/openai/gpt-oss-120b";
@@ -141,12 +143,12 @@ function analyzeClosedKlines(rows,interval){
  const duration=({"1m":60000,"3m":180000,"5m":300000,"15m":900000,"1h":3600000,"4h":14400000,"1d":86400000})[interval];
  if(!duration)throw new Error("Unsupported candle interval: "+interval);
  const minimum=interval==="1d"?20:30,now=Date.now();
- const closed=(Array.isArray(rows)?rows:[]).filter(row=>Number.isFinite(Number(row?.[0]))&&Number(row[0])+duration<=now-1000).sort((a,b)=>Number(a[0])-Number(b[0]));
+ const closed=normalizeMarketCandles(rows).filter(row=>Number(row[0])+duration<=now-1000);
  if(closed.length<minimum)throw new Error("داده کندل‌های بسته‌شده کافی نیست؛ داده کندل باز برای تحلیل استفاده نمی‌شود.");
  const result=analyzeKlines(closed),lastOpen=Number(closed[closed.length-1][0]),closedAt=lastOpen+duration;
  result.candle_time=new Date(lastOpen).toISOString();
  result.candle_closed_at=new Date(closedAt).toISOString();
- result.data_age_ms=Math.max(0,now-closedAt);
+ const freshness=assessMarketDataFreshness(closedAt,now,duration*2);result.data_age_ms=freshness.ageMs;result.data_fresh=freshness.fresh;result.data_freshness_reason=freshness.reason;
  result.candle_interval=interval;
  return result;
 }
@@ -742,18 +744,14 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
  const symbolHash=String(symbol).split("").reduce((sum,char)=>sum+char.charCodeAt(0),0);
  const rotation=fallbackOrder.length?(symbolHash+Math.floor(Date.now()/60000))%fallbackOrder.length:0;
  const stableFallback=fallbackOrder.slice(0,2),rotatingFallback=fallbackOrder.slice(2),rotatedFallback=[...stableFallback,...rotatingFallback.slice(rotation),...rotatingFallback.slice(0,rotation)];
- const orderedIndices=unique([...preferredOrder.slice(0,2),...fallbackOrder]);
- const sourceLimit=Math.min(4,sources.length),orderedSources=orderedIndices.map(index=>sources[index]).filter(Boolean).slice(0,sourceLimit),verified=[];
+  const sourceLimit=sources.length,orderedIndices=unique([...preferredOrder.slice(0,2),...preferredOrder.slice(2),...rotatedFallback]),orderedSources=orderedIndices.map(index=>sources[index]).filter(Boolean).slice(0,sourceLimit),verified=[];
  let selectedPair=null,bestObservedPair=null;
  const evaluatePairs=()=>{
   const pairs=[];
   for(let i=0;i<verified.length;i++)for(let j=i+1;j<verified.length;j++){
-   const primary=verified[i],secondary=verified[j],primaryClosed=primary.rows.slice(0,-1),secondaryClosed=secondary.rows.slice(0,-1),secondaryByTime=new Map(secondaryClosed.map(candle=>[candle[0],candle]));
-   let alignedIndex=-1,a=null,b=null;
-   for(let k=primaryClosed.length-1;k>=0;k--){const match=secondaryByTime.get(primaryClosed[k][0]);if(match){alignedIndex=k;a=primaryClosed[k];b=match;break;}}
-   if(!a||!b)continue;
-   const ageMs=Date.now()-a[0],deviationPct=a[4]>0?Math.abs(b[4]/a[4]-1)*100:Infinity;
-   pairs.push({primary,secondary,alignedIndex,a,b,ageMs,deviationPct});
+   const primary=verified[i],secondary=verified[j],aligned=alignMarketCandles(primary.rows.slice(0,-1),secondary.rows.slice(0,-1),{maxAgeMs:210000,maxDeviationPct:0.4,now:Date.now()});
+   if(!aligned)continue;
+   pairs.push({primary,secondary,alignedIndex:aligned.index,a:aligned.primary,b:aligned.secondary,ageMs:aligned.ageMs,deviationPct:aligned.deviationPct});
   }
   pairs.sort((x,y)=>x.ageMs-y.ageMs||x.deviationPct-y.deviationPct);
   if(pairs.length)bestObservedPair=pairs[0];
@@ -772,7 +770,7 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
   throw new Error("QUALITY_REJECTED: اختلاف قیمت چندصرافی "+bestObservedPair.deviationPct.toFixed(3)+"٪");
  }
  const {primary,secondary,alignedIndex,a,b,ageMs:commonCandleAge,deviationPct:priceDeviationPct}=selectedPair,timeDiffMs=0;
- const alignedRows=primary.rows.slice(0,alignedIndex+2);
+ const alignedRows=normalizeMarketCandles(primary.rows).slice(0,alignedIndex+2);
  return {provider:primary.provider,rows:alignedRows,market:marketType,multiExchangeConfirmed:true,multiExchangeEvidence:{primary:primary.provider,secondary:secondary.provider,timeDiffMs,priceDeviationPct:Number(priceDeviationPct.toFixed(4)),primaryPrice:a[4],secondaryPrice:b[4],candleTime:a[0],commonCandleAgeMs:commonCandleAge}};
 }
 async function analyzeDigitalHunterSymbol(symbol,marketType="spot",asset=null,activity=null){
@@ -995,7 +993,7 @@ async function loadHunterDepth(symbol,marketType="spot",preferredProviders=[],si
  if(best)return best;
  throw new Error("Order-book depth unavailable: "+lastError);
 }
-const QUANTUM_ACTIVITY_KEYS=["momentum","flow","structure","liquidity","multiTimeframe","regime","volatility","sentiment","smartMoney","scenario","risk","dataQuality","explosion","earlyOpportunity","decision"];
+const QUANTUM_ACTIVITY_KEYS=["momentum","flow","structure","liquidity","multiTimeframe","regime","volatility","sentiment","smartMoney","scenario","risk","dataQuality","explosion","earlyOpportunity","decision","learning"];
 async function loadHunterFundingSentiment(symbol,trend,preferredProviders=[],signal=null){
  const get=(url,timeoutMs=4500)=>marketFlowJson(url,timeoutMs,signal);
  const base=String(symbol||"").toUpperCase().replace(/USDT$/,"");
@@ -1174,8 +1172,18 @@ export async function runDigitalHunterMarketCycle(env,marketType="spot"){
  const preliminary=[...preliminaryMap.values()].filter(x=>now-Number(x.updatedAt||0)<=3*60*1000).sort((a,b)=>b.score-a.score).slice(0,12);
  const fresh=[...map.values()].filter(x=>now-Number(x.updatedAt||0)<=5*60*1000&&Number(x.score)>=68&&x.confirmed===true&&x.multiExchangeConfirmed===true&&x.flow?.complete===true&&Number(x.flow?.tradeCount)>=8&&Number(x.volumeRatio)>=1.1&&x.depth?.confirmed===true&&x.quantum?.qualityGate===true).sort((a,b)=>b.score-a.score);
  const selected=[...fresh.filter(x=>x.trend==="bull").slice(0,6),...fresh.filter(x=>x.trend==="bear").slice(0,6)];
+ let learningSummary={market:marketType,totalSignals:0,matured5m:0,calibrationStatus:"collecting",calibrationAdjustment:0,processed:0};
+ try{
+  const learningId="mmp-learning-ledger-v1-"+marketType,learningRow=await env.ADMIN_DB.prepare("SELECT payload FROM hunter_engine_state WHERE id = ?").bind(learningId).first();
+  let priorLedger={};try{priorLedger=learningRow?.payload?JSON.parse(learningRow.payload):{};}catch{}
+  const ledger=updateLearningLedger(priorLedger,{observations:[...(result.signals||[]),...(result.preliminary_signals||[])],signals:selected,market:marketType,engine:"hunter",now});
+  learningSummary=ledger.summary;
+  if(ledger.changed)await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(learningId,JSON.stringify(ledger),new Date(now).toISOString()).run();
+ }catch(error){learningSummary={...learningSummary,status:"unavailable",error:String(error?.message||error).slice(0,140)};}
+ const calibratedSelected=selected.map(signal=>applyLearningCalibration(signal,learningSummary));
  const nextCursor=(cursor+Math.max(1,examined))%assets.length,priorActivity=cursor===0?{}:(previous.snapshot?.engine_activity||{}),engineActivity=Object.fromEntries(QUANTUM_ACTIVITY_KEYS.map(key=>{const a=priorActivity[key]||{},b=result.engine_activity?.[key]||{};return [key,{processed:Number(a.processed||0)+Number(b.processed||0),evidence:Number(a.evidence||0)+Number(b.evidence||0)}];}));
- const snapshot={status:"online",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,market:marketType,checked_at:new Date().toISOString(),scanned_at:new Date().toISOString(),universe_count:assets.length,universe_age_ms:Math.max(0,now-universeUpdatedAt),universe_stale:now-universeUpdatedAt>20*60*1000,next_cursor:nextCursor,queue_position:nextCursor===0?assets.length:nextCursor,queue_total:assets.length,batch_size:batch.length,scanned_count:result.scanned,candidate_count:result.candidates,failed_count:result.failed,rejected_count:result.rejected||0,cooldown_count:Object.keys(failureCooldown).length,universe_refreshed:false,signals:selected,preliminary_signals:preliminary,flow_review_count:result.flow_review_count||0,flow_checked_count:result.flow_checked_count||0,flow_review_symbols:result.flow_review_symbols||[],engine_activity:engineActivity,last_errors:result.errors||[],last_rejections:result.rejections||[],sources:universeSources,universe_provider:universeProvider,cycle_seconds:60};
+ engineActivity.learning={processed:Number(learningSummary.totalSignals)||0,total:Number(learningSummary.totalSignals)||0,evidence:Number(learningSummary.matured5m)||0,calibrationStatus:learningSummary.calibrationStatus||"collecting"};
+ const snapshot={status:"online",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,market:marketType,checked_at:new Date().toISOString(),scanned_at:new Date().toISOString(),universe_count:assets.length,universe_age_ms:Math.max(0,now-universeUpdatedAt),universe_stale:now-universeUpdatedAt>20*60*1000,next_cursor:nextCursor,queue_position:nextCursor===0?assets.length:nextCursor,queue_total:assets.length,batch_size:batch.length,scanned_count:result.scanned,candidate_count:result.candidates,failed_count:result.failed,rejected_count:result.rejected||0,cooldown_count:Object.keys(failureCooldown).length,universe_refreshed:false,signals:calibratedSelected,preliminary_signals:preliminary,learning:learningSummary,flow_review_count:result.flow_review_count||0,flow_checked_count:result.flow_checked_count||0,flow_review_symbols:result.flow_review_symbols||[],engine_activity:engineActivity,last_errors:result.errors||[],last_rejections:result.rejections||[],sources:universeSources,universe_provider:universeProvider,cycle_seconds:60};
  const payload=JSON.stringify({cursor:snapshot.next_cursor,lastRun:now,assets,universeUpdatedAt,universeSources,universeProvider,failureCooldown,scanPriorityVersion:priorityVersion,snapshot});
  await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(stateId,payload,new Date(now).toISOString()).run();
  return snapshot;

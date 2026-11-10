@@ -7,11 +7,13 @@ This folder contains the secure backend for the market-analysis section on GitHu
 - Calculates RSI, EMA 20/50/200, MACD, ATR, 30-candle support/resistance, volume ratio and taker-buy ratio.
 - When futures mode is selected, also reads Binance Futures funding and open interest when available.
 - Adds Fear & Greed sentiment and CoinGecko global market context when those public endpoints respond.
-- Sends the structured snapshot to Cloudflare Workers AI (Llama 3.3 70B) for a Persian BUY / SELL / WAIT report.
+- Sends the structured snapshot to GPT-OSS 120B through Groq when configured, with Cloudflare Workers AI as fallback, for a Persian BUY / SELL / WAIT report.
 - Exposes `/market-flow?symbol=BTC&window=5` as a shared real-trade flow service. It aggregates actual Bybit Spot public trades first, then Binance aggregate trades as fallback; it reports trade count, provider, and whether the 1,000-record window may be truncated.
-- Digital Hunter v2 runs independently on the analyzer Worker every minute, using the existing private D1 database and a rotating top-96 liquid-Spot universe, scanning eight symbols per minute and refreshing the universe every ten minutes. It writes one compact state/snapshot row per completed cycle, avoiding the daily Workers KV write quota. It derives 1m/3m/5m/15m momentum and structure from real 1m OHLCV candles across Binance, Bybit, Bitget, Gate, KuCoin and OKX; only candidates confirmed by real aggressive-buy/sell trade flow are published.
+- Quantum Hunter 3.0 runs independently on the analyzer Worker every minute, uses the full validated liquid Spot/Futures universe without a fixed asset-count ceiling, scans bounded rotating batches (16 Spot / 12 Futures per cycle), and refreshes its universe on the existing schedule. It writes one compact state/snapshot row per completed cycle, avoiding the daily Workers KV write quota. It derives 1m/3m/5m/15m momentum and structure from real 1m OHLCV candles across Binance, Bybit, Bitget, Gate, KuCoin and OKX; only candidates confirmed by real aggressive-buy/sell trade flow are published.
 - `/hunter-snapshot` serves the persistent Hunter results; `/hunter-run` triggers a bounded manual cycle; `/hunter-scan?symbols=BTC,ETH` is the direct diagnostic scan endpoint. The browser only renders server snapshots and does not run its own scanner or ticker WebSockets.
-- The scheduled Radar Worker remains independent and only consumes the shared flow service as supplemental evidence. Flow data does not change Radar scores or retention decisions.
+- The scheduled Quantum Radar 3.0 Worker remains independent, consumes the shared executed-flow service, and requires order-book depth confirmation for its final quality gate.
+- `market-data-core.js` provides shared OHLCV normalization, duplicate removal, freshness checks and closed-candle cross-exchange alignment for Hunter and Radar.
+- `learning-engine.js` records qualified signal outcomes at 5m/15m/60m horizons. Confidence calibration activates only after at least 30 matured 5m outcomes, uses gross price return before fees/slippage, and is capped at ±5 points; it never overrides signal quality gates.
 - Never shows a fabricated fallback signal when data or AI is unavailable.
 
 ## Deploy (Cloudflare account required)
@@ -28,7 +30,7 @@ The `wrangler.toml` file is included for Wrangler-based deployment from this fol
 
 ## Important
 - Cloudflare Workers AI has a daily free Neurons allowance, not unlimited free usage. Check the current Cloudflare pricing and model availability for the account.
-- Public market endpoints can rate-limit or change. The analyzer returns an error instead of inventing a signal if market data is missing.
+- Public market endpoints can rate-limit or change. The analyzer returns an error instead of inventing a signal if market data is missing. The specialist ensemble combines deterministic numeric experts; optional additional hosted model providers are used only when explicitly configured.
 - This is decision support, not financial advice or guaranteed profit. Futures and leverage can cause rapid losses.
 
 ## Security hardening

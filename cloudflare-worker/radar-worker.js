@@ -1,6 +1,9 @@
 import { QUANTUM_ENGINE_NAME, QUANTUM_ENGINE_VERSION, normalizeQuantumUniverse, scoreQuantumOpportunity, calculateQuantumIndicators, calculateMarketScanPriority } from "./quantum-core.js";
+import { normalizeMarketCandles, alignMarketCandles, assessMarketDataFreshness } from "./market-data-core.js";
+import { updateLearningLedger, applyLearningCalibration } from "./learning-engine.js";
 const MAIN_UNIVERSE = "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/hunter-universe";
 const MAIN_FLOW = "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-flow";
+const MAIN_DEPTH = "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-orderflow";
 const RETENTION_SCORE = 64;
 const BATCH_SIZE = 16;
 const CONCURRENCY = 4;
@@ -37,8 +40,7 @@ async function getJson(url, timeoutMs = 6500) {
 }
 function normalizeRows(rows) {
   if(!Array.isArray(rows)) return [];
-  return rows.map(row=>{let t=Number(row[0]);if(t>0&&t<1000000000000)t*=1000;return [t,Number(row[1]),Number(row[2]),Number(row[3]),Number(row[4]),Number(row[5])];})
-    .filter(row=>row.every(Number.isFinite)&&row[1]>0&&row[2]>=row[3]&&row[3]>0&&row[4]>0&&row[5]>=0).sort((a,b)=>a[0]-b[0]);
+  return normalizeMarketCandles(rows);
 }
 async function loadProvider(symbol,exchange) {
   const pair=symbol+"USDT";
@@ -108,17 +110,14 @@ async function scanCoin(coin){
   if(!market)throw new Error(errors.join(" | ")||"No candle provider responded");
   if(!corroboration)throw new Error("تأیید دو صرافی برای "+symbol+"USDT در دسترس نیست: "+errors.join(" | "));
   const rows=market.rows,now=Date.now(),primaryClosed=rows.slice(0,-1),secondaryClosed=corroboration.rows.slice(0,-1);
-  const secondaryByTime=new Map(secondaryClosed.map(candle=>[candle[0],candle]));
-  let index=-1,primary=null,other=null;
-  for(let i=primaryClosed.length-1;i>=0;i--){const match=secondaryByTime.get(primaryClosed[i][0]);if(match){index=i;primary=primaryClosed[i];other=match;break;}}
-  if(!primary||!other)throw new Error("کندل بسته‌شده مشترک برای تأیید چندصرافی پیدا نشد");
-  const exchangeTimeDiffMs=Math.abs(primary[0]-other[0]),exchangePriceDeviationPct=primary[4]>0?Math.abs(other[4]/primary[4]-1)*100:Infinity;
-  const multiExchangeConfirmed=exchangeTimeDiffMs===0&&exchangePriceDeviationPct<=0.4;
-  // A real price disagreement is a quality rejection, not an upstream transport failure.
-  if(!multiExchangeConfirmed)return null;
+  const aligned=alignMarketCandles(primaryClosed,secondaryClosed,{maxAgeMs:180000,maxDeviationPct:0.4,now});
+  if(!aligned)return null;
+  const index=aligned.index,primary=aligned.primary,other=aligned.secondary;
+  const exchangeTimeDiffMs=aligned.timeDiffMs,exchangePriceDeviationPct=aligned.deviationPct;
+  const multiExchangeConfirmed=true;
   if(index<54)return null;
-  const last=rows[index],candleAge=now-last[0],close=last[4],open=last[1],volume=last[5];
-  if(candleAge<60000||candleAge>180000||close<=0||open<=0||volume<=0)return null;
+  const last=rows[index],freshness=assessMarketDataFreshness(last[0],now,180000),candleAge=freshness.ageMs,close=last[4],open=last[1],volume=last[5];
+  if(!freshness.fresh||candleAge<60000||close<=0||open<=0||volume<=0)return null;
    const indicators=calculateQuantumIndicators(rows.slice(0,index+1));
    if(!indicators.available)return null;
   const baseline=rows.slice(index-20,index).map(x=>x[5]).filter(x=>x>0);
@@ -274,12 +273,19 @@ async function runRadar(env,scheduledTime=Date.now()){
     }catch(error){signal.flowStatus="flow_error";signal.flowError=String(error?.message||error).slice(0,120);}
   });
   // Re-score each candidate with the shared Quantum Intelligence core.
+  const flowAligned=signal=>{const f=signal.flow||{},gross=Number(f.buy5m||0)+Number(f.sell5m||0),imbalance=gross>0?(Number(f.buy5m||0)-Number(f.sell5m||0))/gross:0;return f.complete===true&&Number(f.tradeCount)>=10&&(signal.trend==="bull"?imbalance>=0.045:imbalance<=-0.045);};
+  const depthCandidates=[...scannedSignals.filter(x=>x.trend==="bull"&&flowAligned(x)&&x.multiExchangeConfirmed&&Number(x.volumeRatio)>=1.1).sort((a,b)=>b.score-a.score).slice(0,1),...scannedSignals.filter(x=>x.trend==="bear"&&flowAligned(x)&&x.multiExchangeConfirmed&&Number(x.volumeRatio)>=1.1).sort((a,b)=>b.score-a.score).slice(0,1)];
+  const depthSymbols=new Set(depthCandidates.map(x=>String(x.symbol).toUpperCase()));
   for(const signal of scannedSignals){
     const flow=signal.flow||{},gross=Number(flow.buy5m||0)+Number(flow.sell5m||0),imbalance=gross>0?(Number(flow.buy5m||0)-Number(flow.sell5m||0))/gross:0;
     signal.flowConfirmed=flow.complete===true&&Number(flow.tradeCount)>=10&&(signal.trend==="bull"?imbalance>=0.045:imbalance<=-0.045);
     if(signal.flowConfirmed)signal.flowStatus="flow_confirmed";else if(signal.flowStatus==="flow_received")signal.flowStatus="flow_not_aligned";
+    if(depthSymbols.has(String(signal.symbol).toUpperCase())){
+      try{const depth=await getJson(MAIN_DEPTH+"?symbol="+encodeURIComponent(signal.symbol)+"&market=spot",8500);const bid=Number(depth.bidUsdt)||0,ask=Number(depth.askUsdt)||0,total=bid+ask;signal.depth={confirmed:depth.confirmed===true,source:depth.source||"",spreadPct:Number(depth.spreadPct)||null,bidUsdt:bid,askUsdt:ask,totalDepthUsdt:Number(depth.totalDepthUsdt)||total,imbalance:total?(bid-ask)/total:0,updatedAt:Number(depth.updatedAt)||Date.now()};}
+      catch(error){signal.depth={confirmed:false,error:String(error?.message||error).slice(0,120)};}
+    }else signal.depth={confirmed:false,reason:"not_selected_for_depth_validation"};
     const qBars=Array.isArray(signal.rows)?signal.rows.slice(-70):[],qRanges=qBars.slice(1).map((bar,i)=>Math.max(Number(bar[2])-Number(bar[3]),Math.abs(Number(bar[2])-Number(qBars[i][4])),Math.abs(Number(bar[3])-Number(qBars[i][4])))).filter(v=>Number.isFinite(v)&&v>0),qAtr=qRanges.length?qRanges.slice(-14).reduce((a,b)=>a+b,0)/Math.min(14,qRanges.length):0,qEntry=Number(signal.price),qAtrPct=qEntry>0?qAtr/qEntry*100:null,qStopPct=qEntry>0?Math.max(qAtr*1.25,qEntry*.002)/qEntry*100:null,qSmartMoneyScore=Math.max(0,Math.min(100,50+Math.sign(imbalance)*(signal.trend==="bull"?1:-1)*Math.min(25,Math.abs(imbalance)*100)+Math.min(15,Math.log2(Math.max(1,Number(flow.tradeCount)||1))*3))),qExplosionScore=Math.max(0,Math.min(100,Math.max(0,Number(signal.volumeRatio)-1)*28+Math.abs(imbalance)*45+Math.min(25,Math.log2(Math.max(1,Number(flow.tradeCount)||1))*5)));
-    signal.quantum=scoreQuantumOpportunity({...signal,flowImbalance:imbalance,flowConfirmed:signal.flowConfirmed,multiExchangeConfirmed:signal.multiExchangeConfirmed,volumeRatio:signal.volumeRatio,structureAligned:signal.coreAligned===true&&signal.technicalAligned===true,trend15:Math.sign(Number(signal.change15m)||0)===(signal.trend==="bull"?1:-1),rsi14:signal.indicators?.rsi14,ema9:signal.indicators?.ema9,ema21:signal.indicators?.ema21,ema50:signal.indicators?.ema50,macdHistogram:signal.indicators?.macdHistogram,totalVolume24h:Number(signal.coin?.total_volume)||0,atrPct:qAtrPct,explosionScore:qExplosionScore,smartMoneyScore:qSmartMoneyScore,smartMoneyConfirmed:signal.flowConfirmed,riskRewardRatio:2.2,stopDistancePct:qStopPct,dataAgeMs:Date.now()-Number(signal.candleTime||Date.now())});
+    signal.quantum=scoreQuantumOpportunity({...signal,flowImbalance:imbalance,flowConfirmed:signal.flowConfirmed,multiExchangeConfirmed:signal.multiExchangeConfirmed,volumeRatio:signal.volumeRatio,structureAligned:signal.coreAligned===true&&signal.technicalAligned===true,trend15:Math.sign(Number(signal.change15m)||0)===(signal.trend==="bull"?1:-1),rsi14:signal.indicators?.rsi14,ema9:signal.indicators?.ema9,ema21:signal.indicators?.ema21,ema50:signal.indicators?.ema50,macdHistogram:signal.indicators?.macdHistogram,totalVolume24h:Number(signal.coin?.total_volume)||0,atrPct:qAtrPct,explosionScore:qExplosionScore,smartMoneyScore:qSmartMoneyScore,smartMoneyConfirmed:signal.flowConfirmed,riskRewardRatio:2.2,stopDistancePct:qStopPct,dataAgeMs:Date.now()-Number(signal.candleTime||Date.now()),depthConfirmed:signal.depth?.confirmed===true,depthImbalance:Number(signal.depth?.imbalance)||0,requireDepthConfirmation:true});
     signal.score=Math.round(Number(signal.score||0)*0.55+signal.quantum.score*0.45);
   }
   // Only fresh Quantum scores are published. Legacy signals remain stored until their own valid rescan.
@@ -329,6 +335,16 @@ async function runRadar(env,scheduledTime=Date.now()){
     legacy_signals:[...signals.values()].filter(x=>Number(x?.scoringVersion)!==5)
        .sort((a,b)=>b.score-a.score)
   };
+  let learningSummary={market:"spot",totalSignals:0,matured5m:0,calibrationStatus:"collecting",calibrationAdjustment:0,processed:0};
+  try{
+    const previousLearning=await env.RADAR_KV.get("radar:learning-ledger",{type:"json"})||{};
+    const learning=updateLearningLedger(previousLearning,{observations:scannedSignals,signals:scannedSignals.filter(x=>x.quantum?.qualityGate===true&&x.flowConfirmed===true&&x.multiExchangeConfirmed===true&&x.depth?.confirmed===true),market:"spot",engine:"radar",now:Date.now()});
+    learningSummary=learning.summary;
+    if(learning.changed)await env.RADAR_KV.put("radar:learning-ledger",JSON.stringify(learning));
+  }catch(error){learningSummary={...learningSummary,status:"unavailable",error:String(error?.message||error).slice(0,140)};}
+  snapshot.learning=learningSummary;
+  snapshot.engine_activity={...(snapshot.engine_activity||{}),learning:{processed:Number(learningSummary.totalSignals)||0,total:Number(learningSummary.totalSignals)||0,evidence:Number(learningSummary.matured5m)||0,calibrationStatus:learningSummary.calibrationStatus||"collecting"}};
+  snapshot.signals=snapshot.signals.map(signal=>applyLearningCalibration(signal,learningSummary));
   // Persist the public snapshot first; advance the cursor only after it is safely stored.
   await env.RADAR_KV.put("radar:snapshot",JSON.stringify(snapshot));
   const universeCache=universe.map(coin=>({id:coin.id,symbol:coin.symbol,name:coin.name||"",image:coin.image||"",

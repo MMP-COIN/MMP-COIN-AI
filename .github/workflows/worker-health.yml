@@ -1,5 +1,5 @@
 name: MMP COIN AI Worker Health Check
-# Post-deploy verification for Worker version 154
+# Post-deploy verification for QIE-4.0.0 and integrated learning
 
 on:
   workflow_dispatch:
@@ -40,18 +40,41 @@ jobs:
           node --check --input-type=module < cloudflare-worker/worker.js
           node --check --input-type=module < cloudflare-worker/radar-worker.js
           node --check --input-type=module < cloudflare-worker/quantum-core.js
+          node --check --input-type=module < cloudflare-worker/market-data-core.js
+          node --check --input-type=module < cloudflare-worker/learning-engine.js
+          node --check --input-type=module < cloudflare-worker/futures-worker.js
           node --input-type=module <<'NODE'
           import fs from "node:fs";
           const source = fs.readFileSync("cloudflare-worker/quantum-core.js", "utf8");
           const mod = await import("data:text/javascript;base64," + Buffer.from(source).toString("base64"));
-          if (mod.QUANTUM_ENGINE_VERSION !== "QIE-3.0.0" || typeof mod.calculateQuantumIndicators !== "function") throw new Error("QIE 3 technical-indicator engine is missing");
+          if (mod.QUANTUM_ENGINE_VERSION !== "QIE-4.0.0" || typeof mod.calculateQuantumIndicators !== "function") throw new Error("QIE 4 technical-indicator engine is missing");
           if (typeof mod.calculateMarketScanPriority !== "function") throw new Error("Shared market-mover priority engine is missing");
           const activeMover = mod.calculateMarketScanPriority({hunterChange24h:20,total_volume:35000000});
           const megaLiquid = mod.calculateMarketScanPriority({hunterChange24h:0,total_volume:2000000000});
           if (!(activeMover > megaLiquid)) throw new Error("Active movers must be prioritized ahead of static high-volume assets");
           const bars = Array.from({length:100},(_,i)=>{const c=100+i*.12+Math.sin(i/4)*.3;return [1700000000000+i*60000,c-.04,c+.2,c-.2,c,1000+i*3];});
           const indicators = mod.calculateQuantumIndicators(bars);
-          if (!indicators.available || !Number.isFinite(indicators.rsi14) || !Number.isFinite(indicators.ema50) || !Number.isFinite(indicators.macdHistogram) || !Number.isFinite(indicators.atrPct) || !Number.isFinite(indicators.vwap)) throw new Error("QIE 3 RSI/EMA/MACD/ATR/VWAP calculation failed");
+          if (!indicators.available || !Number.isFinite(indicators.rsi14) || !Number.isFinite(indicators.ema50) || !Number.isFinite(indicators.macdHistogram) || !Number.isFinite(indicators.atrPct) || !Number.isFinite(indicators.vwap)) throw new Error("QIE 4 RSI/EMA/MACD/ATR/VWAP calculation failed");
+          const marketSource = fs.readFileSync("cloudflare-worker/market-data-core.js", "utf8");
+          const market = await import("data:text/javascript;base64," + Buffer.from(marketSource).toString("base64"));
+          const candleTime = 1700000000000;
+          const cleanCandles = market.normalizeMarketCandles([[candleTime+60000,101,103,100,102,12],[candleTime,100,102,99,101,10],[candleTime,100,102,99,101.2,11],[candleTime+120000,0,0,0,0,0]]);
+          if (cleanCandles.length !== 2 || cleanCandles[0][4] !== 101.2) throw new Error("Shared candle validation/deduplication failed");
+          const aligned = market.alignMarketCandles(cleanCandles,[[candleTime,100.1,102,99,101.1,10],[candleTime+60000,101.1,103,100,102.1,12]],{now:candleTime+180000,maxAgeMs:180000,maxDeviationPct:0.4});
+          if (!aligned || aligned.index !== 1 || aligned.deviationPct > 0.4) throw new Error("Shared multi-exchange candle alignment failed");
+          if (!market.assessMarketDataFreshness(candleTime+60000,candleTime+120000,180000).fresh || market.assessMarketDataFreshness(candleTime,candleTime+300000,180000).fresh) throw new Error("Shared market-data freshness gate failed");
+          const learningSource = fs.readFileSync("cloudflare-worker/learning-engine.js", "utf8");
+          const learning = await import("data:text/javascript;base64," + Buffer.from(learningSource).toString("base64"));
+          const start = 1700000000000;
+          const signal = {symbol:"BTC",trend:"bull",price:100,candleTime:start,score:75,flowConfirmed:true,multiExchangeConfirmed:true,depth:{confirmed:true},quantum:{qualityGate:true,confidence:70,version:"QIE-4.0.0"}};
+          const ledgerA = learning.updateLearningLedger({}, {observations:[],signals:[signal],market:"spot",engine:"test",now:start});
+          const ledgerB = learning.updateLearningLedger(ledgerA, {observations:[{symbol:"BTC",price:101}],signals:[],market:"spot",engine:"test",now:start+6*60000});
+          if (ledgerB.records.length !== 1 || !(ledgerB.records[0].outcome_5m > 0) || ledgerB.summary.matured5m !== 1) throw new Error("Persistent signal outcome learning failed");
+          const calibrated = learning.applyLearningCalibration(signal,ledgerB.summary);
+          if (calibrated.quantum.calibratedConfidence !== 70 || calibrated.quantum.learningCalibration.status !== "collecting") throw new Error("Learning calibration must remain inactive below 30 samples");
+          const matureRecords = Array.from({length:40},(_,i)=>({id:"sample-"+i,market:"spot",status:"completed",outcome_5m:1.25}));
+          const matureSummary = learning.summarizeLearningLedger(matureRecords,"spot");
+          if (matureSummary.calibrationStatus !== "calibrated" || matureSummary.matured5m !== 40 || matureSummary.calibrationAdjustment !== 5) throw new Error("Bounded learning calibration did not activate at the minimum sample size");
           const workerSource = fs.readFileSync("cloudflare-worker/worker.js", "utf8");
           if (!workerSource.includes("for(const url of urls)") || workerSource.includes("Promise.all(urls.map(url=>timeoutFetch")) throw new Error("Exchange health fallback must try alternate endpoints sequentially and stop after a verified response");
                     if (!workerSource.includes("async function fetchWithTimeout") || !workerSource.includes("return await fetch(url,{...options,signal:controller.signal})") || workerSource.includes("return await fetchWithTimeout(url,{...options,signal:controller.signal})")) throw new Error("Bounded fetch helper must call native fetch exactly once and must not recurse");
@@ -67,15 +90,17 @@ jobs:
                     if (!workerSource.includes("function analyzeClosedKlines") || !workerSource.includes("داده کندل‌های بسته‌شده کافی نیست") || !workerSource.includes("marketDataFresh") || !workerSource.includes("const volumeConfirmed=") || !workerSource.includes("currentPrice:last[4]")) throw new Error("Analyzer must use closed candles, deterministic freshness/volume gates, and explicit price evidence");
           if (!workerSource.includes('async function fetchHunterCandles(symbol,marketType="spot",asset=null){\n const pair=symbol+"USDT",get=url=>marketFlowJson(url,4500);') || !workerSource.includes("const get=(url,timeoutMs=4500)=>marketFlowJson(url,timeoutMs,signal)") || workerSource.includes("get=url=>get(url,4500)") || !workerSource.includes("get=url=>marketFlowJson(url,4500)") || !workerSource.includes("async function settleHunterCycle") || !workerSource.includes("timeoutMs=50000") || !workerSource.includes("futuresController.abort()") || !workerSource.includes("const concurrency=6;") || !workerSource.includes("marketFlowJson(url,timeoutMs,signal)") || !workerSource.includes("timeoutMs=4500") || !workerSource.includes("parentSignal?.addEventListener") || !workerSource.includes("setTimeout(()=>flowController.abort(),18000)") || !workerSource.includes("flowController.signal.aborted?\"flow_timeout\"") || !workerSource.includes("trades.length<8") || !workerSource.includes("cacheDigitalHunterUniverse") || !workerSource.includes("refreshDigitalHunterUniverses") || !workerSource.includes("scheduledAt.getUTCMinutes()%10===0") || workerSource.includes("if(!assets.length||now-universeUpdatedAt>10*60*1000)") || !workerSource.includes("calculateMarketScanPriority") || !workerSource.includes("scanPriorityVersion:priorityVersion") || !workerSource.includes("const HUNTER_BATCH_SIZE = 16;") || !workerSource.includes("const FUTURES_HUNTER_BATCH_SIZE = 12;") || !workerSource.includes('const concurrency=6;') || !workerSource.includes("Promise.allSettled(orderedSources.slice(offset,offset+2).map(fn=>fn()))")) throw new Error("Hunter scan budget/parallelism regression");
           if (!workerSource.includes("filter(x=>x.venues.size>=2)") || !workerSource.includes("x=>[+x[0]*1000,+x[5],+x[3],+x[4],+x[2],+x[1]]")) throw new Error("Futures venue qualification or Gate Spot OHLCV mapping regression");
-          if (!workerSource.includes("QUALITY_REJECTED:") || !workerSource.includes("rejected_count:result.rejected||0") || !workerSource.includes("secondaryByTime=new Map(secondaryClosed.map(candle=>[candle[0],candle]));")) throw new Error("Shared-candle alignment or quality-rejection accounting missing");
+          if (!workerSource.includes("QUALITY_REJECTED:") || !workerSource.includes("rejected_count:result.rejected||0") || !workerSource.includes("alignMarketCandles(primary.rows.slice(0,-1),secondary.rows.slice(0,-1)")) throw new Error("Shared-candle alignment or quality-rejection accounting missing");
           if (!workerSource.includes("async function loadHunterFundingSentiment") || !workerSource.includes("samples.length<2") || !workerSource.includes("sentimentConfirmed:sentiment.available")) throw new Error("Evidence-backed Futures sentiment engine is not connected to Quantum scoring");
           if (!workerSource.includes("failureCooldown") || !workerSource.includes("now+90*1000") || !workerSource.includes("now+60*1000") || !workerSource.includes("let examined=0;") || !workerSource.includes("cursor+Math.max(1,examined)") || workerSource.includes("const retry=assets.filter(asset=>!selectedSymbols.has")) throw new Error("Hunter cooldown retry or cursor progression regression");
           if (!workerSource.includes("candidate_count:0,scanned_count:0,failed_count:0,rejected_count:0,cooldown_count:0,universe_refreshed:true")) throw new Error("Universe refresh must clear stale scan metrics");
           const radarSource = fs.readFileSync("cloudflare-worker/radar-worker.js", "utf8");
+          if (!workerSource.includes('from "./market-data-core.js"') || !workerSource.includes('from "./learning-engine.js"') || !workerSource.includes("mmp-learning-ledger-v1-") || !workerSource.includes("applyLearningCalibration")) throw new Error("Hunter shared data and persistent learning integration missing");
+          if (!radarSource.includes('from "./market-data-core.js"') || !radarSource.includes('from "./learning-engine.js"') || !radarSource.includes("MAIN_DEPTH") || !radarSource.includes("requireDepthConfirmation:true") || !radarSource.includes("radar:learning-ledger")) throw new Error("Radar depth validation and learning integration missing");
           if (!radarSource.includes("calculateMarketScanPriority") || !radarSource.includes("scan_priority_version:scanPriorityVersion") || !radarSource.includes("const BATCH_SIZE = 16;") || !radarSource.includes("const CONCURRENCY = 4;")) throw new Error("Radar scan throughput regression");
           if (radarSource.includes("const verificationOrder=[...order,...fallback].slice(0,4)") || !radarSource.includes("Number(x[5]),Number(x[3]),Number(x[4]),Number(x[2]),Number(x[1])")) throw new Error("Radar exchange fallback or Gate Spot OHLCV mapping regression");
           if (workerSource.includes("order.map(index=>sources[index]).filter(Boolean).slice(0,4)") || workerSource.includes("[...new Set([...preferred,...sources.map((_,index)=>index)])].slice(0,4)")) throw new Error("Hunter exchange fallback list was artificially truncated");
-          if (!workerSource.includes('const sourceLimit=Math.min(4,sources.length)') || !workerSource.includes('const symbolHash=String(symbol).split("").reduce((sum,char)=>sum+char.charCodeAt(0),0);') || !workerSource.includes('const rotation=fallbackOrder.length?(symbolHash+Math.floor(Date.now()/60000))%fallbackOrder.length:0;') || !workerSource.includes('value.startsWith("kucoin")?6') || !radarSource.includes('const verificationOrder=[...new Set([...order,...fallback])].slice(0,4);')) throw new Error("Rotating full-universe exchange fallback coverage regressed");
+          if (!workerSource.includes('const sourceLimit=sources.length') || !workerSource.includes('...preferredOrder.slice(2),...rotatedFallback') || !workerSource.includes('const symbolHash=String(symbol).split("").reduce((sum,char)=>sum+char.charCodeAt(0),0);') || !workerSource.includes('const rotation=fallbackOrder.length?(symbolHash+Math.floor(Date.now()/60000))%fallbackOrder.length:0;') || !workerSource.includes('value.startsWith("kucoin")?6') || !radarSource.includes('const verificationOrder=[...new Set([...order,...fallback])].slice(0,4);')) throw new Error("Rotating full-universe exchange fallback coverage regressed");
           if (workerSource.includes("!available.length?priority")) throw new Error("Missing venue metadata must use the rotating fallback set");
           for (const provider of ["api.mexc.com/api/v3/trades","api.kucoin.com/api/v1/market/histories","api-futures.kucoin.com/api/v1/trade/history","contractInfo?.data?.multiplier"]) { if (!workerSource.includes(provider)) throw new Error("Executed-flow fallback/contract normalization missing: " + provider); }
           for (const provider of ["contract.mexc.com","api-futures.kucoin.com","api/v2/mix/market/candles","api/v2/mix/market/fills","api.mexc.com/api/v3/klines"]) { if (!workerSource.includes(provider)) throw new Error("Market provider fallback missing: " + provider); }
@@ -87,7 +112,8 @@ jobs:
           if (!confirmed.qualityGate) throw new Error("Fully confirmed signal did not pass");
           const noDepth = mod.scoreQuantumOpportunity({...base,flowConfirmed:true,flowImbalance:0.12,requireDepthConfirmation:true,depthConfirmed:false});
           const withDepth = mod.scoreQuantumOpportunity({...base,flowConfirmed:true,flowImbalance:0.12,requireDepthConfirmation:true,depthConfirmed:true});
-          if (noDepth.qualityGate || !withDepth.qualityGate) throw new Error("Order-book depth gate is incorrect");
+          if (noDepth.qualityGate || !withDepth.qualityGate || !noDepth.missingEvidence.includes("depth")) throw new Error("Order-book depth gate is incorrect");
+          if (!withDepth.specialistEnsemble || withDepth.specialistEnsemble.modelCount < 5 || !Array.isArray(withDepth.specialistEnsemble.experts)) throw new Error("Specialist multi-model ensemble is not producing evidence-backed outputs");
           const rejected = [
             mod.scoreQuantumOpportunity({...base,flowConfirmed:true,flowImbalance:-0.12}),
             mod.scoreQuantumOpportunity({...base,flowConfirmed:true,flowImbalance:0.12,volumeRatio:0.9}),
@@ -240,7 +266,7 @@ jobs:
 
       - name: Smoke-test deployed five-provider Quantum Hunter
         env:
-          WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
+          WORKER_URL: ${{ github.ref == 'refs/heads/main' && 'https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev' || 'https://mmp-coin-ai-analyzer-preview.mehrdadmohammadi1988.workers.dev' }}
         run: |
           set -euo pipefail
           curl --fail --silent --show-error --retry 1 --retry-delay 3 --max-time 90 "$WORKER_URL/hunter-scan?market=spot&symbols=BTC%2CETH%2CSOL%2CXRP" -o /tmp/five-provider-hunter.json
@@ -252,6 +278,7 @@ jobs:
           jq -e '.requested == 6 and (.scanned // 0) >= 4 and (.failed // 6) <= 2' /tmp/futures-provider-hunter.json >/dev/null
           jq -r '"Deployed Futures fallback: " + (.scanned|tostring) + "/6 scanned; " + (.failed|tostring) + " data failures; " + (.signals|length|tostring) + " flow-confirmed signals." ' /tmp/futures-provider-hunter.json
       - name: Verify scheduled Spot and Futures hunter cycles
+        if: github.ref == 'refs/heads/main'
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
@@ -274,6 +301,7 @@ jobs:
           echo "- Scheduled Spot and Futures engines: both completed a live scan without cycle errors" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Verify independent server-side fast radar scan
+        if: github.ref == 'refs/heads/main'
         env:
           RADAR_WORKER_URL: https://mmp-coin-ai-radar.mehrdadmohammadi1988.workers.dev
         run: |
@@ -298,6 +326,7 @@ jobs:
           echo "- Independent server-side radar: live scan and snapshot verified" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Check private analytics Worker
+        if: github.ref == 'refs/heads/main'
         env:
           ADMIN_WORKER_URL: https://mmp-coin-ai-admin.mehrdadmohammadi1988.workers.dev
         run: |
@@ -309,6 +338,7 @@ jobs:
           echo "- Private analytics Worker: online; admin API responds without a session" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Diagnose exchange API access from GitHub runner
+        if: github.ref == 'refs/heads/main'
         continue-on-error: true
         run: |
           set -u
@@ -335,6 +365,7 @@ jobs:
           probe_cors "Bitget" "https://api.bitget.com/api/v3/market/tickers?category=SPOT&symbol=BTCUSDT"
 
       - name: Check exchange connection monitor
+        if: github.ref == 'refs/heads/main'
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
@@ -350,6 +381,7 @@ jobs:
           fi
 
       - name: Check expanded multi-exchange hunter universe
+        if: github.ref == 'refs/heads/main'
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
@@ -364,6 +396,7 @@ jobs:
           echo "- Canonical catalog: $count assets; independent Hunter universe: $hunter_count instruments ($discovered outside metadata catalog) across $venues" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Check market data proxy
+        if: github.ref == 'refs/heads/main'
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
@@ -394,6 +427,7 @@ jobs:
           echo "- CoinLore fallback proxy: responding with ranked assets and live USD prices" >> "$GITHUB_STEP_SUMMARY"
  
       - name: Smoke-test live spot candlestick endpoint
+        if: github.ref == 'refs/heads/main'
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
@@ -412,6 +446,7 @@ jobs:
 
 
       - name: Run and verify the scheduled Quantum Hunter snapshot
+        if: github.ref == 'refs/heads/main'
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
@@ -426,6 +461,7 @@ jobs:
           jq -r '"Quantum Hunter snapshot: scanned " + (.scanned_count|tostring) + "/" + (.universe_count|tostring) + " liquid instruments; " + (.signals|length|tostring) + " confirmed signals; failures " + (.failed_count|tostring)' /tmp/hunter-snapshot.json >> "$GITHUB_STEP_SUMMARY"
 
       - name: Verify 1m/3m/5m and Futures candle endpoints
+        if: github.ref == 'refs/heads/main'
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
@@ -441,6 +477,7 @@ jobs:
           echo "- Spot 3m/5m and Futures 15m OHLCV endpoints: verified" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Smoke-test Spot/Futures trade flow, order book and analysis
+        if: github.ref == 'refs/heads/main'
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
@@ -509,6 +546,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Smoke-test market intelligence endpoints
+        if: github.ref == 'refs/heads/main'
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
@@ -536,7 +574,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Live AI analyzer end-to-end smoke test
-        if: github.event_name == 'push' || github.event_name == 'pull_request'
+        if: github.ref == 'refs/heads/main'
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
           CANARY_URL: https://02afe1c1-mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
