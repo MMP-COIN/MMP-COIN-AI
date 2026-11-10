@@ -6319,7 +6319,8 @@ window.mmpShareDownloadLink = async function () {
  const signed=value=>{const n=Number(value);return Number.isFinite(n)?(n>0?"+":"")+number(n,2)+"%":"—";};
  const money=value=>{const n=Number(value);if(!Number.isFinite(n)||n<=0)return "—";return "$"+number(n,n<1?8:4);};
  function render(snapshot){
-  window.__mmpDigitalHunterSnapshot=snapshot;
+  window.__mmpDigitalHunterSnapshot=snapshot;window.__mmpQuantumHomeSnapshot=snapshot;
+  document.dispatchEvent(new Event("mmp-hunter-snapshot-updated"));
   const signals=Array.isArray(snapshot.signals)?snapshot.signals.filter(s=>s&&/^[A-Z0-9]{2,24}$/.test(String(s.symbol||"").toUpperCase())&&s.confirmed===true):[];
   const status=$("hunter-feed-status");
   if(status)status.textContent=(snapshot.engine||"Quantum Hunter")+" · Spot فعال · "+number(snapshot.scanned_count||0,0)+"/"+number(snapshot.universe_count||0,0)+" · خطا: "+number(snapshot.failed_count||0,0);
@@ -6569,7 +6570,6 @@ window.mmpShareDownloadLink = async function () {
 (function(){
  "use strict";
  const root=document.getElementById("mmp-command-progress");if(!root||root.dataset.bound==="1")return;root.dataset.bound="1";
- const endpoint="https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/hunter-snapshot";
  const el=id=>document.getElementById(id),fmt=v=>Number(v).toLocaleString("fa-IR");
  const keys=["momentum","flow","structure","liquidity","multiTimeframe","regime","volatility","sentiment","smartMoney","scenario","risk","dataQuality"];
  function fail(message){
@@ -6581,9 +6581,8 @@ window.mmpShareDownloadLink = async function () {
  async function refresh(){
   if(document.hidden)return;const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),12000);
   try{
-   const response=await fetch(endpoint,{cache:"no-store",headers:{"Accept":"application/json"},signal:controller.signal});
-   if(!response.ok)throw new Error("HTTP "+response.status);
-   const snap=await response.json();if(!snap||snap.status==="offline")throw new Error(snap?.message||"موتور مرکزی آفلاین است");
+   const snap=window.__mmpDigitalHunterSnapshot;
+   if(!snap||snap.status==="offline")throw new Error("منتظر Snapshot موتور مرکزی هستیم");
    const total=Number(snap.universe_count),batchDone=Math.max(0,Number(snap.scanned_count)||0),batchSize=Math.max(0,Number(snap.batch_size)||0),cursor=Math.max(0,Number(snap.next_cursor)||0);
    if(!Number.isFinite(total)||total<=0||!Number.isFinite(batchDone))throw new Error("شمارنده معتبر اسکن در snapshot موجود نیست");
    const covered=cursor===0&&batchDone>0?total:Math.min(total,cursor||batchDone),pct=Math.max(0,Math.min(100,Math.round(covered/total*100))),signals=Array.isArray(snap.signals)?snap.signals:[],activity=snap.engine_activity&&typeof snap.engine_activity==="object"?snap.engine_activity:{};
@@ -6599,7 +6598,7 @@ window.mmpShareDownloadLink = async function () {
   }catch(error){fail("اتصال یا داده معتبر در دسترس نیست · "+(error?.message||"خطای نامشخص"));}
   finally{clearTimeout(timer);}
  }
- refresh();setInterval(refresh,20000);document.addEventListener("visibilitychange",()=>{if(!document.hidden)refresh();});
+ refresh();setInterval(refresh,60000);document.addEventListener("mmp-hunter-snapshot-updated",refresh);document.addEventListener("visibilitychange",()=>{if(!document.hidden)refresh();});
 })();
 </script><style id="mmp-home-engine-live-style">
 #quantum-center-entry .quantum-engine-link{position:relative;overflow:hidden}
@@ -6670,16 +6669,17 @@ window.mmpShareDownloadLink = async function () {
  }
  async function refresh(){
   try{
-   const response=await fetch(API+"/hunter-snapshot",{cache:"no-store",headers:{Accept:"application/json"}});
-   if(!response.ok)throw new Error("snapshot "+response.status);
-   const snap=await response.json();window.__mmpQuantumHomeSnapshot=snap;paint(snap);
+   const snap=window.__mmpDigitalHunterSnapshot;
+   if(!snap)throw new Error("منتظر Snapshot موتور مرکزی هستیم");
+   window.__mmpQuantumHomeSnapshot=snap;paint(snap);
   }catch(e){
    cards.forEach(card=>{card.classList.remove("is-live");card.classList.add("is-stale");const t=card.querySelector(".engine-live-state span");if(t)t.textContent="اتصال ناموفق"}); 
    const badge=document.querySelector("#quantum-center-entry .quantum-engine-board-head>span");if(badge)badge.textContent="◷ CONNECTION WAIT";
   }
  }
  refresh();if(window.__mmpHomeEngineTimer)clearInterval(window.__mmpHomeEngineTimer);
- window.__mmpHomeEngineTimer=setInterval(refresh,15000);
+ window.__mmpHomeEngineTimer=setInterval(refresh,60000);
+ document.addEventListener("mmp-hunter-snapshot-updated",refresh);
  document.addEventListener("visibilitychange",()=>{if(!document.hidden)refresh()});
 })();
 </script>
