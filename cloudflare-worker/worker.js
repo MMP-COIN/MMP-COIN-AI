@@ -1036,8 +1036,18 @@ async function scanHunterSymbols(symbols,marketType="spot",assetList=[],env=null
    let f=marketType==="futures"?await loadFuturesMarketFlow(x.symbol,5):await loadMarketFlow(x.symbol,5);
    if(f.complete!==true){const shorter=marketType==="futures"?await loadFuturesMarketFlow(x.symbol,1):await loadMarketFlow(x.symbol,1);if(shorter.complete===true&&shorter.trade_count>=8)f=shorter;}
    const gross=f.buy5m+f.sell5m,imb=gross?f.net5m/gross:0,ok=x.trend==="bull"?imb>=.045:imb<=-.045;
-   if(f.trade_count<8||!ok||f.complete===false)return;markQuantumEvidence(engineActivity,"flow");
-   const depth=await loadHunterDepth(x.symbol,marketType,[x.multiExchangeEvidence?.primary,x.multiExchangeEvidence?.secondary]);if(!depth.confirmed)return;markQuantumEvidence(engineActivity,"smartMoney");
+   x.flow={buy5m:f.buy5m,sell5m:f.sell5m,net5m:f.net5m,windowMinutes:f.window_minutes||5,tradeCount:f.trade_count,provider:f.provider,complete:f.complete,coverageStart:f.coverage_start,imbalance:+imb.toFixed(4)};
+   x.flowSignal=f.net5m>0?"inflow":"outflow";
+   x.flowStatus=f.complete!==true?"flow_incomplete":f.trade_count<8?"insufficient_trades":!ok?"flow_direction_mismatch":"flow_confirmed_pending_depth";
+   if(f.trade_count<8||!ok||f.complete===false)return;
+   markQuantumEvidence(engineActivity,"flow");
+   let depth;
+   try{depth=await loadHunterDepth(x.symbol,marketType,[x.multiExchangeEvidence?.primary,x.multiExchangeEvidence?.secondary]);}
+   catch(depthError){x.depthError=String(depthError?.message||depthError).slice(0,140);x.flowStatus="depth_unavailable";return;}
+   x.depth=depth;
+   if(!depth.confirmed){x.flowStatus="depth_not_confirmed";return;}
+   x.flowStatus="depth_confirmed_pending_quality";
+   markQuantumEvidence(engineActivity,"smartMoney");
    const qBars=Array.isArray(x.rows)?x.rows.slice(-70):[],qRanges=qBars.slice(1).map((bar,i)=>Math.max(Number(bar[2])-Number(bar[3]),Math.abs(Number(bar[2])-Number(qBars[i][4])),Math.abs(Number(bar[3])-Number(qBars[i][4])))).filter(v=>Number.isFinite(v)&&v>0),qAtr=qRanges.length?qRanges.slice(-14).reduce((a,b)=>a+b,0)/Math.min(14,qRanges.length):0,qEntry=Number(x.price),qAtrPct=qEntry>0?qAtr/qEntry*100:null,qStopPct=qEntry>0?Math.max(qAtr*1.25,qEntry*.002)/qEntry*100:null,qDepthImbalance=Number(depth.totalDepthUsdt)>0?(Number(depth.bidUsdt)-Number(depth.askUsdt))/Number(depth.totalDepthUsdt):0,qSmartMoneyScore=Math.max(0,Math.min(100,50+Math.sign(imb)*(x.trend==="bull"?1:-1)*Math.min(22,Math.abs(imb)*90)+qDepthImbalance*(x.trend==="bull"?1:-1)*18+Math.min(10,Math.log2(Math.max(1,f.trade_count))*2))),qExplosionScore=Math.max(0,Math.min(100,Math.max(0,Number(x.volumeRatio)-1)*28+Math.abs(imb)*45+Math.min(25,Math.log2(Math.max(1,f.trade_count))*5)));
    const scenarioScore=Math.max(0,Math.min(100,42+(x.breakout?18:0)+(x.technicalAligned?18:0)+Math.min(15,Math.max(0,x.volumeRatio-1)*12)-(x.overextended?25:0)));markQuantumEvidence(engineActivity,"scenario");markQuantumEvidence(engineActivity,"risk");
    const quantum=scoreQuantumOpportunity({...x,flowImbalance:imb,flowConfirmed:true,multiExchangeConfirmed:x.multiExchangeConfirmed,volumeRatio:x.volumeRatio,depthConfirmed:true,depthImbalance:qDepthImbalance,atrPct:qAtrPct,explosionScore:qExplosionScore,smartMoneyScore:qSmartMoneyScore,smartMoneyConfirmed:true,scenarioScore,stopDistancePct:qStopPct,requireDepthConfirmation:true,dataAgeMs:Date.now()-x.candleTime,sentimentScore:sentiment.available?sentiment.score:undefined,sentimentConfirmed:sentiment.available,sentimentSource:sentiment.available?sentiment.sources.join(" + "):undefined});
@@ -1051,7 +1061,7 @@ async function scanHunterSymbols(symbols,marketType="spot",assetList=[],env=null
    const precision=entry>=1000?2:entry>=1?4:entry>=.01?6:8,round=v=>Number(v.toFixed(precision));
    x.tradePlan={direction:sign>0?"LONG":"SHORT",entry:round(entry),stopLoss:round(entry-sign*risk),target1:round(entry+sign*risk*1.5),target2:round(entry+sign*risk*2.2),riskPercent:entry>0?Number((risk/entry*100).toFixed(2)):null,method:"1m ATR-based risk model; execution remains conditional"};
    x.confirmed=true;if(x.score>=68)signals.push(x);
-  }catch(e){x.flowError=String(e?.message||e).slice(0,90);}
+  }catch(e){x.flowError=String(e?.message||e).slice(0,140);if(!x.flowStatus)x.flowStatus="flow_error";}
  }));
  signals.sort((a,b)=>b.score-a.score);
  if(signals.length&&env){
