@@ -62,6 +62,7 @@ jobs:
           if (cleanCandles.length !== 2 || cleanCandles[0][4] !== 101.2) throw new Error("Shared candle validation/deduplication failed");
           const aligned = market.alignMarketCandles(cleanCandles,[[candleTime,100.1,102,99,101.1,10],[candleTime+60000,101.1,103,100,102.1,12]],{now:candleTime+180000,maxAgeMs:180000,maxDeviationPct:0.4});
           if (!aligned || aligned.index !== 1 || aligned.deviationPct > 0.4) throw new Error("Shared multi-exchange candle alignment failed");
+          if (!market.assessMarketDataFreshness(candleTime+60000,candleTime+120000,180000).fresh || market.assessMarketDataFreshness(candleTime,candleTime+300000,180000).fresh) throw new Error("Shared market-data freshness gate failed");
           const learningSource = fs.readFileSync("cloudflare-worker/learning-engine.js", "utf8");
           const learning = await import("data:text/javascript;base64," + Buffer.from(learningSource).toString("base64"));
           const start = 1700000000000;
