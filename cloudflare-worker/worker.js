@@ -585,7 +585,7 @@ function persianize(value){
 
 async function marketFlowJson(url,timeoutMs=7500){
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeoutMs);
- try{const response=await fetchWithTimeout(url,{headers:{"Accept":"application/json","User-Agent":"MMP-COIN-AI-FLOW/1.0"},signal:controller.signal});if(!response.ok)throw new Error("HTTP "+response.status);return await response.json();}
+ try{const response=await fetchWithTimeout(url,{headers:{"Accept":"application/json","User-Agent":"MMP-COIN-AI-FLOW/1.0"},signal:controller.signal});if(!response.ok){const detail=(await response.text()).slice(0,180).replace(/\s+/g," ");throw new Error("HTTP "+response.status+" "+detail);}return await response.json();}
  finally{clearTimeout(timer);}
 }
 async function loadMarketFlow(symbol,windowMinutes=5){
