@@ -7177,24 +7177,40 @@ main,.app-main,.container,.terminal-grid,.intel-suite{min-width:0}
 #ai-section .ai-report .ai-level b{font-size:10px}
 #ai-section .ai-report .ai-pill{font-size:9px;padding:3px 7px;margin:2px}
 @media(max-width:760px){
- #ai-section{padding:11px!important}
- #ai-section .ai-toolbar{grid-template-columns:minmax(0,1fr)!important;gap:8px!important;padding:8px!important}
- #ai-section .ai-toolbar>*{grid-column:1!important}
- #ai-section .ai-coin-picker-trigger,#ai-section .ai-toolbar .dropdown-select-box,#ai-section #ai-run-btn{min-height:44px!important;font-size:12px!important}
+ #ai-section{padding:10px!important}
+ #ai-section>.section-head{align-items:center;gap:7px;margin-bottom:5px!important}
+ #ai-section .mmp-section-heading-content{padding-inline-start:42px;min-height:36px}
+ #ai-section .mmp-module-logo{width:34px;height:34px}
+ #ai-section .section-head h2{font-size:16px!important;line-height:1.35!important}
+ #ai-section .ai-intro{font-size:10px!important;line-height:1.55;margin:3px 0 8px!important}
+ #ai-section .ai-toolbar{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:7px!important;padding:8px!important}
+ #ai-section .ai-toolbar>.ai-coin-picker{grid-column:1/-1!important}
+ #ai-section .ai-toolbar>#ai-market-mode{grid-column:1!important}
+ #ai-section .ai-toolbar>#ai-run-btn{grid-column:2!important}
+ #ai-section .ai-coin-picker-trigger,#ai-section .ai-toolbar .dropdown-select-box,#ai-section #ai-run-btn{min-height:42px!important;height:42px!important;padding:6px 9px!important;font-size:11px!important}
  #ai-section .ai-coin-picker-menu{min-width:0!important;width:100%!important;max-width:100%!important}
- #ai-section .ai-coin-picker-options{grid-template-columns:minmax(0,1fr)!important;max-height:34vh}
- #ai-section .ai-grid.ai-grid-compact{gap:6px}
- #ai-section .ai-metric{padding:8px}
- #ai-section .ai-metric small{font-size:8px}
- #ai-section .ai-metric b{font-size:11px}
- #ai-section .tf-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ #ai-section .ai-coin-picker-options{grid-template-columns:repeat(2,minmax(0,1fr))!important;max-height:32vh}
+ #ai-section .ai-coin-picker-option{min-height:38px;padding:5px;font-size:10px}
+ #ai-section .ai-grid.ai-grid-compact{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:8px 0 5px}
+ #ai-section .ai-metric{padding:7px 6px;text-align:center}
+ #ai-section .ai-metric small{font-size:8px;line-height:1.4}
+ #ai-section .ai-metric b{font-size:10px;line-height:1.4}
+ #ai-section .ai-status{margin:4px 1px;font-size:9px;line-height:1.5}
+ #ai-section .ai-confidence-box{padding:8px 9px;margin:6px 0}
+ #ai-section .ai-timeframe-panel{padding:9px!important;margin-top:7px!important}
+ #ai-section .ai-timeframe-title{font-size:11px!important}
+ #ai-section .ai-timeframe-subtitle{font-size:9px!important;margin-bottom:6px!important}
+ #ai-section .tf-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:6px}
+ #ai-section .tf-card{padding:7px}
  #ai-section .ai-report .ai-levels{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media(max-width:380px){
  #ai-section>.section-head>.badge{display:none}
- #ai-section .ai-grid.ai-grid-compact{grid-template-columns:repeat(2,minmax(0,1fr))}
- #ai-section .ai-grid.ai-grid-compact .ai-metric:first-child{grid-column:1/-1}
- #ai-section .ai-metric b{font-size:10px}
+ #ai-section .ai-toolbar{gap:6px!important;padding:7px!important}
+ #ai-section .ai-coin-picker-trigger,#ai-section .ai-toolbar .dropdown-select-box,#ai-section #ai-run-btn{font-size:10px!important;padding-inline:6px!important}
+ #ai-section .ai-grid.ai-grid-compact{grid-template-columns:repeat(3,minmax(0,1fr))}
+ #ai-section .ai-metric small{font-size:7px}
+ #ai-section .ai-metric b{font-size:9px}
 }
 </style>
 
