@@ -957,7 +957,6 @@ async function loadHunterDepth(symbol,marketType="spot",preferredProviders=[],si
  const get=(url,timeoutMs=4500)=>marketFlowJson(url,timeoutMs,signal);
  const base=String(symbol||"").toUpperCase().replace(/USDT$/,""),pair=base+"USDT";
  if(!/^[A-Z0-9]{2,24}$/.test(pair))throw new Error("Invalid depth symbol");
- const get=url=>get(url,4500);
  const sources=marketType==="futures"?[
   {key:"WhiteBIT",name:"WhiteBIT USDT Futures",load:async()=>{const d=await get("https://whitebit.com/api/v4/public/orderbook/"+base+"_PERP?limit=100&level=2");return {bids:d.bids,asks:d.asks};}},
   {key:"MEXC",name:"MEXC USDT Futures",load:async()=>{const d=await get("https://contract.mexc.com/api/v1/contract/depth/"+base+"_USDT");if(d?.success!==true)throw Error(d?.msg||"MEXC Futures order book unavailable");return {bids:d.data?.bids,asks:d.data?.asks};}},
