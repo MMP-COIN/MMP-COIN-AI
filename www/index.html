@@ -3504,8 +3504,7 @@ async function refreshAll(){
   renderHeroCards();
   renderCoinsTables(data);
   updateDropdowns(data);  renderOpportunities();
-  // رادار و شکارچی فقط Snapshotهای از پیش محاسبه‌شده‌ی سمت سرور را می‌خوانند؛ مرورگر اسکن موازی نمادها اجرا نمی‌کند.
-  setTimeout(()=>loadUnifiedRadarSnapshot(),0);
+  // Snapshot رادار فقط با زمان‌بندی مستقل دریافت می‌شود تا درخواست تکراری ایجاد نشود.
 
   // قیمت XAU از ابتدای چرخه و مستقل از کاتالوگ بازار دریافت شده است.
 
@@ -4891,6 +4890,7 @@ $("risk-calc")?.addEventListener("click",calcRisk);
 // شروع دریافت قیمت‌ها را به راه‌اندازی اجزای غیرضروری رابط وابسته نکن.
 // حتی اگر منوی انتخاب ارز یا ساعت بازار خطا بدهد، دریافت قیمت باید آغاز شود.
 refreshAll();
+setTimeout(()=>loadUnifiedRadarSnapshot(),0);
 try{setupAiCoinPicker();}catch(error){console.error("AI coin picker initialization failed:",error);}
 try{renderMarketHours();setInterval(renderMarketHours,15000);}catch(error){console.error("Market hours initialization failed:",error);}
 checkConnections();setInterval(()=>{if(document.visibilityState!=="hidden")checkConnections();},60000);window.addEventListener("online",()=>checkConnections());document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"){checkConnections();loadUnifiedRadarSnapshot();}});
