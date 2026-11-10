@@ -180,7 +180,7 @@ async function runRadar(env,scheduledTime=Date.now()){
   const [state,oldSnapshot]=await Promise.all([env.RADAR_KV.get("radar:state",{type:"json"}),env.RADAR_KV.get("radar:snapshot",{type:"json"})]);
   const cacheTimestamp=Date.parse(state?.universe_cache_updated_at||state?.updated_at||"")||Number(state?.universe_cache_updated_at||state?.updated_at||0)||0;
   const cacheAge=Math.max(0,Date.now()-cacheTimestamp);
-  const cachedUniverse=Array.isArray(state?.universe_cache)&&state.universe_cache.length&&cacheAge<=30*60*1000?state.universe_cache:null;
+  const cachedUniverse=Array.isArray(state?.universe_cache)&&state.universe_cache.length&&cacheAge<=6*60*60*1000?state.universe_cache:null;
   let source=null,universeSource="live";
   try{
     const response=await getJson(MAIN_UNIVERSE,12000);
@@ -206,6 +206,9 @@ async function runRadar(env,scheduledTime=Date.now()){
   let universe=buildUniverse(source);
   if(!universe.length&&universeSource==="live"&&cachedUniverse){universe=buildUniverse(cachedUniverse);universeSource="cached";}
   if(!universe.length)throw new Error("No eligible USDT spot symbols; previous snapshot retained");
+  // When the cached universe is older than 30 minutes, keep its symbols but
+  // do not use stale 24h momentum as live evidence. Candle/flow checks stay live.
+  if(universeSource==="cached"&&cacheAge>30*60*1000)universe=universe.map(coin=>({...coin,hunterChange24h:0}));
    const batchSize=universe.length>500?12:BATCH_SIZE;
   const previousSignals=[...(Array.isArray(oldSnapshot?.signals)?oldSnapshot.signals:[]),...(Array.isArray(oldSnapshot?.legacy_signals)?oldSnapshot.legacy_signals:[])];
   const retentionNow=Date.now();
@@ -317,7 +320,7 @@ async function runRadar(env,scheduledTime=Date.now()){
   const flowConfirmedCount=scannedSignals.filter(signal=>signal.flowConfirmed===true).length;
   const qualityPassCount=scannedSignals.filter(signal=>signal.flowConfirmed===true&&signal.volumeConfirmed===true&&signal.quantum?.qualityGate===true&&Number(signal.score)>=RETENTION_SCORE).length;
   const snapshot={
-    status:"online",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,source:"Cloudflare scheduled radar",scoring_version:5,scan_priority_version:scanPriorityVersion,retention_score:RETENTION_SCORE,
+    status:"online",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,source:universeSource==="cached"?"Cloudflare scheduled radar · cached universe; live candles":"Cloudflare scheduled radar",scoring_version:5,scan_priority_version:scanPriorityVersion,retention_score:RETENTION_SCORE,
     universe_source:universeSource,universe_cache_age_ms:universeSource==="cached"?cacheAge:0,
     scanned_at:new Date().toISOString(),scheduled_at:new Date(Number(scheduledTime)||Date.now()).toISOString(),
     universe_count:universe.length,cycle_scanned_count:cycleScannedCount,cycle_total:universe.length,cycle_percent:cyclePercent,cycle_number:cycleNumber,scanned_count:completed,valid_count:valid,flow_checked_count:flowCandidates.length,flow_confirmed_count:flowConfirmedCount,quality_pass_count:qualityPassCount,candidate_details:candidateDetails,failed_count:failed,failed_samples:failedSamples,
@@ -347,7 +350,8 @@ async function runRadar(env,scheduledTime=Date.now()){
   snapshot.signals=snapshot.signals.map(signal=>applyLearningCalibration(signal,learningSummary));
   // Persist the public snapshot first; advance the cursor only after it is safely stored.
   await env.RADAR_KV.put("radar:snapshot",JSON.stringify(snapshot));
-  const universeCache=universe.map(coin=>({id:coin.id,symbol:coin.symbol,name:coin.name||"",image:coin.image||"",
+  const cacheSource=universeSource==="cached"&&Array.isArray(state?.universe_cache)?state.universe_cache:universe;
+  const universeCache=cacheSource.map(coin=>({id:coin.id,symbol:coin.symbol,name:coin.name||"",image:coin.image||"",
     total_volume:Number(coin.total_volume)||0,market_cap:coin.market_cap||null,market_cap_rank:coin.market_cap_rank||null,
     hunterExchange:coin.hunterExchange||"",hunterPriceExchange:coin.hunterPriceExchange||"",
     hunterChange24h:Number(coin.hunterChange24h)||0,hunterVenueVolume:coin.hunterVenueVolume||{},
