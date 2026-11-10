@@ -3773,7 +3773,7 @@ let connectionCheckPromise=null,connectionCheckLastAt=0,connectionCheckCache=[];
 function checkConnections(force=false){
  const now=Date.now();
  if(connectionCheckPromise)return connectionCheckPromise;
- if(!force&&now-connectionCheckLastAt<240000)return Promise.resolve(connectionCheckCache);
+ if(!force&&now-connectionCheckLastAt<20*60*1000)return Promise.resolve(connectionCheckCache);
  connectionCheckLastAt=now;
  const task=(async()=>{
  const endpoint="https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/connections-health";
