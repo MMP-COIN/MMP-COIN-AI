@@ -98,6 +98,17 @@ jobs:
           if (!universeCronSource.includes("refreshDigitalHunterUniverses(env)") || !universeCronSource.includes("hourly-universe-refresh")) throw new Error("Hunter universe refresh must remain independent and low-frequency");
           if (!cronSource.includes('runDigitalHunterMarketCycle(env,"spot")') || cronSource.includes("FUTURES_ENGINE.fetch")) throw new Error("Analyzer Cron must scan Spot only; Futures has its own scheduler");
           if (!workerSource.includes("digital-hunter-futures-cron-heartbeat") || !workerSource.includes("markets:{spot,futures}")) throw new Error("Hunter status endpoint must merge independent Spot/Futures heartbeats");
+          if (!radarSource.includes("cacheAge<=6*60*60*1000") || !radarSource.includes("cached universe; live candles") || !radarSource.includes("radar:last-error")) throw new Error("Radar must keep a recent cached universe fallback and record failures");
+
+          const futuresSource = fs.readFileSync("cloudflare-worker/futures-worker.js", "utf8");
+          const universeCronSource = fs.readFileSync("cloudflare-worker/hunter-cron-worker.js", "utf8");
+          const cronStart = workerSource.indexOf("async function runDigitalHunterCron");
+          const cronEnd = workerSource.indexOf("export default {", cronStart);
+          const cronSource = workerSource.slice(cronStart, cronEnd);
+          if (!futuresSource.includes('async scheduled(event,env)') || !futuresSource.includes('runDigitalHunterMarketCycle(env,"futures")') || !futuresSource.includes("digital-hunter-futures-cron-heartbeat")) throw new Error("Futures must run on its own scheduled Worker");
+          if (!universeCronSource.includes("refreshDigitalHunterUniverses(env)") || !universeCronSource.includes("hourly-universe-refresh")) throw new Error("Hunter universe refresh must remain independent and low-frequency");
+          if (!cronSource.includes('runDigitalHunterMarketCycle(env,"spot")') || cronSource.includes("FUTURES_ENGINE.fetch")) throw new Error("Analyzer Cron must scan Spot only; Futures has its own scheduler");
+          if (!workerSource.includes("digital-hunter-futures-cron-heartbeat") || !workerSource.includes("markets:{spot,futures}")) throw new Error("Hunter status endpoint must merge independent Spot/Futures heartbeats");
           if (!radarSource.includes("cacheAge<=6*60*60*1000") || !radarSource.includes("cached universe; live candles")) throw new Error("Radar must safely use recent cached universe with live price evidence");
 
           if (!radarSource.includes("const BATCH_SIZE = 12;") || !radarSource.includes("universe.length>500?12:BATCH_SIZE") || !radarSource.includes(".slice(0,3);")) throw new Error("Radar scan must stay within the per-invocation subrequest budget");
