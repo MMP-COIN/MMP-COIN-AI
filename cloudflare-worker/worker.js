@@ -181,18 +181,6 @@ async function candles(symbol,interval,env,marketType="spot"){
   const pair=splitQuotePair(symbol);
   if(!pair||pair.quote!=="USDT")throw new Error("Futures market supports USDT perpetual contracts only");
   const contract=pair.base+"_USDT";
-  const mexcInterval={"1m":"Min1","5m":"Min5","15m":"Min15","1h":"Min60","4h":"Hour4","1d":"Day1"}[interval];
-  if(mexcInterval){
-   try{
-    const now=Math.floor(Date.now()/1000),start=now-300*({"1m":60,"5m":300,"15m":900,"1h":3600,"4h":14400,"1d":86400}[interval]);
-    const r=await fetchWithTimeout("https://contract.mexc.com/api/v1/contract/kline/"+encodeURIComponent(contract)+"?interval="+mexcInterval+"&start="+start+"&end="+now,{headers});
-    if(!r.ok)throw new Error("MEXC Futures HTTP "+r.status);
-    const d=await r.json(),v=d?.data;
-    const rows=d?.success===true&&Array.isArray(v?.time)?v.time.map((t,i)=>[Number(t)*1000,String(v.open?.[i]??0),String(v.high?.[i]??0),String(v.low?.[i]??0),String(v.close?.[i]??0),String(v.vol?.[i]??0),String(v.amount?.[i]??0),"0","0","0"]):[];
-    if(!validRows(rows))throw new Error(d?.msg||"insufficient MEXC Futures candle history");
-    const result=analyzeClosedKlines(rows,interval);result.data_provider="MEXC USDT Futures";return result;
-   }catch(e){errors.push("MEXC: "+e.message);}
-  }
   const kucoinGranularity={"1m":1,"5m":5,"15m":15,"1h":60,"4h":240,"1d":1440}[interval];
   if(kucoinGranularity){
    try{
@@ -215,7 +203,19 @@ async function candles(symbol,interval,env,marketType="spot"){
    }catch(e){errors.push("Gate: "+e.message);if(/HTTP (400|403|429|451)|invalid|not listed|insufficient|Symbol Is Invalid/i.test(String(e?.message||e)))break;}
   }
   try{
-   const url="https://api.bitget.com/api/v3/market/candles?category=USDT-FUTURES&symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250";
+   const mexcInterval={"1m":"Min1","5m":"Min5","15m":"Min15","1h":"Min60","4h":"Hour4","1d":"Day1"}[interval];
+  if(mexcInterval){
+   try{
+    const now=Math.floor(Date.now()/1000),start=now-300*({"1m":60,"5m":300,"15m":900,"1h":3600,"4h":14400,"1d":86400}[interval]);
+    const r=await fetchWithTimeout("https://contract.mexc.com/api/v1/contract/kline/"+encodeURIComponent(contract)+"?interval="+mexcInterval+"&start="+start+"&end="+now,{headers});
+    if(!r.ok)throw new Error("MEXC Futures HTTP "+r.status);
+    const d=await r.json(),v=d?.data;
+    const rows=d?.success===true&&Array.isArray(v?.time)?v.time.map((t,i)=>[Number(t)*1000,String(v.open?.[i]??0),String(v.high?.[i]??0),String(v.low?.[i]??0),String(v.close?.[i]??0),String(v.vol?.[i]??0),String(v.amount?.[i]??0),"0","0","0"]):[];
+    if(!validRows(rows))throw new Error(d?.msg||"insufficient MEXC Futures candle history");
+    const result=analyzeClosedKlines(rows,interval);result.data_provider="MEXC USDT Futures";return result;
+   }catch(e){errors.push("MEXC: "+e.message);}
+  }
+  const url="https://api.bitget.com/api/v3/market/candles?category=USDT-FUTURES&symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250";
    const r=await fetchWithTimeout(url,{headers});if(!r.ok)throw new Error("Bitget Futures HTTP "+r.status);
    const payload=await r.json(),raw=payload?.code==="00000"?payload.data:null;
    const rows=Array.isArray(raw)?raw.map(x=>[Number(x[0]),x[1],x[2],x[3],x[4],x[5]||"0",x[6]||"0","0","0","0"]):[];
