@@ -2957,7 +2957,7 @@ async function refreshSiteData(){
  $("updated").textContent="در حال بروزرسانی داده‌های اپلیکیشن…";
  try{
   const marketPromise=typeof refreshAll==="function"?refreshAll():Promise.resolve(false);
-  const connectionPromise=typeof checkConnections==="function"?checkConnections():Promise.resolve([]);
+  const connectionPromise=typeof checkConnections==="function"?checkConnections(true):Promise.resolve([]);
   const [marketResult,connectionResult]=await Promise.allSettled([marketPromise,connectionPromise]);
   const marketOk=marketResult.status==="fulfilled"&&marketResult.value===true;
   const connectionOk=connectionResult.status==="fulfilled"&&Array.isArray(connectionResult.value)&&connectionResult.value.some(item=>item&&item.status!=="down");
@@ -3731,7 +3731,13 @@ function setupConnectionsToggle(){
   button.innerHTML=(!expanded?"بستن منابع دیگر":"نمایش "+(button.dataset.extraCount||"4")+" منبع دیگر")+' <span class="chevron" aria-hidden="true">⌄</span>';
  });
 }
-async function checkConnections(){
+let connectionCheckPromise=null,connectionCheckLastAt=0,connectionCheckCache=[];
+function checkConnections(force=false){
+ const now=Date.now();
+ if(connectionCheckPromise)return connectionCheckPromise;
+ if(!force&&now-connectionCheckLastAt<240000)return Promise.resolve(connectionCheckCache);
+ connectionCheckLastAt=now;
+ const task=(async()=>{
  const endpoint="https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/connections-health";
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),22000);
  try{
@@ -3823,6 +3829,7 @@ async function checkConnections(){
   if(toggle){const expanded=toggle.getAttribute("aria-expanded")==="true";toggle.dataset.extraCount=String(extra.length);toggle.hidden=!extra.length;toggle.innerHTML=(expanded?"بستن منابع دیگر":"نمایش "+extra.length+" منبع دیگر")+' <span class="chevron" aria-hidden="true">⌄</span>';}
   const summary=$("conn-summary");
   if(summary){const connected=ordered.filter(x=>x.status!=="down").length;summary.textContent=connected+" از "+expected.length+" اتصال فعال · "+(expected.length-connected)+" قطع";}
+  connectionCheckCache=ordered;
   return ordered;
  }catch(error){
   const message=error.name==="AbortError"?"مهلت بررسی اتصال تمام شد":"سرویس بررسی اتصال پاسخ نداد";
@@ -3830,8 +3837,11 @@ async function checkConnections(){
   $("connections-extra").innerHTML="";
   const toggle=$("connections-toggle");if(toggle)toggle.hidden=true;
   const summary=$("conn-summary");if(summary)summary.textContent="وضعیت اتصال نامشخص";
-  return [];
+  return connectionCheckCache;
  }finally{clearTimeout(timer);}
+ })();
+ connectionCheckPromise=task.finally(()=>{connectionCheckPromise=null;});
+ return connectionCheckPromise;
 }
 
 const AI_ANALYSIS_ENDPOINT = "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev"; // بعد از انتشار Worker، نشانی ...workers.dev/analyze در این متغیر قرار می‌گیرد.
@@ -6262,13 +6272,13 @@ window.mmpShareDownloadLink = async function () {
   ["Nobitex","نوبیتکس","nobitex","اسپات"],
   ["Wallex","والکس","wallex","اسپات"]
  ];
- async function renderExchanges(){
+ async function renderExchanges(force=false){
   const host=$id("exchange-directory-list"),summary=$id("exchange-directory-summary"),count=$id("exchange-directory-count");
   if(!host)return;
   summary.textContent="در حال دریافت فهرست بازارها و بررسی اتصال…";
   const jobs=await Promise.allSettled([
    typeof getHunterExchangeMarkets==="function"?getHunterExchangeMarkets():Promise.resolve(new Map()),
-   checkConnections()
+   checkConnections(force)
   ]);
   const sets=jobs[0].status==="fulfilled"?jobs[0].value:new Map();
   const checks=jobs[1].status==="fulfilled"&&Array.isArray(jobs[1].value)?jobs[1].value:[];
@@ -6292,7 +6302,7 @@ window.mmpShareDownloadLink = async function () {
   const search=$id("asset-directory-search");
   if(search)search.addEventListener("input",()=>renderAssets(search.value));
   const refresh=$id("exchange-directory-refresh");
-  if(refresh)refresh.addEventListener("click",()=>{refresh.disabled=true;renderExchanges().finally(()=>refresh.disabled=false);});
+  if(refresh)refresh.addEventListener("click",()=>{refresh.disabled=true;renderExchanges(true).finally(()=>refresh.disabled=false);});
   const coinDetails=document.querySelector("#asset-directory .mmp-directory-details");
   if(coinDetails)coinDetails.addEventListener("toggle",()=>{if(coinDetails.open&&allAssets.length===0)loadAssets();});
   loadAssets();
