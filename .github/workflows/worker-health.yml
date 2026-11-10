@@ -34,6 +34,18 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
+      - name: Validate dedicated Hunter scheduler
+        run: |
+          set -euo pipefail
+          node --check cloudflare-worker/hunter-cron-worker.js
+          node - <<'NODE'
+          const fs = require("fs");
+          const source = fs.readFileSync("cloudflare-worker/hunter-cron-worker.js", "utf8");
+          for (const required of ["runDigitalHunterMarketCycle", "refreshDigitalHunterUniverses", "digital-hunter-cron-heartbeat", '"spot", 26000', '"futures", 28000']) {
+            if (!source.includes(required)) throw new Error("Dedicated Hunter scheduler missing: " + required);
+          }
+          console.log("Dedicated Hunter scheduler imports, heartbeat and bounded Spot/Futures cycles verified.");
+          NODE
       - name: Validate Worker syntax and Quantum signal gates
         run: |
           set -euo pipefail
