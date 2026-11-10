@@ -740,7 +740,7 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
  const symbolHash=String(symbol).split("").reduce((sum,char)=>sum+char.charCodeAt(0),0);
  const rotation=fallbackOrder.length?(symbolHash+Math.floor(Date.now()/60000))%fallbackOrder.length:0;
  const rotatedFallback=[...fallbackOrder.slice(rotation),...fallbackOrder.slice(0,rotation)];
- const orderedIndices=unique([...preferredOrder.slice(0,1),...fallbackOrder]);
+ const orderedIndices=unique([...preferredOrder.slice(0,2),...fallbackOrder]);
  const sourceLimit=Math.min(3,sources.length),orderedSources=orderedIndices.map(index=>sources[index]).filter(Boolean).slice(0,sourceLimit),verified=[];
  let selectedPair=null,bestObservedPair=null;
  const evaluatePairs=()=>{
