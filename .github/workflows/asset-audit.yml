@@ -1,17 +1,6 @@
 name: MMP COIN AI - audit full Quantum market universe
 
 on:
-  push:
-    branches: ["main"]
-    paths:
-      - "cloudflare-worker/worker.js"
-      - "cloudflare-worker/radar-worker.js"
-      - "cloudflare-worker/quantum-core.js"
-      - "www/index.html"
-      - "www/quantum-lab.html"
-      - ".github/workflows/asset-audit.yml"
-  schedule:
-    - cron: "25 16 * * *"
   workflow_dispatch:
 
 permissions:
@@ -23,7 +12,6 @@ concurrency:
 
 jobs:
   audit:
-    if: false # Emergency stop: full-universe audit consumes the exhausted Workers request quota
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
