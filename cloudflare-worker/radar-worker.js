@@ -351,11 +351,14 @@ async function runRadar(env,scheduledTime=Date.now()){
   // Persist the public snapshot first; advance the cursor only after it is safely stored.
   await env.RADAR_KV.put("radar:snapshot",JSON.stringify(snapshot));
   const cacheSource=universeSource==="cached"&&Array.isArray(state?.universe_cache)?state.universe_cache:universe;
-  const universeCache=cacheSource.map(coin=>({id:coin.id,symbol:coin.symbol,name:coin.name||"",image:coin.image||"",
+  const universeCache=cacheSource.map(coin=>{
+    const currentPrice=Number(coin.current_price||coin.price||coin.marketPairs?.find(pair=>String(pair.quote||"").toUpperCase()==="USDT")?.price||0);
+    return {id:coin.id,symbol:coin.symbol,name:coin.name||"",image:coin.image||"",current_price:currentPrice,price:currentPrice,
     total_volume:Number(coin.total_volume)||0,market_cap:coin.market_cap||null,market_cap_rank:coin.market_cap_rank||null,
     hunterExchange:coin.hunterExchange||"",hunterPriceExchange:coin.hunterPriceExchange||"",
     hunterChange24h:Number(coin.hunterChange24h)||0,hunterVenueVolume:coin.hunterVenueVolume||{},
-    marketPairs:Array.isArray(coin.marketPairs)?coin.marketPairs:[]}));
+    marketPairs:Array.isArray(coin.marketPairs)?coin.marketPairs:[]};
+  });
   await env.RADAR_KV.put("radar:state",JSON.stringify({
     cursor:nextCursor,scan_priority_version:scanPriorityVersion,cycle_scanned_count:cycleScannedCount,cycle_number:cycleNumber,updated_at:snapshot.scanned_at,universe_count:universe.length,removed_signals:removedSignals,
     universe_cache:universeCache,
