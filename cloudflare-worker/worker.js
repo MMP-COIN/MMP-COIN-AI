@@ -1128,6 +1128,7 @@ export async function runDigitalHunterMarketCycle(env,marketType="spot"){
  if(Array.isArray(cached?.assets)&&cached.assets.length&&(!assets.length||cacheIsNewer)){
   assets=cached.assets;universeUpdatedAt=Number(cached.universeUpdatedAt)||now;universeSources=cached.universeSources||{};universeProvider=cached.universeProvider||"multi-exchange";adoptedUniverse=cacheIsNewer;
  }
+ if(assets.length&&!Array.isArray(cached?.assets)){const cachePayload=JSON.stringify({assets,universeUpdatedAt,universeSources,universeProvider});await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(cacheId,cachePayload,new Date(now).toISOString()).run();}
  if(!assets.length){
   const universe=await loadDigitalHunterUniverse(env,marketType);
   assets=normalizeQuantumUniverse(universe.assets||[],marketType).map(x=>({id:String(x.id||x.symbol),symbol:x.symbol,name:x.name||x.symbol,image:x.image||"",current_price:Number(x.current_price)||0,total_volume:Number(x.total_volume)||0,hunterExchange:x.hunterExchange||"",hunterPriceExchange:x.hunterPriceExchange||"",hunterChange24h:Number(x.hunterChange24h)||0,marketPairs:(x.marketPairs||[]).slice(0,4),hunterVenueVolume:x.hunterVenueVolume||{}}));
