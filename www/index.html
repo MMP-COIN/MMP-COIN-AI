@@ -2431,6 +2431,74 @@ html body>main.wrap>#mmp-home-hero{margin-top:0!important;margin-block-start:0!i
  html body>main.wrap{margin-top:62px!important;margin-block-start:62px!important;padding-top:0!important;padding-block-start:0!important}
 }
 </style>
+
+<style id="mmp-analyzer-menu-layout-fix-20261110">
+/* Analyzer controls: keep menus usable and prevent narrow vertical columns. */
+html body #ai-section{width:100%;max-width:100%;min-width:0;overflow:visible}
+html body #ai-section .ai-toolbar{
+ display:grid!important;
+ grid-template-columns:minmax(0,1.65fr) minmax(170px,.75fr) minmax(160px,.7fr)!important;
+ align-items:stretch!important;gap:10px!important;width:100%!important;min-width:0!important;
+}
+html body #ai-section .ai-toolbar>*{width:100%!important;min-width:0!important;max-width:100%!important}
+html body #ai-section .ai-coin-picker{position:relative!important;display:block!important;min-width:0!important;width:100%!important}
+html body #ai-section .ai-coin-picker-trigger{
+ display:flex!important;align-items:center!important;justify-content:space-between!important;
+ width:100%!important;min-width:0!important;min-height:48px!important;white-space:normal!important;
+ writing-mode:horizontal-tb!important;text-align:right!important;gap:10px!important;
+}
+html body #ai-section .ai-coin-picker-current{flex:1 1 auto!important;min-width:0!important;overflow:hidden}
+html body #ai-section .ai-coin-picker-current>span,
+html body #ai-section .ai-coin-picker-current b{min-width:0!important;max-width:100%!important;overflow:hidden;text-overflow:ellipsis}
+html body #ai-section #ai-market-mode{width:100%!important;min-width:0!important;margin:0!important;min-height:48px!important}
+html body #ai-section #ai-run-btn{
+ display:flex!important;align-items:center!important;justify-content:center!important;
+ width:100%!important;min-width:0!important;min-height:48px!important;padding:10px 14px!important;
+ white-space:normal!important;writing-mode:horizontal-tb!important;line-height:1.5!important;
+}
+html body #ai-section .ai-coin-picker-menu{
+ position:absolute!important;top:calc(100% + 7px)!important;right:0!important;left:0!important;
+ width:100%!important;min-width:min(340px,calc(100vw - 28px))!important;max-width:calc(100vw - 28px)!important;
+ max-height:min(58vh,420px)!important;overflow:hidden!important;z-index:12000!important;
+ box-sizing:border-box!important;border-radius:13px!important;
+}
+html body #ai-section .ai-coin-picker-menu>input{display:block!important;width:100%!important;min-width:0!important;max-width:100%!important}
+html body #ai-section .ai-coin-picker-options{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:5px!important;max-height:min(42vh,320px)!important;overflow:auto!important;min-width:0!important}
+html body #ai-section .ai-coin-picker-option{
+ display:flex!important;align-items:center!important;width:100%!important;min-width:0!important;
+ min-height:42px!important;gap:8px!important;padding:7px 8px!important;
+ white-space:normal!important;writing-mode:horizontal-tb!important;text-align:right!important;
+}
+html body #ai-section .ai-coin-picker-option>span{display:flex!important;flex:1 1 auto!important;flex-direction:column!important;min-width:0!important;overflow:hidden}
+html body #ai-section .ai-coin-picker-option b,
+html body #ai-section .ai-coin-picker-option small{display:block!important;max-width:100%!important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap!important}
+html body #ai-section .ai-timeframe-panel,
+html body #ai-section .ai-details-content,
+html body #ai-section .ai-confidence-box,
+html body #ai-section .ai-report{width:100%;max-width:100%;min-width:0;box-sizing:border-box}
+html body #ai-section .tf-grid{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:9px!important;width:100%!important}
+html body #ai-section .tf-card{min-width:0!important;max-width:100%!important;overflow-wrap:anywhere}
+@media(max-width:900px){
+ html body #ai-section .ai-toolbar{grid-template-columns:minmax(0,1.35fr) minmax(145px,.8fr)!important}
+ html body #ai-section #ai-run-btn{grid-column:1/-1!important}
+ html body #ai-section .tf-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+@media(max-width:560px){
+ html body #ai-section .ai-toolbar{grid-template-columns:minmax(0,1fr)!important;gap:9px!important}
+ html body #ai-section .ai-toolbar>*,
+ html body #ai-section #ai-run-btn{grid-column:1!important;width:100%!important}
+ html body #ai-section .ai-coin-picker-menu{min-width:0!important;width:100%!important;max-width:100%!important}
+ html body #ai-section .ai-coin-picker-options{grid-template-columns:minmax(0,1fr)!important;max-height:38vh!important}
+ html body #ai-section .ai-coin-picker-option{min-height:46px!important}
+ html body #ai-section .tf-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ html body #ai-section .ai-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+@media(max-width:360px){
+ html body #ai-section .ai-grid,
+ html body #ai-section .tf-grid{grid-template-columns:minmax(0,1fr)!important}
+ html body #ai-section .ai-coin-picker-trigger{padding-inline:9px!important;font-size:11px!important}
+}
+</style>
 </head>
 <body class="mmp-app-mode">
 <header class="top">
