@@ -4908,7 +4908,6 @@ $("risk-calc")?.addEventListener("click",calcRisk);
 // حتی اگر منوی انتخاب ارز یا ساعت بازار خطا بدهد، دریافت قیمت باید آغاز شود.
 refreshAll();
 setTimeout(()=>loadUnifiedRadarSnapshot(),0);
-setTimeout(()=>loadDigitalHunterSnapshot(),0);
 try{setupAiCoinPicker();}catch(error){console.error("AI coin picker initialization failed:",error);}
 try{renderMarketHours();setInterval(renderMarketHours,15000);}catch(error){console.error("Market hours initialization failed:",error);}
 checkConnections();setInterval(()=>{if(document.visibilityState!=="hidden")checkConnections();},60000);window.addEventListener("online",()=>checkConnections());document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"){checkConnections();loadUnifiedRadarSnapshot();}});
@@ -4920,8 +4919,7 @@ setInterval(()=>{if(document.visibilityState!=="hidden")refreshGoldQuote();},300
 setTimeout(()=>loadUnifiedRadarSnapshot(),12000);
 setInterval(()=>{if(document.visibilityState!=="hidden")loadUnifiedRadarSnapshot();},60000);
 setTimeout(()=>runDedicatedHunterScan(),18000);
-setInterval(()=>{if(document.visibilityState!=="hidden")loadDigitalHunterSnapshot();},60000);
-setInterval(()=>{if(document.visibilityState!=="hidden")runDedicatedHunterScan();},5*60*1000);
+
 </script>
 
 
