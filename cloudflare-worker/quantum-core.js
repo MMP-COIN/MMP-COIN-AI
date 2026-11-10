@@ -42,6 +42,23 @@ export function calculateQuantumIndicators(rows=[]){
  return {available:[ema9,ema21,ema50,rsi14,macdHistogram,atrPct,vwap,vwapDeviationPct].every(Number.isFinite),ema9,ema21,ema50,rsi14,macdHistogram,atr14,atrPct,vwap,vwapDeviationPct,obvChange,obvTrend:Math.sign(obvChange),breakoutUp:last.c>priorHigh,breakoutDown:last.c<priorLow,trendUp:ema9>ema21&&ema21>ema50&&macdHistogram>=0,trendDown:ema9<ema21&&ema21<ema50&&macdHistogram<=0};
 }
 
+export function calculateSpecialistEnsemble(parts={},availability={},weights={},direction=0){
+ const keys=["momentum","flow","structure","liquidity","multiTimeframe","regime","volatility","sentiment","smartMoney","scenario","risk","dataQuality"];
+ const experts=keys.map(key=>({key,available:availability[key]===true,score:availability[key]===true?clamp(parts[key]):null,weight:availability[key]===true?Math.max(0,finite(weights[key])):0}));
+ const active=experts.filter(x=>x.available&&x.weight>0),totalWeight=active.reduce((sum,x)=>sum+x.weight,0);
+ const ensembleScore=totalWeight?active.reduce((sum,x)=>sum+x.score*x.weight,0)/totalWeight:null;
+ const directionalKeys=["flow","structure","multiTimeframe","regime","sentiment","smartMoney"];
+ const directional=experts.filter(x=>directionalKeys.includes(x.key)&&x.available&&x.weight>0);
+ const support=directional.filter(x=>x.score>=55).reduce((sum,x)=>sum+x.weight,0);
+ const opposition=directional.filter(x=>x.score<=45).reduce((sum,x)=>sum+x.weight,0);
+ const directionalWeight=support+opposition;
+ const agreement=direction!==0&&directionalWeight>0?support/directionalWeight:null;
+ const disagreementPenalty=directionalWeight>0&&support>0&&opposition>0?Math.min(6,Math.round(opposition/directionalWeight*12)):0;
+ return {version:"MMP-SPECIALIST-ENSEMBLE-1.0",method:"evidence-weighted deterministic specialist ensemble",modelCount:active.length,
+  ensembleScore:ensembleScore===null?null:Number(ensembleScore.toFixed(2)),directionalAgreement:agreement===null?null:Number((agreement*100).toFixed(1)),
+  disagreementPenalty,experts};
+}
+
 export function scoreQuantumOpportunity(input={}){
  const direction=input.trend==="bull"?1:input.trend==="bear"?-1:0;
  const changes=[input.change1m??input.m1,input.change3m??input.m3,input.change5m??input.m5,input.change15m??input.m15];
@@ -122,7 +139,9 @@ export function scoreQuantumOpportunity(input={}){
  const overextensionPenalty=input.overextended===true?8:0;
  const stalePenalty=ageAvailable&&age>120000?Math.min(12,(age-120000)/15000):0;
  const score=Math.round(clamp(rawScore-overextensionPenalty-stalePenalty,0,99));
- const confidence=Math.round(clamp((dataQualityAvailable?dataQuality*.32:0)+(multiTimeframeAvailable?multiTimeframe*.23:0)+(liquidityAvailable?liquidity*.18:0)+(flowAvailable?12:0)+(volatilityAvailable?5:0)+(smartMoneyAvailable?5:0)+(sentimentAvailable?3:0)+(evidenceCoverage*12)));
+ const baseConfidence=(dataQualityAvailable?dataQuality*.32:0)+(multiTimeframeAvailable?multiTimeframe*.23:0)+(liquidityAvailable?liquidity*.18:0)+(flowAvailable?12:0)+(volatilityAvailable?5:0)+(smartMoneyAvailable?5:0)+(sentimentAvailable?3:0)+(evidenceCoverage*12);
+ const specialistEnsemble=calculateSpecialistEnsemble(parts,availability,effectiveWeights,direction);
+ const confidence=Math.round(clamp(baseConfidence-specialistEnsemble.disagreementPenalty));
  const totalVolumeAvailable=has(input,"totalVolume24h");
  const liquidityConfirmed=totalVolumeAvailable&&finite(input.totalVolume24h)>=150000;
  const candidateGate=priceAvailable&&fresh&&changesAvailable&&direction!==0&&structureAvailable&&technicalAligned&&volumeAvailable&&dataQuality>=80&&multiTimeframe>=50&&liquidity>=25&&liquidityConfirmed&&volumeRatio>=1.1&&input.overextended!==true;
@@ -138,7 +157,7 @@ export function scoreQuantumOpportunity(input={}){
   adaptiveProfile,evidenceCoverage:Number(evidenceCoverage.toFixed(3)),rawScore:Number(rawScore.toFixed(2)),
   qualityTier:confidence>=82&&evidenceCoverage>=0.72?"A":confidence>=65&&evidenceCoverage>=0.55?"B":confidence>=45?"C":"INSUFFICIENT",
   components:Object.fromEntries(Object.entries(parts).map(([key,value])=>[key,Math.round(value)])),
-  componentAvailability:availability,weights:QUANTUM_SCORE_WEIGHTS,effectiveWeights,activeWeight:Number(activeWeight.toFixed(3)),
+  componentAvailability:availability,weights:QUANTUM_SCORE_WEIGHTS,effectiveWeights,activeWeight:Number(activeWeight.toFixed(3)),specialistEnsemble,
   dataAgeMs:Number.isFinite(age)?age:null,flowValidated:flowAvailable,flowAligned,volumeConfirmed,
   multiExchangeConfirmed,depthConfirmed,candidateGate,qualityGate,missingEvidence
  };
