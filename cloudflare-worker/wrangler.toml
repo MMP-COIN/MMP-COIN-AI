@@ -22,9 +22,6 @@ limit = 300
 period = 60
 
 
-[triggers]
-crons = ["* * * * *"]
-
 
 [[d1_databases]]
 binding = "ADMIN_DB"
