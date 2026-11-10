@@ -151,7 +151,7 @@ export function scoreQuantumOpportunity(input={}){
  const depthConfirmed=input.requireDepthConfirmation===true?input.depthConfirmed===true:null;
  const depthGate=input.requireDepthConfirmation!==true||depthConfirmed===true;
  const qualityGate=candidateGate&&flowAligned&&volumeConfirmed&&multiExchangeConfirmed&&depthGate;
- const missingEvidence=Object.entries({price:priceAvailable,dataAge:ageAvailable&&fresh,multiTimeframe:changesAvailable,trend:direction!==0,structure:structureAvailable,technicalAlignment:technicalAligned,volume:volumeAvailable,marketLiquidity:liquidityConfirmed,multiExchange:multiExchangeConfirmed,executedFlow:flowAvailable}).filter(([,ok])=>!ok).map(([key])=>key);
+ const missingEvidence=Object.entries({price:priceAvailable,dataAge:ageAvailable&&fresh,multiTimeframe:changesAvailable,trend:direction!==0,structure:structureAvailable,technicalAlignment:technicalAligned,volume:volumeAvailable,marketLiquidity:liquidityConfirmed,multiExchange:multiExchangeConfirmed,executedFlow:flowAvailable,depth:input.requireDepthConfirmation!==true||depthConfirmed===true}).filter(([,ok])=>!ok).map(([key])=>key);
  return {
   engine:QUANTUM_ENGINE_NAME,version:QUANTUM_ENGINE_VERSION,score:clamp(score,0,99),confidence,
   adaptiveProfile,evidenceCoverage:Number(evidenceCoverage.toFixed(3)),rawScore:Number(rawScore.toFixed(2)),
