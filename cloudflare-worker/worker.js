@@ -1222,9 +1222,16 @@ async function handle(request,env){
  if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-cron-status"){
   const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-cron-status"),request);if(limited)return limited;
   if(!env.ADMIN_DB)return json({status:"offline",error:"ADMIN_DB binding missing"},503,request);
-  const row=await env.ADMIN_DB.prepare("SELECT payload, updated_at FROM hunter_engine_state WHERE id = ?").bind("digital-hunter-cron-heartbeat").first();
-  let saved=null;try{saved=row?.payload?JSON.parse(row.payload):null;}catch{}
-  return json(saved?{...saved,updated_at:row?.updated_at||null}:{status:"warming_up",engine:QUANTUM_ENGINE_NAME,markets:{spot:{universe:0},futures:{universe:0}}},200,request);
+  const [spotRow,futuresRow]=await Promise.all([
+   env.ADMIN_DB.prepare("SELECT payload, updated_at FROM hunter_engine_state WHERE id = ?").bind("digital-hunter-cron-heartbeat").first(),
+   env.ADMIN_DB.prepare("SELECT payload, updated_at FROM hunter_engine_state WHERE id = ?").bind("digital-hunter-futures-cron-heartbeat").first()
+  ]);
+  let spotSaved=null,futuresSaved=null;try{spotSaved=spotRow?.payload?JSON.parse(spotRow.payload):null;}catch{}try{futuresSaved=futuresRow?.payload?JSON.parse(futuresRow.payload):null;}catch{}
+  const spot=spotSaved?.markets?.spot||{status:spotSaved?.status||"warming_up",universe:0};
+  const futures=futuresSaved?.market_data||{status:futuresSaved?.status||"warming_up",universe:0};
+  const status=spotSaved?.status==="success"&&futuresSaved?.status==="success"?"success":spotSaved||futuresSaved?"partial":"warming_up";
+  const updated_at=[spotRow?.updated_at,futuresRow?.updated_at].filter(Boolean).sort().at(-1)||null;
+  return json({status,engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,cron:spotSaved?.cron||futuresSaved?.cron||"* * * * *",startedAt:spotSaved?.startedAt||futuresSaved?.startedAt||null,finishedAt:spotSaved?.finishedAt||futuresSaved?.finishedAt||null,updated_at,markets:{spot,futures},errors:{...(spotSaved?.errors||{}),...(futuresSaved?.status==="error"?{futures:futuresSaved.error}:futuresSaved?.errors||{})}},200,request);
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-futures-snapshot"){
   const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-futures-snapshot"),request);if(limited)return limited;if(!env.ADMIN_DB)return json({status:"offline",error:"ADMIN_DB binding missing"},503,request);
