@@ -1030,7 +1030,7 @@ async function scanHunterSymbols(symbols,marketType="spot",assetList=[],env=null
  const flowEligible=x=>!x.lowLiquidity&&(x.candidateGate===true||(x.earlyCoreAligned===true&&x.score>=(marketType==="futures"?62:60)));const flowCandidates=(marketType==="futures"?[...candidates.filter(flowEligible)].sort((a,b)=>b.score-a.score).slice(0,1):["bull","bear"].flatMap(trend=>candidates.filter(x=>x.trend===trend&&flowEligible(x)).sort((a,b)=>b.score-a.score).slice(0,1))).filter(x=>x.score>=50);
  await Promise.all(flowCandidates.map(async x=>{
   flowChecked++;x.flowReviewAttempted=true;
-  const flowController=new AbortController(),flowTimer=setTimeout(()=>flowController.abort(),16000);
+  const flowController=new AbortController(),flowTimer=setTimeout(()=>flowController.abort(),18000);
   try{
    let sentiment={available:false,score:null,sourceCount:0,sources:[]};
    if(marketType==="futures"){
@@ -1045,7 +1045,7 @@ async function scanHunterSymbols(symbols,marketType="spot",assetList=[],env=null
    const gross=f.buy5m+f.sell5m,imb=gross?f.net5m/gross:0,ok=x.trend==="bull"?imb>=.045:imb<=-.045;
    x.flow={buy5m:f.buy5m,sell5m:f.sell5m,net5m:f.net5m,windowMinutes:f.window_minutes||5,tradeCount:f.trade_count,provider:f.provider,complete:f.complete,coverageStart:f.coverage_start,imbalance:+imb.toFixed(4)};
    x.flowSignal=f.net5m>0?"inflow":"outflow";
-   x.flowStatus=f.complete!==true?"flow_incomplete":f.trade_count<8?"insufficient_trades":!ok?"flow_direction_mismatch":"flow_confirmed_pending_depth";
+   x.flowStatus=flowController.signal.aborted?"flow_timeout":f.complete!==true?"flow_incomplete":f.trade_count<8?"insufficient_trades":!ok?"flow_direction_mismatch":"flow_confirmed_pending_depth";
    if(f.trade_count<8||!ok||f.complete===false)return;
    markQuantumEvidence(engineActivity,"flow");
    let depth;
