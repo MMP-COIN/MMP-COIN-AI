@@ -1019,7 +1019,7 @@ async function scanHunterSymbols(symbols,marketType="spot",assetList=[],env=null
  const concurrency=4;
  await Promise.all(Array.from({length:Math.min(concurrency,symbols.length)},async()=>{while(i<symbols.length){const symbol=symbols[i++];try{const x=await analyzeDigitalHunterSymbol(symbol,marketType,assetMap.get(symbol),engineActivity);if(x)candidates.push(x);}catch(e){const message=String(e?.message||e);if(message.startsWith("QUALITY_REJECTED:")){rejected++;rejections.push({symbol,error:message.slice(0,180)});}else{failed++;errors.push({symbol,error:message.slice(0,220)});}}}}));
  candidates.sort((a,b)=>b.score-a.score);const signals=[];
- const flowCandidates=(marketType==="futures"?[...candidates.filter(x=>x.candidateGate===true&&!x.lowLiquidity)].sort((a,b)=>b.score-a.score).slice(0,2):["bull","bear"].flatMap(trend=>candidates.filter(x=>x.trend===trend&&x.candidateGate===true&&!x.lowLiquidity).sort((a,b)=>b.score-a.score).slice(0,1))).filter(x=>x.score>=50);
+ const flowCandidates=(marketType==="futures"?[...candidates.filter(x=>x.candidateGate===true&&!x.lowLiquidity)].sort((a,b)=>b.score-a.score).slice(0,1):["bull","bear"].flatMap(trend=>candidates.filter(x=>x.trend===trend&&x.candidateGate===true&&!x.lowLiquidity).sort((a,b)=>b.score-a.score).slice(0,1))).filter(x=>x.score>=50);
  await Promise.all(flowCandidates.map(async x=>{
   try{
    let sentiment={available:false,score:null,sourceCount:0,sources:[]};
