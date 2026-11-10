@@ -25,7 +25,7 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - name: Smoke-test dedicated Hunter scheduler Worker
+      - name: Smoke-test Hunter universe refresher Worker
         if: github.ref == 'refs/heads/main'
         env:
           CRON_URL: https://mmp-coin-ai-hunter-cron.mehrdadmohammadi1988.workers.dev
@@ -34,17 +34,17 @@ jobs:
           body="$(curl -fsS --max-time 20 "$CRON_URL/health")"
           echo "$body"
           echo "$body" | jq -e '.status == "online" and .engine_version == "QIE-4.0.0"'
-      - name: Validate dedicated Hunter scheduler
+      - name: Validate Hunter universe refresher and Cron scan budgets
         run: |
           set -euo pipefail
           node --check cloudflare-worker/hunter-cron-worker.js
           node - <<'NODE'
           const fs = require("fs");
           const source = fs.readFileSync("cloudflare-worker/hunter-cron-worker.js", "utf8");
-          for (const required of ["runDigitalHunterMarketCycle", "refreshDigitalHunterUniverses", "digital-hunter-cron-heartbeat", '"spot", 26000', '"futures", 28000']) {
+          for (const required of ["refreshDigitalHunterUniverses", "digital-hunter-universe-refresh", "hourly-universe-refresh", "async scheduled(event,env)"]) {
             if (!source.includes(required)) throw new Error("Dedicated Hunter scheduler missing: " + required);
           }
-          console.log("Dedicated Hunter scheduler imports, heartbeat and bounded Spot/Futures cycles verified.");
+          console.log("Dedicated universe refresh worker verified.");
           NODE
       - name: Validate Worker syntax and Quantum signal gates
         run: |
@@ -88,6 +88,10 @@ jobs:
           const matureSummary = learning.summarizeLearningLedger(matureRecords,"spot");
           if (matureSummary.calibrationStatus !== "calibrated" || matureSummary.matured5m !== 40 || matureSummary.calibrationAdjustment !== 5) throw new Error("Bounded learning calibration did not activate at the minimum sample size");
           const workerSource = fs.readFileSync("cloudflare-worker/worker.js", "utf8");
+          const radarSource = fs.readFileSync("cloudflare-worker/radar-worker.js", "utf8");
+          if (!radarSource.includes("const BATCH_SIZE = 12;") || !radarSource.includes("universe.length>500?12:BATCH_SIZE") || !radarSource.includes(".slice(0,3);")) throw new Error("Radar scan must stay within the per-invocation subrequest budget");
+          if (!workerSource.includes("const HUNTER_BATCH_SIZE = 8;") || !workerSource.includes("const FUTURES_HUNTER_BATCH_SIZE = 8;") || !workerSource.includes("const sourceLimit=Math.min(2,sources.length)") || !workerSource.includes("for(const host of hosts.slice(0,2))") || !workerSource.includes("const concurrency=4;")) throw new Error("Hunter scan must stay within the per-invocation subrequest budget");
+          if (!workerSource.includes("async scheduled(event,env,ctx)") || !workerSource.includes("await runDigitalHunterCron(event,env,ctx)") || workerSource.includes("ctx.waitUntil(runDigitalHunterCron")) throw new Error("Cron must await the Hunter cycle inside the scheduled invocation");
           if (!workerSource.includes("for(const url of urls)") || workerSource.includes("Promise.all(urls.map(url=>timeoutFetch")) throw new Error("Exchange health fallback must try alternate endpoints sequentially and stop after a verified response");
                     if (!workerSource.includes("async function fetchWithTimeout") || !workerSource.includes("return await fetch(url,{...options,signal:controller.signal})") || workerSource.includes("return await fetchWithTimeout(url,{...options,signal:controller.signal})")) throw new Error("Bounded fetch helper must call native fetch exactly once and must not recurse");
           if (!workerSource.includes("async function readMarketFallback") || !workerSource.includes("async function writeMarketFallback") || !workerSource.includes("env.MARKET_CACHE_DB") || !workerSource.includes("data_stale:true") || !workerSource.includes("X-MMP-Cache") || !workerSource.includes("market_cache_binding:!!env.MARKET_CACHE_DB")) throw new Error("Persistent D1 market cache and explicit stale-data reporting are required");
@@ -100,7 +104,7 @@ jobs:
           const groqCascade = workerSource.slice(groqModelStart, groqModelEnd);
           if (groqModelStart < 0 || !groqCascade.includes('id:"openai/gpt-oss-120b"') || !groqCascade.includes('reasoning_effort:"medium"') || groqCascade.includes("qwen/") || groqCascade.includes("gpt-oss-20b")) throw new Error("Groq AI cascade must use one bounded GPT-OSS 120B model, avoiding rate-limited secondary models");
                     if (!workerSource.includes("function analyzeClosedKlines") || !workerSource.includes("داده کندل‌های بسته‌شده کافی نیست") || !workerSource.includes("marketDataFresh") || !workerSource.includes("const volumeConfirmed=") || !workerSource.includes("currentPrice:last[4]")) throw new Error("Analyzer must use closed candles, deterministic freshness/volume gates, and explicit price evidence");
-          if (!workerSource.includes('async function fetchHunterCandles(symbol,marketType="spot",asset=null){\n const pair=symbol+"USDT",get=url=>marketFlowJson(url,4500);') || !workerSource.includes("const get=(url,timeoutMs=4500)=>marketFlowJson(url,timeoutMs,signal)") || workerSource.includes("get=url=>get(url,4500)") || !workerSource.includes("get=url=>marketFlowJson(url,4500)") || !workerSource.includes("async function settleHunterCycle") || !workerSource.includes("timeoutMs=50000") || !workerSource.includes("futuresController.abort()") || !workerSource.includes("const concurrency=8;") || !workerSource.includes("marketFlowJson(url,timeoutMs,signal)") || !workerSource.includes("timeoutMs=4500") || !workerSource.includes("parentSignal?.addEventListener") || !workerSource.includes("setTimeout(()=>flowController.abort(),12000)") || !workerSource.includes("flowController.signal.aborted?\"flow_timeout\"") || !workerSource.includes("trades.length<8") || !workerSource.includes("cacheDigitalHunterUniverse") || !workerSource.includes("refreshDigitalHunterUniverses") || !workerSource.includes("scheduledAt.getUTCMinutes()%30===5") || workerSource.includes("if(!assets.length||now-universeUpdatedAt>10*60*1000)") || !workerSource.includes("calculateMarketScanPriority") || !workerSource.includes("scanPriorityVersion:priorityVersion") || !workerSource.includes("const HUNTER_BATCH_SIZE = 16;") || !workerSource.includes("const FUTURES_HUNTER_BATCH_SIZE = 12;") || !workerSource.includes('const concurrency=8;') || !workerSource.includes("Promise.allSettled(orderedSources.map(fn=>fn()))") || !workerSource.includes("const [sentimentResult,flowResult,depthResult]=await Promise.allSettled([") || !workerSource.includes('settleHunterCycle(()=>runDigitalHunterMarketCycle(env,"spot"),"spot",26000)') || !workerSource.includes('"futures",28000') || !workerSource.includes("new Promise(resolve=>setTimeout(resolve,8000))")) throw new Error("Hunter scan budget/parallelism regression");
+          if (!workerSource.includes('async function fetchHunterCandles(symbol,marketType="spot",asset=null){\n const pair=symbol+"USDT",get=url=>marketFlowJson(url,4500);') || !workerSource.includes("const get=(url,timeoutMs=4500)=>marketFlowJson(url,timeoutMs,signal)") || workerSource.includes("get=url=>get(url,4500)") || !workerSource.includes("get=url=>marketFlowJson(url,4500)") || !workerSource.includes("async function settleHunterCycle") || !workerSource.includes("timeoutMs=50000") || !workerSource.includes("futuresController.abort()") || !workerSource.includes("const concurrency=4;") || !workerSource.includes("marketFlowJson(url,timeoutMs,signal)") || !workerSource.includes("timeoutMs=4500") || !workerSource.includes("parentSignal?.addEventListener") || !workerSource.includes("setTimeout(()=>flowController.abort(),12000)") || !workerSource.includes("flowController.signal.aborted?\"flow_timeout\"") || !workerSource.includes("trades.length<8") || !workerSource.includes("cacheDigitalHunterUniverse") || !workerSource.includes("refreshDigitalHunterUniverses") || !workerSource.includes("Universe refresh runs in its own low-frequency Worker") || workerSource.includes("if(!assets.length||now-universeUpdatedAt>10*60*1000)") || !workerSource.includes("calculateMarketScanPriority") || !workerSource.includes("scanPriorityVersion:priorityVersion") || !workerSource.includes("const HUNTER_BATCH_SIZE = 8;") || !workerSource.includes("const FUTURES_HUNTER_BATCH_SIZE = 8;") || !workerSource.includes('const concurrency=4;') || !workerSource.includes("Promise.allSettled(orderedSources.map(fn=>fn()))") || !workerSource.includes("const [sentimentResult,flowResult,depthResult]=await Promise.allSettled([") || !workerSource.includes('settleHunterCycle(()=>runDigitalHunterMarketCycle(env,"spot"),"spot",26000)') || !workerSource.includes('"futures",28000') || workerSource.includes("ctx.waitUntil(runDigitalHunterCron")) throw new Error("Hunter scan budget/parallelism regression");
           if (!workerSource.includes("filter(x=>x.venues.size>=2)") || !workerSource.includes("x=>[+x[0]*1000,+x[5],+x[3],+x[4],+x[2],+x[1]]")) throw new Error("Futures venue qualification or Gate Spot OHLCV mapping regression");
           if (!workerSource.includes("QUALITY_REJECTED:") || !workerSource.includes("rejected_count:result.rejected||0") || !workerSource.includes("alignMarketCandles(primary.rows.slice(0,-1),secondary.rows.slice(0,-1)")) throw new Error("Shared-candle alignment or quality-rejection accounting missing");
           if (!workerSource.includes("async function loadHunterFundingSentiment") || !workerSource.includes("samples.length<2") || !workerSource.includes("sentimentConfirmed:sentiment.available")) throw new Error("Evidence-backed Futures sentiment engine is not connected to Quantum scoring");
