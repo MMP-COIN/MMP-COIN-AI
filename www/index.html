@@ -2864,18 +2864,17 @@ html body #ai-section .tf-card{min-width:0!important;max-width:100%!important;ov
 <button class="btn primary" id="risk-calc" style="margin-top:9px">محاسبه حجم معامله</button><div id="risk-result" class="ai-status" style="margin-top:10px">قیمت ورود و حد ضرر را وارد کنید تا مبلغ ورود و ضرر احتمالی نمایش داده شود.</div></div>
 
 </div></section>
-<section class="card">
+<section class="card" id="exchange-connections" data-quantum-module="exchange-health">
 <div class="section-head"><h2>وضعیت زنده اتصال صرافی‌ها</h2><span class="badge" id="conn-summary">پایش لایو</span></div>
+<div class="connection-grid" id="connections"></div>
+<div class="connection-more"><button class="connection-more-btn" id="connections-toggle" type="button" aria-expanded="false" aria-controls="connections-extra">نمایش ۴ منبع دیگر <span class="chevron" aria-hidden="true">⌄</span></button><div class="connection-grid connection-extra" id="connections-extra"></div></div>
+</section>
 
 <section class="card" id="market-hours" data-quantum-module="global-clock">
 <div class="section-head"><div><div class="section-kicker">QUANTUM GLOBAL MARKET CLOCK</div><h2>ساعت کاری بازارهای مالی جهان</h2></div><span class="badge" id="market-clock-zone">زمان محلی دستگاه</span></div>
 <div class="market-hours-grid" id="market-hours-grid"></div>
 <details class="market-hours-more" id="market-hours-more"><summary><span>نمایش سایر بازارها</span><small>ساعت لندن، توکیو و دیگر بازارها</small></summary><div class="market-hours-grid" id="market-hours-extra"></div></details>
 <p class="sub" style="margin-top:12px">ساعت‌ها بر اساس منطقه زمانی هر بازار و تغییر ساعت تابستانی محاسبه می‌شوند. تعطیلات رسمی و تغییرات اضطراری ممکن است وضعیت را تغییر دهند؛ این نمایش راهنمای زمان‌بندی است، نه تأییدیه رسمی بورس.</p>
-</section>
-<div class="connection-grid" id="connections"></div>
- <div class="connection-more"><button class="connection-more-btn" id="connections-toggle" type="button" aria-expanded="false" aria-controls="connections-extra">نمایش ۴ منبع دیگر <span class="chevron" aria-hidden="true">⌄</span></button><div class="connection-grid connection-extra" id="connections-extra"></div></div>
-
 </section>
 
 <!-- فقط لیست ارزهای دیجیتال -->
