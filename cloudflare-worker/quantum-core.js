@@ -1,5 +1,5 @@
 export const QUANTUM_ENGINE_NAME = "MMP QUANTUM INTELLIGENCE ENGINE";
-export const QUANTUM_ENGINE_VERSION = "QIE-3.0.0";
+export const QUANTUM_ENGINE_VERSION = "QIE-4.0.0";
 
 /* Legacy weights retain their relative influence. New specialist engines join
    only when their underlying evidence is actually supplied and validated. */
@@ -98,9 +98,31 @@ export function scoreQuantumOpportunity(input={}){
  const availability={momentum:momentumAvailable,flow:flowAvailable,structure:structureAvailable,liquidity:liquidityAvailable,
   multiTimeframe:multiTimeframeAvailable,regime:regimeAvailable,volatility:volatilityAvailable,sentiment:sentimentAvailable,
   smartMoney:smartMoneyAvailable,scenario:scenarioAvailable,risk:riskAvailable,dataQuality:dataQualityAvailable};
- const activeWeight=Object.entries(QUANTUM_SCORE_WEIGHTS).reduce((sum,[key,weight])=>sum+(availability[key]?weight:0),0);
- const score=activeWeight>0?Math.round(Object.entries(QUANTUM_SCORE_WEIGHTS).reduce((sum,[key,weight])=>sum+(availability[key]?parts[key]*weight:0),0)/activeWeight):0;
- const confidence=Math.round(clamp((dataQualityAvailable?dataQuality*.35:0)+(multiTimeframeAvailable?multiTimeframe*.25:0)+(liquidityAvailable?liquidity*.20:0)+(flowAvailable?20:0)+(volatilityAvailable?5:0)+(smartMoneyAvailable?5:0)));
+ // QIE-4 adaptive weighting: weights shift only when the corresponding market evidence exists.
+ const adaptiveProfile=regime>=68?"risk_on":regime<=38?"defensive":volatilityAvailable&&volatility>=82?"high_volatility":"balanced";
+ const effectiveWeights={...QUANTUM_SCORE_WEIGHTS};
+ if(adaptiveProfile==="risk_on"){
+  effectiveWeights.momentum*=1.12;effectiveWeights.flow*=1.16;effectiveWeights.structure*=1.12;
+  effectiveWeights.multiTimeframe*=1.10;effectiveWeights.risk*=1.08;
+ }else if(adaptiveProfile==="defensive"){
+  effectiveWeights.risk*=1.65;effectiveWeights.dataQuality*=1.35;effectiveWeights.liquidity*=1.22;
+  effectiveWeights.momentum*=0.78;effectiveWeights.volatility*=1.20;effectiveWeights.sentiment*=0.70;
+ }else if(adaptiveProfile==="high_volatility"){
+  effectiveWeights.volatility*=1.45;effectiveWeights.risk*=1.38;effectiveWeights.liquidity*=1.18;
+  effectiveWeights.momentum*=0.86;effectiveWeights.sentiment*=0.75;
+ }
+ if(!flowAvailable)effectiveWeights.flow=0;
+ if(!smartMoneyAvailable)effectiveWeights.smartMoney=0;
+ if(!sentimentAvailable)effectiveWeights.sentiment=0;
+ if(!scenarioAvailable)effectiveWeights.scenario=0;
+ const activeWeight=Object.entries(effectiveWeights).reduce((sum,[key,weight])=>sum+(availability[key]?weight:0),0);
+ const weightedScore=activeWeight>0?Object.entries(effectiveWeights).reduce((sum,[key,weight])=>sum+(availability[key]?parts[key]*weight:0),0)/activeWeight:0;
+ const evidenceCoverage=Object.values(availability).filter(Boolean).length/Object.keys(availability).length;
+ const rawScore=weightedScore;
+ const overextensionPenalty=input.overextended===true?8:0;
+ const stalePenalty=ageAvailable&&age>120000?Math.min(12,(age-120000)/15000):0;
+ const score=Math.round(clamp(rawScore-overextensionPenalty-stalePenalty,0,99));
+ const confidence=Math.round(clamp((dataQualityAvailable?dataQuality*.32:0)+(multiTimeframeAvailable?multiTimeframe*.23:0)+(liquidityAvailable?liquidity*.18:0)+(flowAvailable?12:0)+(volatilityAvailable?5:0)+(smartMoneyAvailable?5:0)+(sentimentAvailable?3:0)+(evidenceCoverage*12)));
  const totalVolumeAvailable=has(input,"totalVolume24h");
  const liquidityConfirmed=totalVolumeAvailable&&finite(input.totalVolume24h)>=150000;
  const candidateGate=priceAvailable&&fresh&&changesAvailable&&direction!==0&&structureAvailable&&technicalAligned&&volumeAvailable&&dataQuality>=80&&multiTimeframe>=50&&liquidity>=25&&liquidityConfirmed&&volumeRatio>=1.1&&input.overextended!==true;
@@ -113,8 +135,10 @@ export function scoreQuantumOpportunity(input={}){
  const missingEvidence=Object.entries({price:priceAvailable,dataAge:ageAvailable&&fresh,multiTimeframe:changesAvailable,trend:direction!==0,structure:structureAvailable,technicalAlignment:technicalAligned,volume:volumeAvailable,marketLiquidity:liquidityConfirmed,multiExchange:multiExchangeConfirmed,executedFlow:flowAvailable}).filter(([,ok])=>!ok).map(([key])=>key);
  return {
   engine:QUANTUM_ENGINE_NAME,version:QUANTUM_ENGINE_VERSION,score:clamp(score,0,99),confidence,
+  adaptiveProfile,evidenceCoverage:Number(evidenceCoverage.toFixed(3)),rawScore:Number(rawScore.toFixed(2)),
+  qualityTier:confidence>=82&&evidenceCoverage>=0.72?"A":confidence>=65&&evidenceCoverage>=0.55?"B":confidence>=45?"C":"INSUFFICIENT",
   components:Object.fromEntries(Object.entries(parts).map(([key,value])=>[key,Math.round(value)])),
-  componentAvailability:availability,weights:QUANTUM_SCORE_WEIGHTS,activeWeight:Number(activeWeight.toFixed(3)),
+  componentAvailability:availability,weights:QUANTUM_SCORE_WEIGHTS,effectiveWeights,activeWeight:Number(activeWeight.toFixed(3)),
   dataAgeMs:Number.isFinite(age)?age:null,flowValidated:flowAvailable,flowAligned,volumeConfirmed,
   multiExchangeConfirmed,depthConfirmed,candidateGate,qualityGate,missingEvidence
  };
