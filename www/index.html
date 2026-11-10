@@ -526,7 +526,7 @@ body:after{content:"";position:fixed;width:42vw;height:42vw;max-width:620px;max-
 .radar-group .radar-item{grid-template-columns:minmax(115px,1.2fr) 54px minmax(130px,1.2fr) auto;padding:10px;gap:9px}
 .radar-more{margin-top:12px;border:1px solid #6e5b35;border-radius:13px;background:linear-gradient(110deg,#292315,#171b23);overflow:hidden}
 .radar-more>summary{display:flex;align-items:center;gap:12px;cursor:pointer;list-style:none;padding:13px 14px;color:#f5dda2;font-size:12px;font-weight:800;min-height:58px}
-.radar-more>summary::-webkit-details-marker{display:none}
+
 .radar-more>summary:after{content:none!important}
 .radar-expand-action{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;background:linear-gradient(145deg,#e8c879,#a77c35);color:#17130a;box-shadow:0 4px 14px #d9b66d33;flex:none}
 .radar-expand-action:before{content:'+';font-size:26px;line-height:1;font-weight:500}
@@ -534,7 +534,7 @@ body:after{content:"";position:fixed;width:42vw;height:42vw;max-width:620px;max-
 .radar-toggle-copy{display:flex;flex-direction:column;gap:3px;min-width:0}
 .radar-toggle-copy b{font-size:12px}
 .radar-toggle-copy small{font-size:10px;color:#b6ad9a;font-weight:500}
-.radar-more .radar-list{padding:0 9px 10px}
+
 .radar-empty{padding:15px;border:1px dashed #394557;border-radius:11px;color:var(--muted);font-size:11px;text-align:center}
 @media(max-width:650px){.radar-group{padding:10px}.radar-group-title b{font-size:16px}.radar-group .radar-item{grid-template-columns:minmax(0,1fr) 52px;gap:8px}.radar-group .radar-stats{grid-column:1/-1}.radar-group .radar-action{grid-column:1/-1;justify-content:space-between}.radar-more>summary{padding:11px}.radar-live-note{align-items:flex-start}.radar-live-note .sub{width:100%;margin:0}}
 
@@ -1479,7 +1479,7 @@ body:before{opacity:.23;background-size:34px 34px}
 .intel-suite-head{display:flex;justify-content:space-between;gap:14px;align-items:center;margin-bottom:16px}
 .intel-suite-head h2{font-size:20px;margin:5px 0}
 .intel-suite-head p{font-size:11px;color:var(--muted);margin:0;line-height:1.9}
-.intel-live-chip,.journal-local-tag,.intel-status-wait{white-space:nowrap;border:1px solid #3a4655;background:#17202b;color:#b8c2cf;border-radius:30px;padding:7px 11px;font-size:10px}
+.intel-live-chip,.intel-status-wait{white-space:nowrap;border:1px solid #3a4655;background:#17202b;color:#b8c2cf;border-radius:30px;padding:7px 11px;font-size:10px}
 .intel-live-chip i{display:inline-block;width:7px;height:7px;border-radius:50%;background:#42e2b8;box-shadow:0 0 12px #42e2b8;margin-left:5px}
 .intel-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
 .intel-panel{padding:16px;min-width:0;margin:0}
@@ -1488,15 +1488,15 @@ body:before{opacity:.23;background-size:34px 34px}
 .intel-panel h3{font-size:15px;margin:5px 0}
 .intel-panel-head p{font-size:10px;line-height:1.8;margin:5px 0;color:var(--muted)}
 .intel-refresh{border:1px solid #476278;border-radius:9px;padding:7px 10px;background:#1a2c3d;color:#e7d39d;font-size:10px;white-space:nowrap;cursor:pointer}
-.intel-symbol-row,.watchlist-form{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.intel-symbol-row{display:flex;align-items:center;gap:8px;margin-bottom:12px}
 .intel-symbol-row label{font-size:10px;color:var(--muted)}
-.intel-symbol-row input,.intel-symbol-row select,.journal-form input,.journal-form select,.watchlist-form input,.watchlist-form select{width:100%;min-width:0;padding:10px 11px;background:#08121d;border:1px solid #344d62;border-radius:9px;color:#f4e7c7;outline:none;font-size:11px}
+.intel-symbol-row input,.intel-symbol-row select{width:100%;min-width:0;padding:10px 11px;background:#08121d;border:1px solid #344d62;border-radius:9px;color:#f4e7c7;outline:none;font-size:11px}
 .intel-symbol-row input{max-width:130px;direction:ltr;text-align:left}.intel-symbol-row select{max-width:145px;min-width:110px;cursor:pointer}
 .intel-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
 .intel-metrics.two{grid-template-columns:repeat(2,minmax(0,1fr))}
-.intel-metrics>div,.journal-stats>div{padding:10px 9px;border:1px solid #2b4357;border-radius:11px;background:linear-gradient(145deg,#1a2b3c,#101b28);min-width:0}
-.intel-metrics small,.journal-stats small{display:block;color:#9aafbf;font-size:9px;line-height:1.6}
-.intel-metrics b,.journal-stats b{display:block;margin-top:7px;color:#f2d58f;font-size:13px;direction:ltr;text-align:right;overflow-wrap:anywhere}
+.intel-metrics>div{padding:10px 9px;border:1px solid #2b4357;border-radius:11px;background:linear-gradient(145deg,#1a2b3c,#101b28);min-width:0}
+.intel-metrics small{display:block;color:#9aafbf;font-size:9px;line-height:1.6}
+.intel-metrics b{display:block;margin-top:7px;color:#f2d58f;font-size:13px;direction:ltr;text-align:right;overflow-wrap:anywhere}
 .intel-metrics em{display:block;font-size:8px;color:#617f91;font-style:normal;margin-top:3px}
 .intel-foot{font-size:10px;color:#8ea4b6;line-height:1.8;margin-top:11px}
 .intel-mini-row{display:flex;justify-content:space-between;gap:10px;padding:9px 11px;margin-top:9px;border:1px solid #2c4254;border-radius:9px;background:#0b1722;font-size:10px}
@@ -1515,27 +1515,10 @@ body:before{opacity:.23;background-size:34px 34px}
 .whale-state b{font-size:11px;color:#e6d4aa}
 .whale-state p{font-size:10px;line-height:1.9;color:#91a3b6;margin:5px 0 0}
 .whale-links{display:flex;gap:8px;margin-top:10px}.whale-links a{font-size:10px;color:#72d9ce;text-decoration:none;border:1px solid #345d62;border-radius:20px;padding:6px 10px}
-.journal-panel,.watchlist-panel{margin:18px 0;padding:18px}
-.journal-form{display:grid;grid-template-columns:repeat(5,minmax(0,1fr)) auto;gap:8px;align-items:end}
-.journal-form label{display:grid;gap:5px;color:#9aafbf;font-size:9px}
-.journal-form input,.journal-form select{height:38px}
-.journal-stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:13px 0}
-.journal-stats b{font-size:16px}
-.journal-toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:10px;color:#9db0bf;margin:10px 0}
-.journal-table-wrap{overflow:auto;border:1px solid #2c4155;border-radius:12px}
-.journal-table{min-width:760px}
-.journal-table td{font-size:10px}
-.journal-delete{border:1px solid #784653;background:#351b27;color:#ff9aaa;border-radius:7px;padding:4px 8px;cursor:pointer}
-.journal-status-open{color:#e7c985}.journal-status-win{color:#46e0b1}.journal-status-loss{color:#ff8395}
-.watchlist-form>*{flex:1}
-.alert-list{display:grid;gap:7px}
-.alert-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid #30465a;border-radius:10px;background:#0b1722;font-size:10px}
-.alert-row b{color:#f1d28d;direction:ltr}
-.alert-row button{border:1px solid #704452;background:#351b27;color:#ff9aaa;border-radius:7px;padding:5px 8px}
-@media(max-width:1100px){.intel-grid{grid-template-columns:1fr}.journal-form{grid-template-columns:repeat(3,minmax(0,1fr))}.journal-form button{grid-column:1/-1}}
+@media(max-width:1100px){.intel-grid{grid-template-columns:1fr}}
 @media(max-width:900px){.top{padding:0 12px}.mmp-sidebar{display:none}.wrap{width:100%;padding:16px 12px 70px}.hero{min-height:200px}.hero-visual{opacity:.55;left:0;transform:translateY(-50%) scale(.8)}}
-@media(max-width:650px){.intel-suite{padding:13px}.intel-suite-head{align-items:flex-start;flex-direction:column}.intel-grid{grid-template-columns:1fr}.intel-panel{padding:13px}.intel-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.journal-form{grid-template-columns:repeat(2,minmax(0,1fr))}.journal-form button{grid-column:1/-1}.journal-stats{grid-template-columns:repeat(3,minmax(0,1fr))}.watchlist-form{display:grid;grid-template-columns:1fr 1fr}.watchlist-form button{grid-column:1/-1}.intel-symbol-row{flex-wrap:wrap}.intel-symbol-row input{flex:1}.hero{padding:18px 15px}.hero-visual{opacity:.28;left:-55px}.hero-refresh-group{right:12px;bottom:12px}.top-actions .pill{display:none}}
-@media(max-width:390px){.journal-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.intel-forecast-grid{gap:5px}.intel-forecast-grid>div{padding:9px 6px}}
+@media(max-width:650px){.intel-suite{padding:13px}.intel-suite-head{align-items:flex-start;flex-direction:column}.intel-grid{grid-template-columns:1fr}.intel-panel{padding:13px}.intel-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.intel-symbol-row{flex-wrap:wrap}.intel-symbol-row input{flex:1}.hero{padding:18px 15px}.hero-visual{opacity:.28;left:-55px}.hero-refresh-group{right:12px;bottom:12px}.top-actions .pill{display:none}}
+@media(max-width:390px){.intel-forecast-grid{gap:5px}.intel-forecast-grid>div{padding:9px 6px}}
 @media(prefers-reduced-motion:reduce){body:after,.hero:before,.hero-coin{animation:none!important;transition:none!important}}
 
 .intel-backtest-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px}.intel-backtest-bar span{font-size:9px;color:#8fa5b7}
@@ -1988,7 +1971,7 @@ body.mmp-app-mode>header.top{
  --qie-line:rgba(190,164,111,.22);--qie-gold:#e7c477;--qie-teal:#42dfc2;
  --qie-glow:0 18px 52px rgba(0,0,0,.34)
 }
-html{scroll-behavior:smooth;scroll-padding-top:100px}
+
 body{background:
  radial-gradient(ellipse at 78% -8%,rgba(198,157,75,.18),transparent 34%),
  radial-gradient(ellipse at 5% 22%,rgba(28,133,125,.13),transparent 28%),
@@ -2093,7 +2076,7 @@ body.mmp-app-mode :where(.card,.panel,.radar-card,.chart-box-wrapper,.intel-pane
 <style id="mmp-qie41-command-redesign">
 /* QIE 4.1 — visible command-terminal redesign for desktop, mobile and Android WebView */
 :root{--q41-bg:#050a11;--q41-panel:#0d1723;--q41-panel2:#122131;--q41-gold:#e9c77e;--q41-teal:#45dfc3;--q41-line:#304357;--q41-muted:#9aabba}
-html{scroll-behavior:smooth;scroll-padding-top:92px}
+
 body.mmp-app-mode{background:
  radial-gradient(ellipse at 76% 2%,#c19a4b20,transparent 29%),
  radial-gradient(ellipse at 8% 28%,#16a58f15,transparent 28%),
@@ -2328,7 +2311,7 @@ body.mmp-app-mode #mmp-home-hero .mmp-emblem-coin{width:94px!important;height:94
 body.mmp-app-mode #mmp-home-hero .mmp-emblem-ring{width:148px!important;height:92px!important}
 body.mmp-app-mode #mmp-home-hero .mmp-ring-two{width:136px!important;height:106px!important}
 body.mmp-app-mode #mmp-home-hero .mmp-emblem-caption{font-size:6px!important;letter-spacing:1px!important;bottom:0!important}
-body.mmp-app-mode #mmp-home-hero .mmp-hero-index{display:none!important}
+
 @media(max-width:900px){
  body.mmp-app-mode>main.wrap{padding-block-start:0!important}
  body.mmp-app-mode #mmp-home-hero.mmp-home-hero{grid-template-columns:minmax(0,1fr) 120px!important;gap:8px!important;margin:6px 0 9px!important;padding:10px 13px!important}
@@ -2491,8 +2474,6 @@ html body>main.wrap>#mmp-home-hero{margin-top:0!important;margin-block-start:0!i
   <a class="side-link" href="#boom-hunter"><i>◉</i><span>آزمایشگاه Boom Hunter</span><em>05</em></a>
   <a class="side-link" href="#chart-section"><i>⌁</i><span>نمودار حرفه‌ای</span><em>06</em></a>
   <a class="side-link" href="#market-intelligence"><i>◉</i><span>مرکز هوشمندی بازار</span><em>07</em></a>
-  <a class="side-link" href="#smart-alerts"><i>♢</i><span>دیده‌بانی و هشدارها</span><em>08</em></a>
-  <a class="side-link" href="#signal-journal"><i>▦</i><span>دفتر سیگنال و بک‌تست</span><em>09</em></a>
   <div class="side-caption">MARKET & PERSONAL</div>
   <a class="side-link" href="#coins-section"><i>▤</i><span>بازار رمزارزها</span><em>10</em></a>
   <div class="side-caption">TRADING DESK</div>
@@ -2767,33 +2748,17 @@ html body>main.wrap>#mmp-home-hero{margin-top:0!important;margin-block-start:0!i
   </article>
  </div>
 </section>
-<section class="intel-panel journal-panel" id="signal-journal" data-quantum-module="learning">
- <div class="intel-panel-head"><div><small>TRADE JOURNAL · BACKTEST & CALIBRATION</small><h3>دفتر ثبت سیگنال و ارزیابی عملکرد</h3><p class="sub">سیگنال‌ها روی همین دستگاه ذخیره می‌شوند؛ نتیجه فقط با رسیدن قیمت واقعی به حد سود یا حد ضرر بسته می‌شود.</p></div><span class="journal-local-tag">ذخیره محلی</span></div>
- <div class="server-performance-panel" id="server-performance-panel">
+<section class="intel-panel" id="server-performance">
+<div class="server-performance-panel" id="server-performance-panel">
   <div class="server-performance-head"><div><b>سنجش اعتبار موتورهای تحلیل</b><small>کارنامه سروری · فقط نتایج بسته‌شده و قابل‌ردیابی</small></div><button class="intel-refresh" id="performance-refresh" type="button">↻ تازه‌سازی آمار</button></div>
   <div class="performance-summary" id="performance-summary"><div><small>نمونه‌های ثبت‌شده</small><b>—</b></div><div><small>نتایج قطعی</small><b>—</b></div><div><small>موفق</small><b>—</b></div><div><small>ناموفق</small><b>—</b></div><div><small>نرخ موفقیت</small><b>—</b></div><div><small>میانگین R</small><b>—</b></div></div>
   <div class="performance-engine-list" id="performance-engine-list"><div class="heatmap-empty">در انتظار دریافت کارنامه سرور…</div></div>
   <div class="performance-status" id="performance-status">نتایج مبهم، منقضی و بدون معامله از نرخ موفقیت حذف می‌شوند. تا تشکیل نمونه کافی، نرخ موفقیت نمایش داده نخواهد شد.</div>
  </div>
- <div class="journal-form">
-  <label>نماد<input id="journal-symbol" value="BTC" maxlength="15" placeholder="BTC"></label>
-  <label>جهت معامله<select id="journal-side"><option value="LONG">خرید / LONG</option><option value="SHORT">فروش / SHORT</option></select></label>
-  <label>قیمت ورود<input id="journal-entry" type="number" min="0" step="any" placeholder="قیمت ورود"></label>
-  <label>حد ضرر<input id="journal-stop" type="number" min="0" step="any" placeholder="حد ضرر"></label>
-  <label>هدف اول<input id="journal-target" type="number" min="0" step="any" placeholder="هدف اول"></label>
-  <button class="btn primary" id="journal-save" type="button">＋ ثبت سیگنال</button>
- </div>
- <div class="journal-stats" id="journal-stats"><div><small>کل سیگنال‌ها</small><b>۰</b></div><div><small>بسته‌شده</small><b>۰</b></div><div><small>موفق</small><b>۰</b></div><div><small>نرخ برد</small><b>—</b></div><div><small>میانگین بازده R</small><b>—</b></div></div>
- <div class="journal-toolbar"><span id="journal-status">هنوز سیگنالی ثبت نشده است.</span><button class="intel-refresh" id="journal-refresh" type="button">به‌روزرسانی نتایج</button></div>
- <div class="journal-table-wrap"><table class="market-table journal-table"><thead><tr><th>نماد</th><th>جهت</th><th>ورود</th><th>قیمت فعلی</th><th>حد ضرر</th><th>هدف</th><th>وضعیت</th><th></th></tr></thead><tbody id="journal-rows"><tr><td colspan="8" class="muted">هنوز داده‌ای ثبت نشده است.</td></tr></tbody></table></div>
- <p class="intel-foot">دفتر روی مرورگر همین دستگاه نگهداری می‌شود و بین دستگاه‌ها همگام نیست. ارزیابی گذشته‌نگر از داده‌های آینده‌نگرِ بعد از ثبت سیگنال استفاده می‌کند؛ نرخ برد پیش از بسته‌شدن معاملات گزارش نمی‌شود.</p>
 </section>
-<section class="intel-panel watchlist-panel" id="smart-alerts" data-quantum-module="alerts">
- <div class="intel-panel-head"><div><small>SMART ALERTS · WATCHLIST</small><h3>فهرست دیده‌بانی و هشدار قیمت</h3></div><span class="journal-local-tag">محلی و قابل تنظیم</span></div>
- <div class="watchlist-form"><input id="alert-symbol" value="BTC" maxlength="15" aria-label="نماد هشدار" placeholder="نماد"><select id="alert-condition" aria-label="شرط هشدار"><option value="above">عبور به بالای قیمت</option><option value="below">افت به زیر قیمت</option></select><input id="alert-price" type="number" min="0" step="any" placeholder="قیمت هدف" aria-label="قیمت هدف"><button class="btn primary" id="alert-add" type="button">افزودن هشدار</button></div>
- <div id="alert-list" class="alert-list"><div class="muted">هنوز هشداری ثبت نشده است.</div></div>
- <p class="intel-foot">هشدارها تا زمانی که صفحه یا اپ باز باشد بررسی می‌شوند؛ اعلان سیستم فقط با اجازه مرورگر فعال خواهد شد.</p>
-</section>
+
+
+
 
 <section class="collapsible-coins-container mmp-market-catalog" id="coins-section" data-quantum-module="assets">
  <div class="section-head">
@@ -5525,90 +5490,73 @@ body.hunter-chart-open{overflow:hidden}
 </style>
 
 <style id="mmp-vision-redesign-20261106-responsive-v2">
-:root{--bg:#070c13;--panel:#101a27;--panel2:#152334;--line:#2b4053;--gold:#e0bd70;--gold2:#f7dfa0;--cyan:#48e3d2;--green:#32dfa9;--red:#ff6e83;--muted:#91a3b6;--glow:0 18px 50px #0008}
-html{scroll-padding-top:92px}
+
+
 body{background:radial-gradient(ellipse at 74% 0,#1b626755,transparent 29%),radial-gradient(ellipse at 8% 28%,#b17d3020,transparent 28%),linear-gradient(145deg,#060a10,#0a1420 48%,#070c13);background-attachment:scroll}
-body:before{opacity:.23;background-size:34px 34px}
-.top{height:76px;padding-inline:26px calc(var(--sidebar) + 26px);border-bottom:1px solid #486073;background:#09121ded;backdrop-filter:blur(24px)}
-.mmp-sidebar{width:var(--sidebar);background:linear-gradient(180deg,#0e1d2bfa,#09131ffa);border-left-color:#3b5368}
-.wrap{width:calc(100% - var(--sidebar));padding:24px clamp(16px,2.3vw,38px) 80px}
+
+
+
+
 .hero{min-height:220px;border-color:#4b7a7d;background:linear-gradient(120deg,#101d2b 0%,#122b36 56%,#101923 100%);box-shadow:0 18px 42px #0007,inset 0 1px #ffffff12}
-.hero h1{font-size:clamp(27px,3.5vw,48px);line-height:1.5}
-.card,.chart-box-wrapper,.collapsible-coins-container,.intel-panel,.intel-suite{border:1px solid #31475b;border-radius:19px;background:linear-gradient(145deg,#142233f2,#0b1420f7);box-shadow:0 17px 48px #0007,inset 0 1px #ffffff08}
-.card:hover,.intel-panel:hover{border-color:#66818c;box-shadow:0 22px 56px #0009,0 0 28px #39cfc10a}
-.section-kicker{color:#e4c77f;letter-spacing:2px}
-.section-head h2,.intel-suite h2,.intel-panel h3{color:#f2e7ce}.conn,.tool-card,.market-session{background:linear-gradient(145deg,#17283a,#0d1724);border-color:#2d4559}
-.btn,.pill{border-color:#3a5368;background:linear-gradient(145deg,#1b3044,#101b29)}
-.btn.primary{background:linear-gradient(120deg,#b28b49,#f0d48c 55%,#c29b54);color:#111923}
-#chart-container{border-color:#35556b;box-shadow:inset 0 0 35px #0008}
-.intel-suite{padding:20px;margin:20px 0 22px;background:radial-gradient(ellipse at 85% 0,#1a77742c,transparent 40%),linear-gradient(145deg,#122131,#0a121d)}
-.intel-suite-head{display:flex;justify-content:space-between;gap:14px;align-items:center;margin-bottom:16px}
-.intel-suite-head h2{font-size:20px;margin:5px 0}
-.intel-suite-head p{font-size:11px;color:var(--muted);margin:0;line-height:1.9}
-.intel-live-chip,.journal-local-tag,.intel-status-wait{white-space:nowrap;border:1px solid #3a6e68;background:#123b372e;color:#72e6ce;border-radius:30px;padding:7px 11px;font-size:10px}
-.intel-live-chip i{display:inline-block;width:7px;height:7px;border-radius:50%;background:#42e2b8;box-shadow:0 0 12px #42e2b8;margin-left:5px}
-.intel-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
-.intel-panel{padding:16px;min-width:0;margin:0}
-.intel-panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:13px}
-.intel-panel-head small{font-size:9px;letter-spacing:1.5px;color:#71cfc7;font-weight:800}
-.intel-panel h3{font-size:15px;margin:5px 0}
-.intel-panel-head p{font-size:10px;line-height:1.8;margin:5px 0;color:var(--muted)}
-.intel-refresh{border:1px solid #476278;border-radius:9px;padding:7px 10px;background:#1a2c3d;color:#e7d39d;font-size:10px;white-space:nowrap;cursor:pointer}
-.intel-symbol-row,.watchlist-form{display:flex;align-items:center;gap:8px;margin-bottom:12px}
-.intel-symbol-row label{font-size:10px;color:var(--muted)}
-.intel-symbol-row input,.intel-symbol-row select,.journal-form input,.journal-form select,.watchlist-form input,.watchlist-form select{width:100%;min-width:0;padding:10px 11px;background:#08121d;border:1px solid #344d62;border-radius:9px;color:#f4e7c7;outline:none;font-size:11px}
-.intel-symbol-row input{max-width:130px;direction:ltr;text-align:left}.intel-symbol-row select{max-width:145px;min-width:110px;cursor:pointer}
-.intel-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
-.intel-metrics.two{grid-template-columns:repeat(2,minmax(0,1fr))}
-.intel-metrics>div,.journal-stats>div{padding:10px 9px;border:1px solid #2b4357;border-radius:11px;background:linear-gradient(145deg,#1a2b3c,#101b28);min-width:0}
-.intel-metrics small,.journal-stats small{display:block;color:#9aafbf;font-size:9px;line-height:1.6}
-.intel-metrics b,.journal-stats b{display:block;margin-top:7px;color:#f2d58f;font-size:13px;direction:ltr;text-align:right;overflow-wrap:anywhere}
-.intel-metrics em{display:block;font-size:8px;color:#617f91;font-style:normal;margin-top:3px}
-.intel-foot{font-size:10px;color:#8ea4b6;line-height:1.8;margin-top:11px}
-.intel-mini-row{display:flex;justify-content:space-between;gap:10px;padding:9px 11px;margin-top:9px;border:1px solid #2c4254;border-radius:9px;background:#0b1722;font-size:10px}
-.intel-mini-row b{color:#e7c985}
-.intel-flow-track{height:9px;display:flex;overflow:hidden;border-radius:30px;background:#263342;margin:13px 0 2px}
-.intel-flow-track span:first-child{width:50%;background:linear-gradient(90deg,#138c72,#48e3b5)}
-.intel-flow-track span:last-child{width:50%;background:linear-gradient(90deg,#9d3f57,#ff7087)}
-.intel-forecast-summary{padding:10px 12px;border:1px solid #31495d;border-radius:10px;background:#0c1925;color:#b4c3d0;font-size:10px;line-height:1.8}
-.intel-forecast-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
-.intel-forecast-grid>div{padding:11px 9px;border:1px solid #344a5e;border-radius:11px;background:linear-gradient(145deg,#1a2c3d,#0d1925);min-width:0}
-.intel-forecast-grid small,.intel-forecast-grid span{display:block;color:#8fa5b7;font-size:9px}
-.intel-forecast-grid b{display:block;color:#f3d797;font-size:12px;margin:8px 0;direction:ltr;text-align:right;overflow-wrap:anywhere}
-.intel-forecast-grid span{line-height:1.6}
-.whale-state{display:flex;align-items:center;gap:13px;padding:13px;border:1px dashed #40566b;border-radius:12px;background:#0b1722}
-.whale-orbit{width:48px;height:48px;flex:none;border:1px solid #b99555;border-radius:50%;display:grid;place-items:center;color:#e5c783;font-size:28px;box-shadow:0 0 22px #d8b56a22}
-.whale-state b{font-size:11px;color:#e6d4aa}
-.whale-state p{font-size:10px;line-height:1.9;color:#91a3b6;margin:5px 0 0}
-.whale-links{display:flex;gap:8px;margin-top:10px}.whale-links a{font-size:10px;color:#72d9ce;text-decoration:none;border:1px solid #345d62;border-radius:20px;padding:6px 10px}
-.journal-panel,.watchlist-panel{margin:18px 0;padding:18px}
-.journal-form{display:grid;grid-template-columns:repeat(5,minmax(0,1fr)) auto;gap:8px;align-items:end}
-.journal-form label{display:grid;gap:5px;color:#9aafbf;font-size:9px}
-.journal-form input,.journal-form select{height:38px}
-.journal-stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:13px 0}
-.journal-stats b{font-size:16px}
-.journal-toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:10px;color:#9db0bf;margin:10px 0}
-.journal-table-wrap{overflow:auto;border:1px solid #2c4155;border-radius:12px}
-.journal-table{min-width:760px}
-.journal-table td{font-size:10px}
-.journal-delete{border:1px solid #784653;background:#351b27;color:#ff9aaa;border-radius:7px;padding:4px 8px;cursor:pointer}
-.journal-status-open{color:#e7c985}.journal-status-win{color:#46e0b1}.journal-status-loss{color:#ff8395}
-.watchlist-form>*{flex:1}
-.alert-list{display:grid;gap:7px}
-.alert-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid #30465a;border-radius:10px;background:#0b1722;font-size:10px}
-.alert-row b{color:#f1d28d;direction:ltr}
-.alert-row button{border:1px solid #704452;background:#351b27;color:#ff9aaa;border-radius:7px;padding:5px 8px}
-@media(max-width:1100px){.intel-grid{grid-template-columns:1fr}.journal-form{grid-template-columns:repeat(3,minmax(0,1fr))}.journal-form button{grid-column:1/-1}}
+
+
+
+
+
+
+
+
+
+
+
+
+.intel-live-chip,.intel-status-wait{white-space:nowrap;border:1px solid #3a6e68;background:#123b372e;color:#72e6ce;border-radius:30px;padding:7px 11px;font-size:10px}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@media(max-width:1100px){.intel-grid{grid-template-columns:1fr}}
 @media(max-width:900px){.top{padding:0 12px}.mmp-sidebar{display:none}.wrap{width:100%;padding:16px 12px 70px}.hero{min-height:200px}.hero-visual{opacity:.55;left:0;transform:translateY(-50%) scale(.8)}}
-@media(max-width:650px){.intel-suite{padding:13px}.intel-suite-head{align-items:flex-start;flex-direction:column}.intel-grid{grid-template-columns:1fr}.intel-panel{padding:13px}.intel-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.journal-form{grid-template-columns:repeat(2,minmax(0,1fr))}.journal-form button{grid-column:1/-1}.journal-stats{grid-template-columns:repeat(3,minmax(0,1fr))}.watchlist-form{display:grid;grid-template-columns:1fr 1fr}.watchlist-form button{grid-column:1/-1}.intel-symbol-row{flex-wrap:wrap}.intel-symbol-row input{flex:1}.hero{padding:18px 15px}.hero-visual{opacity:.28;left:-55px}.hero-refresh-group{right:12px;bottom:12px}.top-actions .pill{display:none}}
-@media(max-width:390px){.journal-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.intel-forecast-grid{gap:5px}.intel-forecast-grid>div{padding:9px 6px}}
+@media(max-width:650px){.intel-suite{padding:13px}.intel-suite-head{align-items:flex-start;flex-direction:column}.intel-grid{grid-template-columns:1fr}.intel-panel{padding:13px}.intel-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.intel-symbol-row{flex-wrap:wrap}.intel-symbol-row input{flex:1}.hero{padding:18px 15px}.hero-visual{opacity:.28;left:-55px}.hero-refresh-group{right:12px;bottom:12px}.top-actions .pill{display:none}}
+@media(max-width:390px){.intel-forecast-grid{gap:5px}.intel-forecast-grid>div{padding:9px 6px}}
 @media(prefers-reduced-motion:reduce){body:after,.hero:before,.hero-coin{animation:none!important;transition:none!important}}
 
-.intel-backtest-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px}.intel-backtest-bar span{font-size:9px;color:#8fa5b7}
-.intel-backtest-results{margin-top:9px;font-size:10px;color:#a8b9c8;line-height:1.8}
-.backtest-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin-bottom:9px}
-.backtest-stats>div{padding:9px;border:1px solid #30475b;border-radius:9px;background:#0b1722}.backtest-stats small{display:block;color:#8ea5b7;font-size:9px}.backtest-stats b{display:block;color:#f0d28e;font-size:13px;margin-top:4px}
-.backtest-trades{max-height:170px;overflow:auto;border:1px solid #2c4155;border-radius:9px;padding:8px}
+
+
+
+
+
 @media(max-width:560px){.backtest-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
 
@@ -5724,90 +5672,13 @@ body:before{opacity:.23;background-size:34px 34px}
   }catch(e){if(grid)grid.innerHTML=[1,3,5].map(h=>'<div><small>'+h+' کندل بعد</small><b>—</b><span>داده معتبر در دسترس نیست</span></div>').join("");if(summary)summary.textContent="برآورد فعلاً انجام نشد: "+(e.message||"داده کافی دریافت نشد.")+" · مقادیر قبلی پاک شدند."; }
   finally{if(button){button.disabled=false;button.textContent="تحلیل کندل‌ها";}}
  }
- const JOURNAL_KEY="mmp_signal_journal_v1",ALERT_KEY="mmp_price_alerts_v1";
- const readStore=(key)=>{try{const v=JSON.parse(localStorage.getItem(key)||"[]");return Array.isArray(v)?v:[];}catch{return [];}};
- const writeStore=(key,value)=>{try{localStorage.setItem(key,JSON.stringify(value));return true;}catch{return false;}};
- const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
- function renderJournal(){
-  const items=readStore(JOURNAL_KEY),closed=items.filter(x=>x.status!=="OPEN"),wins=closed.filter(x=>x.status==="WIN"),rvals=closed.map(x=>Number(x.rMultiple)).filter(Number.isFinite),rate=closed.length?wins.length/closed.length*100:null,avg=rvals.length?rvals.reduce((a,b)=>a+b,0)/rvals.length:null;
-  const stats=[items.length,closed.length,wins.length,rate===null?"—":fmt(rate,1)+"٪",avg===null?"—":fmt(avg,2)+"R"];
-  const el=byId("journal-stats");if(el)el.innerHTML=stats.map((v,i)=>'<div><small>'+["کل سیگنال‌ها","بسته‌شده","موفق","نرخ برد","میانگین بازده R"][i]+'</small><b>'+v+'</b></div>').join("");
-  const rows=byId("journal-rows");
-  if(rows)rows.innerHTML=items.length?items.slice().reverse().map(x=>'<tr><td><b>'+esc(x.symbol)+'</b></td><td>'+x.side+'</td><td>'+usd(x.entry)+'</td><td>'+usd(x.lastPrice||x.entry)+'</td><td>'+usd(x.stop)+'</td><td>'+usd(x.target)+'</td><td class="journal-status-'+String(x.status).toLowerCase()+'">'+(x.status==="OPEN"?"باز":x.status==="WIN"?"موفق":"ناموفق")+'</td><td><button class="journal-delete" data-journal-delete="'+x.id+'">حذف</button></td></tr>').join(""):'<tr><td colspan="8" class="muted">هنوز داده‌ای ثبت نشده است.</td></tr>';
-  if(byId("journal-status"))byId("journal-status").textContent="ذخیره محلی · "+items.length+" رکورد · آخرین بررسی "+new Date().toLocaleTimeString("fa-IR");
- }
- async function saveJournal(){
-  const symbol=safeSymbol(byId("journal-symbol")?.value),side=byId("journal-side")?.value,entry=Number(byId("journal-entry")?.value),stop=Number(byId("journal-stop")?.value),target=Number(byId("journal-target")?.value);
-  if(!symbol||!(entry>0&&stop>0&&target>0)||(side==="LONG"?(stop>=entry||target<=entry):(stop<=entry||target>=entry))){alert("نماد و قیمت‌های ورود، حد ضرر و هدف را درست وارد کن؛ حد ضرر و هدف باید در جهت معامله باشند.");return;}
-  const item={id:Date.now().toString(36),symbol,side,entry,stop,target,lastPrice:entry,status:"OPEN",createdAt:new Date().toISOString(),rMultiple:null};
-  const items=readStore(JOURNAL_KEY);items.push(item);
-  if(!writeStore(JOURNAL_KEY,items)){alert("فضای ذخیره‌سازی مرورگر در دسترس نیست.");return;}
-  byId("journal-entry").value="";byId("journal-stop").value="";byId("journal-target").value="";
-  renderJournal();
- }
- async function refreshJournal(){
-  const items=readStore(JOURNAL_KEY),open=items.filter(x=>x.status==="OPEN");
-  if(!open.length){renderJournal();return;}
-  const symbols=[...new Set(open.map(x=>x.symbol))];
-  const results=await Promise.allSettled(symbols.map(async s=>[s,await getJson("https://api.binance.com/api/v3/ticker/price?symbol="+s+"USDT")]));
-  const prices=Object.fromEntries(results.filter(x=>x.status==="fulfilled").map(x=>[x.value[0],Number(x.value[1].price)]));
-  const now=new Date().toISOString();
-  for(const item of open){
-   const p=prices[item.symbol];if(!(p>0))continue;
-   item.lastPrice=p;item.checkedAt=now;
-   const hitStop=item.side==="LONG"?p<=item.stop:p>=item.stop,hitTarget=item.side==="LONG"?p>=item.target:p<=item.target;
-   if(hitStop||hitTarget){item.status=hitTarget?"WIN":"LOSS";item.closedAt=now;item.rMultiple=hitTarget?Math.abs((item.target-item.entry)/(item.entry-item.stop)):-1;}
-  }
-  writeStore(JOURNAL_KEY,items);renderJournal();
- }
- function renderAlerts(){
-  const alerts=readStore(ALERT_KEY),el=byId("alert-list");
-  if(el)el.innerHTML=alerts.length?alerts.map(a=>'<div class="alert-row"><span>'+esc(a.symbol)+' · '+(a.condition==="above"?"عبور به بالای":"افت به زیر")+' <b>'+usd(a.price)+'</b></span><button data-alert-delete="'+a.id+'">حذف</button></div>').join(""):'<div class="muted">هنوز هشداری ثبت نشده است.</div>';
- }
- function addAlert(){
-  const symbol=safeSymbol(byId("alert-symbol")?.value),price=Number(byId("alert-price")?.value),condition=byId("alert-condition")?.value;
-  if(!symbol||!(price>0)){alert("نماد و قیمت هدف معتبر وارد کن.");return;}
-  const items=readStore(ALERT_KEY);items.push({id:Date.now().toString(36),symbol,price,condition,active:true});
-  if(!writeStore(ALERT_KEY,items)){alert("ذخیره‌سازی مرورگر در دسترس نیست.");return;}
-  byId("alert-price").value="";renderAlerts();
- }
- async function checkAlerts(){
-  const items=readStore(ALERT_KEY).filter(x=>x.active);
-  if(!items.length)return;
-  const symbols=[...new Set(items.map(x=>x.symbol))];
-  const results=await Promise.allSettled(symbols.map(async s=>[s,await getJson("https://api.binance.com/api/v3/ticker/price?symbol="+s+"USDT")]));
-  const prices=Object.fromEntries(results.filter(x=>x.status==="fulfilled").map(x=>[x.value[0],Number(x.value[1].price)]));
-  let changed=false;
-  for(const a of items){
-   const p=prices[a.symbol];if(!(p>0))continue;
-   if((a.condition==="above"&&p>=a.price)||(a.condition==="below"&&p<=a.price)){
-    a.active=false;a.triggeredAt=new Date().toISOString();a.triggeredPrice=p;changed=true;
-    const message=a.symbol+" به قیمت هشدار "+usd(p)+" رسید.";
-    if("Notification" in window&&Notification.permission==="granted")new Notification("هشدار قیمت MMP",{body:message});
-    else if(document.visibilityState==="visible")alert(message);
-   }
-  }
-  if(changed){writeStore(ALERT_KEY,readStore(ALERT_KEY).map(old=>items.find(a=>a.id===old.id)||old));renderAlerts();}
- }
- /* derivatives are loaded through the same-origin Worker endpoint below */
+ /* Retired local journal and price-alert modules removed; market intelligence remains Worker-backed. */
  /* derivatives refresh is bound to the Worker endpoint below */
  /* order-flow is loaded through the same-origin Worker endpoint below */
  byId("forecast-run")?.addEventListener("click",loadForecast);
- byId("journal-save")?.addEventListener("click",saveJournal);
- byId("journal-refresh")?.addEventListener("click",refreshJournal);
- byId("journal-rows")?.addEventListener("click",e=>{const b=e.target.closest("[data-journal-delete]");if(!b)return;writeStore(JOURNAL_KEY,readStore(JOURNAL_KEY).filter(x=>x.id!==b.dataset.journalDelete));renderJournal();});
- byId("alert-add")?.addEventListener("click",addAlert);
- byId("alert-list")?.addEventListener("click",e=>{const b=e.target.closest("[data-alert-delete]");if(!b)return;writeStore(ALERT_KEY,readStore(ALERT_KEY).filter(x=>x.id!==b.dataset.alertDelete));renderAlerts();});
  byId("ai-coin-select")?.addEventListener("change",()=>{const v=safeSymbol(byId("ai-coin-select").value);if(v&&byId("intel-symbol"))byId("intel-symbol").value=v;});
  byId("intel-symbol")?.addEventListener("change",()=>{const v=safeSymbol(byId("intel-symbol").value);if(v)byId("intel-symbol").value=v;});
- if("Notification" in window&&Notification.permission==="default"){
-  const notifyButton=document.createElement("button");notifyButton.type="button";notifyButton.className="intel-refresh";notifyButton.textContent="فعال‌سازی اعلان‌ها";
-  notifyButton.addEventListener("click",async()=>{const p=await Notification.requestPermission();notifyButton.textContent=p==="granted"?"اعلان‌ها فعال شد":"اجازه اعلان داده نشد";});
-  byId("smart-alerts")?.querySelector(".intel-panel-head")?.appendChild(notifyButton);
- }
- renderJournal();renderAlerts();
  loadForecast();
- setInterval(()=>{refreshJournal();checkAlerts();},60000);
  /* worker-backed market intelligence refresh is initialized below */
  async function runHistoricalBacktest(){
   const button=byId("historical-backtest"),status=byId("backtest-status"),out=byId("backtest-results");
@@ -5878,7 +5749,7 @@ body:before{opacity:.23;background-size:34px 34px}
  function attachInput(id){const input=$(id);if(!input||input.dataset.mmpPicker)return;input.dataset.mmpPicker="1";const w=document.createElement("div");w.className="mmp-symbol-picker";input.parentNode.insertBefore(w,input);w.appendChild(input);const t=document.createElement("button");t.type="button";t.className="mmp-symbol-trigger";t.title="انتخاب از فهرست کامل ارزها";t.innerHTML='<img src="'+icon({symbol:input.value||"BTC"})+'" alt="">';w.appendChild(t);const a=document.createElement("button");a.type="button";a.className="mmp-symbol-add";a.textContent="＋";a.title="افزودن نماد دلخواه";a.setAttribute("aria-label",a.title);w.appendChild(a);build(w,input,"text");}
  function attachTv(){const s=$("tv-symbol");if(!s||s.dataset.mmpPicker)return;s.dataset.mmpPicker="1";s.classList.add("mmp-native-select-hidden");const w=document.createElement("div");w.className="mmp-tv-picker";s.parentNode.insertBefore(w,s);w.appendChild(s);const t=document.createElement("button");t.type="button";t.className="mmp-symbol-trigger";t.innerHTML='<img src="'+icon({symbol:"BTC"})+'" alt=""><span>Bitcoin · BTC</span><b>⌄</b>';w.appendChild(t);const a=document.createElement("button");a.type="button";a.className="mmp-symbol-add";a.textContent="＋";a.title="افزودن نماد به نمودار";w.appendChild(a);const p=build(w,s,"tv"),update=()=>{const sym=String(s.value||"").split(":").pop().replace(/USDT$/,""),c=pool().find(x=>x.symbol===sym)||{symbol:sym};t.querySelector("img").src=icon(c);t.querySelector("span").textContent=(c.name||sym)+" · "+sym;};s.addEventListener("change",update);a.addEventListener("click",()=>{p.menu.hidden=false;p.menu.querySelector(".mmp-symbol-manual input").focus();p.render();});new MutationObserver(update).observe(s,{childList:true});update();}
  function refreshAi(){const s=$("ai-coin-select");if(!s||typeof syncAiCoinOptions!=="function")return;const old=s.value,all=pool(),manual=all.filter(c=>c.manual).map(c=>({id:"manual:"+c.symbol,symbol:c.symbol,name:c.name,image:c.image}));syncAiCoinOptions([...(typeof cachedCoinsData!=="undefined"?cachedCoinsData:[]),...(typeof hunterUniverseCache!=="undefined"?hunterUniverseCache.coins||[]:[]),...manual]);if(old&&[...s.options].some(o=>o.value===old))s.value=old;}
- function init(){["intel-symbol","journal-symbol","alert-symbol"].forEach(attachInput);attachTv();refreshAi();setInterval(refreshAi,30000);}
+ function init(){["intel-symbol"].forEach(attachInput);attachTv();refreshAi();setInterval(refreshAi,30000);}
  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init,{once:true});else init();
 })();
 </script>
@@ -5894,12 +5765,12 @@ body:before{opacity:.23;background-size:34px 34px}
 .boom-coin-picker{position:relative!important;min-width:0;z-index:30}
 .boom-coin-picker .boom-coin-select-wrap{position:relative!important;min-width:0}
 .boom-coin-picker .boom-coin-menu{top:calc(100% + 7px)!important;right:0!important;left:auto!important;transform:none!important;width:min(380px,calc(100vw - 34px))!important;max-width:calc(100vw - 28px)!important;max-height:min(62vh,440px)!important;overflow:auto;overscroll-behavior:contain;box-sizing:border-box}
-.boom-coin-option{min-height:46px}
+
 .boom-coin-option:focus-visible{outline:2px solid #d9b66d;outline-offset:-2px}
 @media(max-width:720px){.boom-toolbar{grid-template-columns:minmax(0,1fr)!important;align-items:stretch!important}.boom-toolbar>label,.boom-toolbar>.btn{width:100%;min-width:0}.boom-coin-actions .btn{min-width:0}.boom-coin-picker .boom-coin-menu{width:100%!important;max-width:100%!important;right:0!important;left:0!important}}
 .boom-coin-option img{width:25px;height:25px;flex-basis:25px}
 .boom-coin-select{display:flex;align-items:center;gap:7px;min-width:0}
-.boom-coin-select input{flex:1;min-width:0}
+
 .boom-coin-actions{display:flex;gap:7px;flex-wrap:wrap}
 .boom-coin-actions .btn{padding:7px 10px;font-size:10px}
 .boom-custom-coin-panel{margin-top:8px;padding:10px;border:1px solid #806a3d;border-radius:10px;background:#0b1420}
@@ -6100,11 +5971,11 @@ body:before{opacity:.23;background-size:34px 34px}
 #connections .conn{min-width:0;min-height:88px!important;padding:11px!important}
 #connections .conn-meta{margin-top:6px!important}
 #connections .conn-purpose{line-height:1.45!important}
-.connection-more{display:none!important}
+
 .intel-suite{margin:12px 0!important}
 .intel-suite-head{margin-bottom:10px!important}
 .intel-grid{gap:9px!important}
-.intel-panel,.journal-panel{padding:12px!important;border-radius:13px!important}
+.intel-panel{padding:12px!important;border-radius:13px!important}
 .intel-panel-head{margin-bottom:9px!important;gap:7px!important}
 .intel-panel-head h3{font-size:13px!important}
 .intel-panel-head small{font-size:8px!important}
@@ -6134,7 +6005,7 @@ body:before{opacity:.23;background-size:34px 34px}
  #tv-symbol.mmp-native-select-hidden{width:100%!important;flex:1 1 100%;font-size:11px!important}
  .chart-actions .btn{flex:1;min-width:0;text-align:center;padding:8px 7px;font-size:9px}
  .whale-transfers{grid-template-columns:1fr}
- .intel-panel,.journal-panel{padding:10px!important}
+ .intel-panel{padding:10px!important}
  #connections{gap:7px!important}
  #connections .conn{padding:8px!important;min-height:84px!important}
  .wrap{padding-bottom:4px!important}
@@ -6478,15 +6349,15 @@ window.mmpShareDownloadLink = async function () {
 .signal-drawer-toggle>strong{margin:0;white-space:nowrap;border:1px solid rgba(191,158,95,.58);border-radius:9px;padding:6px 9px;color:#e9cf91;background:rgba(217,182,109,.09);font-size:10px}
 .signal-drawer-toggle:after{content:"";width:6px;height:6px;border-radius:50%;background:#d9b66d;box-shadow:0 0 9px #d9b66d88}
 .signal-drawer-panel{padding:11px 12px 13px;border-top:1px solid rgba(217,182,109,.28);background:radial-gradient(ellipse at 90% 0%,rgba(190,151,75,.09),transparent 42%),linear-gradient(180deg,rgba(8,14,23,.88),rgba(17,27,40,.96));animation:mmpDrawerReveal .24s ease-out}
-.signal-drawer-panel[hidden]{display:none}
+
 .signal-drawer-panel-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:2px 3px 10px;color:#ead39b;font-size:11px;font-weight:800}
 .signal-drawer-panel-head small{color:#8e9daf;font-size:9px;font-weight:400}
 .signal-drawer-panel .radar-overflow-list,.signal-drawer-panel .hunter-card-list{max-height:min(54vh,460px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#b08c4e #17202b;padding:2px 5px 6px}
 .signal-drawer-panel .radar-overflow-list::-webkit-scrollbar,.hunter-signal-drawer .signal-drawer-panel::-webkit-scrollbar{width:6px}
 .signal-drawer-panel .radar-overflow-list::-webkit-scrollbar-thumb,.hunter-signal-drawer .signal-drawer-panel::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#e1c27d,#806337);border-radius:8px}
 .hunter-signal-drawer .signal-drawer-panel{max-height:min(62vh,520px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#b08c4e #17202b}
-.hunter-signal-drawer .hunter-card{margin:0 0 10px}
-.hunter-signal-drawer .hunter-card:last-child{margin-bottom:0}
+
+
 @keyframes mmpDrawerReveal{from{opacity:0;transform:translateY(-7px);filter:blur(2px)}to{opacity:1;transform:translateY(0);filter:blur(0)}}
 @media(max-width:600px){.signal-drawer-toggle{min-height:60px;grid-template-columns:34px minmax(0,1fr) auto 12px;gap:8px;padding:9px}.signal-drawer-icon{width:32px;height:32px}.signal-drawer-copy b{font-size:11px}.signal-drawer-copy small{font-size:9px}.signal-drawer-toggle>strong{font-size:9px;padding:5px 7px}.signal-drawer-panel{padding:9px}.signal-drawer-panel-head small{font-size:8px}.signal-drawer-panel .radar-overflow-list{max-height:52vh}}
 @media(prefers-reduced-motion:reduce){.signal-drawer-panel{animation:none}.signal-drawer-icon,.signal-drawer-icon:before{transition:none}}
@@ -6728,39 +6599,6 @@ window.mmpShareDownloadLink = async function () {
  refresh();if(window.__mmpHomeEngineTimer)clearInterval(window.__mmpHomeEngineTimer);
  window.__mmpHomeEngineTimer=setInterval(refresh,15000);
  document.addEventListener("visibilitychange",()=>{if(!document.hidden)refresh()});
-})();
-</script>
-<script id="mmp-live-update">
-(function(){
- "use strict";
- var marker=document.querySelector('meta[name="mmp-web-build"]');
- var pageBuild=marker&&marker.content;
- if(!pageBuild||pageBuild==="__MMP_WEB_BUILD_ID__")return;
- var busy=false;
- async function checkForLiveUpdate(){
-  if(busy||document.visibilityState==="hidden")return;
-  busy=true;
-  try{
-   var endpoint=new URL("version.json",document.baseURI);
-   endpoint.searchParams.set("_",String(Date.now()));
-   var response=await fetch(endpoint.toString(),{cache:"no-store",credentials:"same-origin",headers:{Accept:"application/json"}});
-   if(!response.ok)return;
-   var release=await response.json();
-   if(!release||typeof release.build!=="string"||!release.build)return;
-   var target=release.build.slice(0,12);
-   var current=new URL(window.location.href);
-   if(release.build!==pageBuild&&current.searchParams.get("mmp_live_refresh")!==target){
-    current.searchParams.set("mmp_live_refresh",target);
-    window.location.replace(current.toString());
-   }
-  }catch(error){
-   // Keep the current working screen when the network or version endpoint is unavailable.
-  }finally{busy=false;}
- }
- window.setInterval(checkForLiveUpdate,120000);
- window.addEventListener("focus",checkForLiveUpdate,{passive:true});
- document.addEventListener("visibilitychange",function(){if(document.visibilityState==="visible")checkForLiveUpdate();});
- window.setTimeout(checkForLiveUpdate,12000);
 })();
 </script>
 <style id="mmp-native-chart-quality-20261110">
