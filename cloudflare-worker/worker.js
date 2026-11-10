@@ -1124,7 +1124,7 @@ export async function runDigitalHunterMarketCycle(env,marketType="spot"){
  const batchLimit=marketType==="futures"?FUTURES_HUNTER_BATCH_SIZE:HUNTER_BATCH_SIZE;
  const cacheId=stateId+"-universe-cache",cachedRow=await env.ADMIN_DB.prepare("SELECT payload FROM hunter_engine_state WHERE id = ?").bind(cacheId).first(),cached=cachedRow?.payload?JSON.parse(cachedRow.payload):null;
  let assets=Array.isArray(previous.assets)?previous.assets:[],universeUpdatedAt=Number(previous.universeUpdatedAt)||0,universeSources=previous.universeSources||{},universeProvider=previous.universeProvider||"multi-exchange",adoptedUniverse=false;
- if(Array.isArray(cached?.assets)&&cached.assets.length&&Number(cached.universeUpdatedAt)>universeUpdatedAt){
+ if(Array.isArray(cached?.assets)&&cached.assets.length&&(!assets.length||Number(cached.universeUpdatedAt)>universeUpdatedAt)){
   assets=cached.assets;universeUpdatedAt=Number(cached.universeUpdatedAt)||now;universeSources=cached.universeSources||{};universeProvider=cached.universeProvider||"multi-exchange";adoptedUniverse=true;
  }
  if(!assets.length){
@@ -1134,7 +1134,9 @@ export async function runDigitalHunterMarketCycle(env,marketType="spot"){
   assets.sort((a,b)=>calculateMarketScanPriority(b)-calculateMarketScanPriority(a)||Number(b.total_volume||0)-Number(a.total_volume||0));
   universeUpdatedAt=now;universeSources=universe.sources||{};universeProvider=universe.metadata_provider||"multi-exchange";
   const prior=previous.snapshot||{},snapshot={...prior,status:"online",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,market:marketType,checked_at:new Date(now).toISOString(),universe_count:assets.length,batch_size:batchLimit,candidate_count:0,scanned_count:0,failed_count:0,rejected_count:0,cooldown_count:0,universe_refreshed:true,signals:Array.isArray(prior.signals)?prior.signals:[],preliminary_signals:Array.isArray(prior.preliminary_signals)?prior.preliminary_signals:[],flow_review_count:0,flow_checked_count:0,flow_review_symbols:[],last_errors:[],last_rejections:[],sources:universeSources,universe_provider:universeProvider,cycle_seconds:60};
-  const payload=JSON.stringify({cursor:0,lastRun:now,assets,universeUpdatedAt,universeSources,universeProvider,failureCooldown:{},scanPriorityVersion:1,snapshot});
+  const cachePayload=JSON.stringify({assets,universeUpdatedAt,universeSources,universeProvider});
+  await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(cacheId,cachePayload,new Date(now).toISOString()).run();
+  const payload=JSON.stringify({cursor:0,lastRun:now,universeUpdatedAt,universeSources,universeProvider,failureCooldown:{},scanPriorityVersion:1,snapshot});
   await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(stateId,payload,new Date(now).toISOString()).run();
   return snapshot;
  }
@@ -1185,7 +1187,7 @@ export async function runDigitalHunterMarketCycle(env,marketType="spot"){
  const nextCursor=(cursor+Math.max(1,examined))%assets.length,priorActivity=cursor===0?{}:(previous.snapshot?.engine_activity||{}),engineActivity=Object.fromEntries(QUANTUM_ACTIVITY_KEYS.map(key=>{const a=priorActivity[key]||{},b=result.engine_activity?.[key]||{};return [key,{processed:Number(a.processed||0)+Number(b.processed||0),evidence:Number(a.evidence||0)+Number(b.evidence||0)}];}));
  engineActivity.learning={processed:Number(learningSummary.totalSignals)||0,total:Number(learningSummary.totalSignals)||0,evidence:Number(learningSummary.matured5m)||0,calibrationStatus:learningSummary.calibrationStatus||"collecting"};
  const snapshot={status:"online",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,market:marketType,checked_at:new Date().toISOString(),scanned_at:new Date().toISOString(),universe_count:assets.length,universe_age_ms:Math.max(0,now-universeUpdatedAt),universe_stale:now-universeUpdatedAt>20*60*1000,next_cursor:nextCursor,queue_position:nextCursor===0?assets.length:nextCursor,queue_total:assets.length,batch_size:batch.length,scanned_count:result.scanned,candidate_count:result.candidates,failed_count:result.failed,rejected_count:result.rejected||0,cooldown_count:Object.keys(failureCooldown).length,universe_refreshed:false,signals:calibratedSelected,preliminary_signals:preliminary,learning:learningSummary,flow_review_count:result.flow_review_count||0,flow_checked_count:result.flow_checked_count||0,flow_review_symbols:result.flow_review_symbols||[],engine_activity:engineActivity,last_errors:result.errors||[],last_rejections:result.rejections||[],sources:universeSources,universe_provider:universeProvider,cycle_seconds:60};
- const payload=JSON.stringify({cursor:snapshot.next_cursor,lastRun:now,assets,universeUpdatedAt,universeSources,universeProvider,failureCooldown,scanPriorityVersion:priorityVersion,snapshot});
+ const payload=JSON.stringify({cursor:snapshot.next_cursor,lastRun:now,universeUpdatedAt,universeSources,universeProvider,failureCooldown,scanPriorityVersion:priorityVersion,snapshot});
  await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(stateId,payload,new Date(now).toISOString()).run();
  return snapshot;
 }
@@ -1230,7 +1232,7 @@ async function handle(request,env){
   if(!env.ADMIN_DB)return json({status:"offline",error:"ADMIN_DB binding missing"},503,request);
   const row=await env.ADMIN_DB.prepare("SELECT payload, updated_at FROM hunter_engine_state WHERE id = ?").bind("digital-hunter-v2-futures").first();
   let saved=null;try{saved=row?.payload?JSON.parse(row.payload):null;}catch{}
-  const assets=Array.isArray(saved?.assets)?saved.assets:[];
+  let cached=null;try{const cacheRow=await env.ADMIN_DB.prepare("SELECT payload FROM hunter_engine_state WHERE id = ?").bind("digital-hunter-v2-futures-universe-cache").first();cached=cacheRow?.payload?JSON.parse(cacheRow.payload):null;}catch{} const assets=Array.isArray(saved?.assets)?saved.assets:Array.isArray(cached?.assets)?cached.assets:[];
   if(!assets.length)return json({status:"warming_up",market:"futures",universe_count:0,assets:[]},503,request);
   return json({status:"online",engine:QUANTUM_ENGINE_NAME,market:"futures",universe_count:assets.length,universe_updated_at:saved.universeUpdatedAt||null,updated_at:row?.updated_at||null,source:saved.universeProvider||"multi-exchange",assets},200,request);
  }
