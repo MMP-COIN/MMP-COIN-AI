@@ -7215,5 +7215,79 @@ main,.app-main,.container,.terminal-grid,.intel-suite{min-width:0}
 }
 </style>
 
+
+<style id="mmp-chart-heading-layout-20261110">
+/* Layout-only correction for the chart heading and its existing actions.
+   Candle renderer, data, timeframe controls and menu behavior are untouched. */
+html body #chart-section .chart-top-bar{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) auto!important;
+  align-items:center!important;
+  gap:10px 16px!important;
+  padding:10px 12px!important;
+  margin:0 0 10px!important;
+}
+html body #chart-section .chart-heading-lockup{
+  display:flex!important;align-items:center!important;gap:9px!important;
+  min-width:0!important;flex:0 1 auto!important;
+}
+html body #chart-section .chart-heading-lockup .mmp-module-logo{
+  width:38px!important;height:38px!important;flex:0 0 38px!important;
+  object-fit:contain!important;
+}
+html body #chart-section .chart-heading-lockup h2{
+  margin:0!important;font-size:clamp(15px,1.35vw,19px)!important;
+  line-height:1.45!important;white-space:normal!important;
+}
+html body #chart-section .chart-actions{
+  display:flex!important;align-items:center!important;justify-content:flex-end!important;
+  gap:7px!important;flex-wrap:wrap!important;width:auto!important;min-width:0!important;
+}
+html body #chart-section .chart-actions #tv-symbol,
+html body #chart-section .chart-actions .mmp-tv-picker{
+  flex:0 1 185px!important;min-width:145px!important;max-width:210px!important;
+}
+html body #chart-section .chart-actions > a,
+html body #chart-section .chart-actions > button{
+  min-height:38px!important;padding:8px 11px!important;
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  white-space:nowrap!important;font-size:11px!important;line-height:1.3!important;
+}
+@media(max-width:760px){
+  html body #chart-section .chart-top-bar{
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:8px!important;padding:9px 8px!important;
+  }
+  html body #chart-section .chart-heading-lockup{width:100%!important}
+  html body #chart-section .chart-heading-lockup .mmp-module-logo{
+    width:34px!important;height:34px!important;flex-basis:34px!important;
+  }
+  html body #chart-section .chart-heading-lockup h2{
+    font-size:15px!important;line-height:1.5!important;
+  }
+  html body #chart-section .chart-actions{
+    display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+    align-items:stretch!important;justify-content:stretch!important;
+    gap:7px!important;width:100%!important;
+  }
+  html body #chart-section .chart-actions #tv-symbol,
+  html body #chart-section .chart-actions .mmp-tv-picker{
+    grid-column:1/-1!important;width:100%!important;max-width:none!important;
+    min-width:0!important;flex:none!important;
+  }
+  html body #chart-section .chart-actions > a,
+  html body #chart-section .chart-actions > button{
+    width:100%!important;min-width:0!important;min-height:40px!important;
+    padding:8px 6px!important;font-size:10px!important;
+  }
+}
+@media(max-width:360px){
+  html body #chart-section .chart-heading-lockup h2{font-size:13px!important}
+  html body #chart-section .chart-actions{gap:5px!important}
+  html body #chart-section .chart-actions > a,
+  html body #chart-section .chart-actions > button{font-size:9px!important;padding-inline:4px!important}
+}
+</style>
+
 </body>
 </html>
