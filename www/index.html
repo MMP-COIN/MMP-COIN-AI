@@ -3330,6 +3330,11 @@ async function refreshGoldQuote(){
 async function refreshAll(){
  if(refreshInFlight)return false;
  refreshInFlight=true;
+ const fetchMarketBounded=async(url,options={},timeoutMs=10000)=>{
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeoutMs);
+  try{return await fetch(url,{...options,signal:controller.signal});}
+  finally{clearTimeout(timer);}
+ };
  // قیمت دارایی‌های شاخص مستقل از بارگیری کاتالوگ کامل و نرخ تتر دریافت می‌شوند.
  void refreshBenchmarkQuotes();
  void refreshGoldQuote();
@@ -3363,7 +3368,7 @@ async function refreshAll(){
   // Public direct fallback keeps prices available if the Cloudflare Worker/proxy is unavailable.
   if(!Array.isArray(topData)){
    try{
-    const directTop=await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&sparkline=false&price_change_percentage=1h%2C24h%2C7d',{cache:'no-store'});
+    const directTop=await fetchMarketBounded('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&sparkline=false&price_change_percentage=1h%2C24h%2C7d',{cache:'no-store'},9000);
     if(directTop.ok){const payload=await directTop.json();if(Array.isArray(payload)&&payload.length){topData=payload;marketMetadataSource="CoinGecko Direct";}}
    }catch(error){console.warn('Direct CoinGecko market fallback unavailable:',error);}
   }
@@ -3373,7 +3378,31 @@ async function refreshAll(){
   if(!Array.isArray(topData)||!topData.length)throw new Error("داده قیمت از منابع مستقل دریافت نشد");
   if(extraRes?.ok){try{const payload=await extraRes.json();if(Array.isArray(payload))extraData=payload;}catch(error){console.warn('Extra market payload invalid:',error);}}
   if(!extraData.length){
-   try{const directExtra=await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids='+encodeURIComponent(EXTRA_COIN_IDS.join(','))+'&order=market_cap_desc&sparkline=false&price_change_percentage=1h%2C24h%2C7d',{cache:'no-store'});if(directExtra.ok){const payload=await directExtra.json();if(Array.isArray(payload))extraData=payload;}}catch(error){console.warn('CoinGecko extra direct fallback unavailable:',error);}
+   try{const directExtra=await fetchMarketBounded('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids='+encodeURIComponent(EXTRA_COIN_IDS.join(','))+'&order=market_cap_desc&sparkline=false&price_change_percentage=1h%2C24h%2C7d',{cache:'no-store'},9000);if(directExtra.ok){const payload=await directExtra.json();if(Array.isArray(payload))extraData=payload;}}catch(error){console.warn('CoinGecko extra direct fallback unavailable:',error);}
+  }
+
+  // نمایش سریع داده اولیه؛ تأیید صرافی‌ها و صفحه‌بندی کامل در ادامه انجام می‌شود.
+  // این مرحله رابط را از انتظار برای پایان کاتالوگ کامل مستقل می‌کند.
+  const earlyById=new Map(),earlySymbols=new Set();
+  [...topData,...extraData].forEach(coin=>{
+   if(!coin||!coin.id||!coin.symbol||NON_TRADABLE_COIN_IDS.has(coin.id))return;
+   const symbol=String(coin.symbol).toUpperCase();
+   if(NON_TRADABLE_SYMBOLS.has(symbol)||earlyById.has(coin.id)||earlySymbols.has(symbol))return;
+   earlyById.set(coin.id,coin);earlySymbols.add(symbol);
+  });
+  const earlyCoins=orderPrimaryCoins([...earlyById.values()]);
+  if(earlyCoins.length){
+   cachedCoinsData=earlyCoins;
+   lastMarket.crypto={};
+   earlyCoins.forEach(coin=>{
+    const symbol=String(coin.symbol||"").toUpperCase();
+    if(symbol==="BTC")lastMarket.crypto.BTC={usd:Number(coin.current_price),change24h:coin.price_change_percentage_24h};
+    if(symbol==="ETH")lastMarket.crypto.ETH={usd:Number(coin.current_price),change24h:coin.price_change_percentage_24h};
+   });
+   renderHeroCards();
+   renderCoinsTables(earlyCoins);
+   updateDropdowns(earlyCoins);
+   $("updated").textContent="داده اولیه دریافت شد؛ تکمیل بررسی بازار در پس‌زمینه ادامه دارد.";
   }
 
   // نگه‌داشتن ۱۰۰ دارایی قابل معامله با نمادهای یکتا؛ ارزهای تکراری حذف می‌شوند؛ استیبل‌کوین‌ها و توکن‌های رَپ‌شده از منوی کندل/تحلیل کنار گذاشته می‌شوند.
@@ -3396,7 +3425,7 @@ async function refreshAll(){
     const batch=validItems.slice(i,i+120);
     const symbols=[...new Set(batch.map(c=>String(c.symbol).toUpperCase()))];
     try{
-     const response=await fetch(AI_ANALYSIS_ENDPOINT+"/support-check?symbols="+encodeURIComponent(symbols.join(",")),{cache:"no-store"});
+     const response=await fetchMarketBounded(AI_ANALYSIS_ENDPOINT+"/support-check?symbols="+encodeURIComponent(symbols.join(",")),{cache:"no-store"},9000);
      if(!response.ok)throw new Error("HTTP "+response.status);
      const payload=await response.json();
      if(!Array.isArray(payload.assets))throw new Error("Invalid support-check payload");
@@ -3434,7 +3463,7 @@ async function refreshAll(){
         :marketMetadataSource==="CoinGecko Direct"
          ?"https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page="+pageNumber+"&sparkline=false&price_change_percentage=1h%2C24h%2C7d"
          :AI_ANALYSIS_ENDPOINT+"/market-proxy?source=coingecko-top&page="+pageNumber;
-       const response=await fetch(url,{cache:"no-store"});
+       const response=await fetchMarketBounded(url,{cache:"no-store"},10000);
        if(!response.ok)throw new Error("HTTP "+response.status);
        const payload=await response.json();
        return marketMetadataSource==="CoinLore"?normalizeCoinLoreAssets(payload):payload;
