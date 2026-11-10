@@ -381,8 +381,10 @@ async function fetchWithTimeout(url,options={},timeoutMs=9000){
  try{return await fetch(url,{...options,signal:controller.signal});}
  finally{clearTimeout(timer);if(externalSignal)externalSignal.removeEventListener("abort",abortExternal);}
 }
-async function marketFallbackKey(url){
- const bytes=new TextEncoder().encode(String(url));
+async function marketFallbackKey(cacheIdentity){
+ // Hash a stable logical cache identity, never the full request URL: clients may
+ // append cache-busting timestamps that otherwise create an unlimited D1 key stream.
+ const bytes=new TextEncoder().encode(String(cacheIdentity));
  const digest=await crypto.subtle.digest("SHA-256",bytes);
  return "market:"+Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,"0")).join("");
 }
@@ -398,10 +400,10 @@ async function readMarketFallback(env,key){
   return payload&&typeof payload==="object"?{payload,ageMs}:null;
  }catch{return null;}
 }
-async function writeMarketFallback(env,key,payload,previous=null,minIntervalMs=3600000){
- // D1 is a last-resort fallback, not a live ticker store. Limit each cache key
- // to one successful refresh per hour to protect the account-wide row-write quota.
- const writeIntervalMs=Math.max(3600000,Number(minIntervalMs)||0);
+async function writeMarketFallback(env,key,payload,previous=null,minIntervalMs=21600000){
+ // D1 is a last-resort fallback, not a live ticker store. Live data is fetched
+ // upstream; persist each stable fallback key at most once every six hours.
+ const writeIntervalMs=Math.max(21600000,Number(minIntervalMs)||0);
  if(!env.MARKET_CACHE_DB||previous?.ageMs<writeIntervalMs)return;
  try{
   await env.MARKET_CACHE_DB.prepare("INSERT INTO market_data_cache (cache_key,payload,cached_at) VALUES (?, ?, ?) ON CONFLICT(cache_key) DO UPDATE SET payload=excluded.payload,cached_at=excluded.cached_at").bind(key,JSON.stringify(payload),Date.now()).run();
@@ -409,11 +411,11 @@ async function writeMarketFallback(env,key,payload,previous=null,minIntervalMs=3
 }
 async function cleanupMarketFallbackCache(env){
  const now=new Date();
+ // Run once daily and delete in a small bounded batch; never sweep the full cache.
  if(!env.MARKET_CACHE_DB||now.getUTCHours()!==0||now.getUTCMinutes()!==15)return;
  try{
   const cutoff=Date.now()-7*86400000;
-  await env.MARKET_CACHE_DB.prepare("DELETE FROM market_data_cache WHERE cache_key IN (SELECT cache_key FROM market_data_cache WHERE cached_at < ? ORDER BY cached_at ASC LIMIT 1000)").bind(cutoff).run();
-  await env.MARKET_CACHE_DB.prepare("DELETE FROM market_data_cache WHERE cache_key IN (SELECT cache_key FROM market_data_cache ORDER BY cached_at ASC LIMIT 1000) AND (SELECT COUNT(*) FROM market_data_cache)>10000").run();
+  await env.MARKET_CACHE_DB.prepare("DELETE FROM market_data_cache WHERE cache_key IN (SELECT cache_key FROM market_data_cache WHERE cached_at < ? ORDER BY cached_at ASC LIMIT 100)").bind(cutoff).run();
  }catch(error){console.warn("Market fallback cache cleanup failed:",String(error?.message||error).slice(0,160));}
 }
 async function readPublicJson(url){
@@ -1476,7 +1478,7 @@ async function handle(request,env){
   const interval=String(url.searchParams.get("interval")||"15m");
   if(!/^[A-Z0-9]{2,30}$/.test(rawSymbol)||!["1m","3m","5m","15m","1h","4h","1d"].includes(interval))return json({error:"نماد یا بازه زمانی نامعتبر است."},400,request);
   const symbol=splitQuotePair(rawSymbol)?rawSymbol:rawSymbol+"USDT";
-  const candleCacheKey=await marketFallbackKey(url.toString());
+  const candleCacheKey=await marketFallbackKey("candles|"+marketType+"|"+symbol+"|"+interval);
   const staleCandles=await readMarketFallback(env,candleCacheKey);
   try{
    const result=await candles(symbol,interval,env,marketType);
@@ -1512,7 +1514,12 @@ async function handle(request,env){
    candidates=["https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids="+encodeURIComponent(ids)+"&order=market_cap_desc&sparkline=false&price_change_percentage=1h%2C24h%2C7d"];
   }
   if(!candidates)return json({error:"Unsupported market data source"},400,request);
-  const marketCacheKey=await marketFallbackKey(url.toString());
+  const cacheIdentity=["market-proxy",source,
+   source==="coingecko-top"?"page="+requestedTopPage:"",
+   source==="coinlore-top"?"offset="+requestedOffset:"",
+   source==="coingecko-extra"?"ids="+(url.searchParams.get("ids")||""):""
+  ].filter(Boolean).join("|");
+  const marketCacheKey=await marketFallbackKey(cacheIdentity);
   const staleMarketResponse=await readMarketFallback(env,marketCacheKey);
   let lastError=null;
   for(const endpoint of candidates){
