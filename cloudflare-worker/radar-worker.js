@@ -42,6 +42,18 @@ function normalizeRows(rows) {
   if(!Array.isArray(rows)) return [];
   return normalizeMarketCandles(rows);
 }
+async function readRadarRecord(env,id,kvKey){
+  if(env.ADMIN_DB){
+    const row=await env.ADMIN_DB.prepare("SELECT payload,updated_at FROM hunter_engine_state WHERE id = ?").bind(id).first();
+    if(row?.payload){try{return JSON.parse(row.payload);}catch{}}
+  }
+  return env.RADAR_KV?await env.RADAR_KV.get(kvKey,{type:"json"}):null;
+}
+async function writeRadarRecord(env,id,payload){
+  if(!env.ADMIN_DB)throw new Error("ADMIN_DB binding is required for Radar persistence; KV writes are disabled to respect the free write quota");
+  const updatedAt=payload.updated_at||payload.scanned_at||new Date().toISOString();
+  await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(id,JSON.stringify(payload),updatedAt).run();
+}
 async function loadProvider(symbol,exchange) {
   const pair=symbol+"USDT";
   if(exchange==="Binance"){
@@ -176,8 +188,8 @@ async function mapLimit(items,limit,fn){
   await Promise.all(workers);
 }
 async function runRadar(env,scheduledTime=Date.now()){
-  if(!env.RADAR_KV)throw new Error("RADAR_KV binding is missing");
-  const [state,oldSnapshot]=await Promise.all([env.RADAR_KV.get("radar:state",{type:"json"}),env.RADAR_KV.get("radar:snapshot",{type:"json"})]);
+  if(!env.ADMIN_DB&&!env.RADAR_KV)throw new Error("ADMIN_DB or RADAR_KV binding is required");
+  const [state,oldSnapshot]=await Promise.all([readRadarRecord(env,"radar:state","radar:state"),readRadarRecord(env,"radar:snapshot","radar:snapshot")]);
   const cacheTimestamp=Date.parse(state?.universe_cache_updated_at||state?.updated_at||"")||Number(state?.universe_cache_updated_at||state?.updated_at||0)||0;
   const cacheAge=Math.max(0,Date.now()-cacheTimestamp);
   const cachedUniverse=Array.isArray(state?.universe_cache)&&state.universe_cache.length&&cacheAge<=6*60*60*1000?state.universe_cache:null;
@@ -188,7 +200,7 @@ async function runRadar(env,scheduledTime=Date.now()){
     if(!Array.isArray(source)||!source.length)throw new Error("Exchange universe returned no assets");
   }catch(error){
     if(!cachedUniverse)throw new Error("Live universe unavailable and no fresh cache exists: "+String(error?.message||error).slice(0,160));
-    source=cachedUniverse;universeSource="cached";
+    source=cachedUniverse.map(coin=>{const currentPrice=Number(coin.current_price||coin.price||coin.marketPairs?.find(pair=>String(pair.quote||"").toUpperCase()==="USDT")?.price||0);return {...coin,current_price:currentPrice,price:currentPrice};});universeSource="cached";
   }
   const buildUniverse=items=>{
     const eligible=normalizeQuantumUniverse(items,"spot").filter(coin=>{
@@ -340,16 +352,16 @@ async function runRadar(env,scheduledTime=Date.now()){
   };
   let learningSummary={market:"spot",totalSignals:0,matured5m:0,calibrationStatus:"collecting",calibrationAdjustment:0,processed:0};
   try{
-    const previousLearning=await env.RADAR_KV.get("radar:learning-ledger",{type:"json"})||{};
+    const previousLearning=await readRadarRecord(env,"radar:learning-ledger","radar:learning-ledger")||{};
     const learning=updateLearningLedger(previousLearning,{observations:scannedSignals,signals:scannedSignals.filter(x=>x.quantum?.qualityGate===true&&x.flowConfirmed===true&&x.multiExchangeConfirmed===true&&x.depth?.confirmed===true),market:"spot",engine:"radar",now:Date.now()});
     learningSummary=learning.summary;
-    if(learning.changed)await env.RADAR_KV.put("radar:learning-ledger",JSON.stringify(learning));
+    if(learning.changed)await writeRadarRecord(env,"radar:learning-ledger",learning);
   }catch(error){learningSummary={...learningSummary,status:"unavailable",error:String(error?.message||error).slice(0,140)};}
   snapshot.learning=learningSummary;
   snapshot.engine_activity={...(snapshot.engine_activity||{}),learning:{processed:Number(learningSummary.totalSignals)||0,total:Number(learningSummary.totalSignals)||0,evidence:Number(learningSummary.matured5m)||0,calibrationStatus:learningSummary.calibrationStatus||"collecting"}};
   snapshot.signals=snapshot.signals.map(signal=>applyLearningCalibration(signal,learningSummary));
   // Persist the public snapshot first; advance the cursor only after it is safely stored.
-  await env.RADAR_KV.put("radar:snapshot",JSON.stringify(snapshot));
+  await writeRadarRecord(env,"radar:snapshot",snapshot);
   const cacheSource=universeSource==="cached"&&Array.isArray(state?.universe_cache)?state.universe_cache:universe;
   const universeCache=cacheSource.map(coin=>{
     const currentPrice=Number(coin.current_price||coin.price||coin.marketPairs?.find(pair=>String(pair.quote||"").toUpperCase()==="USDT")?.price||0);
@@ -359,11 +371,11 @@ async function runRadar(env,scheduledTime=Date.now()){
     hunterChange24h:Number(coin.hunterChange24h)||0,hunterVenueVolume:coin.hunterVenueVolume||{},
     marketPairs:Array.isArray(coin.marketPairs)?coin.marketPairs:[]};
   });
-  await env.RADAR_KV.put("radar:state",JSON.stringify({
+  await writeRadarRecord(env,"radar:state",{
     cursor:nextCursor,scan_priority_version:scanPriorityVersion,cycle_scanned_count:cycleScannedCount,cycle_number:cycleNumber,updated_at:snapshot.scanned_at,universe_count:universe.length,removed_signals:removedSignals,
     universe_cache:universeCache,
-    universe_cache_updated_at:universeSource==="live"?snapshot.scanned_at:Number(state?.universe_cache_updated_at||state?.updated_at||snapshot.scanned_at)
-  }));
+    universe_cache_updated_at:universeSource==="live"?snapshot.scanned_at:(state?.universe_cache_updated_at||state?.updated_at||snapshot.scanned_at)
+  });
   return snapshot;
 }
 function json(data,status=200){return new Response(JSON.stringify(data),{status,headers:{"Content-Type":"application/json; charset=utf-8","Access-Control-Allow-Origin":"*","Access-Control-Allow-Methods":"GET, OPTIONS","Access-Control-Allow-Headers":"Content-Type","Cache-Control":"no-store","X-Content-Type-Options":"nosniff"}});}
@@ -372,15 +384,15 @@ export default {
     const url=new URL(request.url);
     if(request.method==="OPTIONS")return json({},204);
     if(request.method!=="GET")return json({error:"Method not allowed"},405);
-    if(url.pathname==="/health")return json({worker:"online",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,scheduled_scan:"every minute",kv:!!env.RADAR_KV,checked_at:new Date().toISOString()});
+    if(url.pathname==="/health")return json({worker:"online",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,scheduled_scan:"every minute",kv_read_fallback:!!env.RADAR_KV,d1_persistence:!!env.ADMIN_DB,checked_at:new Date().toISOString()});
     if(url.pathname==="/fast-radar-snapshot"||url.pathname==="/snapshot"){
-      if(!env.RADAR_KV)return json({status:"not_configured",signals:[]},503);
-      const snapshot=await env.RADAR_KV.get("radar:snapshot",{type:"json"});
+      if(!env.ADMIN_DB&&!env.RADAR_KV)return json({status:"not_configured",signals:[]},503);
+      const snapshot=await readRadarRecord(env,"radar:snapshot","radar:snapshot");
       return json(snapshot||{status:"warming_up",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,signals:[],message:"اولین اسکن زمان‌بندی‌شده هنوز کامل نشده است."});
     }
     if(url.pathname==="/last-error"){
-      if(!env.RADAR_KV)return json({status:"not_configured"},503);
-      return json(await env.RADAR_KV.get("radar:last-error",{type:"json"})||{status:"none"});
+      if(!env.ADMIN_DB&&!env.RADAR_KV)return json({status:"not_configured"},503);
+      return json(await readRadarRecord(env,"radar:last-error","radar:last-error")||{status:"none"});
     }
     return json({error:"Not found"},404);
   },
@@ -389,9 +401,9 @@ export default {
     catch(error){
       const message=String(error?.message||error).slice(0,500),now=Date.now();
       try{
-        const prior=await env.RADAR_KV.get("radar:last-error",{type:"json"});
+        const prior=await readRadarRecord(env,"radar:last-error","radar:last-error");
         const priorAt=Date.parse(prior?.at||"")||Number(prior?.at)||0;
-        if(!prior||prior.message!==message||now-priorAt>10*60*1000)await env.RADAR_KV.put("radar:last-error",JSON.stringify({status:"error",at:new Date(now).toISOString(),message,stack:String(error?.stack||"").slice(0,1200)}),{expirationTtl:21600});
+        if(!prior||prior.message!==message||now-priorAt>10*60*1000)await writeRadarRecord(env,"radar:last-error",{status:"error",at:new Date(now).toISOString(),updated_at:new Date(now).toISOString(),message,stack:String(error?.stack||"").slice(0,1200)});
       }catch(recordError){console.error("Radar error recording failed:",recordError?.message||recordError);}
       console.error("Radar scheduled cycle failed:",message);
       throw error;
