@@ -9,7 +9,7 @@ This folder contains the secure backend for the market-analysis section on GitHu
 - Adds Fear & Greed sentiment and CoinGecko global market context when those public endpoints respond.
 - Sends the structured snapshot to GPT-OSS 120B through Groq when configured, with Cloudflare Workers AI as fallback, for a Persian BUY / SELL / WAIT report.
 - Exposes `/market-flow?symbol=BTC&window=5` as a shared real-trade flow service. It aggregates actual Bybit Spot public trades first, then Binance aggregate trades as fallback; it reports trade count, provider, and whether the 1,000-record window may be truncated.
-- Quantum Hunter 3.0 runs through the separate `mmp-coin-ai-hunter-cron` Worker every minute. That scheduler calls the analyzer's shared scan functions for bounded rotating Spot/Futures batches (16 Spot / 12 Futures per cycle), refreshes the full validated liquid universe without a fixed asset-count ceiling, and stores compact state in `ADMIN_DB`. Keep its Cron trigger at `* * * * *`; do not add a second Cron trigger to this analyzer Worker.
+- Spot Hunter cycles run from the analyzer Worker on its `* * * * *` trigger, using bounded rotating batches and the full validated universe without a fixed asset-count ceiling. The separate `mmp-coin-ai-hunter-cron` Worker only refreshes the Spot/Futures universe cache; keep it at `5 * * * *` (hourly), not every minute. The `mmp-coin-ai-futures` Worker runs its independent Futures scan every minute. Radar remains a separate every-minute Worker.
 - `/hunter-snapshot` serves the persistent Hunter results; `/hunter-run` triggers a bounded manual cycle; `/hunter-scan?symbols=BTC,ETH` is the direct diagnostic scan endpoint. The browser only renders server snapshots and does not run its own scanner or ticker WebSockets.
 - The scheduled Quantum Radar 3.0 Worker remains independent, consumes the shared executed-flow service, and requires order-book depth confirmation for its final quality gate.
 - `market-data-core.js` provides shared OHLCV normalization, duplicate removal, freshness checks and closed-candle cross-exchange alignment for Hunter and Radar.
@@ -21,7 +21,7 @@ This folder contains the secure backend for the market-analysis section on GitHu
 2. Create a Worker named `mmp-coin-ai-analyzer`.
 3. Open the Worker editor and paste the contents of `worker.js` from this folder, then deploy.
 4. In the Worker settings, verify the `AI` Workers AI binding, `AI_ANALYSIS_LIMITER` (15 requests per 60 seconds), and `PUBLIC_API_LIMITER` (300 requests per 60 seconds). Keep `ADMIN_DB` connected to `mmp_coin_ai_private_admin` and `MARKET_CACHE_DB` connected to `mmp_market_data_fallback`. The matching bindings are declared in `wrangler.toml`.
-5. Keep the independent `mmp-coin-ai-hunter-cron` Worker deployed with the same `ADMIN_DB` binding and its `* * * * *` Cron trigger. Keep `mmp-coin-ai-radar` separately deployed with `RADAR_KV` and its own `* * * * *` trigger.
+5. Keep `mmp-coin-ai-analyzer` on `* * * * *` for Spot Hunter cycles; keep `mmp-coin-ai-hunter-cron` on `5 * * * *` for hourly universe refresh; keep `mmp-coin-ai-futures` on `* * * * *` for independent Futures cycles; and keep `mmp-coin-ai-radar` on its own `* * * * *` trigger with `ADMIN_DB` and `RADAR_KV`.
 6. Copy the analyzer Worker URL. The endpoint is the same URL with `/analyze` appended only if you later add a route; for this code the root URL itself handles POST requests.
 7. In `www/index.html`, keep `AI_ANALYSIS_ENDPOINT` pointed to the deployed analyzer Worker root URL (including https://), commit, and wait for GitHub Pages deployment.
 
@@ -29,7 +29,7 @@ The `wrangler.toml` file is included for Wrangler-based deployment from this fol
 
 ## Important
 - Cloudflare Workers AI has a daily free Neurons allowance, not unlimited free usage. Check the current Cloudflare pricing and model availability for the account.
-- Public market endpoints can rate-limit or change. The analyzer returns an error instead of inventing a signal if market data is missing. The specialist ensemble combines deterministic numeric experts; optional additional hosted model providers are used only when explicitly configured.
+- Market fallback cache writes to D1 are throttled to once per hour per key; last-known-good cache entries are retained for up to 24 hours and are marked stale when used after an upstream failure. Public market endpoints can rate-limit or change. The analyzer returns an error instead of inventing a signal if market data is missing. The specialist ensemble combines deterministic numeric experts; optional additional hosted model providers are used only when explicitly configured.
 - This is decision support, not financial advice or guaranteed profit. Futures and leverage can cause rapid losses.
 
 ## Security hardening
