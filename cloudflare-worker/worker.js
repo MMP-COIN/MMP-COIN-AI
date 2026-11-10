@@ -729,21 +729,21 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
  let order=[];
  if(marketType==="futures"){
   const indexOf=name=>{const value=String(name||"").trim().toLowerCase();return value.startsWith("binance")?0:value.startsWith("bybit")?1:value.startsWith("okx")?2:value.startsWith("bitget")?3:value.startsWith("gate")?4:value.startsWith("mexc")?5:value.startsWith("kucoin")?6:null;};
-  const priority=[3,4,1,2,0],available=unique(String(asset?.hunterExchange||"").split(",").map(indexOf).filter(Number.isInteger)).sort((a,b)=>priority.indexOf(a)-priority.indexOf(b)),primary=indexOf(asset?.hunterPriceExchange),primaryTrusted=primary!==0;
+  const priority=[4,2,1,5,6,3,0],available=unique(String(asset?.hunterExchange||"").split(",").map(indexOf).filter(Number.isInteger)).sort((a,b)=>priority.indexOf(a)-priority.indexOf(b)),primary=indexOf(asset?.hunterPriceExchange),primaryTrusted=primary!==0;
   order=unique([...(primaryTrusted&&available.includes(primary)?[primary]:[]),...available]);
  }else{
   const indices={Binance:0,Bybit:1,Bitget:2,OKX:3,Gate:4,"Gate.io":4,KuCoin:5,WhiteBIT:6,"Binance.US":7,BinanceUS:7,MEXC:8};
-  const preferred=(Array.isArray(asset?.marketPairs)?asset.marketPairs.slice().sort((a,b)=>Number(b.volume||0)-Number(a.volume||0)):[]).map(x=>indices[String(x.exchange||"")]).filter(Number.isInteger),priority=[5,6,4,8,3,2,7,1,0],available=unique(preferred).sort((a,b)=>priority.indexOf(a)-priority.indexOf(b)),primary=preferred[0],primaryTrusted=[4,5,6,8,7].includes(primary);
+  const preferred=(Array.isArray(asset?.marketPairs)?asset.marketPairs.slice().sort((a,b)=>Number(b.volume||0)-Number(a.volume||0)):[]).map(x=>indices[String(x.exchange||"")]).filter(Number.isInteger),priority=[4,3,1,0,2,8,5,6,7],available=unique(preferred).sort((a,b)=>priority.indexOf(a)-priority.indexOf(b)),primary=preferred[0],primaryTrusted=[4,5,6,8,7].includes(primary);
   order=unique([...(primaryTrusted&&available.includes(primary)?[primary]:[]),...available]);
  }
- const fallbackPriority=marketType==="futures"?[4,6,5,3,2,1,0]:[5,6,4,8,3,2,7,1,0];
+ const fallbackPriority=marketType==="futures"?[4,2,1,5,6,3,0]:[4,3,1,0,2,8,5,6,7];
  const preferredOrder=unique(order);
  const fallbackOrder=unique([...fallbackPriority.filter(index=>!preferredOrder.includes(index)),...sources.map((_,index)=>index).filter(index=>!preferredOrder.includes(index)&&!fallbackPriority.includes(index))]);
  const symbolHash=String(symbol).split("").reduce((sum,char)=>sum+char.charCodeAt(0),0);
  const rotation=fallbackOrder.length?(symbolHash+Math.floor(Date.now()/60000))%fallbackOrder.length:0;
- const rotatedFallback=[...fallbackOrder.slice(rotation),...fallbackOrder.slice(0,rotation)];
+ const stableFallback=fallbackOrder.slice(0,2),rotatingFallback=fallbackOrder.slice(2),rotatedFallback=[...stableFallback,...rotatingFallback.slice(rotation),...rotatingFallback.slice(0,rotation)];
  const orderedIndices=unique([...preferredOrder.slice(0,2),...fallbackOrder]);
- const sourceLimit=Math.min(3,sources.length),orderedSources=orderedIndices.map(index=>sources[index]).filter(Boolean).slice(0,sourceLimit),verified=[];
+ const sourceLimit=Math.min(4,sources.length),orderedSources=orderedIndices.map(index=>sources[index]).filter(Boolean).slice(0,sourceLimit),verified=[];
  let selectedPair=null,bestObservedPair=null;
  const evaluatePairs=()=>{
   const pairs=[];
