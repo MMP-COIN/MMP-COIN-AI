@@ -1115,6 +1115,8 @@ export async function runDigitalHunterMarketCycle(env,marketType="spot"){
  // Do not put cooling-down symbols back into the batch: the old fallback below
  // accidentally re-added them and caused repeated failures every cycle.
  const batch=[],selectedSymbols=new Set();let examined=0;
+  const priorityRechecks=(previous.snapshot?.preliminary_signals||[]).filter(x=>x.flowStatus==="depth_confirmed_pending_quality"&&x.flow?.complete===true&&x.depth?.confirmed===true&&Number(x.score)>=60&&now-Number(x.updatedAt||0)<=3*60*1000).sort((a,b)=>b.score-a.score).slice(0,2);
+  for(const candidate of priorityRechecks){const symbol=String(candidate.symbol||"").toUpperCase(),asset=assets.find(x=>x.symbol===symbol);if(asset&&symbol&&!selectedSymbols.has(symbol)&&Number(failureCooldown[symbol]||0)<=now){batch.push(asset);selectedSymbols.add(symbol);}}
  for(let offset=0;offset<assets.length&&batch.length<batchLimit;offset++){
   examined=offset+1;
   const asset=assets[(cursor+offset)%assets.length],symbol=String(asset.symbol||"").toUpperCase();
