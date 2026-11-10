@@ -3,6 +3,8 @@ name: MMP COIN AI Worker Health Check
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
   pull_request:
     paths:
       - "cloudflare-worker/**"
