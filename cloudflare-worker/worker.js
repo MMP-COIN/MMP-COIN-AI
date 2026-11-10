@@ -709,7 +709,7 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
   async()=>tryHosts("Bitget USDT Futures",["https://api.bitget.com"],host=>host+"/api/v2/mix/market/candles?symbol="+pair+"&productType=USDT-FUTURES&granularity=1m&limit=100",d=>["00000","0"].includes(String(d.code))?d.data:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],(+x[6]||+x[5])]),
   async()=>tryHosts("Gate USDT Futures",["https://api.gateio.ws","https://api.gate.us"],host=>host+"/api/v4/futures/usdt/candlesticks?contract="+symbol+"_USDT&interval=1m&limit=100",d=>Array.isArray(d)?d:null,x=>[+x.t*1000,+x.o,+x.h,+x.l,+x.c,(+x.sum||+x.v)]),
   async()=>tryHosts("MEXC USDT Futures",["https://contract.mexc.com"],host=>host+"/api/v1/contract/kline/"+symbol+"_USDT?interval=Min1",d=>d?.success===true&&Array.isArray(d.data?.time)?d.data.time.map((time,i)=>[Number(time)*1000,Number(d.data.open?.[i]),Number(d.data.high?.[i]),Number(d.data.low?.[i]),Number(d.data.close?.[i]),Number(d.data.amount?.[i]??d.data.vol?.[i])]):null,x=>x),
-  async()=>tryHosts("KuCoin USDT Futures",["https://api-futures.kucoin.com"],host=>{const now=Date.now();const kucoinSymbol=(symbol==="BTC"?"XBT":symbol)+"USDTM";return host+"/api/v1/kline/query?symbol="+encodeURIComponent(kucoinSymbol)+"&granularity=1&from="+(now-100*60*1000)+"&to="+now;},d=>String(d.code)==="200000"?d.data:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],(+x[6]||+x[5])])
+  async()=>tryHosts("KuCoin USDT Futures",["https://api-futures.kucoin.com"],host=>{const now=Math.floor(Date.now()/1000);const kucoinSymbol=(symbol==="BTC"?"XBT":symbol)+"USDTM";return host+"/api/v1/kline/query?symbol="+encodeURIComponent(kucoinSymbol)+"&granularity=1&from="+(now-100*60)+"&to="+now;},d=>String(d.code)==="200000"?d.data:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],(+x[6]||+x[5])])
  ];
  const spotSources=[
   async()=>tryHosts("Binance Spot",["https://api.binance.com"],host=>host+"/api/v3/klines?symbol="+pair+"&interval=1m&limit=100",d=>Array.isArray(d)?d:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],+x[7]]),
@@ -741,7 +741,7 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
  const rotation=fallbackOrder.length?(symbolHash+Math.floor(Date.now()/60000))%fallbackOrder.length:0;
  const rotatedFallback=[...fallbackOrder.slice(rotation),...fallbackOrder.slice(0,rotation)];
  const orderedIndices=marketType==="futures"?unique([...preferredOrder.slice(0,1),...fallbackOrder]):unique([...preferredOrder.slice(0,1),...rotatedFallback]);
- const sourceLimit=Math.min(marketType==="futures"?5:3,sources.length),orderedSources=orderedIndices.map(index=>sources[index]).filter(Boolean).slice(0,sourceLimit),verified=[];
+ const sourceLimit=Math.min(3,sources.length),orderedSources=orderedIndices.map(index=>sources[index]).filter(Boolean).slice(0,sourceLimit),verified=[];
  let selectedPair=null,bestObservedPair=null;
  const evaluatePairs=()=>{
   const pairs=[];
