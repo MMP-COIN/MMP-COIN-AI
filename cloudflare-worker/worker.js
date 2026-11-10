@@ -422,21 +422,24 @@ async function readMarketFallback(env,key){
   const row=await env.MARKET_CACHE_DB.prepare("SELECT payload,cached_at FROM market_data_cache WHERE cache_key = ?").bind(key).first();
   if(!row?.payload||!Number.isFinite(Number(row.cached_at)))return null;
   const ageMs=Math.max(0,Date.now()-Number(row.cached_at));
-  if(ageMs>900000){await env.MARKET_CACHE_DB.prepare("DELETE FROM market_data_cache WHERE cache_key = ?").bind(key).run();return null;}
+  if(ageMs>900000)return null;
   const payload=JSON.parse(row.payload);
   return payload&&typeof payload==="object"?{payload,ageMs}:null;
  }catch{return null;}
 }
-async function writeMarketFallback(env,key,payload,previous=null){
- if(!env.MARKET_CACHE_DB||previous?.ageMs<15000)return;
+async function writeMarketFallback(env,key,payload,previous=null,minIntervalMs=60000){
+ if(!env.MARKET_CACHE_DB||previous?.ageMs<minIntervalMs)return;
  try{
   await env.MARKET_CACHE_DB.prepare("INSERT INTO market_data_cache (cache_key,payload,cached_at) VALUES (?, ?, ?) ON CONFLICT(cache_key) DO UPDATE SET payload=excluded.payload,cached_at=excluded.cached_at").bind(key,JSON.stringify(payload),Date.now()).run();
  }catch(error){console.warn("Market fallback cache write failed:",String(error?.message||error).slice(0,180));}
 }
 async function cleanupMarketFallbackCache(env){
- if(!env.MARKET_CACHE_DB||new Date().getUTCMinutes()!==0)return;
+ const now=new Date();
+ if(!env.MARKET_CACHE_DB||now.getUTCHours()!==0||now.getUTCMinutes()!==15)return;
  try{
-  await env.MARKET_CACHE_DB.prepare("DELETE FROM market_data_cache WHERE cached_at < ? OR cache_key NOT IN (SELECT cache_key FROM market_data_cache ORDER BY cached_at DESC LIMIT 2000)").bind(Date.now()-86400000).run();
+  const cutoff=Date.now()-7*86400000;
+  await env.MARKET_CACHE_DB.prepare("DELETE FROM market_data_cache WHERE cache_key IN (SELECT cache_key FROM market_data_cache WHERE cached_at < ? ORDER BY cached_at ASC LIMIT 1000)").bind(cutoff).run();
+  await env.MARKET_CACHE_DB.prepare("DELETE FROM market_data_cache WHERE cache_key IN (SELECT cache_key FROM market_data_cache ORDER BY cached_at ASC LIMIT 1000) AND (SELECT COUNT(*) FROM market_data_cache)>10000").run();
  }catch(error){console.warn("Market fallback cache cleanup failed:",String(error?.message||error).slice(0,160));}
 }
 async function readPublicJson(url){
@@ -1492,7 +1495,7 @@ async function handle(request,env){
   try{
    const result=await candles(symbol,interval,env,marketType);
    const payload={symbol,interval,market:marketType,provider:result.data_provider,price:result.price,change_pct:result.change_pct,candles:result.candles.map(c=>({time:Math.floor(c.t/1000),open:c.o,high:c.h,low:c.l,close:c.c,volume:c.v})),data_checked_at:new Date().toISOString(),data_stale:false};
-   await writeMarketFallback(env,candleCacheKey,payload,staleCandles);
+   await writeMarketFallback(env,candleCacheKey,payload,staleCandles,30000);
    return json(payload,200,request,{"X-MMP-Cache":"fresh"});
   }catch(error){
    if(staleCandles?.payload?.candles?.length)return json({...staleCandles.payload,data_stale:true,data_age_ms:staleCandles.ageMs,stale_reason:String(error?.message||"upstream unavailable").slice(0,160)},200,request,{"X-MMP-Cache":"stale","X-MMP-Data-Age":String(staleCandles.ageMs)});
@@ -1548,7 +1551,7 @@ async function handle(request,env){
       data={status:"ok",stats:{"usdt-rls":{latest:String(rate)}},_mmp_source:"Nobitex USDTIRT orderbook"};
      }
     }
-    await writeMarketFallback(env,marketCacheKey,data,staleMarketResponse);
+    await writeMarketFallback(env,marketCacheKey,data,staleMarketResponse,source==="nobitex-tether"||source==="binance-tickers"?30000:60000);
     return json(data,200,request,{"X-MMP-Data-Source":source,"X-MMP-Cache":"fresh"});
    }catch(error){lastError=String(error?.message||"network error");}
    finally{clearTimeout(timer);}
