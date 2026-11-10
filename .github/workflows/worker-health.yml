@@ -64,6 +64,7 @@ jobs:
           if (!workerSource.includes("const HUNTER_BATCH_SIZE = 12;") || !workerSource.includes("const FUTURES_HUNTER_BATCH_SIZE = 12;") || !workerSource.includes('const concurrency=4;') || !workerSource.includes("Promise.allSettled(orderedSources.slice(offset,offset+2).map(fn=>fn()))")) throw new Error("Hunter scan budget/parallelism regression");
           if (!workerSource.includes("filter(x=>x.venues.size>=2)") || !workerSource.includes("x=>[+x[0]*1000,+x[5],+x[3],+x[4],+x[2],+x[1]]")) throw new Error("Futures venue qualification or Gate Spot OHLCV mapping regression");
           if (!workerSource.includes("QUALITY_REJECTED:") || !workerSource.includes("rejected_count:result.rejected||0") || !workerSource.includes("secondaryByTime=new Map(secondaryClosed.map(candle=>[candle[0],candle]));")) throw new Error("Shared-candle alignment or quality-rejection accounting missing");
+          if (!workerSource.includes("async function loadHunterFundingSentiment") || !workerSource.includes("samples.length<2") || !workerSource.includes("sentimentConfirmed:sentiment.available")) throw new Error("Evidence-backed Futures sentiment engine is not connected to Quantum scoring");
           if (!workerSource.includes("failureCooldown") || !workerSource.includes("now+90*1000") || !workerSource.includes("now+60*1000") || !workerSource.includes("let examined=0;") || !workerSource.includes("cursor+Math.max(1,examined)") || workerSource.includes("const retry=assets.filter(asset=>!selectedSymbols.has")) throw new Error("Hunter cooldown retry or cursor progression regression");
           if (!workerSource.includes("candidate_count:0,scanned_count:0,failed_count:0,rejected_count:0,cooldown_count:0,universe_refreshed:true")) throw new Error("Universe refresh must clear stale scan metrics");
           const radarSource = fs.readFileSync("cloudflare-worker/radar-worker.js", "utf8");
@@ -101,6 +102,10 @@ jobs:
           if (missingEvidence.some(result => result.candidateGate || result.qualityGate)) throw new Error("Missing price, freshness, or timeframe evidence must never produce a candidate");
           if (missingEvidence[0].componentAvailability.multiTimeframe || missingEvidence[0].componentAvailability.dataQuality) throw new Error("Unavailable components must be marked unavailable, not neutral");
           if (!missingEvidence[1].missingEvidence.includes("dataAge")) throw new Error("Missing freshness evidence must be reported");
+          const sentiment = mod.scoreQuantumOpportunity({...base,sentimentScore:72,sentimentConfirmed:true,sentimentSource:"OKX + Gate"});
+          if (!sentiment.componentAvailability.sentiment || sentiment.components.sentiment !== 72) throw new Error("Validated Futures funding sentiment must enter the Quantum score");
+          const unconfirmedSentiment = mod.scoreQuantumOpportunity({...base,sentimentScore:72,sentimentConfirmed:false});
+          if (unconfirmedSentiment.componentAvailability.sentiment) throw new Error("Unconfirmed sentiment must not be counted as evidence");
 
           console.log("Quantum candidate and confirmation gates: passed");
           NODE
