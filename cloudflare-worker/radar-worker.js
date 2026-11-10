@@ -1,5 +1,5 @@
 import { QUANTUM_ENGINE_NAME, QUANTUM_ENGINE_VERSION, normalizeQuantumUniverse, scoreQuantumOpportunity, calculateQuantumIndicators, calculateMarketScanPriority } from "./quantum-core.js";
-import { normalizeMarketCandles, alignMarketCandles } from "./market-data-core.js";
+import { normalizeMarketCandles, alignMarketCandles, assessMarketDataFreshness } from "./market-data-core.js";
 import { updateLearningLedger, applyLearningCalibration } from "./learning-engine.js";
 const MAIN_UNIVERSE = "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/hunter-universe";
 const MAIN_FLOW = "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-flow";
@@ -116,8 +116,8 @@ async function scanCoin(coin){
   const exchangeTimeDiffMs=aligned.timeDiffMs,exchangePriceDeviationPct=aligned.deviationPct;
   const multiExchangeConfirmed=true;
   if(index<54)return null;
-  const last=rows[index],candleAge=now-last[0],close=last[4],open=last[1],volume=last[5];
-  if(candleAge<60000||candleAge>180000||close<=0||open<=0||volume<=0)return null;
+  const last=rows[index],freshness=assessMarketDataFreshness(last[0],now,180000),candleAge=freshness.ageMs,close=last[4],open=last[1],volume=last[5];
+  if(!freshness.fresh||candleAge<60000||close<=0||open<=0||volume<=0)return null;
    const indicators=calculateQuantumIndicators(rows.slice(0,index+1));
    if(!indicators.available)return null;
   const baseline=rows.slice(index-20,index).map(x=>x[5]).filter(x=>x>0);
