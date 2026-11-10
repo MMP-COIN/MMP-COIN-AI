@@ -149,8 +149,7 @@ header{gap:9px;min-width:0}header .actions{min-width:0;justify-content:flex-end}
  <article class="architecture-step"><span>لایه ۳ · تأیید</span><b>سنجش جریان و سناریو</b><p>Smart Money Flow · Liquidity Hunter · Scenario Simulator</p><small>خروجی: شواهد سفارش، نقدینگی و سناریوهای قابل ابطال</small></article><i class="architecture-arrow">←</i>
  <article class="architecture-step"><span>لایه ۴ · تصمیم</span><b>ریسک، یادگیری و رتبه‌بندی</b><p>Risk Intelligence · Adaptive Learning · Quantum Decision Engine</p><small>خروجی: رتبه نهایی، کنترل ریسک و ارزیابی عملکرد</small></article>
 </section>
-<div class="section-title"><h2>۱۲ قابلیت تخصصی ابرموتور</h2><small>وضعیت شواهد هر قابلیت در چرخه واحد ابرموتور</small></div>
-<section class="engine-showcase" id="quantum-engines"><div class="engines" id="engines"></div></section>
+<section class="engine-showcase" id="quantum-engines"><div id="engines"></div></section>
 <div class="section-title" id="quantum-charts-section"><h2>داشبورد نموداری مرکز کوانتومی</h2><small>نمودارها فقط از نتایج واقعی ثبت‌شده ساخته می‌شوند</small></div><section class="quantum-charts" id="quantum-charts"><div class="chart-card"><div class="empty">پس از دریافت داده بازار، نمودارها به‌روزرسانی می‌شوند.</div></div></section>\n<div class="section-title" id="quantum-assets"><h2>انتخاب ارز برای تحلیل کوانتومی</h2><small>۱۰ ارز پرمعامله اول · سایر ارزها در فهرست جمع‌شونده · USDT Spot</small></div>
 <section class="panel" id="independent-search"><div class="toolbar"><input id="asset-search" autocomplete="off" placeholder="نام یا نماد ارز را جستجو کن؛ مثل BTC یا Bitcoin…"><button class="btn" id="asset-search-clear" type="button">پاک‌کردن</button><button class="btn" id="asset-search-stop" type="button" hidden>توقف پایش</button></div><div id="asset-search-status" class="muted tiny" style="margin-top:8px">در حال دریافت فهرست دارایی‌های واجد شرایط بازار…</div><div id="asset-search-results" class="asset-search-results"></div><div class="asset-more-wrap"><button class="btn" id="asset-search-more" type="button">نمایش ارزهای بیشتر</button><small id="asset-count-label" class="muted tiny"></small></div></section>
 <div class="section-title" id="quantum-opportunities"><h2>فرصت‌های شناسایی‌شده</h2><small>امتیاز ترکیبی ۰ تا ۱۰۰</small></div>
@@ -244,7 +243,7 @@ function renderEngines(statuses=null){
   const stateLabel=status==="ready"?"داده تأییدشده":status==="busy"?"در حال پردازش":status==="bad"?"خطا":status==="partial"?"نیازمند داده":"در انتظار";
   return '<div class="engine-capability" id="engine-detail-'+String(i+1).padStart(2,"0")+'"><div class="engine-capability-head"><b>'+String(i+1).padStart(2,"0")+'. '+e[0]+'</b><span class="state '+status+'">'+stateLabel+'</span></div><p>'+e[1]+'</p><div class="engine-live-meter'+(cycleLive&&status!=="bad"?" is-live":"")+'"><span style="width:'+meterWidth+'%"></span></div><div class="engine-live-meta"><small>'+(cycleLive&&status!=="bad"?"چرخه زنده · "+m.label:m.label)+'</small><strong>'+m.value.toLocaleString("fa-IR")+' / '+m.total.toLocaleString("fa-IR")+' · '+m.pct.toLocaleString("fa-IR")+'٪</strong></div></div>';
  }).join("");
- $("engines").innerHTML='<article class="engine primary-engine super-engine-card"><div class="engine-top"><b>MMP QUANTUM SUPER ENGINE</b><span class="state '+overall+'">'+label+'</span></div><p>تمام ۱۲ قابلیت در یک چرخه مشترک کار می‌کنند. داده یک‌بار دریافت و اعتبارسنجی می‌شود؛ شواهد تخصصی با هم تطبیق داده می‌شوند و فقط یک خروجی نهایی صادر می‌شود.</p><div class="super-engine-stats"><div><small>نمادهای بررسی‌شده</small><b>'+Number(state.done||validRows.length).toLocaleString("fa-IR")+'</b></div><div><small>فرصت‌های دارای داده</small><b>'+validRows.length.toLocaleString("fa-IR")+'</b></div><div><small>تصمیم‌های عبورکرده از گیت کیفیت</small><b>'+confirmed.toLocaleString("fa-IR")+'</b></div><div><small>خطاهای چرخه</small><b>'+Number(state.errors||0).toLocaleString("fa-IR")+'</b></div></div><details class="engine-drawer super-engine-capabilities" id="super-engine-capabilities"><summary><span>نمایش ۱۲ قابلیت یکپارچه ابرموتور</span><span class="drawer-meta">زیرمجموعه‌های تحلیلی · بدون تصمیم مستقل</span></summary><div class="engine-more super-engine-capability-grid">'+capabilities+'</div></details></article>';
+ $("engines").innerHTML='<details class="super-engine-shell" id="super-engine-capabilities"><summary><span class="super-engine-summary-copy"><b>۱۲ قابلیت تخصصی ابرموتور</b><small>وضعیت شواهد در چرخه واحد ابرموتور · برای جزئیات باز کنید</small></span><span class="state '+overall+'">'+label+'</span><i aria-hidden="true">⌄</i></summary><div class="super-engine-body"><p>تمام ۱۲ قابلیت در یک چرخه مشترک کار می‌کنند؛ داده یک‌بار دریافت و اعتبارسنجی می‌شود و شواهد تخصصی با هم تطبیق داده می‌شوند.</p><div class="super-engine-stats"><div><small>نمادهای بررسی‌شده</small><b>'+Number(state.done||validRows.length).toLocaleString("fa-IR")+'</b></div><div><small>فرصت‌های دارای داده</small><b>'+validRows.length.toLocaleString("fa-IR")+'</b></div><div><small>تصمیم‌های عبورکرده از گیت کیفیت</small><b>'+confirmed.toLocaleString("fa-IR")+'</b></div><div><small>خطاهای چرخه</small><b>'+Number(state.errors||0).toLocaleString("fa-IR")+'</b></div></div><div class="super-engine-capability-grid">'+capabilities+'</div></div></details>';
  const target=decodeURIComponent(location.hash.slice(1));
  if(target==="super-engine-capabilities"){const el=$("super-engine-capabilities");if(el){el.open=true;setTimeout(()=>el.scrollIntoView({behavior:"smooth",block:"center"}),100)}}else if(/^engine-detail-\d{2}$/.test(target)){const drawer=$("super-engine-capabilities"),el=$(target);if(drawer)drawer.open=true;if(el)setTimeout(()=>el.scrollIntoView({behavior:"smooth",block:"center"}),150)}
 }
@@ -537,5 +536,34 @@ renderEngines(null);renderLedger();renderQuantumCharts();loadIndependentCatalog(
 .engine-capability .engine-live-meta{display:flex;justify-content:space-between;gap:7px;margin-top:7px;color:var(--muted);font-size:9px}
 @media(max-width:720px){.super-engine-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.super-engine-capability-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:460px){.super-engine-capability-grid{grid-template-columns:1fr}.super-engine-capability-head b{font-size:10px}}
+</style>
+<style id="mmp-super-engine-horizontal-accordion">
+#quantum-engines{display:block!important;width:100%;min-width:0}
+.super-engine-shell{width:100%;border:1px solid #9b7b45aa;border-radius:13px;background:linear-gradient(110deg,#172536,#101923 62%,#1b1b18);overflow:hidden;box-shadow:0 8px 22px #0004}
+.super-engine-shell>summary{min-height:58px;padding:10px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;list-style:none}
+.super-engine-shell>summary::-webkit-details-marker{display:none}
+.super-engine-summary-copy{display:flex;flex-direction:column;gap:3px;min-width:0}
+.super-engine-summary-copy b{font-size:13px;color:var(--gold2)}
+.super-engine-summary-copy small{font-size:10px;color:var(--muted)}
+.super-engine-shell>summary>.state{margin-right:auto;white-space:nowrap;font-size:9px}
+.super-engine-shell>summary>i{font-style:normal;color:var(--gold2);font-size:18px;transition:transform .2s}
+.super-engine-shell[open]>summary{border-bottom:1px solid #8b713e66;background:#ffffff05}
+.super-engine-shell[open]>summary>i{transform:rotate(180deg)}
+.super-engine-body{padding:12px}
+.super-engine-body>p{margin:0 0 10px;color:#c5cedb;font-size:11px;line-height:1.8}
+.super-engine-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:0 0 10px}
+.super-engine-stats>div{padding:8px 10px;border:1px solid #384455;border-radius:9px;background:#0c131d}
+.super-engine-stats small{display:block;color:var(--muted);font-size:9px}
+.super-engine-stats b{display:block;margin-top:4px;color:var(--gold2);font-size:16px;font-variant-numeric:tabular-nums}
+.super-engine-capability-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.engine-capability{padding:9px;border:1px solid #303b4b;border-radius:9px;background:#111a26;min-width:0}
+.engine-capability-head{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.engine-capability-head b{font-size:10px;color:var(--gold2)}
+.engine-capability p{font-size:9px;line-height:1.7;color:#aeb9c8;min-height:30px;margin:6px 0}
+.engine-capability .engine-live-meter{height:4px;background:#293444;border-radius:9px;overflow:hidden}
+.engine-capability .engine-live-meter span{display:block;height:100%;background:linear-gradient(90deg,#8d682e,#f3d58b)}
+.engine-capability .engine-live-meta{display:flex;justify-content:space-between;gap:6px;margin-top:6px;color:var(--muted);font-size:8px}
+@media(max-width:720px){.super-engine-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.super-engine-capability-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:460px){.super-engine-shell>summary{padding:9px 10px;gap:7px}.super-engine-summary-copy b{font-size:11px}.super-engine-summary-copy small{font-size:8px}.super-engine-shell>summary>.state{font-size:8px}.super-engine-body{padding:9px}.super-engine-capability-grid{grid-template-columns:1fr}}
 </style>
 </body></html>
