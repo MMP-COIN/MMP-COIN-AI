@@ -242,7 +242,7 @@ async function candles(symbol,interval,env,marketType="spot"){
     }catch(e){errors.push("OKX: "+e.message);}
    }
   }
-  for(const host of ["https://fapi.binance.com","https://fapi1.binance.com","https://fapi2.binance.com"]){
+  for(const host of ["https://fapi.binance.com","https://fapi1.binance.com","https://fapi2.binance.com","https://fapi3.binance.com"]){
    try{
     const r=await fetchWithTimeout(host+"/fapi/v1/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250",{headers});
     if(!r.ok)throw new Error("Binance Futures HTTP "+r.status);
@@ -690,7 +690,7 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
  };
  const futuresSources=[
   async()=>tryHosts("Binance Futures",["https://fapi.binance.com","https://fapi1.binance.com","https://fapi2.binance.com"],host=>host+"/fapi/v1/klines?symbol="+pair+"&interval=1m&limit=100",d=>Array.isArray(d)?d:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],+x[7]]),
-  async()=>tryHosts("Bybit Linear",["https://api.bybit.eu","https://api.bybit.com"],host=>host+"/v5/market/kline?category=linear&symbol="+pair+"&interval=1&limit=100",d=>{if(Number(d.retCode)!==0)throw new Error(d.retMsg||"Bybit retCode "+d.retCode);return d.result?.list||null;},x=>[+x[0],+x[1],+x[2],+x[3],+x[4],(+x[6]||+x[5])]),
+  async()=>tryHosts("Bybit Linear",["https://api.bybit.eu","https://api.bytick.eu","https://api.bybit.com","https://api.bytick.com"],host=>host+"/v5/market/kline?category=linear&symbol="+pair+"&interval=1&limit=100",d=>{if(Number(d.retCode)!==0)throw new Error(d.retMsg||"Bybit retCode "+d.retCode);return d.result?.list||null;},x=>[+x[0],+x[1],+x[2],+x[3],+x[4],(+x[6]||+x[5])]),
   async()=>tryHosts("OKX USDT Swap",["https://www.okx.com","https://us.okx.com"],host=>host+"/api/v5/market/candles?instId="+symbol+"-USDT-SWAP&bar=1m&limit=100",d=>String(d.code)==="0"?d.data:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],(+x[7]||+x[6])]),
   async()=>tryHosts("Bitget USDT Futures",["https://api.bitget.com"],host=>host+"/api/v2/mix/market/candles?symbol="+pair+"&productType=USDT-FUTURES&granularity=1m&limit=100",d=>["00000","0"].includes(String(d.code))?d.data:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],(+x[6]||+x[5])]),
   async()=>tryHosts("Gate USDT Futures",["https://api.gateio.ws","https://api.gate.us"],host=>host+"/api/v4/futures/usdt/candlesticks?contract="+symbol+"_USDT&interval=1m&limit=100",d=>Array.isArray(d)?d:null,x=>[+x.t*1000,+x.o,+x.h,+x.l,+x.c,(+x.sum||+x.v)]),
@@ -699,7 +699,7 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
  ];
  const spotSources=[
   async()=>tryHosts("Binance Spot",["https://api.binance.com"],host=>host+"/api/v3/klines?symbol="+pair+"&interval=1m&limit=100",d=>Array.isArray(d)?d:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],+x[7]]),
-  async()=>tryHosts("Bybit Spot",["https://api.bybit.com"],host=>host+"/v5/market/kline?category=spot&symbol="+pair+"&interval=1&limit=100",d=>Number(d.retCode)===0?d.result?.list:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],(+x[6]||+x[5])]),
+  async()=>tryHosts("Bybit Spot",["https://api.bybit.com","https://api.bytick.com"],host=>host+"/v5/market/kline?category=spot&symbol="+pair+"&interval=1&limit=100",d=>Number(d.retCode)===0?d.result?.list:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],(+x[6]||+x[5])]),
   async()=>tryHosts("Bitget Spot",["https://api.bitget.com"],host=>host+"/api/v3/market/candles?category=SPOT&symbol="+pair+"&interval=1m&limit=100",d=>["00000","0"].includes(String(d.code))?d.data:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],+x[5]]),
   async()=>tryHosts("OKX Spot",["https://www.okx.com"],host=>host+"/api/v5/market/candles?instId="+symbol+"-USDT&bar=1m&limit=100",d=>String(d.code)==="0"?d.data:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],(+x[7]||+x[6])]),
   async()=>tryHosts("Gate Spot",["https://api.gateio.ws"],host=>host+"/api/v4/spot/candlesticks?currency_pair="+symbol+"_USDT&interval=1m&limit=100",d=>Array.isArray(d)?d:null,x=>[+x[0]*1000,+x[5],+x[3],+x[4],+x[2],+x[1]]),
@@ -792,7 +792,7 @@ async function loadFuturesMarketFlow(symbol,windowMinutes=5){
  let trades=null,provider="",truncated=false,lastError="";
  const normalize=(rows,mapper,oldestOf)=>{const oldest=rows.reduce((v,x)=>Math.min(v,oldestOf(x)||Infinity),Infinity);truncated=Number.isFinite(oldest)&&oldest>cutoff+5000;return rows.map(mapper).filter(x=>x.time>=cutoff&&x.time<=now&&x.price>0&&x.size>0&&["Buy","Sell"].includes(x.side));};
  const betterFlow=(candidate,candidateTruncated)=>!trades?.length||(truncated&&!candidateTruncated)||(truncated===candidateTruncated&&candidate.length>trades.length);
- for(const host of ["https://api.bybit.eu","https://api.bybit.com"]){
+ for(const host of ["https://api.bybit.eu","https://api.bytick.eu","https://api.bybit.com","https://api.bytick.com"]){
   try{
    const d=await marketFlowJson(host+"/v5/market/recent-trade?category=linear&symbol="+pair+"&limit=1000");
    if(Number(d.retCode)!==0)throw Error(d.retMsg||"Bybit Linear trades unavailable");
@@ -827,7 +827,7 @@ async function loadFuturesMarketFlow(symbol,windowMinutes=5){
   }catch(error){lastError="Bitget V2: "+String(error?.message||error).slice(0,120);}
  }
  if(!trades?.length||truncated||trades.length<20){
-  for(const host of ["https://fapi.binance.com"]){
+  for(const host of ["https://fapi.binance.com","https://fapi1.binance.com","https://fapi2.binance.com","https://fapi3.binance.com"]){
    try{
     const rows=await marketFlowJson(host+"/fapi/v1/aggTrades?symbol="+pair+"&startTime="+cutoff+"&endTime="+now+"&limit=1000");
     if(!Array.isArray(rows)||!rows.length)throw Error("Binance Futures trades invalid or empty");
