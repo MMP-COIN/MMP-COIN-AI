@@ -3,15 +3,6 @@ name: MMP COIN AI Worker Health Check
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "17 */6 * * *"
-  push:
-    branches: ["main"]
-    paths:
-      - "cloudflare-worker/**"
-      - "www/index.html"
-      - "www/quantum-lab.html"
-      - ".github/workflows/worker-health.yml"
   pull_request:
     paths:
       - "cloudflare-worker/**"
