@@ -1770,29 +1770,18 @@ async function settleHunterCycle(task,label,timeoutMs=50000,onTimeout=null){
  try{return await Promise.race([Promise.resolve().then(task).then(value=>({status:"fulfilled",value}),reason=>({status:"rejected",reason})),timedOut]);}
  finally{clearTimeout(timer);}
 }
-async function runDigitalHunterCron(event,env,ctx){
+async function runDigitalHunterCron(event,env){
  const id="digital-hunter-cron-heartbeat",started=Date.now(),stamp=new Date(started).toISOString();
- await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(id,JSON.stringify({status:"started",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,cron:event?.cron||"* * * * *",scheduledTime:event?.scheduledTime||null,markets:["spot","futures-service-binding"]}),stamp).run();
- const futuresController=new AbortController();
- const results=await Promise.all([
-  settleHunterCycle(()=>runDigitalHunterMarketCycle(env,"spot"),"spot",26000),
-  settleHunterCycle(async()=>{if(!env.FUTURES_ENGINE)throw new Error("FUTURES_ENGINE service binding missing");const response=await env.FUTURES_ENGINE.fetch(new Request("https://futures-engine/run",{method:"POST",headers:{"Accept":"application/json","X-MMP-FUTURES-TOKEN":env.FUTURES_ENGINE_TOKEN||""},signal:futuresController.signal}));if(!response.ok)throw new Error("Futures engine HTTP "+response.status);return await response.json();},"futures",28000,()=>futuresController.abort())
- ]),finished=Date.now();
- const spot=results[0].status==="fulfilled"?results[0].value:null,futures=results[1].status==="fulfilled"?results[1].value:null;
- const errors={};if(results[0].status==="rejected")errors.spot=String(results[0].reason?.message||results[0].reason).slice(0,220);if(results[1].status==="rejected")errors.futures=String(results[1].reason?.message||results[1].reason).slice(0,220);
- const bothAvailable=!!spot&&!!futures;
- const hasDataFailures=Number(spot?.failed_count||0)>0||Number(futures?.failed_count||0)>0;
- const hasQualityRejections=Number(spot?.rejected_count||0)>0||Number(futures?.rejected_count||0)>0;
- const hasIncompleteCycle=!!spot?.universe_refreshed||!!futures?.universe_refreshed||!!spot?.universe_stale||!!futures?.universe_stale||Number(spot?.scanned_count||0)===0||Number(futures?.scanned_count||0)===0;
- const status=bothAvailable?(hasDataFailures||hasQualityRejections||hasIncompleteCycle?"partial":"success"):spot||futures?"partial":"error";
- const payload={status,engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,cron:event?.cron||"* * * * *",scheduledTime:event?.scheduledTime||null,startedAt:stamp,finishedAt:new Date(finished).toISOString(),markets:{
-  spot:spot?{queue_position:spot.queue_position||0,scanned:spot.scanned_count||0,preliminary:spot.preliminary_signals?.length||0,failed:spot.failed_count||0,rejected:spot.rejected_count||0,cooldown_count:spot.cooldown_count||0,universe_refreshed:spot.universe_refreshed===true,universe:spot.universe_count||0,signals:spot.signals?.length||0,last_errors:spot.last_errors||[],last_rejections:spot.last_rejections||[]}:{status:"error",error:errors.spot||"unavailable"},
-  futures:futures?{queue_position:futures.queue_position||0,scanned:futures.scanned_count||0,preliminary:futures.preliminary_signals?.length||0,failed:futures.failed_count||0,rejected:futures.rejected_count||0,cooldown_count:futures.cooldown_count||0,universe_refreshed:futures.universe_refreshed===true,universe:futures.universe_count||0,signals:futures.signals?.length||0,last_errors:futures.last_errors||[],last_rejections:futures.last_rejections||[]}:{status:"error",error:errors.futures||"unavailable"}
- },errors};
- await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(id,JSON.stringify(payload),new Date(finished).toISOString()).run();
- if(!spot&&!futures)throw new Error("Quantum Spot and Futures cycles both failed: "+JSON.stringify(errors));
- // Universe refresh runs in its own low-frequency Worker so it cannot consume
- // the per-invocation subrequest budget needed by the live Spot/Futures scans.
+ const save=payload=>env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(id,JSON.stringify(payload),payload.updated_at||new Date().toISOString()).run();
+ await save({status:"started",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,cron:event?.cron||"* * * * *",scheduledTime:event?.scheduledTime||null,markets:["spot","futures-independent-cron"],updated_at:stamp});
+ const result=await settleHunterCycle(()=>runDigitalHunterMarketCycle(env,"spot"),"spot",48000);
+ const finished=Date.now(),spot=result.status==="fulfilled"?result.value:null;
+ const errors={};if(result.status==="rejected")errors.spot=String(result.reason?.message||result.reason).slice(0,220);
+ const hasDataFailures=Number(spot?.failed_count||0)>0,hasQualityRejections=Number(spot?.rejected_count||0)>0,hasIncompleteCycle=!!spot?.universe_refreshed||!!spot?.universe_stale||Number(spot?.scanned_count||0)===0;
+ const status=!spot?"error":hasDataFailures||hasQualityRejections||hasIncompleteCycle?"partial":"success";
+ const payload={status,engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,cron:event?.cron||"* * * * *",scheduledTime:event?.scheduledTime||null,startedAt:stamp,finishedAt:new Date(finished).toISOString(),updated_at:new Date(finished).toISOString(),markets:{spot:spot?{queue_position:spot.queue_position||0,scanned:spot.scanned_count||0,preliminary:spot.preliminary_signals?.length||0,failed:spot.failed_count||0,rejected:spot.rejected_count||0,cooldown_count:spot.cooldown_count||0,universe_refreshed:spot.universe_refreshed===true,universe:spot.universe_count||0,signals:spot.signals?.length||0,last_errors:spot.last_errors||[],last_rejections:spot.last_rejections||[]}:{status:"error",error:errors.spot||"unavailable"}},errors};
+ await save(payload);
+ if(!spot)throw new Error("Quantum Spot cycle failed: "+JSON.stringify(errors));
 }
 export default {
  fetch:handle,
