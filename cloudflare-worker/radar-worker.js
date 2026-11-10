@@ -1,15 +1,39 @@
-import { QUANTUM_ENGINE_NAME, QUANTUM_ENGINE_VERSION, normalizeQuantumUniverse, scoreQuantumOpportunity } from "./quantum-core.js";
+import { QUANTUM_ENGINE_NAME, QUANTUM_ENGINE_VERSION, normalizeQuantumUniverse, scoreQuantumOpportunity, calculateQuantumIndicators } from "./quantum-core.js";
 const MAIN_UNIVERSE = "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/hunter-universe";
 const MAIN_FLOW = "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-flow";
 const RETENTION_SCORE = 64;
-const BATCH_SIZE = 12;
+const BATCH_SIZE = 18;
 const CONCURRENCY = 4;
 const SUPPORTED = new Set(["Binance","Bybit","OKX","Bitget","Gate","KuCoin","WhiteBIT","MEXC"]);
 const JSON_HEADERS = { "Accept":"application/json", "User-Agent":"MMP-COIN-AI-RADAR/1.0" };
 async function getJson(url, timeoutMs = 6500) {
-  const controller = new AbortController(), timer = setTimeout(() => controller.abort(), timeoutMs);
-  try { const response = await fetch(url,{headers:JSON_HEADERS,signal:controller.signal}); if(!response.ok) throw new Error("HTTP "+response.status); return await response.json(); }
-  finally { clearTimeout(timer); }
+  let lastError = null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const controller = new AbortController(), timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const response = await fetch(url,{headers:JSON_HEADERS,signal:controller.signal});
+      if (!response.ok) {
+        const error = new Error("HTTP "+response.status);
+        if (attempt === 0 && (response.status === 429 || response.status >= 500)) {
+          const retryAfter = Number(response.headers.get("retry-after"));
+          const delay = Math.min(900,Math.max(250,Number.isFinite(retryAfter)&&retryAfter>0?retryAfter*1000:350));
+          await new Promise(resolve => setTimeout(resolve,delay));
+          lastError = error;
+          continue;
+        }
+        throw error;
+      }
+      return await response.json();
+    } catch (error) {
+      lastError = error;
+      if (attempt === 0 && /fetch failed|network|timeout|aborted/i.test(String(error?.message||error))) {
+        await new Promise(resolve => setTimeout(resolve,250));
+        continue;
+      }
+      throw error;
+    } finally { clearTimeout(timer); }
+  }
+  throw lastError || new Error("Market data request failed");
 }
 function normalizeRows(rows) {
   if(!Array.isArray(rows)) return [];
@@ -21,50 +45,50 @@ async function loadProvider(symbol,exchange) {
   if(exchange==="Binance"){
     let lastError;
     for(const host of ["https://api.binance.com"]){
-      try{const rows=normalizeRows(await getJson(host+"/api/v3/klines?symbol="+pair+"&interval=1m&limit=40"));if(rows.length>=25)return {rows,provider:"Binance Spot"};throw new Error("کمبود کندل");}
+      try{const rows=normalizeRows(await getJson(host+"/api/v3/klines?symbol="+pair+"&interval=1m&limit=80"));if(rows.length>=25)return {rows,provider:"Binance Spot"};throw new Error("کمبود کندل");}
       catch(error){lastError=error;}
     }
     throw lastError||new Error("Binance unavailable");
   }
   if(exchange==="Bybit"){
-    const d=await getJson("https://api.bybit.com/v5/market/kline?category=spot&symbol="+pair+"&interval=1&limit=40");
+    const d=await getJson("https://api.bybit.com/v5/market/kline?category=spot&symbol="+pair+"&interval=1&limit=80");
     if(String(d.retCode)!=="0")throw new Error(d.retMsg||"Bybit unavailable");
-    const rows=normalizeRows(d.result?.list);if(rows.length<25)throw new Error("Bybit candle history insufficient");return {rows,provider:"Bybit Spot"};
+    const rows=normalizeRows(d.result?.list);if(rows.length<55)throw new Error("Bybit candle history insufficient");return {rows,provider:"Bybit Spot"};
   }
   if(exchange==="OKX"){
-    const d=await getJson("https://www.okx.com/api/v5/market/candles?instId="+symbol+"-USDT&bar=1m&limit=40");
+    const d=await getJson("https://www.okx.com/api/v5/market/candles?instId="+symbol+"-USDT&bar=1m&limit=80");
     if(String(d.code)!=="0")throw new Error(d.msg||"OKX unavailable");
-    const rows=normalizeRows(d.data);if(rows.length<25)throw new Error("OKX candle history insufficient");return {rows,provider:"OKX Spot"};
+    const rows=normalizeRows(d.data);if(rows.length<55)throw new Error("OKX candle history insufficient");return {rows,provider:"OKX Spot"};
   }
   if(exchange==="Bitget"){
-    const d=await getJson("https://api.bitget.com/api/v3/market/candles?category=SPOT&symbol="+pair+"&interval=1m&limit=40");
+    const d=await getJson("https://api.bitget.com/api/v3/market/candles?category=SPOT&symbol="+pair+"&interval=1m&limit=80");
     if(!["00000","0"].includes(String(d.code)))throw new Error(d.msg||"Bitget unavailable");
-    const rows=normalizeRows(d.data);if(rows.length<25)throw new Error("Bitget candle history insufficient");return {rows,provider:"Bitget Spot"};
+    const rows=normalizeRows(d.data);if(rows.length<55)throw new Error("Bitget candle history insufficient");return {rows,provider:"Bitget Spot"};
   }
   if(exchange==="Gate"){
-    const d=await getJson("https://api.gateio.ws/api/v4/spot/candlesticks?currency_pair="+symbol+"_USDT&interval=1m&limit=40");
+    const d=await getJson("https://api.gateio.ws/api/v4/spot/candlesticks?currency_pair="+symbol+"_USDT&interval=1m&limit=80");
     const raw=Array.isArray(d)?d:[];
     // Gate Spot rows are [timestamp, volume, close, high, low, open].
     const rows=raw.map(x=>[Number(x[0])*1000,Number(x[5]),Number(x[3]),Number(x[4]),Number(x[2]),Number(x[1])])
       .filter(x=>x.every(Number.isFinite)&&x[1]>0&&x[2]>=x[3]&&x[3]>0&&x[4]>0&&x[5]>=0)
       .sort((a,b)=>a[0]-b[0]);
-    if(rows.length<25)throw new Error("Gate candle history insufficient");return {rows,provider:"Gate Spot"};
+    if(rows.length<55)throw new Error("Gate candle history insufficient");return {rows,provider:"Gate Spot"};
   }
   if(exchange==="MEXC"){
-    const d=await getJson("https://api.mexc.com/api/v3/klines?symbol="+pair+"&interval=1m&limit=40");
-    const rows=normalizeRows(d);if(rows.length<25)throw new Error("MEXC Spot candle history insufficient");return {rows,provider:"MEXC Spot"};
+    const d=await getJson("https://api.mexc.com/api/v3/klines?symbol="+pair+"&interval=1m&limit=80");
+    const rows=normalizeRows(d);if(rows.length<55)throw new Error("MEXC Spot candle history insufficient");return {rows,provider:"MEXC Spot"};
   }
   if(exchange==="KuCoin"){
     const d=await getJson("https://api.kucoin.com/api/v1/market/candles?type=1min&symbol="+symbol+"-USDT");
     if(String(d.code)!=="200000")throw new Error("KuCoin unavailable");
     const rows=normalizeRows(Array.isArray(d.data)?d.data.map(x=>[Number(x[0])*1000,x[1],x[3],x[4],x[2],x[6]||x[5]]):[]);
-    if(rows.length<25)throw new Error("KuCoin candle history insufficient");return {rows,provider:"KuCoin Spot"};
+    if(rows.length<55)throw new Error("KuCoin candle history insufficient");return {rows,provider:"KuCoin Spot"};
   }
   if(exchange==="WhiteBIT"){
-    const d=await getJson("https://whitebit.com/api/v1/public/kline?market="+symbol+"_USDT&interval=1m&limit=40");
+    const d=await getJson("https://whitebit.com/api/v1/public/kline?market="+symbol+"_USDT&interval=1m&limit=80");
     if(d?.success!==true)throw new Error(d?.message||"WhiteBIT unavailable");
     const rows=normalizeRows(Array.isArray(d.result)?d.result.map(x=>[Number(x[0])*1000,x[1],x[3],x[4],x[2],x[5]]):[]);
-    if(rows.length<25)throw new Error("WhiteBIT candle history insufficient");return {rows,provider:"WhiteBIT Spot"};
+    if(rows.length<55)throw new Error("WhiteBIT candle history insufficient");return {rows,provider:"WhiteBIT Spot"};
   }
   throw new Error("Unsupported venue");
 }
@@ -91,9 +115,11 @@ async function scanCoin(coin){
   const multiExchangeConfirmed=exchangeTimeDiffMs===0&&exchangePriceDeviationPct<=0.4;
   // A real price disagreement is a quality rejection, not an upstream transport failure.
   if(!multiExchangeConfirmed)return null;
-  if(index<30)return null;
+  if(index<54)return null;
   const last=rows[index],candleAge=now-last[0],close=last[4],open=last[1],volume=last[5];
   if(candleAge<60000||candleAge>180000||close<=0||open<=0||volume<=0)return null;
+   const indicators=calculateQuantumIndicators(rows.slice(0,index+1));
+   if(!indicators.available)return null;
   const baseline=rows.slice(index-20,index).map(x=>x[5]).filter(x=>x>0);
   if(baseline.length<16)return null;
   const avgVolume=baseline.reduce((a,b)=>a+b,0)/baseline.length;
@@ -122,7 +148,8 @@ async function scanCoin(coin){
   const dailyScore=dailyChange24h!==0&&Math.sign(dailyChange24h)===direction?5:0;
   const impulseScore=signs[0]===direction&&Math.abs(change1m)>=0.08?5:0;
   let score=Math.round(10+alignmentScore+momentumScore+volumeScore+breakoutScore+dailyScore+impulseScore);
-  const quantum=scoreQuantumOpportunity({trend,change1m,change3m,change5m,change15m,volumeRatio,breakout,structureAligned:coreAligned,trend15:Math.sign(change15m)===direction,overextended:Math.abs(change5m)>=1.5||Math.abs(change1m)>=0.8||Math.abs(dailyChange24h)>=18,dataAgeMs:now-last[0],flowConfirmed:false,multiExchangeConfirmed,totalVolume24h:coin.total_volume});
+  const technicalAligned=trend==="bull"?(indicators.trendUp&&indicators.rsi14>=50&&indicators.rsi14<=78):(indicators.trendDown&&indicators.rsi14>=22&&indicators.rsi14<=50);
+   const quantum=scoreQuantumOpportunity({trend,change1m,change3m,change5m,change15m,volumeRatio,breakout,structureAligned:coreAligned&&technicalAligned,trend15:Math.sign(change15m)===direction,rsi14:indicators.rsi14,ema9:indicators.ema9,ema21:indicators.ema21,ema50:indicators.ema50,macdHistogram:indicators.macdHistogram,atrPct:indicators.atrPct,overextended:Math.abs(change5m)>=1.5||Math.abs(change1m)>=0.8||Math.abs(dailyChange24h)>=18,dataAgeMs:now-last[0],flowConfirmed:false,multiExchangeConfirmed,totalVolume24h:coin.total_volume});
   score=Math.round(score*0.55+quantum.score*0.45);
   if(!coreAligned)score=Math.min(score,63);
   if(volumeRatio<0.75)score=Math.min(score,60);
@@ -131,7 +158,7 @@ async function scanCoin(coin){
   score=Math.max(0,Math.min(99,score));
   const overextended=Math.abs(change5m)>=1.5||Math.abs(change1m)>=0.8||Math.abs(dailyChange24h)>=18;
   return {
-    id:String(coin.id),symbol,trend,score,quantum,scoringVersion:4,coreAligned,multiExchangeConfirmed,multiExchangeEvidence:{primary:market.provider,secondary:corroboration.provider,timeDiffMs:exchangeTimeDiffMs,priceDeviationPct:Number(exchangePriceDeviationPct.toFixed(4)),primaryPrice:primary[4],secondaryPrice:other[4],candleTime:primary[0]},
+    id:String(coin.id),symbol,trend,score,quantum,scoringVersion:5,coreAligned,technicalAligned,indicators:{rsi14:indicators.rsi14,ema9:indicators.ema9,ema21:indicators.ema21,ema50:indicators.ema50,macdHistogram:indicators.macdHistogram,atrPct:indicators.atrPct},multiExchangeConfirmed,multiExchangeEvidence:{primary:market.provider,secondary:corroboration.provider,timeDiffMs:exchangeTimeDiffMs,priceDeviationPct:Number(exchangePriceDeviationPct.toFixed(4)),primaryPrice:primary[4],secondaryPrice:other[4],candleTime:primary[0]},
     change1m,change3m,change5m,change15m,change30m,dailyChange24h,
     dailyMover:Math.abs(dailyChange24h)>=8,lowLiquidity,volumeRatio,
     breakout,breakoutDirection:breakout?(trend==="bull"?"up":"down"):"",overextended,
@@ -187,7 +214,7 @@ async function runRadar(env,scheduledTime=Date.now()){
   const byId=new Map(universe.map(coin=>[String(coin.id),coin]));
   const bySymbol=new Map(universe.map(coin=>[String(coin.symbol).toUpperCase(),coin]));
   const prioritySignals=[...signals.values()]
-    .filter(x=>Number(x?.scoringVersion)===4&&Number(x?.score)>=RETENTION_SCORE)
+    .filter(x=>Number(x?.scoringVersion)===5&&Number(x?.score)>=RETENTION_SCORE)
     .sort((a,b)=>Number(b.score)-Number(a.score)||Number(a.updatedAt||0)-Number(b.updatedAt||0));
   const priorityCoins=[],prioritySymbols=new Set();
   for(const signal of prioritySignals){
@@ -218,7 +245,10 @@ async function runRadar(env,scheduledTime=Date.now()){
     finally{completed++;}
   });
   // Validate the strongest fresh candidates with real executed trades, not candle volume alone.
-  const flowCandidates=[...scannedSignals.filter(x=>x.trend==="bull"&&x.coreAligned&&!x.lowLiquidity&&x.multiExchangeConfirmed&&Number(x.score)>=48).sort((a,b)=>b.score-a.score).slice(0,1),...scannedSignals.filter(x=>x.trend==="bear"&&x.coreAligned&&!x.lowLiquidity&&x.multiExchangeConfirmed&&Number(x.score)>=48).sort((a,b)=>b.score-a.score).slice(0,1)];
+  // Check early, multi-exchange candidates for executed flow before full 15m alignment.
+  // These remain watch-only until the unchanged final quality gate passes.
+  const flowEligible=x=>x.multiExchangeConfirmed&&!x.overextended&&Number(x.coin?.total_volume||0)>=75000&&Number(x.volumeRatio)>=0.9&&Number(x.score)>=42;
+  const flowCandidates=[...scannedSignals.filter(x=>x.trend==="bull"&&flowEligible(x)).sort((a,b)=>b.score-a.score).slice(0,2),...scannedSignals.filter(x=>x.trend==="bear"&&flowEligible(x)).sort((a,b)=>b.score-a.score).slice(0,2)];
   const flowCheckedSymbols=new Set(flowCandidates.map(signal=>String(signal.symbol).toUpperCase()));
   for(const signal of scannedSignals)signal.flowStatus=flowCheckedSymbols.has(String(signal.symbol).toUpperCase())?"checking_flow":"queued_for_flow_review";
   await mapLimit(flowCandidates,2,async signal=>{
@@ -246,7 +276,7 @@ async function runRadar(env,scheduledTime=Date.now()){
     signal.flowConfirmed=flow.complete===true&&Number(flow.tradeCount)>=10&&(signal.trend==="bull"?imbalance>=0.045:imbalance<=-0.045);
     if(signal.flowConfirmed)signal.flowStatus="flow_confirmed";else if(signal.flowStatus==="flow_received")signal.flowStatus="flow_not_aligned";
     const qBars=Array.isArray(signal.rows)?signal.rows.slice(-70):[],qRanges=qBars.slice(1).map((bar,i)=>Math.max(Number(bar[2])-Number(bar[3]),Math.abs(Number(bar[2])-Number(qBars[i][4])),Math.abs(Number(bar[3])-Number(qBars[i][4])))).filter(v=>Number.isFinite(v)&&v>0),qAtr=qRanges.length?qRanges.slice(-14).reduce((a,b)=>a+b,0)/Math.min(14,qRanges.length):0,qEntry=Number(signal.price),qAtrPct=qEntry>0?qAtr/qEntry*100:null,qStopPct=qEntry>0?Math.max(qAtr*1.25,qEntry*.002)/qEntry*100:null,qSmartMoneyScore=Math.max(0,Math.min(100,50+Math.sign(imbalance)*(signal.trend==="bull"?1:-1)*Math.min(25,Math.abs(imbalance)*100)+Math.min(15,Math.log2(Math.max(1,Number(flow.tradeCount)||1))*3))),qExplosionScore=Math.max(0,Math.min(100,Math.max(0,Number(signal.volumeRatio)-1)*28+Math.abs(imbalance)*45+Math.min(25,Math.log2(Math.max(1,Number(flow.tradeCount)||1))*5)));
-    signal.quantum=scoreQuantumOpportunity({...signal,flowImbalance:imbalance,flowConfirmed:signal.flowConfirmed,multiExchangeConfirmed:signal.multiExchangeConfirmed,volumeRatio:signal.volumeRatio,atrPct:qAtrPct,explosionScore:qExplosionScore,smartMoneyScore:qSmartMoneyScore,smartMoneyConfirmed:signal.flowConfirmed,riskRewardRatio:2.2,stopDistancePct:qStopPct,dataAgeMs:Date.now()-Number(signal.candleTime||Date.now())});
+    signal.quantum=scoreQuantumOpportunity({...signal,flowImbalance:imbalance,flowConfirmed:signal.flowConfirmed,multiExchangeConfirmed:signal.multiExchangeConfirmed,volumeRatio:signal.volumeRatio,structureAligned:signal.coreAligned===true&&signal.technicalAligned===true,trend15:Math.sign(Number(signal.change15m)||0)===(signal.trend==="bull"?1:-1),rsi14:signal.indicators?.rsi14,ema9:signal.indicators?.ema9,ema21:signal.indicators?.ema21,ema50:signal.indicators?.ema50,macdHistogram:signal.indicators?.macdHistogram,totalVolume24h:Number(signal.coin?.total_volume)||0,atrPct:qAtrPct,explosionScore:qExplosionScore,smartMoneyScore:qSmartMoneyScore,smartMoneyConfirmed:signal.flowConfirmed,riskRewardRatio:2.2,stopDistancePct:qStopPct,dataAgeMs:Date.now()-Number(signal.candleTime||Date.now())});
     signal.score=Math.round(Number(signal.score||0)*0.55+signal.quantum.score*0.45);
   }
   // Only fresh Quantum scores are published. Legacy signals remain stored until their own valid rescan.
@@ -274,11 +304,11 @@ async function runRadar(env,scheduledTime=Date.now()){
   const cycleScannedCount=cycleAdvance%universe.length;
   const cycleNumber=(sameUniverse?Math.max(1,Number(state?.cycle_number)||1):1)+completedCycles;
   const cyclePercent=Math.min(100,Math.floor(cycleScannedCount/universe.length*100));
-  const candidateDetails=scannedSignals.map(signal=>({id:String(signal.id),symbol:signal.symbol,trend:signal.trend,score:Number(signal.score)||0,price:Number(signal.price)||0,change1m:Number(signal.change1m)||0,change3m:Number(signal.change3m)||0,change5m:Number(signal.change5m)||0,volumeRatio:Number(signal.volumeRatio)||0,provider:signal.provider||"",multiExchangeConfirmed:signal.multiExchangeConfirmed===true,flowStatus:signal.flowStatus||"queued_for_flow_review",flowTradeCount:Number(signal.flow?.tradeCount)||0,flowComplete:signal.flow?.complete===true,flowConfirmed:signal.flowConfirmed===true,volumeConfirmed:signal.volumeConfirmed===true,qualityGate:signal.quantum?.qualityGate===true,updatedAt:Number(signal.updatedAt)||Date.now(),coin:signal.coin||null}));
+  const candidateDetails=scannedSignals.map(signal=>({id:String(signal.id),symbol:signal.symbol,trend:signal.trend,score:Number(signal.score)||0,price:Number(signal.price)||0,change1m:Number(signal.change1m)||0,change3m:Number(signal.change3m)||0,change5m:Number(signal.change5m)||0,volumeRatio:Number(signal.volumeRatio)||0,provider:signal.provider||"",multiExchangeConfirmed:signal.multiExchangeConfirmed===true,flowStatus:signal.flowStatus||"queued_for_flow_review",flowTradeCount:Number(signal.flow?.tradeCount)||0,flowComplete:signal.flow?.complete===true,flowConfirmed:signal.flowConfirmed===true,flowPressure:Number.isFinite(Number(signal.flowPressure))?Number(signal.flowPressure):null,flowProvider:signal.flow?.provider||"",flowError:signal.flowError||"",flowBuyUSDT:Number(signal.flow?.buy5m)||0,flowSellUSDT:Number(signal.flow?.sell5m)||0,coreAligned:signal.coreAligned===true,missingEvidence:signal.quantum?.missingEvidence||[],volumeConfirmed:signal.volumeConfirmed===true,depthConfirmed:signal.depth?.confirmed===true,qualityGate:signal.quantum?.qualityGate===true,updatedAt:Number(signal.updatedAt)||Date.now(),coin:signal.coin||null}));
   const flowConfirmedCount=scannedSignals.filter(signal=>signal.flowConfirmed===true).length;
   const qualityPassCount=scannedSignals.filter(signal=>signal.flowConfirmed===true&&signal.volumeConfirmed===true&&signal.quantum?.qualityGate===true&&Number(signal.score)>=RETENTION_SCORE).length;
   const snapshot={
-    status:"online",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,source:"Cloudflare scheduled radar",scoring_version:4,retention_score:RETENTION_SCORE,
+    status:"online",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,source:"Cloudflare scheduled radar",scoring_version:5,retention_score:RETENTION_SCORE,
     universe_source:universeSource,universe_cache_age_ms:universeSource==="cached"?cacheAge:0,
     scanned_at:new Date().toISOString(),scheduled_at:new Date(Number(scheduledTime)||Date.now()).toISOString(),
     universe_count:universe.length,cycle_scanned_count:cycleScannedCount,cycle_total:universe.length,cycle_percent:cyclePercent,cycle_number:cycleNumber,scanned_count:completed,valid_count:valid,flow_checked_count:flowCandidates.length,flow_confirmed_count:flowConfirmedCount,quality_pass_count:qualityPassCount,candidate_details:candidateDetails,failed_count:failed,failed_samples:failedSamples,
@@ -286,14 +316,14 @@ async function runRadar(env,scheduledTime=Date.now()){
     signals:(()=>{
       const canonicalIds=new Map(universe.map(coin=>[String(coin.symbol).toUpperCase(),String(coin.id)]));
       const unique=new Map();
-      for(const signal of [...signals.values()].filter(x=>Number(x?.score)>=RETENTION_SCORE&&Number(x?.scoringVersion)===4&&Date.now()-Number(x?.updatedAt||0)<=5*60*1000&&x.multiExchangeConfirmed===true&&x.flowConfirmed===true&&x.volumeConfirmed===true&&x.quantum?.qualityGate===true).sort((a,b)=>b.score-a.score)){
+      for(const signal of [...signals.values()].filter(x=>Number(x?.score)>=RETENTION_SCORE&&Number(x?.scoringVersion)===5&&Date.now()-Number(x?.updatedAt||0)<=5*60*1000&&x.multiExchangeConfirmed===true&&x.flowConfirmed===true&&x.volumeConfirmed===true&&x.quantum?.qualityGate===true).sort((a,b)=>b.score-a.score)){
         const symbol=String(signal.symbol||signal.coin?.symbol||"").toUpperCase();
         if(!symbol||canonicalIds.get(symbol)!==String(signal.id)||unique.has(symbol))continue;
         unique.set(symbol,signal);
       }
       return [...unique.values()];
     })(),
-    legacy_signals:[...signals.values()].filter(x=>Number(x?.scoringVersion)!==4)
+    legacy_signals:[...signals.values()].filter(x=>Number(x?.scoringVersion)!==5)
        .sort((a,b)=>b.score-a.score)
   };
   // Persist the public snapshot first; advance the cursor only after it is safely stored.
