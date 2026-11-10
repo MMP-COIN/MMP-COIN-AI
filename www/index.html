@@ -2009,6 +2009,54 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{ou
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;scroll-behavior:auto!important;transition:none!important}}
 </style>
 
+
+<style id="mmp-qie40-responsive-frames">
+/* QIE responsive frame system: site + embedded Android WebView */
+html,body{width:100%;max-width:100%;overflow-x:clip}
+body.mmp-app-mode{min-width:0}
+body.mmp-app-mode .wrap,body.mmp-app-mode main,body.mmp-app-mode section,body.mmp-app-mode article,body.mmp-app-mode .card,body.mmp-app-mode .panel{min-width:0;max-width:100%}
+body.mmp-app-mode .card,body.mmp-app-mode .panel,body.mmp-app-mode .radar-card,body.mmp-app-mode .chart-box-wrapper,body.mmp-app-mode .intel-panel{overflow-wrap:anywhere}
+body.mmp-app-mode :where(h1,h2,h3,h4,p,small,label,strong,b,span,a,button){max-width:100%;overflow-wrap:anywhere}
+body.mmp-app-mode :where(input,select,textarea){min-width:0;max-width:100%}
+body.mmp-app-mode .grid,body.mmp-app-mode .ai-grid,body.mmp-app-mode .tf-grid,body.mmp-app-mode .intel-grid,body.mmp-app-mode .connection-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+body.mmp-app-mode .table-wrap,body.mmp-app-mode .tablewrap,body.mmp-app-mode .radar-table-wrap{max-width:100%;overflow-x:auto;overscroll-behavior-inline:contain}
+body.mmp-app-mode table{width:100%;min-width:680px;border-collapse:collapse}
+body.mmp-app-mode th,body.mmp-app-mode td{white-space:nowrap;overflow-wrap:normal}
+body.mmp-app-mode #chart-container,body.mmp-app-mode #tradingview_widget,body.mmp-app-mode #mmp-candle-canvas,body.mmp-app-mode #mmp-rsi-canvas{width:100%;max-width:100%;min-width:0}
+body.mmp-app-mode #chart-container{min-height:300px;overflow:hidden;border-radius:14px}
+body.mmp-app-mode .top{gap:10px;min-width:0}
+body.mmp-app-mode .top-actions{min-width:0;flex-wrap:wrap;justify-content:flex-end;gap:7px}
+body.mmp-app-mode .dropdown-menu{width:min(320px,calc(100vw - 20px));max-height:calc(100dvh - 84px);overflow-y:auto;overscroll-behavior:contain}
+body.mmp-app-mode button,body.mmp-app-mode .btn,body.mmp-app-mode a{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+body.mmp-app-mode :where(.card,.panel,.radar-card,.chart-box-wrapper,.intel-panel){border-radius:16px}
+@media(max-width:760px){
+ body.mmp-app-mode .wrap{padding:12px 10px 38px!important}
+ body.mmp-app-mode .top{align-items:center;flex-wrap:wrap;padding:9px 10px!important}
+ body.mmp-app-mode .top-actions{flex:1 1 100%;justify-content:space-between}
+ body.mmp-app-mode .top-actions #refresh-all-btn{flex:1 1 auto;min-width:0}
+ body.mmp-app-mode .hero{min-height:0;padding:18px 15px!important}
+ body.mmp-app-mode .hero h1{font-size:clamp(21px,6vw,28px)!important;line-height:1.45!important}
+ body.mmp-app-mode .hero p{font-size:12px;line-height:1.9}
+ body.mmp-app-mode .section-head{flex-wrap:wrap;align-items:flex-start}
+ body.mmp-app-mode .ai-toolbar{grid-template-columns:minmax(0,1fr)}
+ body.mmp-app-mode .chart-top-bar,body.mmp-app-mode .chart-actions{flex-wrap:wrap;min-width:0}
+ body.mmp-app-mode .mmp-chart-toolbar{flex-wrap:wrap}
+ body.mmp-app-mode .mmp-chart-timeframes{max-width:100%;overflow-x:auto}
+}
+@media(max-width:420px){
+ body.mmp-app-mode .wrap{padding-inline:8px!important}
+ body.mmp-app-mode .grid,body.mmp-app-mode .ai-grid,body.mmp-app-mode .tf-grid,body.mmp-app-mode .intel-grid,body.mmp-app-mode .connection-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ body.mmp-app-mode .card,body.mmp-app-mode .panel{padding:11px!important}
+ body.mmp-app-mode .stat-value{font-size:clamp(16px,5vw,20px)!important}
+ body.mmp-app-mode .top-actions .btn{font-size:11px;padding:8px 9px}
+ body.mmp-app-mode .dropdown-menu a{min-height:48px;font-size:12px}
+ body.mmp-app-mode #chart-container{min-height:270px}
+}
+@media(max-width:340px){
+ body.mmp-app-mode .grid,body.mmp-app-mode .ai-grid,body.mmp-app-mode .tf-grid,body.mmp-app-mode .intel-grid,body.mmp-app-mode .connection-grid{grid-template-columns:minmax(0,1fr)}
+ body.mmp-app-mode .top-actions{gap:5px}
+}
+</style>
 </head>
 <body class="mmp-app-mode">
 
@@ -5371,8 +5419,6 @@ body:before{opacity:.23;background-size:34px 34px}
  loadForecast();
  setInterval(()=>{refreshJournal();checkAlerts();},60000);
  /* worker-backed market intelligence refresh is initialized below */
-})();
-
  async function runHistoricalBacktest(){
   const button=byId("historical-backtest"),status=byId("backtest-status"),out=byId("backtest-results");
   const symbol=safeSymbol(byId("ai-coin-select")?.value||byId("intel-symbol")?.value||"BTC")||"BTC";
@@ -5415,6 +5461,7 @@ body:before{opacity:.23;background-size:34px 34px}
   finally{if(button){button.disabled=false;button.textContent="اجرای بک‌تست ۲۵۰ کندل";}}
  }
  byId("historical-backtest")?.addEventListener("click",runHistoricalBacktest);
+})();
 </script>
 <style id="mmp-coin-selector-and-radar-polish">
 .mmp-symbol-picker{position:relative;display:flex;align-items:center;gap:6px;min-width:0;width:100%}.mmp-symbol-picker>input{flex:1;min-width:0}.mmp-symbol-trigger{width:34px;height:36px;flex:none;display:grid;place-items:center;border:1px solid #435c70;border-radius:9px;background:#102030;color:#f1d38e;cursor:pointer;padding:3px}.mmp-symbol-trigger img{width:25px;height:25px;object-fit:contain;border-radius:50%;background:#fff}.mmp-symbol-add{width:34px;height:36px;flex:none;border:1px solid #947542;border-radius:9px;background:linear-gradient(145deg,#5a4728,#1a2631);color:#f8dfa0;font-size:20px;cursor:pointer}
