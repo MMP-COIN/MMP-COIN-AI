@@ -1731,7 +1731,7 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/futures-engine-heal
   return json({analysis,market:snapshot},200,request);
  }catch(e){return json({error:String(e?.message||"Analysis failed").slice(0,300),stage,symbol:pair,market_mode:mode},502,request)}
 }
-async function settleHunterCycle(task,label,timeoutMs=42000,onTimeout=null){
+async function settleHunterCycle(task,label,timeoutMs=50000,onTimeout=null){
  let timer;
  const timedOut=new Promise(resolve=>{timer=setTimeout(()=>{try{onTimeout?.();}catch{}resolve({status:"rejected",reason:new Error(label+" cycle timeout after "+timeoutMs+"ms")});},timeoutMs);});
  try{return await Promise.race([Promise.resolve().then(task).then(value=>({status:"fulfilled",value}),reason=>({status:"rejected",reason})),timedOut]);}
@@ -1743,7 +1743,7 @@ async function runDigitalHunterCron(event,env,ctx){
  const futuresController=new AbortController();
  const results=await Promise.all([
   settleHunterCycle(()=>runDigitalHunterMarketCycle(env,"spot"),"spot",42000),
-  settleHunterCycle(async()=>{if(!env.FUTURES_ENGINE)throw new Error("FUTURES_ENGINE service binding missing");const response=await env.FUTURES_ENGINE.fetch(new Request("https://futures-engine/run",{method:"POST",headers:{"Accept":"application/json","X-MMP-FUTURES-TOKEN":env.FUTURES_ENGINE_TOKEN||""},signal:futuresController.signal}));if(!response.ok)throw new Error("Futures engine HTTP "+response.status);return await response.json();},"futures",42000,()=>futuresController.abort())
+  settleHunterCycle(async()=>{if(!env.FUTURES_ENGINE)throw new Error("FUTURES_ENGINE service binding missing");const response=await env.FUTURES_ENGINE.fetch(new Request("https://futures-engine/run",{method:"POST",headers:{"Accept":"application/json","X-MMP-FUTURES-TOKEN":env.FUTURES_ENGINE_TOKEN||""},signal:futuresController.signal}));if(!response.ok)throw new Error("Futures engine HTTP "+response.status);return await response.json();},"futures",50000,()=>futuresController.abort())
  ]),finished=Date.now();
  const spot=results[0].status==="fulfilled"?results[0].value:null,futures=results[1].status==="fulfilled"?results[1].value:null;
  const errors={};if(results[0].status==="rejected")errors.spot=String(results[0].reason?.message||results[0].reason).slice(0,220);if(results[1].status==="rejected")errors.futures=String(results[1].reason?.message||results[1].reason).slice(0,220);
