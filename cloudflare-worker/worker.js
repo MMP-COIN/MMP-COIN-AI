@@ -962,6 +962,28 @@ async function loadHunterDepth(symbol,marketType="spot",preferredProviders=[]){
  throw new Error("Order-book depth unavailable: "+lastError);
 }
 const QUANTUM_ACTIVITY_KEYS=["momentum","flow","structure","liquidity","multiTimeframe","regime","volatility","sentiment","smartMoney","scenario","risk","dataQuality","explosion","earlyOpportunity","decision"];
+async function loadHunterFundingSentiment(symbol,trend){
+ const base=String(symbol||"").toUpperCase().replace(/USDT$/,"");
+ if(!/^[A-Z0-9]{2,15}$/.test(base))return {available:false,score:null,sourceCount:0,sources:[]};
+ const instId=base+"-USDT-SWAP",gateContract=base+"_USDT",kucoinSymbol=(base==="BTC"?"XBT":base)+"USDTM";
+ const probes=[
+  ["OKX",()=>marketFlowJson("https://www.okx.com/api/v5/public/funding-rate?instId="+encodeURIComponent(instId),5000),d=>String(d?.code)==="0"?d.data?.[0]?.fundingRate:null],
+  ["Gate",()=>marketFlowJson("https://api.gateio.ws/api/v4/futures/usdt/tickers?contract="+encodeURIComponent(gateContract),5000),d=>Array.isArray(d)?d[0]?.funding_rate:null],
+  ["KuCoin",()=>marketFlowJson("https://api-futures.kucoin.com/api/v1/funding-rate/"+encodeURIComponent(kucoinSymbol)+"/current",5000),d=>String(d?.code)==="200000"?(d.data?.value??d.data?.fundingRate):null]
+ ];
+ const results=await Promise.allSettled(probes.map(async([source,request,read])=>{
+  const data=await request(),raw=read(data),rate=raw===null||raw===undefined?NaN:Number(raw);
+  if(!Number.isFinite(rate))throw new Error(source+" funding unavailable");
+  return {source,rate};
+ }));
+ const samples=results.filter(x=>x.status==="fulfilled").map(x=>x.value);
+ if(samples.length<2)return {available:false,score:null,sourceCount:samples.length,sources:samples.map(x=>x.source),reason:"حداقل دو منبع مستقل Funding در دسترس نیست"};
+ const average=samples.reduce((sum,x)=>sum+x.rate,0)/samples.length;
+ const dispersion=Math.max(...samples.map(x=>x.rate))-Math.min(...samples.map(x=>x.rate));
+ const direction=trend==="bull"?1:-1;
+ const score=Math.max(0,Math.min(100,Math.round(50-average*direction*100000)));
+ return {available:true,score,fundingRate:Number(average.toFixed(8)),dispersion:Number(dispersion.toFixed(8)),sourceCount:samples.length,sources:samples.map(x=>x.source),bias:score>=58?"supportive":score<=42?"crowded_against":"neutral"};
+}
 function markQuantumEvidence(activity,key){if(activity?.[key]){activity[key].processed++;activity[key].evidence++;}}
 async function scanHunterSymbols(symbols,marketType="spot",assetList=[],env=null){
  const assetMap=new Map((Array.isArray(assetList)?assetList:[]).map(x=>[String(x.symbol||"").toUpperCase(),x]));
@@ -979,7 +1001,13 @@ async function scanHunterSymbols(symbols,marketType="spot",assetList=[],env=null
    const depth=await loadHunterDepth(x.symbol,marketType,[x.multiExchangeEvidence?.primary,x.multiExchangeEvidence?.secondary]);if(!depth.confirmed)return;markQuantumEvidence(engineActivity,"smartMoney");
    const qBars=Array.isArray(x.rows)?x.rows.slice(-70):[],qRanges=qBars.slice(1).map((bar,i)=>Math.max(Number(bar[2])-Number(bar[3]),Math.abs(Number(bar[2])-Number(qBars[i][4])),Math.abs(Number(bar[3])-Number(qBars[i][4])))).filter(v=>Number.isFinite(v)&&v>0),qAtr=qRanges.length?qRanges.slice(-14).reduce((a,b)=>a+b,0)/Math.min(14,qRanges.length):0,qEntry=Number(x.price),qAtrPct=qEntry>0?qAtr/qEntry*100:null,qStopPct=qEntry>0?Math.max(qAtr*1.25,qEntry*.002)/qEntry*100:null,qDepthImbalance=Number(depth.totalDepthUsdt)>0?(Number(depth.bidUsdt)-Number(depth.askUsdt))/Number(depth.totalDepthUsdt):0,qSmartMoneyScore=Math.max(0,Math.min(100,50+Math.sign(imb)*(x.trend==="bull"?1:-1)*Math.min(22,Math.abs(imb)*90)+qDepthImbalance*(x.trend==="bull"?1:-1)*18+Math.min(10,Math.log2(Math.max(1,f.trade_count))*2))),qExplosionScore=Math.max(0,Math.min(100,Math.max(0,Number(x.volumeRatio)-1)*28+Math.abs(imb)*45+Math.min(25,Math.log2(Math.max(1,f.trade_count))*5)));
    const scenarioScore=Math.max(0,Math.min(100,42+(x.breakout?18:0)+(x.technicalAligned?18:0)+Math.min(15,Math.max(0,x.volumeRatio-1)*12)-(x.overextended?25:0)));markQuantumEvidence(engineActivity,"scenario");markQuantumEvidence(engineActivity,"risk");
-   const quantum=scoreQuantumOpportunity({...x,flowImbalance:imb,flowConfirmed:true,multiExchangeConfirmed:x.multiExchangeConfirmed,volumeRatio:x.volumeRatio,depthConfirmed:true,depthImbalance:qDepthImbalance,atrPct:qAtrPct,explosionScore:qExplosionScore,smartMoneyScore:qSmartMoneyScore,smartMoneyConfirmed:true,scenarioScore,stopDistancePct:qStopPct,requireDepthConfirmation:true,dataAgeMs:Date.now()-x.candleTime});if(!quantum.qualityGate)return;markQuantumEvidence(engineActivity,"decision");x.quantum=quantum;x.score=quantum.score;x.depth=depth;
+   let sentiment={available:false,score:null,sourceCount:0,sources:[]};
+   if(marketType==="futures"){
+    if(engineActivity?.sentiment)engineActivity.sentiment.processed++;
+    sentiment=await loadHunterFundingSentiment(x.symbol,x.trend);
+    if(sentiment.available&&engineActivity?.sentiment)engineActivity.sentiment.evidence++;
+   }
+   const quantum=scoreQuantumOpportunity({...x,flowImbalance:imb,flowConfirmed:true,multiExchangeConfirmed:x.multiExchangeConfirmed,volumeRatio:x.volumeRatio,depthConfirmed:true,depthImbalance:qDepthImbalance,atrPct:qAtrPct,explosionScore:qExplosionScore,smartMoneyScore:qSmartMoneyScore,smartMoneyConfirmed:true,scenarioScore,stopDistancePct:qStopPct,requireDepthConfirmation:true,dataAgeMs:Date.now()-x.candleTime,sentimentScore:sentiment.available?sentiment.score:undefined,sentimentConfirmed:sentiment.available,sentimentSource:sentiment.available?sentiment.sources.join(" + "):undefined});if(!quantum.qualityGate)return;markQuantumEvidence(engineActivity,"decision");x.quantum=quantum;x.score=quantum.score;x.depth=depth;x.sentiment=sentiment.available?sentiment:null;
    x.flow={buy5m:f.buy5m,sell5m:f.sell5m,net5m:f.net5m,windowMinutes:f.window_minutes||5,tradeCount:f.trade_count,provider:f.provider,complete:f.complete,coverageStart:f.coverage_start,rows:f.rows,imbalance:+imb.toFixed(4)};
    x.flowSignal=f.net5m>0?"inflow":"outflow";
    const bars=Array.isArray(x.rows)?x.rows.slice(-16):[],ranges=bars.slice(1).map((bar,i)=>Math.max(Number(bar[2])-Number(bar[3]),Math.abs(Number(bar[2])-Number(bars[i][4])),Math.abs(Number(bar[3])-Number(bars[i][4])))).filter(v=>Number.isFinite(v)&&v>0);
