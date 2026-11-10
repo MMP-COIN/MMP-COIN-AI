@@ -1506,7 +1506,7 @@ async function handle(request,env){
    "binance-tickers":["https://api.binance.com/api/v3/ticker/24hr","https://api.binance.us/api/v3/ticker/24hr","https://api1.binance.com/api/v3/ticker/24hr","https://api2.binance.com/api/v3/ticker/24hr","https://api3.binance.com/api/v3/ticker/24hr","https://data-api.binance.vision/api/v3/ticker/24hr"],
    "coingecko-top":["https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page="+requestedTopPage+"&sparkline=false&price_change_percentage=1h%2C24h%2C7d"],
    "coinlore-top":["https://api.coinlore.net/api/tickers/?start="+requestedOffset+"&limit=100"],
-   "nobitex-tether":["https://apiv2.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls","https://api.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls"],
+   "nobitex-tether":["https://apiv2.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls","https://apiv2.nobitex.ir/market/stats?dstCurrency=rls","https://apiv2.nobitex.ir/v3/orderbook/USDTIRT","https://api.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls","https://api.nobitex.ir/v3/orderbook/USDTIRT"],
    "wallex-markets":["https://api.wallex.ir/hector/web/v1/markets","https://api.wallex.ir/v1/markets","https://api.wallex.ir/v1/otc/markets"]
   };
   let candidates=urls[source]||null;
@@ -1526,14 +1526,32 @@ async function handle(request,env){
    if(source==="wallex-markets"){upstreamHeaders.Origin="https://wallex.ir";upstreamHeaders.Referer="https://wallex.ir/";upstreamHeaders["User-Agent"]="curl/8.14.1";}
    const upstream=await fetch(endpoint,{headers:upstreamHeaders,signal:controller.signal,cf:{cacheTtl:source.startsWith("coingecko")?60:source.includes("tether")||source.includes("wallex")?10:5,cacheEverything:true}});
     if(!upstream.ok){lastError="Upstream HTTP "+upstream.status;continue;}
-    const data=await upstream.json();
+    let data=await upstream.json();
     if(data===null||typeof data!=="object")throw new Error("Invalid upstream JSON");
+    if(source==="nobitex-tether"){
+     const stats=data?.stats||{};
+     let rate=Number(stats["usdt-rls"]?.latest??stats["usdt-irt"]?.latest??stats["usdt-tmn"]?.latest);
+     if(!(data?.status==="ok"&&Number.isFinite(rate)&&rate>0)){
+      const bid=Number(data?.bids?.[0]?.[0]),ask=Number(data?.asks?.[0]?.[0]),last=Number(data?.lastTradePrice);
+      rate=last>0?last:bid>0&&ask>0?(bid+ask)/2:0;
+      if(data?.status!=="ok"||!(rate>0)){
+       lastError="Nobitex returned no valid USDT/IRT rate";
+       continue;
+      }
+      data={status:"ok",stats:{"usdt-rls":{latest:String(rate)}},_mmp_source:"Nobitex USDTIRT orderbook"};
+     }
+    }
     await writeMarketFallback(env,marketCacheKey,data,staleMarketResponse);
     return json(data,200,request,{"X-MMP-Data-Source":source,"X-MMP-Cache":"fresh"});
    }catch(error){lastError=String(error?.message||"network error");}
    finally{clearTimeout(timer);}
   }
-  if(staleMarketResponse?.payload&&typeof staleMarketResponse.payload==="object")return json(staleMarketResponse.payload,200,request,{"X-MMP-Data-Source":source,"X-MMP-Cache":"stale","X-MMP-Data-Age":String(staleMarketResponse.ageMs),"Warning":"110 - \"Response is stale\""});
+  if(staleMarketResponse?.payload&&typeof staleMarketResponse.payload==="object"){
+   const stalePayload=staleMarketResponse.payload;
+   const staleNobitexRate=Number(stalePayload?.stats?.["usdt-rls"]?.latest??stalePayload?.stats?.["usdt-irt"]?.latest??stalePayload?.stats?.["usdt-tmn"]?.latest);
+   if(source!=="nobitex-tether"||stalePayload?.status==="ok"&&Number.isFinite(staleNobitexRate)&&staleNobitexRate>0)
+    return json(stalePayload,200,request,{"X-MMP-Data-Source":source,"X-MMP-Cache":"stale","X-MMP-Data-Age":String(staleMarketResponse.ageMs),"Warning":"110 - \"Response is stale\""});
+  }
   return json({error:"Market data source unavailable",source,detail:String(lastError||"upstream error").slice(0,120)},502,request);
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/connections-health"){
