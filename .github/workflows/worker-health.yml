@@ -34,6 +34,15 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
+      - name: Smoke-test dedicated Hunter scheduler Worker
+        if: github.ref == 'refs/heads/main'
+        env:
+          CRON_URL: https://mmp-coin-ai-hunter-cron.mehrdadmohammadi1988.workers.dev
+        run: |
+          set -euo pipefail
+          body="$(curl -fsS --max-time 20 "$CRON_URL/health")"
+          echo "$body"
+          echo "$body" | jq -e '.status == "online" and .engine_version == "QIE-4.0.0"'
       - name: Validate dedicated Hunter scheduler
         run: |
           set -euo pipefail
