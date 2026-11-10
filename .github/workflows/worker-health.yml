@@ -575,7 +575,6 @@ jobs:
 
       - name: Live AI analyzer end-to-end smoke test
         if: github.ref == 'refs/heads/main'
-        if: github.event_name == 'push' || github.event_name == 'pull_request'
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
           CANARY_URL: https://02afe1c1-mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
