@@ -5048,7 +5048,8 @@ html.mmp-native-app .native-refresh-label{font:700 9px Tahoma,Arial,sans-serif!i
     try{if(typeof refreshAll==="function")jobs.push(Promise.resolve(refreshAll()));}catch(e){jobs.push(Promise.reject(e));}
     try{if(typeof checkConnections==="function")jobs.push(Promise.resolve(checkConnections()));}catch(e){jobs.push(Promise.reject(e));}
     try{if(typeof loadUnifiedRadarSnapshot==="function")jobs.push(Promise.resolve(loadUnifiedRadarSnapshot()));}catch(e){jobs.push(Promise.reject(e));}
-    try{if(typeof runDedicatedHunterScan==="function")jobs.push(Promise.resolve(runDedicatedHunterScan()));}catch(e){jobs.push(Promise.reject(e));}
+    try{if(typeof loadDigitalHunterSnapshot==="function")jobs.push(Promise.resolve(loadDigitalHunterSnapshot(true)));}catch(e){jobs.push(Promise.reject(e));}
+    try{if(typeof runDedicatedHunterScan==="function")jobs.push(Promise.resolve(runDedicatedHunterScan(true)));}catch(e){jobs.push(Promise.reject(e));}
     Promise.allSettled(jobs).then(function(){showNativeUpdateMessage("درخواست تازه‌سازی داده‌ها ارسال شد.");}).finally(function(){setTimeout(function(){button.disabled=false;button.classList.remove("is-refreshing");},700);});
    }
    if(refreshButton)refreshButton.addEventListener("click",function(){performNativeRefresh(refreshButton);});
