@@ -21,8 +21,6 @@ namespace_id = "2026110402"
 limit = 300
 period = 60
 
-
-
 [[d1_databases]]
 binding = "ADMIN_DB"
 database_name = "mmp_coin_ai_private_admin"
@@ -35,3 +33,6 @@ region = "aws:eu-central-1"
 binding = "MARKET_CACHE_DB"
 database_name = "mmp_market_data_fallback"
 database_id = "45b2a51c-49d1-4e21-b13c-86e9d8fffa6e"
+
+[triggers]
+crons = ["* * * * *"]
