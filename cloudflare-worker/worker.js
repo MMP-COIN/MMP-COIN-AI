@@ -698,7 +698,7 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
     const rows=raw.map(map).filter(x=>x.every(Number.isFinite)&&x[1]>0&&x[2]>=x[3]&&x[3]>0&&x[4]>0&&x[5]>=0).sort((a,b)=>a[0]-b[0]);
     if(rows.length>=65)return [label,rows];
     throw new Error(label+" returned only "+rows.length+" candles");
-   }catch(error){lastError=new Error(label+": "+String(error?.message||error));}
+   }catch(error){const message=String(error?.message||error);lastError=new Error(label+": "+message);if(/HTTP (400|403|451)|invalid candle payload|Symbol Is Invalid|returned only \d+ candles/i.test(message))break;}
   }
   throw lastError||new Error(label+" unavailable");
  };
