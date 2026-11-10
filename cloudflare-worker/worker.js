@@ -383,15 +383,16 @@ async function readMarketFallback(env,key){
   const row=await env.MARKET_CACHE_DB.prepare("SELECT payload,cached_at FROM market_data_cache WHERE cache_key = ?").bind(key).first();
   if(!row?.payload||!Number.isFinite(Number(row.cached_at)))return null;
   const ageMs=Math.max(0,Date.now()-Number(row.cached_at));
-  if(ageMs>900000)return null;
+  // Keep last-known-good fallback for 24h through temporary upstream/D1 outages.
+  if(ageMs>86400000)return null;
   const payload=JSON.parse(row.payload);
   return payload&&typeof payload==="object"?{payload,ageMs}:null;
  }catch{return null;}
 }
-async function writeMarketFallback(env,key,payload,previous=null,minIntervalMs=300000){
- // Keep D1 fallback writes sparse. Upstream fetches already use Cloudflare edge caching;
- // D1 is only the outage fallback and must not be rewritten on every page refresh.
- const writeIntervalMs=Math.max(300000,Number(minIntervalMs)||0);
+async function writeMarketFallback(env,key,payload,previous=null,minIntervalMs=3600000){
+ // D1 is a last-resort fallback, not a live ticker store. Limit each cache key
+ // to one successful refresh per hour to protect the account-wide row-write quota.
+ const writeIntervalMs=Math.max(3600000,Number(minIntervalMs)||0);
  if(!env.MARKET_CACHE_DB||previous?.ageMs<writeIntervalMs)return;
  try{
   await env.MARKET_CACHE_DB.prepare("INSERT INTO market_data_cache (cache_key,payload,cached_at) VALUES (?, ?, ?) ON CONFLICT(cache_key) DO UPDATE SET payload=excluded.payload,cached_at=excluded.cached_at").bind(key,JSON.stringify(payload),Date.now()).run();
@@ -1471,7 +1472,7 @@ async function handle(request,env){
   try{
    const result=await candles(symbol,interval,env,marketType);
    const payload={symbol,interval,market:marketType,provider:result.data_provider,price:result.price,change_pct:result.change_pct,candles:result.candles.map(c=>({time:Math.floor(c.t/1000),open:c.o,high:c.h,low:c.l,close:c.c,volume:c.v})),data_checked_at:new Date().toISOString(),data_stale:false};
-   await writeMarketFallback(env,candleCacheKey,payload,staleCandles,30000);
+   await writeMarketFallback(env,candleCacheKey,payload,staleCandles,3600000);
    return json(payload,200,request,{"X-MMP-Cache":"fresh"});
   }catch(error){
    if(staleCandles?.payload?.candles?.length)return json({...staleCandles.payload,data_stale:true,data_age_ms:staleCandles.ageMs,stale_reason:String(error?.message||"upstream unavailable").slice(0,160)},200,request,{"X-MMP-Cache":"stale","X-MMP-Data-Age":String(staleCandles.ageMs)});
@@ -1527,7 +1528,7 @@ async function handle(request,env){
       data={status:"ok",stats:{"usdt-rls":{latest:String(rate)}},_mmp_source:"Nobitex USDTIRT orderbook"};
      }
     }
-    await writeMarketFallback(env,marketCacheKey,data,staleMarketResponse,source==="nobitex-tether"||source==="binance-tickers"?30000:60000);
+    await writeMarketFallback(env,marketCacheKey,data,staleMarketResponse,3600000);
     return json(data,200,request,{"X-MMP-Data-Source":source,"X-MMP-Cache":"fresh"});
    }catch(error){lastError=String(error?.message||"network error");}
    finally{clearTimeout(timer);}
