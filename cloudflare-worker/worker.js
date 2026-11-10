@@ -750,13 +750,15 @@ async function analyzeDigitalHunterSymbol(symbol,marketType="spot",asset=null,ac
  const technicalAligned=trend==="bull"?indicators.trendUp&&indicators.rsi14>=50&&indicators.rsi14<=78:indicators.trendDown&&indicators.rsi14>=22&&indicators.rsi14<=50;
  const structure=trend==="bull"?last[4]>indicators.ema21&&Number(indicators.vwapDeviationPct)>=0&&indicators.obvTrend>=0:last[4]<indicators.ema21&&Number(indicators.vwapDeviationPct)<=0&&indicators.obvTrend<=0;
  const coreAligned=Math.sign(m5)===Math.sign(m15)&&Math.abs(m5)>=.05&&Math.abs(m15)>=.08&&technicalAligned;
+ const earlyTechnicalAligned=trend==="bull"?indicators.trendUp&&indicators.rsi14>=45&&indicators.rsi14<=82:indicators.trendDown&&indicators.rsi14>=18&&indicators.rsi14<=55;
+ const earlyCoreAligned=earlyTechnicalAligned&&Math.sign(m3)===Math.sign(m5)&&Math.abs(m3)>=.025&&Math.abs(m5)>=.025;
  const overextended=Math.abs(m5)>=1.5||Math.abs(m1)>=.8||(trend==="bull"?indicators.rsi14>78:indicators.rsi14<22)||Math.abs(Number(indicators.vwapDeviationPct))>1.2;
  const lowLiquidity=Number(asset?.total_volume)>0&&Number(asset.total_volume)<150000;
- if(!coreAligned||lowLiquidity)return null;
+ if((!coreAligned&&!earlyCoreAligned)||lowLiquidity)return null;
  const quantum=scoreQuantumOpportunity({trend,currentPrice:last[4],change1m:m1,change3m:m3,change5m:m5,change15m:m15,volumeRatio,explosionScore,breakout,structureAligned:structure&&coreAligned,trend15,overextended,dataAgeMs:now-last[0],flowConfirmed:false,multiExchangeConfirmed:m.multiExchangeConfirmed,totalVolume24h:asset?.total_volume,rsi14:indicators.rsi14,ema9:indicators.ema9,ema21:indicators.ema21,ema50:indicators.ema50,macdHistogram:indicators.macdHistogram,atrPct:indicators.atrPct});
- const score=quantum.score;if(score<55||!quantum.candidateGate||!m.multiExchangeConfirmed)return null;
+ const score=quantum.score;if(score<48||!m.multiExchangeConfirmed)return null;
  markQuantumEvidence(activity,"earlyOpportunity");
- return {symbol,trend,score,explosionScore,compression,change1m:m1,change3m:m3,change5m:m5,change15m:m15,volumeRatio,breakout,technicalAligned,indicators,price:last[4],provider:m.provider,multiExchangeConfirmed:m.multiExchangeConfirmed,multiExchangeEvidence:m.multiExchangeEvidence,lowLiquidity,rows:rows.slice(-30),updatedAt:now,candleTime:last[0],engine:"quantum-hunter-v3",market:marketType,timeframes:{m1,m3,m5,m15},evidence:{volumeRatio:+volumeRatio.toFixed(2),breakout,trend15m:trend15,structure,coreAligned,technical:{rsi14:indicators.rsi14,ema9:indicators.ema9,ema21:indicators.ema21,ema50:indicators.ema50,macdHistogram:indicators.macdHistogram,vwapDeviationPct:indicators.vwapDeviationPct,obvTrend:indicators.obvTrend},multiExchange:m.multiExchangeEvidence},overextended};
+ return {symbol,trend,score,explosionScore,compression,change1m:m1,change3m:m3,change5m:m5,change15m:m15,volumeRatio,breakout,technicalAligned,earlyCoreAligned,candidateGate:quantum.candidateGate,quantum,indicators,price:last[4],provider:m.provider,multiExchangeConfirmed:m.multiExchangeConfirmed,multiExchangeEvidence:m.multiExchangeEvidence,lowLiquidity,rows:rows.slice(-30),updatedAt:now,candleTime:last[0],engine:"quantum-hunter-v3",market:marketType,timeframes:{m1,m3,m5,m15},evidence:{volumeRatio:+volumeRatio.toFixed(2),breakout,trend15m:trend15,structure,coreAligned,technical:{rsi14:indicators.rsi14,ema9:indicators.ema9,ema21:indicators.ema21,ema50:indicators.ema50,macdHistogram:indicators.macdHistogram,vwapDeviationPct:indicators.vwapDeviationPct,obvTrend:indicators.obvTrend},multiExchange:m.multiExchangeEvidence},overextended};
 }
 async function loadFuturesMarketFlow(symbol,windowMinutes=5){
  const base=String(symbol||"").toUpperCase().replace(/USDT$/,""),pair=base+"USDT";
@@ -925,7 +927,7 @@ async function scanHunterSymbols(symbols,marketType="spot",assetList=[],env=null
  const concurrency=4;
  await Promise.all(Array.from({length:Math.min(concurrency,symbols.length)},async()=>{while(i<symbols.length){const symbol=symbols[i++];try{const x=await analyzeDigitalHunterSymbol(symbol,marketType,assetMap.get(symbol),engineActivity);if(x)candidates.push(x);}catch(e){const message=String(e?.message||e);if(message.startsWith("QUALITY_REJECTED:")){rejected++;rejections.push({symbol,error:message.slice(0,180)});}else{failed++;errors.push({symbol,error:message.slice(0,220)});}}}}));
  candidates.sort((a,b)=>b.score-a.score);const signals=[];
- const flowCandidates=(marketType==="futures"?[...candidates.filter(x=>!x.lowLiquidity)].sort((a,b)=>b.score-a.score).slice(0,2):["bull","bear"].flatMap(trend=>candidates.filter(x=>x.trend===trend&&!x.lowLiquidity).sort((a,b)=>b.score-a.score).slice(0,1))).filter(x=>x.score>=60);
+ const flowCandidates=(marketType==="futures"?[...candidates.filter(x=>x.candidateGate===true&&!x.lowLiquidity)].sort((a,b)=>b.score-a.score).slice(0,2):["bull","bear"].flatMap(trend=>candidates.filter(x=>x.trend===trend&&x.candidateGate===true&&!x.lowLiquidity).sort((a,b)=>b.score-a.score).slice(0,1))).filter(x=>x.score>=60);
  await Promise.all(flowCandidates.map(async x=>{
   try{
    let f=marketType==="futures"?await loadFuturesMarketFlow(x.symbol,5):await loadMarketFlow(x.symbol,5);
@@ -951,7 +953,7 @@ async function scanHunterSymbols(symbols,marketType="spot",assetList=[],env=null
   try{const review=await runAIWithFallback(env,prompt),parsed=JSON.parse(review.raw);if(!["confirm","caution","reject"].includes(parsed.verdict)||!Number.isFinite(Number(parsed.confidence))||typeof parsed.thesis!=="string")throw new Error("AI review schema invalid");x.aiReview={status:"reviewed",provider:review.provider,verdict:parsed.verdict,confidence:Math.max(0,Math.min(100,Number(parsed.confidence))),thesis:parsed.thesis.slice(0,700),risks:Array.isArray(parsed.risks)?parsed.risks.slice(0,6).map(v=>String(v).slice(0,180)):[],invalidation:String(parsed.invalidation||"").slice(0,300),fallbacks:review.fallbacks};}
   catch(error){x.aiReview={status:"unavailable",reason:String(error?.message||error).slice(0,180)};}
  }
- const preliminary_signals=candidates.filter(x=>x.confirmed!==true).slice(0,12).map(x=>({...x,stage:"preliminary",missingEvidence:["executedFlow","orderBookDepth"],preliminaryReason:"نامزد فنی چندتایم‌فریمی؛ هنوز جریان واقعی معاملات و عمق سفارش تأیید نشده است"}));
+ const preliminary_signals=candidates.filter(x=>x.confirmed!==true).slice(0,12).map(x=>({...x,stage:"preliminary",missingEvidence:x.quantum?.missingEvidence||[],preliminaryReason:x.candidateGate?"نامزد فنی قوی؛ هنوز جریان واقعی معاملات و عمق سفارش تأیید نشده است":"نامزد زودهنگام؛ هم‌جهتی ۱۵ دقیقه یا بخشی از شروط فنی هنوز کامل نیست"}));
  return {market:marketType,requested:symbols.length,scanned:symbols.length-failed,candidates:candidates.length,failed,rejected,rejections,errors,signals,preliminary_signals,engine_activity:engineActivity,checked_at:new Date().toISOString()};
 }
 
