@@ -1179,7 +1179,7 @@ export async function runDigitalHunterMarketCycle(env,marketType="spot"){
   let priorLedger={};try{priorLedger=learningRow?.payload?JSON.parse(learningRow.payload):{};}catch{}
   const ledger=updateLearningLedger(priorLedger,{observations:[...(result.signals||[]),...(result.preliminary_signals||[])],signals:selected,market:marketType,engine:"hunter",now});
   learningSummary=ledger.summary;
-  await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(learningId,JSON.stringify(ledger),new Date(now).toISOString()).run();
+  if(ledger.changed)await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(learningId,JSON.stringify(ledger),new Date(now).toISOString()).run();
  }catch(error){learningSummary={...learningSummary,status:"unavailable",error:String(error?.message||error).slice(0,140)};}
  const calibratedSelected=selected.map(signal=>applyLearningCalibration(signal,learningSummary));
  const nextCursor=(cursor+Math.max(1,examined))%assets.length,priorActivity=cursor===0?{}:(previous.snapshot?.engine_activity||{}),engineActivity=Object.fromEntries(QUANTUM_ACTIVITY_KEYS.map(key=>{const a=priorActivity[key]||{},b=result.engine_activity?.[key]||{};return [key,{processed:Number(a.processed||0)+Number(b.processed||0),evidence:Number(a.evidence||0)+Number(b.evidence||0)}];}));
