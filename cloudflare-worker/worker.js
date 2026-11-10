@@ -993,7 +993,7 @@ async function loadHunterDepth(symbol,marketType="spot",preferredProviders=[]){
  throw new Error("Order-book depth unavailable: "+lastError);
 }
 const QUANTUM_ACTIVITY_KEYS=["momentum","flow","structure","liquidity","multiTimeframe","regime","volatility","sentiment","smartMoney","scenario","risk","dataQuality","explosion","earlyOpportunity","decision"];
-async function loadHunterFundingSentiment(symbol,trend){
+async function loadHunterFundingSentiment(symbol,trend,preferredProviders=[]){
  const base=String(symbol||"").toUpperCase().replace(/USDT$/,"");
  if(!/^[A-Z0-9]{2,15}$/.test(base))return {available:false,score:null,sourceCount:0,sources:[]};
  const instId=base+"-USDT-SWAP",gateContract=base+"_USDT",kucoinSymbol=(base==="BTC"?"XBT":base)+"USDTM";
@@ -1002,7 +1002,8 @@ async function loadHunterFundingSentiment(symbol,trend){
   ["Gate",()=>marketFlowJson("https://api.gateio.ws/api/v4/futures/usdt/tickers?contract="+encodeURIComponent(gateContract),5000),d=>Array.isArray(d)?d[0]?.funding_rate:null],
   ["KuCoin",()=>marketFlowJson("https://api-futures.kucoin.com/api/v1/funding-rate/"+encodeURIComponent(kucoinSymbol)+"/current",5000),d=>String(d?.code)==="200000"?(d.data?.value??d.data?.fundingRate):null]
  ];
- const results=await Promise.allSettled(probes.map(async([source,request,read])=>{
+ const preferred=preferredProviders.map(value=>probes.findIndex(([source])=>String(value||"").toLowerCase().includes(source.toLowerCase()))).filter(index=>index>=0),probeOrder=[...new Set([...preferred,...probes.map((_,index)=>index)])].slice(0,2);
+ const results=await Promise.allSettled(probeOrder.map(index=>probes[index]).map(async([source,request,read])=>{
   const data=await request(),raw=read(data),rate=raw===null||raw===undefined?NaN:Number(raw);
   if(!Number.isFinite(rate))throw new Error(source+" funding unavailable");
   return {source,rate};
@@ -1029,7 +1030,7 @@ async function scanHunterSymbols(symbols,marketType="spot",assetList=[],env=null
    let sentiment={available:false,score:null,sourceCount:0,sources:[]};
    if(marketType==="futures"){
     if(engineActivity?.sentiment)engineActivity.sentiment.processed++;
-    sentiment=await loadHunterFundingSentiment(x.symbol,x.trend);
+    sentiment=await loadHunterFundingSentiment(x.symbol,x.trend,[x.multiExchangeEvidence?.primary,x.multiExchangeEvidence?.secondary]);
     if(sentiment.available&&engineActivity?.sentiment)engineActivity.sentiment.evidence++;
     x.sentiment=sentiment.available?sentiment:null;
     if(sentiment.available){const earlyQuantum=scoreQuantumOpportunity({...x,sentimentScore:sentiment.score,sentimentConfirmed:true,sentimentSource:sentiment.sources.join(" + ")});x.quantum=earlyQuantum;x.score=earlyQuantum.score;}
