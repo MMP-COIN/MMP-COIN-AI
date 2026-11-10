@@ -1424,7 +1424,7 @@ async function handle(request,env){
    }
    return last;
   };
-  const [binance,bybit,okx,nobitex,wallex,bitget,gate,kucoin]=await Promise.all([
+  const [binance,bybit,okx,nobitex,wallex,bitget,gate,kucoin,mexc,whitebit,binanceFutures,bybitFutures,okxFutures,bitgetFutures,gateFutures,mexcFutures,kucoinFutures,whitebitFutures]=await Promise.all([
    probeAny(["https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://api.binance.us/api/v3/ticker/price?symbol=BTCUSDT","https://api1.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://api2.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://api3.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://data-api.binance.vision/api/v3/ticker/price?symbol=BTCUSDT"],d=>Number(d?.price)>0),
    probeAny(["https://api.bybit.com/v5/market/tickers?category=spot&symbol=BTCUSDT","https://api.bytick.com/v5/market/tickers?category=spot&symbol=BTCUSDT","https://api.bybit.eu/v5/market/tickers?category=spot&symbol=BTCUSDT","https://api.bytick.eu/v5/market/tickers?category=spot&symbol=BTCUSDT"],d=>d?.retCode===0&&Number(d?.result?.list?.[0]?.lastPrice)>0),
    probeAny(["https://www.okx.com/api/v5/market/ticker?instId=BTC-USDT","https://us.okx.com/api/v5/market/ticker?instId=BTC-USDT","https://openapi.okx.com/api/v5/market/ticker?instId=BTC-USDT"],d=>d?.code==="0"&&Number(d?.data?.[0]?.last)>0),
@@ -1432,17 +1432,37 @@ async function handle(request,env){
    probeAny(["https://api.wallex.ir/hector/web/v1/markets","https://api.wallex.ir/v1/markets","https://api.wallex.ir/v1/otc/markets"],d=>{if(d?.success!==true)return false;const raw=d?.result?.symbols??d?.result?.markets;if(Array.isArray(raw))return raw.length>0;if(raw&&typeof raw==="object")return Object.keys(raw).length>0;return false;},12000,{"Origin":"https://wallex.ir","Referer":"https://wallex.ir/","User-Agent":"curl/8.14.1"}),
    probeAny(["https://api.bitget.com/api/v3/market/tickers?category=SPOT&symbol=BTCUSDT","https://api.bitget.com/api/v2/spot/market/tickers?symbol=BTCUSDT"],d=>["00000","0"].includes(String(d?.code))&&Number(d?.data?.[0]?.lastPrice||d?.data?.[0]?.lastPr)>0,9000,{"Origin":"https://mmp-coin.github.io","Referer":"https://mmp-coin.github.io/","User-Agent":"curl/8.14.1"}),
    probeAny(["https://api.gateio.ws/api/v4/spot/tickers?currency_pair=BTC_USDT","https://api.gate.us/api/v4/spot/tickers?currency_pair=BTC_USDT"],d=>Array.isArray(d)&&Number(d?.[0]?.last)>0,9000),
-   probeAny(["https://api.kucoin.com/api/v1/market/orderbook/level1?symbol=BTC-USDT","https://api.kucoin.tr/api/v1/market/orderbook/level1?symbol=BTC-USDT"],d=>d?.code==="200000"&&Number(d?.data?.price)>0,9000)
+   probeAny(["https://api.kucoin.com/api/v1/market/orderbook/level1?symbol=BTC-USDT","https://api.kucoin.tr/api/v1/market/orderbook/level1?symbol=BTC-USDT"],d=>d?.code==="200000"&&Number(d?.data?.price)>0,9000),
+   probeAny(["https://api.mexc.com/api/v3/ticker/price?symbol=BTCUSDT"],d=>Number(d?.price)>0,9000),
+   probeAny(["https://whitebit.com/api/v4/public/ticker"],d=>Number(d?.BTC_USDT?.last_price)>0,9000),
+   probeAny(["https://fapi.binance.com/fapi/v1/ticker/price?symbol=BTCUSDT"],d=>Number(d?.price)>0,9000),
+   probeAny(["https://api.bybit.com/v5/market/tickers?category=linear&symbol=BTCUSDT","https://api.bybit.eu/v5/market/tickers?category=linear&symbol=BTCUSDT"],d=>d?.retCode===0&&Number(d?.result?.list?.[0]?.lastPrice)>0,9000),
+   probeAny(["https://www.okx.com/api/v5/market/ticker?instId=BTC-USDT-SWAP"],d=>d?.code==="0"&&Number(d?.data?.[0]?.last)>0,9000),
+   probeAny(["https://api.bitget.com/api/v2/mix/market/ticker?productType=USDT-FUTURES&symbol=BTCUSDT"],d=>["00000","0"].includes(String(d?.code))&&Number(d?.data?.[0]?.lastPr)>0,9000),
+   probeAny(["https://api.gateio.ws/api/v4/futures/usdt/tickers?contract=BTC_USDT","https://api.gate.us/api/v4/futures/usdt/tickers?contract=BTC_USDT"],d=>Array.isArray(d)&&Number(d?.[0]?.last)>0,9000),
+   probeAny(["https://contract.mexc.com/api/v1/contract/ticker?symbol=BTC_USDT"],d=>d?.success===true&&Number(d?.data?.lastPrice)>0,9000),
+   probeAny(["https://api-futures.kucoin.com/api/v1/ticker?symbol=XBTUSDTM"],d=>d?.code==="200000"&&Number(d?.data?.price)>0,9000),
+   probeAny(["https://whitebit.com/api/v4/public/futures"],d=>d?.success===true&&Array.isArray(d?.result)&&d.result.some(x=>x?.ticker_id==="BTC_PERP"&&Number(x?.last_price)>0),9000)
   ]);
   const checks=[
-   {name:"Binance Spot",purpose:"قیمت، حجم و کندل اسپات",...binance},
-   {name:"Bybit Spot",purpose:"قیمت، حجم و کندل اسپات",...bybit},
-   {name:"OKX Spot",purpose:"قیمت، حجم و کندل اسپات",...okx},
-   {name:"Bitget Spot",purpose:"قیمت، حجم و کندل اسپات",...bitget},
-   {name:"Gate.io Spot",purpose:"قیمت، حجم و کندل اسپات",...gate},
-   {name:"KuCoin Spot",purpose:"قیمت، حجم و کندل اسپات",...kucoin},
-   {name:"Nobitex",purpose:"نرخ تتر به تومان",...nobitex},
-   {name:"Wallex",purpose:"نرخ تتر به تومان",...wallex}
+   {name:"Binance Spot",market:"spot",purpose:"قیمت، حجم و کندل اسپات",...binance},
+   {name:"Bybit Spot",market:"spot",purpose:"قیمت، حجم و کندل اسپات",...bybit},
+   {name:"OKX Spot",market:"spot",purpose:"قیمت، حجم و کندل اسپات",...okx},
+   {name:"Bitget Spot",market:"spot",purpose:"قیمت، حجم و کندل اسپات",...bitget},
+   {name:"Gate.io Spot",market:"spot",purpose:"قیمت، حجم و کندل اسپات",...gate},
+   {name:"KuCoin Spot",market:"spot",purpose:"قیمت، حجم و کندل اسپات",...kucoin},
+   {name:"MEXC Spot",market:"spot",purpose:"قیمت و معاملات اسپات",...mexc},
+   {name:"WhiteBIT Spot",market:"spot",purpose:"قیمت و معاملات اسپات",...whitebit},
+   {name:"Binance Futures",market:"futures",purpose:"قیمت قرارداد دائمی",...binanceFutures},
+   {name:"Bybit Futures",market:"futures",purpose:"قیمت قرارداد دائمی",...bybitFutures},
+   {name:"OKX Futures",market:"futures",purpose:"قیمت قرارداد دائمی",...okxFutures},
+   {name:"Bitget Futures",market:"futures",purpose:"قیمت قرارداد دائمی",...bitgetFutures},
+   {name:"Gate Futures",market:"futures",purpose:"قیمت قرارداد دائمی",...gateFutures},
+   {name:"MEXC Futures",market:"futures",purpose:"قیمت قرارداد دائمی",...mexcFutures},
+   {name:"KuCoin Futures",market:"futures",purpose:"قیمت قرارداد دائمی",...kucoinFutures},
+   {name:"WhiteBIT Futures",market:"futures",purpose:"قیمت قرارداد دائمی",...whitebitFutures},
+   {name:"Nobitex",market:"iran",purpose:"نرخ تتر به تومان",...nobitex},
+   {name:"Wallex",market:"iran",purpose:"نرخ تتر به تومان",...wallex}
   ];
   return json({checked_at:new Date().toISOString(),checks},200,request);
  }
