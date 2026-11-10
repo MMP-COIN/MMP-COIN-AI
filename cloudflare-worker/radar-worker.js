@@ -5,7 +5,7 @@ const MAIN_UNIVERSE = "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers
 const MAIN_FLOW = "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-flow";
 const MAIN_DEPTH = "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-orderflow";
 const RETENTION_SCORE = 64;
-const BATCH_SIZE = 16;
+const BATCH_SIZE = 12;
 const CONCURRENCY = 4;
 const SUPPORTED = new Set(["Binance","Bybit","OKX","Bitget","Gate","KuCoin","WhiteBIT","MEXC"]);
 const JSON_HEADERS = { "Accept":"application/json", "User-Agent":"MMP-COIN-AI-RADAR/1.0" };
@@ -104,7 +104,7 @@ async function scanCoin(coin){
   if(!listed.length)return null;
   const order=[...new Map(listed.sort((a,b)=>Number(b.volume)-Number(a.volume)).map(x=>[x.exchange,x])).values()].map(x=>x.exchange);
   const fallback=["Gate","WhiteBIT","KuCoin","MEXC","OKX","Bitget","Bybit","Binance"].filter(name=>!order.includes(name));
-  const verificationOrder=[...new Set([...order,...fallback])].slice(0,4);
+  const verificationOrder=[...new Set([...order,...fallback])].slice(0,3);
   let market=null,corroboration=null,errors=[];
   for(const venue of verificationOrder){if(corroboration)break;try{const candidate=await loadProvider(symbol,venue);if(!market)market=candidate;else corroboration=candidate;}catch(error){errors.push(venue+": "+String(error?.message||error).slice(0,80));}}
   if(!market)throw new Error(errors.join(" | ")||"No candle provider responded");
@@ -206,7 +206,7 @@ async function runRadar(env,scheduledTime=Date.now()){
   let universe=buildUniverse(source);
   if(!universe.length&&universeSource==="live"&&cachedUniverse){universe=buildUniverse(cachedUniverse);universeSource="cached";}
   if(!universe.length)throw new Error("No eligible USDT spot symbols; previous snapshot retained");
-   const batchSize=universe.length>500?14:BATCH_SIZE;
+   const batchSize=universe.length>500?12:BATCH_SIZE;
   const previousSignals=[...(Array.isArray(oldSnapshot?.signals)?oldSnapshot.signals:[]),...(Array.isArray(oldSnapshot?.legacy_signals)?oldSnapshot.legacy_signals:[])];
   const retentionNow=Date.now();
   const expiredSignals=previousSignals.filter(x=>retentionNow-Number(x?.updatedAt||0)>5*60*1000);
