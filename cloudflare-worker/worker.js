@@ -898,11 +898,16 @@ async function loadFuturesMarketFlow(symbol,windowMinutes=5){
  if(!trades?.length||truncated||trades.length<20){
   try{
    const kucoinSymbol=(base==="BTC"?"XBT":base)+"USDTM";
-   const d=await marketFlowJson("https://api-futures.kucoin.com/api/v1/trade/history?symbol="+encodeURIComponent(kucoinSymbol),8500);
+   const [contractInfo,d]=await Promise.all([
+    marketFlowJson("https://api-futures.kucoin.com/api/v1/contracts/"+encodeURIComponent(kucoinSymbol),8500),
+    marketFlowJson("https://api-futures.kucoin.com/api/v1/trade/history?symbol="+encodeURIComponent(kucoinSymbol),8500)
+   ]);
+   const multiplier=Number(contractInfo?.data?.multiplier);
+   if(String(contractInfo.code)!=="200000"||!(multiplier>0))throw Error("KuCoin Futures contract multiplier unavailable");
    if(String(d.code)!=="200000"||!Array.isArray(d.data))throw Error(d.msg||"KuCoin Futures trade history unavailable");
    const raw=d.data,stamp=x=>{const t=Number(x.ts??x.time);return t>1e15?t/1e6:t>1e12?t:t*1000;};
    const oldest=raw.reduce((v,x)=>Math.min(v,stamp(x)||Infinity),Infinity),kucoinTruncated=Number.isFinite(oldest)&&oldest>cutoff+5000;
-   const rows=raw.map(x=>({time:stamp(x),price:Number(x.price),size:Number(x.size),side:String(x.side||"").toLowerCase()==="buy"?"Buy":"Sell"})).filter(x=>x.time>=cutoff&&x.time<=now&&x.price>0&&x.size>0);
+   const rows=raw.map(x=>({time:stamp(x),price:Number(x.price),size:Number(x.size)*multiplier,side:String(x.side||"").toLowerCase()==="buy"?"Buy":"Sell"})).filter(x=>x.time>=cutoff&&x.time<=now&&x.price>0&&x.size>0);
    if(rows.length&&betterFlow(rows,kucoinTruncated)){trades=rows;truncated=kucoinTruncated;provider="KuCoin USDT Futures · real trades";}
   }catch(error){lastError="KuCoin Futures: "+String(error?.message||error).slice(0,120);}
  }
