@@ -212,7 +212,7 @@ async function candles(symbol,interval,env,marketType="spot"){
     const raw=await r.json(),rows=Array.isArray(raw)?raw.map(x=>[Number(x.t)<1e12?Number(x.t)*1000:Number(x.t),x.o,x.h,x.l,x.c,x.v,x.sum||"0","0","0","0"]):[];
     if(!validRows(rows))throw new Error("insufficient Gate Futures candle history");
     const result=analyzeClosedKlines(rows,interval);result.data_provider="Gate USDT Futures";return result;
-   }catch(e){errors.push("Gate: "+e.message);}
+   }catch(e){errors.push("Gate: "+e.message);if(/HTTP (400|403|451)|invalid|not listed|insufficient|Symbol Is Invalid/i.test(String(e?.message||e)))break;}
   }
   try{
    const url="https://api.bitget.com/api/v3/market/candles?category=USDT-FUTURES&symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250";
@@ -229,7 +229,7 @@ async function candles(symbol,interval,env,marketType="spot"){
     const payload=await r.json(),list=payload?.retCode===0?payload.result?.list:null;
     if(!validRows(list))throw new Error(payload?.retMsg||"insufficient Bybit linear candle history");
     const result=analyzeClosedKlines(toBybitRows(list),interval);result.data_provider="Bybit Linear Perpetual";return result;
-   }catch(e){errors.push("Bybit: "+e.message);}
+   }catch(e){errors.push("Bybit: "+e.message);if(/HTTP (400|403|451)|invalid|not listed|insufficient|Symbol Is Invalid/i.test(String(e?.message||e)))break;}
   }
   if(pair){
    for(const host of ["https://www.okx.com","https://us.okx.com"]){
@@ -239,7 +239,7 @@ async function candles(symbol,interval,env,marketType="spot"){
      const payload=await r.json(),list=payload?.code==="0"?payload.data:null;
      if(!validRows(list))throw new Error(payload?.msg||"insufficient OKX swap candle history");
      const result=analyzeClosedKlines(toOkxRows(list),interval);result.data_provider="OKX Linear Swap";return result;
-    }catch(e){errors.push("OKX: "+e.message);}
+    }catch(e){errors.push("OKX: "+e.message);if(/HTTP (400|403|451)|invalid|not listed|insufficient|Symbol Is Invalid/i.test(String(e?.message||e)))break;}
    }
   }
   for(const host of ["https://fapi.binance.com","https://fapi1.binance.com","https://fapi2.binance.com","https://fapi3.binance.com"]){
@@ -248,7 +248,7 @@ async function candles(symbol,interval,env,marketType="spot"){
     if(!r.ok)throw new Error("Binance Futures HTTP "+r.status);
     const rows=await r.json();if(!validRows(rows))throw new Error("insufficient Binance Futures candle history");
     const result=analyzeClosedKlines(rows,interval);result.data_provider="Binance USD-M Futures";return result;
-   }catch(e){errors.push("Binance: "+e.message);}
+   }catch(e){errors.push("Binance: "+e.message);if(/HTTP (400|403|451)|invalid|not listed|insufficient|Symbol Is Invalid/i.test(String(e?.message||e)))break;}
   }
   throw new Error("Futures data unavailable for "+symbol+" "+interval+"; "+errors.join(" | ").slice(0,520));
  }
@@ -270,7 +270,7 @@ async function candles(symbol,interval,env,marketType="spot"){
    const result=analyzeClosedKlines(rows,interval);
    result.data_provider=url.includes("binance.us")?"Binance.US":url.includes("data-api")?"Binance Data API":url.includes("api1.")||url.includes("api2.")||url.includes("api3.")?"Binance mirror":"Binance Spot";
    return result;
-  }catch(e){lastError=e;}
+  }catch(e){lastError=e;if(/HTTP (400|403|451)|invalid|not listed|insufficient|Symbol Is Invalid/i.test(String(e?.message||e)))break;}
  }
  try{
   const r=await fetchWithTimeout("https://api.mexc.com/api/v3/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250",{headers});
@@ -343,7 +343,7 @@ async function candles(symbol,interval,env,marketType="spot"){
     if(!validRows(rows))throw new Error(typeof payload?.message==="string"?payload.message:"insufficient WhiteBIT candle history");
     const normalized=rows.map(x=>[Number(x[0])*1000,x[1],x[3],x[4],x[2],x[5]||"0","0","0","0","0"]).sort((a,b)=>a[0]-b[0]);
     const result=analyzeClosedKlines(normalized,interval);result.data_provider="WhiteBIT Spot";return result;
-   }catch(e){whitebitError=e;}
+   }catch(e){whitebitError=e;if(/HTTP (400|403|451)|invalid|not listed|insufficient|Symbol Is Invalid/i.test(String(e?.message||e)))break;}
   }
   lastError=new Error((lastError?.message||"Earlier spot sources unavailable")+"; "+(whitebitError?.message||"WhiteBIT unavailable"));
  }
@@ -356,7 +356,7 @@ async function candles(symbol,interval,env,marketType="spot"){
    const payload=await r.json(),list=payload?.retCode===0?payload.result?.list:null;
    if(!validRows(list))throw new Error(payload?.retMsg||"insufficient Bybit spot candle history");
    const result=analyzeClosedKlines(toBybitRows(list),interval);result.data_provider="Bybit Spot (fallback)";return result;
-  }catch(e){bybitError=e;}
+  }catch(e){bybitError=e;if(/HTTP (400|403|451)|invalid|not listed|insufficient|Symbol Is Invalid/i.test(String(e?.message||e)))break;}
  }
  const pair=splitQuotePair(symbol);
  if(pair){
