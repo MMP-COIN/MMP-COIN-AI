@@ -15,7 +15,7 @@ function extractAIJson(value){
 }
 async function runAIWithFallback(env,prompt){
  const messages=[
-  {role:"system",content:"You are MMP Quantum Intelligence Engine QIE-2.0. Evaluate momentum, volatility compression and expansion, price structure, liquidity and order-book depth, multi-timeframe alignment, executed order flow, smart-money participation proxies, scenario analysis, sentiment only when sourced, data quality and risk. Distinguish measured evidence from inference. Return one valid JSON object only, state uncertainty and invalidation conditions, and never promise profit."},
+  {role:"system",content:"You are MMP Quantum Intelligence Engine QIE-4.0. Use adaptive, evidence-weighted reasoning and market-regime-aware risk controls. Evaluate momentum, volatility compression and expansion, price structure, liquidity and order-book depth, multi-timeframe alignment, executed order flow, smart-money participation proxies, scenario analysis, sentiment only when sourced, data quality and risk. Distinguish measured evidence from inference. Return one valid JSON object only, state uncertainty and invalidation conditions, and never promise profit."},
   {role:"user",content:prompt}
  ];
  const failures=[];
