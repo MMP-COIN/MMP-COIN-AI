@@ -231,7 +231,8 @@ jobs:
           curl --fail --silent --show-error --retry 1 --retry-delay 3 --max-time 90 "$WORKER_URL/hunter-scan?market=spot&symbols=BTC%2CETH%2CSOL%2CXRP" -o /tmp/five-provider-hunter.json
           jq -e '.requested == 4 and (.scanned // 0) >= 2 and (.failed // 4) <= 2' /tmp/five-provider-hunter.json >/dev/null
           jq -r '"Deployed five-provider Hunter: " + (.scanned|tostring) + "/4 scanned; " + (.candidates|tostring) + " preliminary candidates; " + (.failed|tostring) + " data failures; " + (.signals|length|tostring) + " confirmed signals." ' /tmp/five-provider-hunter.json
-          curl --fail --silent --show-error --retry 1 --retry-delay 3 --max-time 120 "$WORKER_URL/hunter-scan?market=futures&symbols=BTC%2CETH%2CWLD%2CENA%2CPUMP%2CICNT" -o /tmp/futures-provider-hunter.json
+          curl --fail --silent --show-error --retry 1 --retry-delay 3 --max-time 120 "$WORKER_URL/hunter-scan?market=futures&symbols=BTC%2CETH%2CSOL%2CXRP%2CDOGE%2CBNB" -o /tmp/futures-provider-hunter.json
+          jq '{requested,scanned,failed,errors,signals_count:(.signals|length)}' /tmp/futures-provider-hunter.json
           jq -e '.requested == 6 and (.scanned // 0) >= 4 and (.failed // 6) <= 2' /tmp/futures-provider-hunter.json >/dev/null
           jq -r '"Deployed Futures fallback: " + (.scanned|tostring) + "/6 scanned; " + (.failed|tostring) + " data failures; " + (.signals|length|tostring) + " flow-confirmed signals." ' /tmp/futures-provider-hunter.json
       - name: Verify scheduled Spot and Futures hunter cycles
