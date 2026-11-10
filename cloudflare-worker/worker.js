@@ -722,7 +722,7 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
  }
  const fallbackPriority=marketType==="futures"?[5,2,4,0,3,1]:[7,6,4,5,8,3,1,2,0];
  order=unique([...order,...fallbackPriority.filter(index=>!order.includes(index))]);
- const sourceLimit=5,orderedSources=order.map(index=>sources[index]).filter(Boolean).slice(0,sourceLimit),verified=[];
+ const sourceLimit=sources.length,orderedSources=order.map(index=>sources[index]).filter(Boolean).slice(0,sourceLimit),verified=[];
  let selectedPair=null,bestObservedPair=null;
  const evaluatePairs=()=>{
   const pairs=[];
