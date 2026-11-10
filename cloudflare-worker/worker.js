@@ -416,6 +416,8 @@ async function cleanupMarketFallbackCache(env){
  try{
   const cutoff=Date.now()-7*86400000;
   await env.MARKET_CACHE_DB.prepare("DELETE FROM market_data_cache WHERE cache_key IN (SELECT cache_key FROM market_data_cache WHERE cached_at < ? ORDER BY cached_at ASC LIMIT 100)").bind(cutoff).run();
+  // Keep the fallback table bounded without a large daily sweep.
+  await env.MARKET_CACHE_DB.prepare("DELETE FROM market_data_cache WHERE cache_key IN (SELECT cache_key FROM market_data_cache ORDER BY cached_at ASC LIMIT 100) AND (SELECT COUNT(*) FROM market_data_cache)>4000").run();
  }catch(error){console.warn("Market fallback cache cleanup failed:",String(error?.message||error).slice(0,160));}
 }
 async function readPublicJson(url){
