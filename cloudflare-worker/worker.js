@@ -688,7 +688,7 @@ if(!trades?.length)throw new Error("داده معاملات از Bybit، Binance
  return {symbol:pair,window_minutes:minutes,buy5m,sell5m,net5m:buy5m-sell5m,trade_count:trades.length,provider,exchange:provider.startsWith("Bybit")?"Bybit":provider.startsWith("Binance")?"Binance":provider.startsWith("OKX")?"OKX":provider.startsWith("MEXC")?"MEXC":provider.startsWith("WhiteBIT")?"WhiteBIT":provider.startsWith("KuCoin")?"KuCoin":"Gate",complete:!truncated,coverage_start:Number.isFinite(oldestTrade)?oldestTrade:null,window_start:cutoff,window_end:now,updated_at:now,rows};
 }
 async function fetchHunterCandles(symbol,marketType="spot",asset=null){
- const pair=symbol+"USDT",get=url=>marketFlowJson(url,6500);
+ const pair=symbol+"USDT",get=url=>marketFlowJson(url,4500);
  const tryHosts=async(label,hosts,build,extract,map)=>{
   let lastError=null;
   for(const host of hosts){
@@ -1020,7 +1020,7 @@ function markQuantumEvidence(activity,key){if(activity?.[key]){activity[key].pro
 async function scanHunterSymbols(symbols,marketType="spot",assetList=[],env=null){
  const assetMap=new Map((Array.isArray(assetList)?assetList:[]).map(x=>[String(x.symbol||"").toUpperCase(),x]));
  let i=0,failed=0,rejected=0,flowChecked=0;const candidates=[],errors=[],rejections=[],engineActivity=Object.fromEntries(QUANTUM_ACTIVITY_KEYS.map(key=>[key,{processed:0,evidence:0}]));
- const concurrency=4;
+ const concurrency=6;
  await Promise.all(Array.from({length:Math.min(concurrency,symbols.length)},async()=>{while(i<symbols.length){const symbol=symbols[i++];try{const x=await analyzeDigitalHunterSymbol(symbol,marketType,assetMap.get(symbol),engineActivity);if(x)candidates.push(x);}catch(e){const message=String(e?.message||e);if(message.startsWith("QUALITY_REJECTED:")){rejected++;rejections.push({symbol,error:message.slice(0,180)});}else{failed++;errors.push({symbol,error:message.slice(0,220)});}}}}));
  candidates.sort((a,b)=>b.score-a.score);const signals=[];
  const flowEligible=x=>!x.lowLiquidity&&(x.candidateGate===true||(x.earlyCoreAligned===true&&x.score>=(marketType==="futures"?62:60)));const flowCandidates=(marketType==="futures"?[...candidates.filter(flowEligible)].sort((a,b)=>b.score-a.score).slice(0,1):["bull","bear"].flatMap(trend=>candidates.filter(x=>x.trend===trend&&flowEligible(x)).sort((a,b)=>b.score-a.score).slice(0,1))).filter(x=>x.score>=50);
