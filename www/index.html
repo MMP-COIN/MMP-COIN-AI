@@ -3066,7 +3066,7 @@ function mmpRenderChart(payload){
  const link=document.getElementById("chart-replay-link");if(link){const p=String(payload.provider||"").toLowerCase(),ex=p.includes("bitget")?"BITGET":p.includes("bybit")?"BYBIT":p.includes("okx")?"OKX":p.includes("mexc")?"MEXC":"BINANCE";link.href="https://www.tradingview.com/chart/?symbol="+encodeURIComponent(ex+":"+payload.symbol);}
  document.querySelectorAll("[data-chart-tf]").forEach(b=>b.classList.toggle("active",b.dataset.chartTf===st.interval));
 }
-function initTradingView(){mmpLoadChart(true);if(mmpChartState.refreshTimer)clearInterval(mmpChartState.refreshTimer);mmpChartState.refreshTimer=setInterval(()=>{if(!document.hidden&&document.getElementById("chart-section")?.getBoundingClientRect().top<window.innerHeight+600)mmpLoadChart(false);},45000);}
+function initTradingView(){mmpLoadChart(true);if(mmpChartState.refreshTimer)clearInterval(mmpChartState.refreshTimer);mmpChartState.refreshTimer=setInterval(()=>{if(!document.hidden&&document.getElementById("chart-section")?.getBoundingClientRect().top<window.innerHeight+600)mmpLoadChart(false);},60000);}
 function changeTradingViewSymbol(){mmpLoadChart(true);}
 function mmpSetChartInterval(value){if(!["1m","5m","15m","1h","4h","1d"].includes(value))return;mmpChartState.interval=value;mmpLoadChart(true);}
 function mmpSetChartMarket(value){mmpChartState.market=value==="futures"?"futures":"spot";mmpLoadChart(true);}
@@ -4911,14 +4911,14 @@ refreshAll();
 setTimeout(()=>loadUnifiedRadarSnapshot(),0);
 try{setupAiCoinPicker();}catch(error){console.error("AI coin picker initialization failed:",error);}
 try{renderMarketHours();setInterval(renderMarketHours,15000);}catch(error){console.error("Market hours initialization failed:",error);}
-checkConnections();setInterval(()=>{if(document.visibilityState!=="hidden")checkConnections();},60000);window.addEventListener("online",()=>checkConnections());document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"){checkConnections();loadUnifiedRadarSnapshot();}});
+checkConnections();setInterval(()=>{if(document.visibilityState!=="hidden")checkConnections();},300000);window.addEventListener("online",()=>checkConnections());document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"){checkConnections();loadUnifiedRadarSnapshot();}});
 try{initTradingView("BINANCE:BTCUSDT");}catch(error){console.error("TradingView initialization failed:",error);}
-setInterval(refreshAll, 60000);
-setInterval(()=>{if(document.visibilityState!=="hidden")refreshBenchmarkQuotes();},15000);
-setInterval(()=>{if(document.visibilityState!=="hidden")refreshLiveQuotes();},60000);
-setInterval(()=>{if(document.visibilityState!=="hidden")refreshGoldQuote();},30000);
+setInterval(refreshAll, 180000);
+setInterval(()=>{if(document.visibilityState!=="hidden")refreshBenchmarkQuotes();},60000);
+setInterval(()=>{if(document.visibilityState!=="hidden")refreshLiveQuotes();},180000);
+setInterval(()=>{if(document.visibilityState!=="hidden")refreshGoldQuote();},120000);
 setTimeout(()=>loadUnifiedRadarSnapshot(),12000);
-setInterval(()=>{if(document.visibilityState!=="hidden")loadUnifiedRadarSnapshot();},60000);
+setInterval(()=>{if(document.visibilityState!=="hidden")loadUnifiedRadarSnapshot();},90000);
 
 </script>
 
@@ -5142,7 +5142,7 @@ function mmpAppType(){return (location.protocol==="capacitor:"||(window.Capacito
 function mmpSendEvent(type){try{fetch(MMP_ANALYTICS_ENDPOINT+"/analytics/event",{method:"POST",headers:{"Content-Type":"application/json"},keepalive:true,body:JSON.stringify({event_type:type,path:location.pathname,app_type:mmpAppType(),visitor_id:mmpVisitorId()})}).catch(()=>{});}catch(e){}}
 function mmpSendAiResult(analysis,market,mode,coin){try{fetch(MMP_ANALYTICS_ENDPOINT+"/analytics/ai-result",{method:"POST",headers:{"Content-Type":"application/json"},keepalive:true,body:JSON.stringify({analysis:analysis,market:market,market_mode:mode,asset:coin?.name||market?.asset,symbol:coin?.symbol||market?.symbol,app_type:mmpAppType(),visitor_id:mmpVisitorId()})}).catch(()=>{});}catch(e){}}
 mmpSendEvent("page_view");
-setInterval(()=>mmpSendEvent("heartbeat"),240000);
+setInterval(()=>mmpSendEvent("heartbeat"),600000);
 </script>
 <div id="hunter-chart-modal" class="hunter-chart-modal" aria-live="polite"></div>
 
@@ -5291,7 +5291,7 @@ setInterval(()=>mmpSendEvent("heartbeat"),240000);
    $("boom-oscillator").innerHTML=drawOsc(smooth.slice(-120),signals.slice(-120));
    const unusual=flowRatio>=2?" · حجم غیرعادی در آخرین کندل":"";
    status.className="boom-status";status.textContent=pair+" · "+interval+" · "+rows.length+" کندل شامل کندل جاری · منبع: "+provider+" · سبز/قرمز: خرید/فروش تهاجمی · بروزرسانی "+new Date().toLocaleTimeString("fa-IR")+unusual;
-   boomLiveRows=rows;boomLiveLastTick=0;startBoomLive(pair,interval);boomLiveEnabled=true;if(!boomLiveTimer)boomLiveTimer=setInterval(()=>{if(boomLiveEnabled&&!document.hidden&&!button.disabled&&(!boomLiveLastTick||Date.now()-boomLiveLastTick>20000))run();},25000);
+   boomLiveRows=rows;boomLiveLastTick=0;startBoomLive(pair,interval);boomLiveEnabled=true;if(!boomLiveTimer)boomLiveTimer=setInterval(()=>{if(boomLiveEnabled&&!document.hidden&&!button.disabled&&(!boomLiveLastTick||Date.now()-boomLiveLastTick>45000))run();},60000);
    syncBoomExpanded();
   }catch(error){status.className="boom-status error";status.textContent="دریافت/تحلیل ناموفق: "+(error&&error.message?error.message:"خطای نامشخص");}
   finally{button.disabled=false;}
@@ -6021,13 +6021,13 @@ body{background:radial-gradient(ellipse at 74% 0,#1b626755,transparent 29%),radi
  $("market-heatmap-refresh")?.addEventListener("click",loadMarketHeatmap);
  $("performance-refresh")?.addEventListener("click",loadPublicPerformance);
  loadMarketHeatmap();loadPublicPerformance();
- setInterval(loadMarketHeatmap,60000);setInterval(loadPublicPerformance,300000);
+ setInterval(loadMarketHeatmap,300000);setInterval(loadPublicPerformance,900000);
  orderButton?.addEventListener("click",loadOrderflowViaWorker);
  derivButton?.addEventListener("click",loadOrderflowViaWorker);
  $("intel-symbol")?.addEventListener("change",loadOrderflowViaWorker);
  $("orderflow-market")?.addEventListener("change",loadOrderflowViaWorker);
  loadOrderflowViaWorker();loadDerivativesViaWorker();
- setInterval(loadOrderflowViaWorker,60000);
+ setInterval(loadOrderflowViaWorker,180000);
 
  // The original intelligence engine remains authoritative for futures; this adds a working BTC large-transfer feed without inventing exchange labels.
  const whale=$("whale-panel");
@@ -6373,7 +6373,7 @@ window.mmpShareDownloadLink = async function () {
   finally{busy=false;if(button){button.disabled=false;const label=button.querySelector("span");if(label)label.textContent="بروزرسانی شکار";}}
  } function init(){
   // Unified hunter refresh handler owns the single refresh button; this module only polls snapshots.
-  load();setInterval(load,60000);
+  load();setInterval(load,120000);
  }
  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init,{once:true});else init();
 })();
