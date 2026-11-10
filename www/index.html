@@ -3049,7 +3049,7 @@ async function mmpLoadChart(force=false){
  const symbol=mmpChartSymbol(),interval=mmpChartState.interval,market=mmpChartState.market,key=[symbol,interval,market].join(":");
  const cached=mmpChartState.cache.get(key),now=Date.now();if(!force&&cached&&now-cached.at<20000){mmpRenderChart(cached.payload);return;}
  if(mmpChartState.abort)mmpChartState.abort.abort();
- const controller=new AbortController(),seq=++mmpChartState.seq;mmpChartState.abort=controller;
+ const controller=new AbortController(),seq=++mmpChartState.seq,timer=setTimeout(()=>controller.abort(),18000);mmpChartState.abort=controller;
  mmpChartStatus("در حال دریافت کندل‌های "+symbol+" · "+interval+" …","loading");
  const url="https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-candles?symbol="+encodeURIComponent(symbol)+"&interval="+encodeURIComponent(interval)+"&market="+market;
  try{
@@ -3060,6 +3060,7 @@ async function mmpLoadChart(force=false){
   const unique=rows.filter((c,i)=>i===0||c.time>rows[i-1].time);if(unique.length<20)throw new Error("تعداد کندل معتبر کافی نیست ("+unique.length+")");
   const clean={...payload,candles:unique};mmpChartState.cache.set(key,{at:now,payload:clean});mmpRenderChart(clean);
  }catch(error){if(controller.signal.aborted||seq!==mmpChartState.seq)return;const old=mmpChartState.cache.get(key);if(old){mmpRenderChart({...old.payload,data_stale:true});mmpChartStatus("دریافت تازه ناموفق؛ آخرین داده ذخیره‌شده نمایش داده می‌شود · "+String(error.message||error),"warning");}else mmpChartStatus("داده نمودار دریافت نشد: "+String(error.message||error)+" · تازه‌سازی را دوباره بزن.","error");}
+ finally{clearTimeout(timer);}
 }
 function mmpRenderChart(payload){
  const rows=payload.candles||[],st=mmpChartState;if(!st.chart||!rows.length)return;
@@ -4726,9 +4727,9 @@ async function loadDigitalHunterSnapshot(force=false){
  if(hunterSpotSnapshotBusy)return null;
  if(!force&&Date.now()-hunterSpotSnapshotLast<45000)return window.__mmpDigitalHunterSnapshot||null;
  hunterSpotSnapshotBusy=true;
- const status=$("hunter-feed-status");
+ const status=$("hunter-feed-status"),controller=new AbortController(),timer=setTimeout(()=>controller.abort(),12000);
  try{
-  const response=await fetch("https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/hunter-snapshot",{cache:"no-store"});
+  const response=await fetch("https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/hunter-snapshot",{cache:"no-store",signal:controller.signal});
   if(!response.ok)throw new Error("HTTP "+response.status);
   const snapshot=await response.json();
   if(snapshot.status==="error")throw new Error(snapshot.error||"Spot Hunter snapshot unavailable");
@@ -4740,18 +4741,18 @@ async function loadDigitalHunterSnapshot(force=false){
  }catch(error){
   if(status)status.textContent="دریافت Snapshot شکارچی Spot ناموفق بود: "+String(error?.message||error).slice(0,140);
   return null;
- }finally{hunterSpotSnapshotBusy=false;}
+ }finally{clearTimeout(timer);hunterSpotSnapshotBusy=false;}
 }
 async function runDedicatedHunterScan(force=false){
  if(dualHunterState.busy)return;
  if(!force&&Date.now()-dualHunterState.lastScan<4*60*1000)return;
- dualHunterState.busy=true;const status=$("hunter-feed-status"),button=$("hunter-refresh-btn");
+ dualHunterState.busy=true;const status=$("hunter-feed-status"),button=$("hunter-refresh-btn"),controller=new AbortController(),timer=setTimeout(()=>controller.abort(),12000);
  try{
-  const response=await fetch("https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/hunter-futures-snapshot",{cache:"no-store"});
+  const response=await fetch("https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/hunter-futures-snapshot",{cache:"no-store",signal:controller.signal});
   const snapshot=await response.json();if(!response.ok||snapshot.status==="error")throw new Error(snapshot.error||"Futures Hunter unavailable");
   window.__mmpDigitalHunterFuturesSnapshot=snapshot;dualHunterState.lastScan=Date.now();renderMarketHunter();
  }catch(error){if(status)status.textContent="به‌روزرسانی موتور Futures ناموفق بود: "+String(error?.message||error).slice(0,140);}
- finally{dualHunterState.busy=false;if(button&&!button.classList.contains("is-refreshing"))button.disabled=false;}
+ finally{clearTimeout(timer);dualHunterState.busy=false;if(button&&!button.classList.contains("is-refreshing"))button.disabled=false;}
 }
 document.addEventListener("click",function(event){
  const detail=event.target.closest("[data-hunter-detail]");if(detail){event.preventDefault();openHunterDetail(detail.getAttribute("data-hunter-detail"),detail.getAttribute("data-hunter-market")||"spot");return;}
