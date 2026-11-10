@@ -44,7 +44,7 @@ export function scoreQuantumOpportunity(input={}){
  const priceAvailable=price>0;
  const ageAvailable=has(input,"dataAgeMs");
  const age=ageAvailable?Math.max(0,finite(input.dataAgeMs)):Infinity;
- const fresh=ageAvailable&&age<=90000;
+ const fresh=ageAvailable&&age<=180000;
  const momentumAvailable=changesAvailable;
  const momentum=momentumAvailable?clamp(28+Math.abs(Number(changes[0]))*11+Math.abs(Number(changes[1]))*7+Math.abs(Number(changes[2]))*4+Math.abs(Number(changes[3]))*1.2):0;
  const flowAvailable=input.flowConfirmed===true&&has(input,"flowImbalance");
@@ -67,7 +67,7 @@ export function scoreQuantumOpportunity(input={}){
  let regime=has(input,"marketRegimeScore")?clamp(input.marketRegimeScore):(regimeAvailable?((input.trend15===true||input.trend15m===true)?84:56):0);
  if(input.overextended===true&&regimeAvailable)regime=Math.max(25,regime-28);
  const dataQualityAvailable=ageAvailable&&priceAvailable;
- const dataQuality=dataQualityAvailable?(age<=90000?100:age<=150000?80:age<=210000?60:0):0;
+ const dataQuality=dataQualityAvailable?(age<=180000?100:age<=240000?80:0):0;
 
  const volatilityAvailable=has(input,"explosionScore")||has(input,"compressionScore")||has(input,"atrPct")||has(input,"atrPercent")||has(input,"volatilityRatio");
  let volatility=0;
