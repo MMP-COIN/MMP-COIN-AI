@@ -1791,8 +1791,8 @@ async function runDigitalHunterCron(event,env,ctx){
  },errors};
  await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(id,JSON.stringify(payload),new Date(finished).toISOString()).run();
  if(!spot&&!futures)throw new Error("Quantum Spot and Futures cycles both failed: "+JSON.stringify(errors));
- const scheduledAt=new Date(Number(event?.scheduledTime)||Date.now());
- if(ctx?.waitUntil&&scheduledAt.getUTCMinutes()%30===5){const refresh=refreshDigitalHunterUniverses(env).catch(error=>console.error("Digital Hunter universe refresh failed:",error?.message||error));ctx.waitUntil(Promise.race([refresh,new Promise(resolve=>setTimeout(resolve,8000))]));}
+ // Universe refresh runs in its own low-frequency Worker so it cannot consume
+ // the per-invocation subrequest budget needed by the live Spot/Futures scans.
 }
 export default {
  fetch:handle,
