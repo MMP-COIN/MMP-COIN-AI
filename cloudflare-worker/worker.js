@@ -690,7 +690,7 @@ if(!trades?.length)throw new Error("داده معاملات از Bybit، Binance
  return {symbol:pair,window_minutes:minutes,buy5m,sell5m,net5m:buy5m-sell5m,trade_count:trades.length,provider,exchange:provider.startsWith("Bybit")?"Bybit":provider.startsWith("Binance")?"Binance":provider.startsWith("OKX")?"OKX":provider.startsWith("MEXC")?"MEXC":provider.startsWith("WhiteBIT")?"WhiteBIT":provider.startsWith("KuCoin")?"KuCoin":"Gate",complete:!truncated,coverage_start:Number.isFinite(oldestTrade)?oldestTrade:null,window_start:cutoff,window_end:now,updated_at:now,rows};
 }
 async function fetchHunterCandles(symbol,marketType="spot",asset=null){
- const pair=symbol+"USDT",get=url=>get(url,4500);
+ const pair=symbol+"USDT",get=url=>marketFlowJson(url,4500);
  const tryHosts=async(label,hosts,build,extract,map)=>{
   let lastError=null;
   for(const host of hosts){
