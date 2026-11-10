@@ -71,6 +71,9 @@ jobs:
           if (ledgerB.records.length !== 1 || !(ledgerB.records[0].outcome_5m > 0) || ledgerB.summary.matured5m !== 1) throw new Error("Persistent signal outcome learning failed");
           const calibrated = learning.applyLearningCalibration(signal,ledgerB.summary);
           if (calibrated.quantum.calibratedConfidence !== 70 || calibrated.quantum.learningCalibration.status !== "collecting") throw new Error("Learning calibration must remain inactive below 30 samples");
+          const matureRecords = Array.from({length:40},(_,i)=>({id:"sample-"+i,market:"spot",status:"completed",outcome_5m:1.25}));
+          const matureSummary = learning.summarizeLearningLedger(matureRecords,"spot");
+          if (matureSummary.calibrationStatus !== "calibrated" || matureSummary.matured5m !== 40 || matureSummary.calibrationAdjustment !== 5) throw new Error("Bounded learning calibration did not activate at the minimum sample size");
           const workerSource = fs.readFileSync("cloudflare-worker/worker.js", "utf8");
           if (!workerSource.includes("for(const url of urls)") || workerSource.includes("Promise.all(urls.map(url=>timeoutFetch")) throw new Error("Exchange health fallback must try alternate endpoints sequentially and stop after a verified response");
                     if (!workerSource.includes("async function fetchWithTimeout") || !workerSource.includes("return await fetch(url,{...options,signal:controller.signal})") || workerSource.includes("return await fetchWithTimeout(url,{...options,signal:controller.signal})")) throw new Error("Bounded fetch helper must call native fetch exactly once and must not recurse");
@@ -108,7 +111,7 @@ jobs:
           if (!confirmed.qualityGate) throw new Error("Fully confirmed signal did not pass");
           const noDepth = mod.scoreQuantumOpportunity({...base,flowConfirmed:true,flowImbalance:0.12,requireDepthConfirmation:true,depthConfirmed:false});
           const withDepth = mod.scoreQuantumOpportunity({...base,flowConfirmed:true,flowImbalance:0.12,requireDepthConfirmation:true,depthConfirmed:true});
-          if (noDepth.qualityGate || !withDepth.qualityGate) throw new Error("Order-book depth gate is incorrect");
+          if (noDepth.qualityGate || !withDepth.qualityGate || !noDepth.missingEvidence.includes("depth")) throw new Error("Order-book depth gate is incorrect");
           if (!withDepth.specialistEnsemble || withDepth.specialistEnsemble.modelCount < 5 || !Array.isArray(withDepth.specialistEnsemble.experts)) throw new Error("Specialist multi-model ensemble is not producing evidence-backed outputs");
           const rejected = [
             mod.scoreQuantumOpportunity({...base,flowConfirmed:true,flowImbalance:-0.12}),
