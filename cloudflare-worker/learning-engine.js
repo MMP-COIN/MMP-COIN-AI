@@ -9,8 +9,15 @@ export function directionalReturnPct(entryPrice,currentPrice,direction){
 export function evaluateLearningMark(record,currentPrice,now=Date.now()){
  const signed=directionalReturnPct(record.entry_price,currentPrice,record.direction);if(signed===null)return record;
  const elapsed=Math.max(0,now-Number(record.signal_at||now));
- const next={...record,last_price:Number(currentPrice),last_seen_at:now,max_favorable_pct:Math.max(finite(record.max_favorable_pct),signed),max_adverse_pct:Math.min(finite(record.max_adverse_pct),signed)};
- for(const minutes of HORIZONS){const key="outcome_"+minutes+"m";if(next[key]===null||next[key]===undefined){if(elapsed>=minutes*60000){next[key]=Number(signed.toFixed(6));next[key+"_observed_at"]=now;next[key+"_lag_ms"]=elapsed-minutes*60000;}}}
+ let next=null;
+ for(const minutes of HORIZONS){
+  const key="outcome_"+minutes+"m";
+  if((record[key]===null||record[key]===undefined)&&elapsed>=minutes*60000){
+   if(!next)next={...record};
+   next[key]=Number(signed.toFixed(6));next[key+"_observed_at"]=now;next[key+"_lag_ms"]=elapsed-minutes*60000;
+  }
+ }
+ if(!next)return record;
  if(next.outcome_60m!==null&&next.outcome_60m!==undefined)next.status="completed";
  return next;
 }
@@ -27,12 +34,12 @@ export function summarizeLearningLedger(records=[],market="spot"){
 }
 export function updateLearningLedger(previous={},options={}){
  const now=Number(options.now)||Date.now(),market=String(options.market||"spot"),engine=String(options.engine||"hunter");
- let records=Array.isArray(previous.records)?previous.records.slice():[];
+ let records=Array.isArray(previous.records)?previous.records.slice():[],changed=false;
  const observations=Array.isArray(options.observations)?options.observations:[];
  for(const observation of observations){
   const symbol=String(observation?.symbol||observation?.coin?.symbol||"").toUpperCase(),price=Number(observation?.price??observation?.currentPrice??observation?.coin?.current_price);
   if(!/^[A-Z0-9]{2,24}$/.test(symbol)||!(price>0))continue;
-  records=records.map(record=>record.market===market&&record.symbol===symbol&&record.status==="open"?evaluateLearningMark(record,price,now):record);
+  records=records.map(record=>{if(record.market!==market||record.symbol!==symbol||record.status!=="open")return record;const updated=evaluateLearningMark(record,price,now);if(updated!==record)changed=true;return updated;});
  }
  const qualified=Array.isArray(options.signals)?options.signals:[];
  for(const signal of qualified){
@@ -44,11 +51,11 @@ export function updateLearningLedger(previous={},options={}){
   records.push({id,engine,market,symbol,direction,entry_price:price,signal_at:candleTime,score:finite(signal.score),confidence:finite(signal.quantum?.confidence),
    engine_version:String(signal.quantum?.version||signal.quantum?.engine||"QIE"),
    evidence:{volumeRatio:finite(signal.volumeRatio),flowTrades:finite(signal.flow?.tradeCount),flowProvider:String(signal.flow?.provider||""),depthSource:String(signal.depth?.source||signal.depth?.provider||"")},
-   last_price:price,last_seen_at:now,max_favorable_pct:0,max_adverse_pct:0,outcome_5m:null,outcome_15m:null,outcome_60m:null,status:"open"});
+   outcome_5m:null,outcome_15m:null,outcome_60m:null,status:"open"});\n  changed=true;
  }
- records.sort((a,b)=>Number(a.signal_at)-Number(b.signal_at));records=records.slice(-1500);
+ records.sort((a,b)=>Number(a.signal_at)-Number(b.signal_at));records=records.slice(-1000);
  const summary=summarizeLearningLedger(records,market);summary.processed=observations.length;
- return {version:"MMP-SELF-LEARNING-1.0",updatedAt:now,records,summary};
+ return {version:"MMP-SELF-LEARNING-1.0",updatedAt:now,records,summary,changed};
 }
 export function applyLearningCalibration(signal,summary={}){
  if(!signal||typeof signal!=="object"||!signal.quantum)return signal;
