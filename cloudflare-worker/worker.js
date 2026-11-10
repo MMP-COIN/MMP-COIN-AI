@@ -253,51 +253,6 @@ async function candles(symbol,interval,env,marketType="spot"){
   throw new Error("Futures data unavailable for "+symbol+" "+interval+"; "+errors.join(" | ").slice(0,520));
  }
  let lastError=null,bitgetError=null,bybitError=null,okxError=null;
- const spotUrls=[
-  "https://api.binance.com/api/v3/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250",
-  "https://api.binance.us/api/v3/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250",
-  "https://api1.binance.com/api/v3/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250",
-  "https://api2.binance.com/api/v3/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250",
-  "https://api3.binance.com/api/v3/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250",
-  "https://data-api.binance.vision/api/v3/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250"
- ];
- for(const url of spotUrls){
-  try{
-   const r=await fetchWithTimeout(url,{headers});
-   if(!r.ok)throw new Error("Binance Spot HTTP "+r.status);
-   const rows=await r.json();
-   if(!validRows(rows))throw new Error("insufficient Binance spot candle history");
-   const result=analyzeClosedKlines(rows,interval);
-   result.data_provider=url.includes("binance.us")?"Binance.US":url.includes("data-api")?"Binance Data API":url.includes("api1.")||url.includes("api2.")||url.includes("api3.")?"Binance mirror":"Binance Spot";
-   return result;
-  }catch(e){lastError=e;if(/HTTP (400|403|429|451)|invalid|not listed|insufficient|Symbol Is Invalid/i.test(String(e?.message||e)))break;}
- }
- try{
-  const r=await fetchWithTimeout("https://api.mexc.com/api/v3/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250",{headers});
-  if(!r.ok)throw new Error("MEXC Spot HTTP "+r.status);
-  const rows=await r.json();if(!validRows(rows))throw new Error("insufficient MEXC spot candle history");
-  const result=analyzeClosedKlines(rows,interval);result.data_provider="MEXC Spot";return result;
- }catch(e){lastError=new Error((lastError?.message||"Binance unavailable")+"; "+e.message);}
- try{
-  const bitgetInterval={"1m":"1m","3m":"3m","5m":"5m","15m":"15m","1h":"1H","4h":"4H","1d":"1D"}[interval];
-  const url="https://api.bitget.com/api/v3/market/candles?category=SPOT&symbol="+encodeURIComponent(symbol)+"&interval="+bitgetInterval+"&limit=250";
-  const r=await fetchWithTimeout(url,{headers});
-  if(!r.ok)throw new Error("Bitget Spot HTTP "+r.status);
-  const payload=await r.json(),rows=payload?.code==="00000"||payload?.code==="0"?payload.data:null;
-  if(!validRows(rows))throw new Error(payload?.msg||"insufficient Bitget spot candle history");
-  const normalized=rows.map(x=>[Number(x[0]),x[1],x[2],x[3],x[4],x[5],x[6]||"0","0","0","0"]).sort((a,b)=>a[0]-b[0]);
-  const result=analyzeClosedKlines(normalized,interval);result.data_provider="Bitget Spot";return result;
- }catch(e){bitgetError=e;}
- try{
-  const bitgetGranularity={"1m":"1min","3m":"3min","5m":"5min","15m":"15min","1h":"1h","4h":"4h","1d":"1day"}[interval];
-  const now=Date.now(),start=now-250*({"1m":60000,"3m":180000,"5m":300000,"15m":900000,"1h":3600000,"4h":14400000,"1d":86400000}[interval]);
-  const url="https://api.bitget.com/api/v2/spot/market/candles?symbol="+encodeURIComponent(symbol)+"&granularity="+bitgetGranularity+"&startTime="+start+"&endTime="+now+"&limit=250";
-  const r=await fetchWithTimeout(url,{headers:{...headers,"Origin":"https://www.bitget.com","Referer":"https://www.bitget.com/","User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"}});if(!r.ok)throw new Error("Bitget Spot V2 HTTP "+r.status);
-  const payload=await r.json(),rows=payload?.code==="00000"?payload.data:null;
-  if(!validRows(rows))throw new Error(payload?.msg||"insufficient Bitget V2 spot candle history");
-  const normalized=rows.map(x=>[Number(x[0]),x[1],x[2],x[3],x[4],x[5],x[6]||"0","0","0","0"]).sort((a,b)=>a[0]-b[0]);
-  const result=analyzeClosedKlines(normalized,interval);result.data_provider="Bitget Spot V2 fallback";return result;
- }catch(e){bitgetError=new Error((bitgetError?.message||"Bitget V3 unavailable")+"; "+e.message);}
  const pairInfo=splitQuotePair(symbol);
  if(pairInfo){
   try{
@@ -348,6 +303,32 @@ async function candles(symbol,interval,env,marketType="spot"){
   lastError=new Error((lastError?.message||"Earlier spot sources unavailable")+"; "+(whitebitError?.message||"WhiteBIT unavailable"));
  }
 
+ try{
+  const r=await fetchWithTimeout("https://api.mexc.com/api/v3/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250",{headers});
+  if(!r.ok)throw new Error("MEXC Spot HTTP "+r.status);
+  const rows=await r.json();if(!validRows(rows))throw new Error("insufficient MEXC spot candle history");
+  const result=analyzeClosedKlines(rows,interval);result.data_provider="MEXC Spot";return result;
+ }catch(e){lastError=new Error((lastError?.message||"Binance unavailable")+"; "+e.message);}
+ try{
+  const bitgetInterval={"1m":"1m","3m":"3m","5m":"5m","15m":"15m","1h":"1H","4h":"4H","1d":"1D"}[interval];
+  const url="https://api.bitget.com/api/v3/market/candles?category=SPOT&symbol="+encodeURIComponent(symbol)+"&interval="+bitgetInterval+"&limit=250";
+  const r=await fetchWithTimeout(url,{headers});
+  if(!r.ok)throw new Error("Bitget Spot HTTP "+r.status);
+  const payload=await r.json(),rows=payload?.code==="00000"||payload?.code==="0"?payload.data:null;
+  if(!validRows(rows))throw new Error(payload?.msg||"insufficient Bitget spot candle history");
+  const normalized=rows.map(x=>[Number(x[0]),x[1],x[2],x[3],x[4],x[5],x[6]||"0","0","0","0"]).sort((a,b)=>a[0]-b[0]);
+  const result=analyzeClosedKlines(normalized,interval);result.data_provider="Bitget Spot";return result;
+ }catch(e){bitgetError=e;}
+ try{
+  const bitgetGranularity={"1m":"1min","3m":"3min","5m":"5min","15m":"15min","1h":"1h","4h":"4h","1d":"1day"}[interval];
+  const now=Date.now(),start=now-250*({"1m":60000,"3m":180000,"5m":300000,"15m":900000,"1h":3600000,"4h":14400000,"1d":86400000}[interval]);
+  const url="https://api.bitget.com/api/v2/spot/market/candles?symbol="+encodeURIComponent(symbol)+"&granularity="+bitgetGranularity+"&startTime="+start+"&endTime="+now+"&limit=250";
+  const r=await fetchWithTimeout(url,{headers:{...headers,"Origin":"https://www.bitget.com","Referer":"https://www.bitget.com/","User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"}});if(!r.ok)throw new Error("Bitget Spot V2 HTTP "+r.status);
+  const payload=await r.json(),rows=payload?.code==="00000"?payload.data:null;
+  if(!validRows(rows))throw new Error(payload?.msg||"insufficient Bitget V2 spot candle history");
+  const normalized=rows.map(x=>[Number(x[0]),x[1],x[2],x[3],x[4],x[5],x[6]||"0","0","0","0"]).sort((a,b)=>a[0]-b[0]);
+  const result=analyzeClosedKlines(normalized,interval);result.data_provider="Bitget Spot V2 fallback";return result;
+ }catch(e){bitgetError=new Error((bitgetError?.message||"Bitget V3 unavailable")+"; "+e.message);}
  for(const host of ["https://api.bybit.com","https://api.bytick.com","https://api.bybit.eu"]){
   try{
    const url=host+"/v5/market/kline?category=spot&symbol="+encodeURIComponent(symbol)+"&interval="+bybitInterval+"&limit=250";
@@ -371,6 +352,25 @@ async function candles(symbol,interval,env,marketType="spot"){
    }catch(e){okxError=e;}
   }
  }else okxError=new Error("Unsupported quote currency for OKX spot");
+ const spotUrls=[
+  "https://api.binance.com/api/v3/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250",
+  "https://api.binance.us/api/v3/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250",
+  "https://api1.binance.com/api/v3/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250",
+  "https://api2.binance.com/api/v3/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250",
+  "https://api3.binance.com/api/v3/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250",
+  "https://data-api.binance.vision/api/v3/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250"
+ ];
+ for(const url of spotUrls){
+  try{
+   const r=await fetchWithTimeout(url,{headers});
+   if(!r.ok)throw new Error("Binance Spot HTTP "+r.status);
+   const rows=await r.json();
+   if(!validRows(rows))throw new Error("insufficient Binance spot candle history");
+   const result=analyzeClosedKlines(rows,interval);
+   result.data_provider=url.includes("binance.us")?"Binance.US":url.includes("data-api")?"Binance Data API":url.includes("api1.")||url.includes("api2.")||url.includes("api3.")?"Binance mirror":"Binance Spot";
+   return result;
+  }catch(e){lastError=e;if(/HTTP (400|403|429|451)|invalid|not listed|insufficient|Symbol Is Invalid/i.test(String(e?.message||e)))break;}
+ }
  throw new Error("Spot data unavailable for "+symbol+" "+interval+"; Binance: "+(lastError?.message||"failed")+"; Bybit: "+(bybitError?.message||"failed")+"; Bitget: "+(bitgetError?.message||"failed")+"; OKX: "+(okxError?.message||"failed"));
 }
 function roundPrice(value,price){const decimals=price>=1000?2:price>=1?4:price>=0.01?6:8;return Number(value.toFixed(decimals));}
