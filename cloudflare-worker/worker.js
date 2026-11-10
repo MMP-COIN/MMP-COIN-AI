@@ -1,5 +1,5 @@
 // MMP Quantum Intelligence Engine: dynamic market discovery with no fixed asset ceiling
-import { QUANTUM_ENGINE_NAME, QUANTUM_ENGINE_VERSION, normalizeQuantumUniverse, scoreQuantumOpportunity, calculateQuantumIndicators } from "./quantum-core.js";
+import { QUANTUM_ENGINE_NAME, QUANTUM_ENGINE_VERSION, normalizeQuantumUniverse, scoreQuantumOpportunity, calculateQuantumIndicators, calculateMarketScanPriority } from "./quantum-core.js";
 const HUNTER_BATCH_SIZE = 16;
 const FUTURES_HUNTER_BATCH_SIZE = 12;
 const MODEL = "@cf/openai/gpt-oss-120b";
@@ -1113,13 +1113,7 @@ export async function runDigitalHunterMarketCycle(env,marketType="spot"){
  }
  // Prioritize the active edge of the market instead of scanning only by 24h turnover.
  // This changes queue order, never the final evidence/quality gates.
- const scanPriority=item=>{
-  const move=Math.min(35,Math.abs(Number(item.hunterChange24h)||0));
-  const volume=Math.max(50000,Number(item.total_volume)||50000);
-  const liquidity=Math.min(18,Math.max(0,Math.log10(volume/50000))*3.6);
-  return move*.78+liquidity;
- };
- assets.sort((a,b)=>scanPriority(b)-scanPriority(a)||Number(b.total_volume||0)-Number(a.total_volume||0));
+ assets.sort((a,b)=>calculateMarketScanPriority(b)-calculateMarketScanPriority(a)||Number(b.total_volume||0)-Number(a.total_volume||0));
  const priorityVersion=1;
  const cursor=(previous.scanPriorityVersion===priorityVersion?Number(previous.cursor)||0:0)%assets.length,failureCooldown={...(previous.failureCooldown||{})};
  for(const [symbol,until] of Object.entries(failureCooldown))if(Number(until)<=now)delete failureCooldown[symbol];
