@@ -1948,6 +1948,67 @@ body.mmp-app-mode>header.top{
 }
 @media(max-width:900px){body.mmp-app-mode>header.top{top:0!important;inset-block-start:0!important}}
 </style>
+
+<style id="mmp-qie40-visual-system">
+/* QIE 4.0 — unified premium terminal visual layer; presentation-only, data engines untouched */
+:root{
+ --qie-bg:#05080e;--qie-surface:rgba(14,21,32,.92);--qie-surface2:rgba(20,30,43,.94);
+ --qie-line:rgba(190,164,111,.22);--qie-gold:#e7c477;--qie-teal:#42dfc2;
+ --qie-glow:0 18px 52px rgba(0,0,0,.34)
+}
+html{scroll-behavior:smooth;scroll-padding-top:100px}
+body{background:
+ radial-gradient(ellipse at 78% -8%,rgba(198,157,75,.18),transparent 34%),
+ radial-gradient(ellipse at 5% 22%,rgba(28,133,125,.13),transparent 28%),
+ linear-gradient(180deg,#080d16 0%,#05080e 58%,#080c13 100%)!important}
+header.top{border-bottom:1px solid var(--qie-line)!important;background:rgba(5,9,16,.88)!important;box-shadow:0 8px 30px #0005!important;backdrop-filter:blur(22px)!important}
+.brand .logo{position:relative;isolation:isolate;border:1px solid #e6c47766!important;box-shadow:0 0 0 4px #d9b66d0b,0 0 28px #d9b66d38!important}
+.brand b{font-weight:900;letter-spacing:1.7px!important}
+.top .pill,.top .btn{border-color:#8f754533!important;background:linear-gradient(145deg,#182334,#0e1622)!important}
+.top .btn.primary,.top .btn#refresh-all-btn{border-color:#c9a45d88!important;color:#f4d99b!important}
+.wrap{max-width:1540px!important;padding-inline:clamp(12px,2vw,28px)!important}
+.hero{position:relative;isolation:isolate;overflow:hidden;border:1px solid #d8b66d42!important;border-radius:24px!important;padding:clamp(22px,3vw,38px)!important;min-height:190px;background:
+ radial-gradient(ellipse at 78% 40%,#1d55534d,transparent 42%),
+ radial-gradient(ellipse at 12% 0%,#b98d3b24,transparent 40%),
+ linear-gradient(120deg,#111d2b 0%,#0b121d 55%,#101925 100%)!important;box-shadow:var(--qie-glow),inset 0 1px #ffffff0a!important}
+.hero:after{content:"";position:absolute;z-index:-1;width:260px;height:260px;inset-inline-end:5%;top:-125px;border:1px solid #e4c47724;border-radius:50%;box-shadow:0 0 0 22px #e4c47708,0 0 0 48px #e4c47705}
+.hero h1{font-size:clamp(25px,4vw,42px)!important;line-height:1.35!important;color:#f5dfaa!important;text-shadow:0 4px 24px #d9b66d22}
+.hero p{max-width:760px;line-height:2!important;color:#b5c2ce!important}
+#market-snapshot>.card,.card{border-color:rgba(159,177,195,.15)!important;background:linear-gradient(145deg,rgba(20,29,43,.97),rgba(10,16,25,.97))!important;box-shadow:0 12px 34px #0004,inset 0 1px #ffffff08!important;border-radius:18px!important}
+#market-snapshot>.card{position:relative;overflow:hidden;transition:transform .2s,border-color .2s,box-shadow .2s}
+#market-snapshot>.card:before{content:"";position:absolute;inset:0 0 auto;height:2px;background:linear-gradient(90deg,transparent,#d9b66d,transparent);opacity:.65}
+#market-snapshot>.card:hover,.card:hover{border-color:#d9b66d55!important;box-shadow:0 18px 42px #0006,0 0 24px #d9b66d0c!important}
+.stat-value{font-size:clamp(19px,2.4vw,27px)!important;letter-spacing:-.4px}
+.section-head{align-items:center!important}
+.section-head h2{font-size:clamp(16px,2vw,20px)!important;font-weight:900!important;color:#f1d99e!important}
+.section-kicker,.eyebrow{letter-spacing:1.8px!important;color:#d9b66d!important;font-weight:800!important}
+.badge{border-color:#d9b66d40!important;background:#d9b66d0d!important;color:#e7d4a8!important}
+.radar-card,.chart-box-wrapper,.collapsible-coins-container{border-color:#b99a5c38!important;background:linear-gradient(145deg,#121e2bfa,#0a111bfa)!important;box-shadow:var(--qie-glow)!important;border-radius:20px!important}
+.radar-core-console{border-color:#d9b66d35!important;background:radial-gradient(ellipse at 18% 50%,#1d66604a,transparent 45%),linear-gradient(120deg,#101d2b,#0b121d)!important}
+.radar-core-visual{filter:drop-shadow(0 0 18px #43dfc333)}
+.radar-live-dot{box-shadow:0 0 0 5px #42dfc21b,0 0 16px #42dfc2!important}
+#market-hunter{border-color:#d9b66d42!important}
+#market-hunter .hunter-heading-copy h2{color:#f4d99b!important}
+#chart-container{border-color:#344458!important;background:#080e17!important}
+.chart-box-wrapper{padding:clamp(12px,2vw,22px)!important}
+button,.btn,.pill{transition:transform .18s ease,border-color .18s ease,background .18s ease,box-shadow .18s ease}
+button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid #e7c477!important;outline-offset:3px!important}
+@media(max-width:760px){
+ .wrap{padding:12px 10px 42px!important}
+ .hero{min-height:0;padding:20px 17px!important;border-radius:18px!important}
+ .hero h1{font-size:25px!important}
+ #market-snapshot>.card{border-radius:14px!important}
+ .card{padding:14px!important}
+ .section-head{gap:8px}
+ .stat-value{font-size:19px!important}
+}
+@media(prefers-reduced-motion:no-preference){
+ .brand .logo{animation:qieCoinGlow 5s ease-in-out infinite}
+ @keyframes qieCoinGlow{0%,100%{box-shadow:0 0 0 4px #d9b66d0b,0 0 18px #d9b66d24}50%{box-shadow:0 0 0 7px #d9b66d0a,0 0 32px #d9b66d42}}
+}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;scroll-behavior:auto!important;transition:none!important}}
+</style>
+
 </head>
 <body class="mmp-app-mode">
 
