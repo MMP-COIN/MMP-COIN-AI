@@ -323,7 +323,7 @@ jobs:
         run: |
           set -euo pipefail
           curl --fail --silent --show-error --retry 2 --retry-delay 3 --max-time 25 "$WORKER_URL/connections-health" -o /tmp/connections.json
-          jq -e '.checks | length == 8' /tmp/connections.json >/dev/null
+          jq -e '.checks | length == 18 and any(.[]; .name == "MEXC Spot") and any(.[]; .name == "WhiteBIT Futures") and any(.[]; .name == "Nobitex") and any(.[]; .name == "Wallex")' /tmp/connections.json >/dev/null
           echo "Current exchange connection status:"
           jq -r '.checks[] | "- " + .name + ": " + .status + (if .ping == null then "" else " (" + (.ping|tostring) + " ms)" end) + (if .error == null then "" else " — " + (.error|tostring) end)' /tmp/connections.json
           jq -r '.checks[] | "- " + .name + ": " + .status + (if .ping == null then "" else " (" + (.ping|tostring) + " ms)" end) + (if .error == null then "" else " — " + (.error|tostring) end)' /tmp/connections.json >> "$GITHUB_STEP_SUMMARY"
