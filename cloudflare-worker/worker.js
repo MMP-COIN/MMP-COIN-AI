@@ -16,84 +16,45 @@ function extractAIJson(value){
  return candidate;
 }
 async function runAIWithFallback(env,prompt){
- const messages=[
-  {role:"system",content:"You are MMP Quantum Intelligence Engine QIE-4.0. Use adaptive, evidence-weighted reasoning and market-regime-aware risk controls. Evaluate momentum, volatility compression and expansion, price structure, liquidity and order-book depth, multi-timeframe alignment, executed order flow, smart-money participation proxies, scenario analysis, sentiment only when sourced, data quality and risk. Distinguish measured evidence from inference. Return one valid JSON object only, state uncertainty and invalidation conditions, and never promise profit."},
-  {role:"user",content:prompt}
- ];
  const failures=[];
- const accept=(provider,content)=>({provider,raw:extractAIJson(content),fallbacks:failures.slice()});
- const groqModels=[
-  {id:"openai/gpt-oss-120b",timeoutMs:30000,body:{temperature:0.15,max_completion_tokens:8192,reasoning_effort:"medium"}}
- ];
  if(env.GROQ_API_KEY){
-  for(const entry of groqModels){
-   const model=entry.id;
+  const groqModels=[
+   {id:"openai/gpt-oss-120b",maxTokens:1800,timeoutMs:18000},
+   {id:"openai/gpt-oss-20b",maxTokens:1200,timeoutMs:12000}
+  ];
+  for(const model of groqModels){
+   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),model.timeoutMs);
    try{
-    const response=await fetchWithTimeout("https://api.groq.com/openai/v1/chat/completions",{
-     method:"POST",
-     headers:{"Authorization":"Bearer "+env.GROQ_API_KEY,"Content-Type":"application/json"},
-     body:JSON.stringify({model,messages,...entry.body})
-    },entry.timeoutMs||18000);
-    if(!response.ok){
-     const body=await response.text();
-     let detail=body;
-     try{const parsed=JSON.parse(body);detail=parsed?.error?.message||parsed?.message||body;}catch{}
-     const retryAfter=response.headers.get("retry-after");
-     throw new Error("HTTP "+response.status+" "+String(detail).slice(0,520)+(retryAfter?"; retry-after="+retryAfter+"s":""));
-    }
-    const data=await response.json();
-    const content=data?.choices?.[0]?.message?.content;
-    if(!content)throw new Error("Empty model response");
-    return accept("Groq / "+model,content);
-   }catch(error){
-    failures.push("Groq "+model+": "+String(error?.message||error).slice(0,560));
-   }
+    const response=await fetch("https://api.groq.com/openai/v1/chat/completions",{
+     method:"POST",headers:{"Authorization":"Bearer "+env.GROQ_API_KEY,"Content-Type":"application/json"},
+     body:JSON.stringify({model:model.id,messages:[{role:"system",content:"Return only one valid JSON object. Do not use markdown fences."},{role:"user",content:prompt}],response_format:{type:"json_object"},temperature:0.2,max_completion_tokens:model.maxTokens,reasoning_effort:"low"}),
+     signal:controller.signal
+    });
+    if(!response.ok){const detail=(await response.text()).slice(0,220);failures.push("Groq "+model.id+" HTTP "+response.status+": "+detail);continue;}
+    const data=await response.json(),content=data.choices?.[0]?.message?.content;
+    if(content)return {provider:"Groq "+model.id,raw:content,fallbacks:failures};
+    failures.push("Groq "+model.id+": empty response");
+   }catch(error){failures.push("Groq "+model.id+": "+String(error?.message||error).slice(0,160));}
+   finally{clearTimeout(timer);}
   }
- }else failures.push("Groq not configured (GROQ_API_KEY missing)");
- // Cloudflare AI remains a fallback, with a smaller output budget.
+ }
  if(env.AI){
   try{
-   const result=await env.AI.run(MODEL,{messages,max_tokens:1600,temperature:0.1,reasoning_effort:"medium"});
-   if(result?.error)throw new Error(typeof result.error==="string"?result.error:JSON.stringify(result.error));
-   return accept("Cloudflare Workers AI / "+MODEL,result?.response??result?.result??result?.output_text??result);
-  }catch(error){failures.push("Cloudflare: "+String(error?.message||error).slice(0,260));}
- }else failures.push("Cloudflare AI binding missing");
- if(env.HF_TOKEN&&env.HF_MODEL){
+   const result=await env.AI.run("@cf/openai/gpt-oss-120b",{messages:[{role:"system",content:"Return only one valid JSON object. Do not use markdown fences."},{role:"user",content:prompt}],max_tokens:1600,temperature:0.2});
+   const content=result?.choices?.[0]?.message?.content||result?.response||result?.output_text;
+   if(content)return {provider:"Cloudflare Workers AI",raw:content,fallbacks:failures};
+   failures.push("Cloudflare AI: empty response");
+  }catch(error){failures.push("Cloudflare AI: "+String(error?.message||error).slice(0,180));}
+ }
+ if(env.HF_TOKEN){
   try{
-   const response=await fetchWithTimeout("https://router.huggingface.co/v1/chat/completions",{
-    method:"POST",headers:{"Authorization":"Bearer "+env.HF_TOKEN,"Content-Type":"application/json"},
-    body:JSON.stringify({model:env.HF_MODEL,messages,temperature:0.12,max_completion_tokens:900,response_format:{type:"json_object"}})
-   });
-   if(!response.ok)throw new Error("HTTP "+response.status+" "+(await response.text()).slice(0,320));
-   const data=await response.json(),content=data?.choices?.[0]?.message?.content;
-   if(!content)throw new Error("Empty model response");
-   return accept("Hugging Face / "+env.HF_MODEL,content);
-  }catch(error){failures.push("Hugging Face: "+String(error?.message||error).slice(0,320));}
- }else failures.push("Hugging Face not configured (HF_TOKEN and HF_MODEL required)");
- if(env.OLLAMA_BASE_URL&&env.OLLAMA_MODEL){
-  try{
-   const base=String(env.OLLAMA_BASE_URL).replace(/\/+$/,"");
-   const headers={"Content-Type":"application/json"};
-   if(env.OLLAMA_API_KEY)headers.Authorization="Bearer "+env.OLLAMA_API_KEY;
-   const response=await fetchWithTimeout(base+"/api/chat",{method:"POST",headers,body:JSON.stringify({model:env.OLLAMA_MODEL,messages,stream:false,format:"json",options:{temperature:0.12,num_predict:900}})});
-   if(!response.ok)throw new Error("HTTP "+response.status+" "+(await response.text()).slice(0,320));
-   const data=await response.json(),content=data?.message?.content;
-   if(!content)throw new Error("Empty model response");
-   return accept("Ollama / "+env.OLLAMA_MODEL,content);
-  }catch(error){failures.push("Ollama: "+String(error?.message||error).slice(0,320));}
- }else failures.push("Ollama not configured (OLLAMA_BASE_URL and OLLAMA_MODEL required)");
- throw new Error("تمام سرویس‌های هوش مصنوعی در دسترس نیستند. "+failures.join(" | "));
+   const response=await fetch("https://router.huggingface.co/v1/chat/completions",{method:"POST",headers:{"Authorization":"Bearer "+env.HF_TOKEN,"Content-Type":"application/json"},body:JSON.stringify({model:"Qwen/Qwen2.5-7B-Instruct",messages:[{role:"system",content:"Return only one valid JSON object. Do not use markdown fences."},{role:"user",content:prompt}],max_tokens:1400,temperature:0.2})});
+   if(response.ok){const data=await response.json(),content=data.choices?.[0]?.message?.content;if(content)return {provider:"Hugging Face Qwen",raw:content,fallbacks:failures};}
+   else failures.push("Hugging Face HTTP "+response.status+": "+(await response.text()).slice(0,180));
+  }catch(error){failures.push("Hugging Face: "+String(error?.message||error).slice(0,160));}
+ }
+ throw new Error("All AI providers failed: "+failures.join(" | ").slice(0,700));
 }
-
-// Canonical exchange symbols for selected assets (CoinGecko ID -> ticker).
-const ASSET_SYMBOL_OVERRIDES = { layerzero: "ZRO" };
-const ALLOWED_ORIGINS = new Set([
- "https://mmp1988.github.io",
- "https://mmp-coin.github.io",
- "https://localhost",
- "capacitor://localhost",
- "http://localhost"
-]);
 function corsHeaders(request){
  const origin=request?.headers.get("Origin");
  const headers={"Vary":"Origin"};
