@@ -2911,6 +2911,14 @@ html body #ai-section .tf-card{min-width:0!important;max-width:100%!important;ov
 
 <script>
 const $=id=>document.getElementById(id);
+// Progressive startup: defer non-critical engines until their section approaches the viewport.
+window.mmpWhenVisible=window.mmpWhenVisible||function(selector,callback,options){
+ const target=typeof selector==="string"?document.querySelector(selector):selector;let done=false;
+ if(!target||typeof callback!=="function")return;
+ const run=()=>{if(done)return;done=true;const idle=window.requestIdleCallback||function(fn){return setTimeout(fn,180)};idle(()=>{try{callback()}catch(error){console.error("MMP progressive module failed:",selector,error)}},{timeout:1600});};
+ if(!("IntersectionObserver" in window)){setTimeout(run,350);return;}
+ const observer=new IntersectionObserver(entries=>{if(entries.some(entry=>entry.isIntersecting)){observer.disconnect();run()}},{rootMargin:(options&&options.rootMargin)||"520px 0px"});observer.observe(target);
+};
 let lastMarket={};
 let currentTetherPrice = 0;
 let currentCurrency = 'IRT';
@@ -4918,17 +4926,16 @@ $("risk-calc")?.addEventListener("click",calcRisk);
 // شروع دریافت قیمت‌ها را به راه‌اندازی اجزای غیرضروری رابط وابسته نکن.
 // حتی اگر منوی انتخاب ارز یا ساعت بازار خطا بدهد، دریافت قیمت باید آغاز شود.
 refreshAll();
-setTimeout(()=>loadUnifiedRadarSnapshot(),0);
+mmpWhenVisible("#opportunities",loadUnifiedRadarSnapshot,{rootMargin:"650px 0px"});
 try{setupAiCoinPicker();}catch(error){console.error("AI coin picker initialization failed:",error);}
 try{renderMarketHours();setInterval(renderMarketHours,15000);}catch(error){console.error("Market hours initialization failed:",error);}
-checkConnections();setInterval(()=>{if(document.visibilityState!=="hidden")checkConnections();},300000);window.addEventListener("online",()=>checkConnections());document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"){checkConnections();loadUnifiedRadarSnapshot();}});
-try{initTradingView("BINANCE:BTCUSDT");}catch(error){console.error("TradingView initialization failed:",error);}
+checkConnections();setInterval(()=>{if(document.visibilityState!=="hidden")checkConnections();},300000);window.addEventListener("online",()=>checkConnections());document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")checkConnections();});
+mmpWhenVisible("#chart-section",()=>{try{initTradingView("BINANCE:BTCUSDT");}catch(error){console.error("TradingView initialization failed:",error)}},{rootMargin:"500px 0px"});
 setInterval(refreshAll, 300000);
 setInterval(()=>{if(document.visibilityState!=="hidden")refreshBenchmarkQuotes();},180000);
 setInterval(()=>{if(document.visibilityState!=="hidden")refreshLiveQuotes();},300000);
 setInterval(()=>{if(document.visibilityState!=="hidden")refreshGoldQuote();},300000);
-setTimeout(()=>loadUnifiedRadarSnapshot(),12000);
-setInterval(()=>{if(document.visibilityState!=="hidden")loadUnifiedRadarSnapshot();},300000);
+setInterval(()=>{if(document.visibilityState!=="hidden"&&document.getElementById("opportunities")?.getBoundingClientRect().top<window.innerHeight+650)loadUnifiedRadarSnapshot();},300000);
 
 </script>
 
@@ -5843,7 +5850,7 @@ body{background:radial-gradient(ellipse at 74% 0,#1b626755,transparent 29%),radi
  function attachTv(){const s=$("tv-symbol");if(!s||s.dataset.mmpPicker)return;s.dataset.mmpPicker="1";s.classList.add("mmp-native-select-hidden");const w=document.createElement("div");w.className="mmp-tv-picker";s.parentNode.insertBefore(w,s);w.appendChild(s);const t=document.createElement("button");t.type="button";t.className="mmp-symbol-trigger";t.innerHTML='<img src="'+icon({symbol:"BTC"})+'" alt=""><span>Bitcoin · BTC</span><b>⌄</b>';w.appendChild(t);const a=document.createElement("button");a.type="button";a.className="mmp-symbol-add";a.textContent="＋";a.title="افزودن نماد به نمودار";w.appendChild(a);const p=build(w,s,"tv"),update=()=>{const sym=String(s.value||"").split(":").pop().replace(/USDT$/,""),c=pool().find(x=>x.symbol===sym)||{symbol:sym};t.querySelector("img").src=icon(c);t.querySelector("span").textContent=(c.name||sym)+" · "+sym;};s.addEventListener("change",update);a.addEventListener("click",()=>{p.menu.hidden=false;p.menu.querySelector(".mmp-symbol-manual input").focus();p.render();});new MutationObserver(update).observe(s,{childList:true});update();}
  function refreshAi(){const s=$("ai-coin-select");if(!s||typeof syncAiCoinOptions!=="function")return;const old=s.value,all=pool(),manual=all.filter(c=>c.manual).map(c=>({id:"manual:"+c.symbol,symbol:c.symbol,name:c.name,image:c.image}));syncAiCoinOptions([...(typeof cachedCoinsData!=="undefined"?cachedCoinsData:[]),...(typeof hunterUniverseCache!=="undefined"?hunterUniverseCache.coins||[]:[]),...manual]);if(old&&[...s.options].some(o=>o.value===old))s.value=old;}
  function init(){["intel-symbol"].forEach(attachInput);attachTv();refreshAi();setInterval(refreshAi,30000);}
- if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init,{once:true});else init();
+ const start=()=>window.mmpWhenVisible?window.mmpWhenVisible("#market-intelligence",init,{rootMargin:"450px 0px"}):init();if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start,{once:true});else start();
 })();
 </script>
 <style id="mmp-symbol-icon-fallbacks">.radar-icon-fallback,.boom-icon-fallback{width:27px;height:27px;flex:0 0 27px;display:inline-grid;place-items:center;border-radius:50%;background:linear-gradient(145deg,#e8ca82,#80602e);color:#15120b;font-size:8px;font-weight:900;direction:ltr}</style>
@@ -6030,14 +6037,12 @@ body{background:radial-gradient(ellipse at 74% 0,#1b626755,transparent 29%),radi
  }
  $("market-heatmap-refresh")?.addEventListener("click",loadMarketHeatmap);
  $("performance-refresh")?.addEventListener("click",loadPublicPerformance);
- loadMarketHeatmap();loadPublicPerformance();
- setInterval(loadMarketHeatmap,600000);setInterval(loadPublicPerformance,1800000);
+ mmpWhenVisible("#market-intelligence",()=>{loadMarketHeatmap();loadPublicPerformance();setInterval(()=>{if(!document.hidden&&document.querySelector("#market-intelligence")?.getBoundingClientRect().top<window.innerHeight+700){loadMarketHeatmap();loadPublicPerformance();}},900000);},{rootMargin:"550px 0px"});
  orderButton?.addEventListener("click",loadOrderflowViaWorker);
  derivButton?.addEventListener("click",loadOrderflowViaWorker);
  $("intel-symbol")?.addEventListener("change",loadOrderflowViaWorker);
  $("orderflow-market")?.addEventListener("change",loadOrderflowViaWorker);
- loadOrderflowViaWorker();loadDerivativesViaWorker();
- setInterval(loadOrderflowViaWorker,600000);
+ mmpWhenVisible("#market-intelligence",()=>{loadOrderflowViaWorker();loadDerivativesViaWorker();setInterval(()=>{if(!document.hidden&&document.querySelector("#market-intelligence")?.getBoundingClientRect().top<window.innerHeight+700)loadOrderflowViaWorker();},900000);},{rootMargin:"550px 0px"});
 
  // The original intelligence engine remains authoritative for futures; this adds a working BTC large-transfer feed without inventing exchange labels.
  const whale=$("whale-panel");
@@ -6316,7 +6321,7 @@ window.mmpShareDownloadLink = async function () {
   if(!allAssets.length&&$id("asset-directory-list"))$id("asset-directory-list").innerHTML='<div class="ai-empty">فعلاً فهرست ارزها دریافت نشد؛ پس از بروزرسانی بازار دوباره تلاش کنید.</div>';
  }
  window.addEventListener("mmp-market-data-updated",mergeAssets);
- if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init,{once:true});else init();
+ const start=()=>window.mmpWhenVisible?window.mmpWhenVisible("#coins-section",init,{rootMargin:"450px 0px"}):init();if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start,{once:true});else start();
 })();
 </script>
 <script>
@@ -6385,7 +6390,7 @@ window.mmpShareDownloadLink = async function () {
   // Unified hunter refresh handler owns the single refresh button; this module only polls snapshots.
   load();setInterval(load,300000);
  }
- if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init,{once:true});else init();
+ const start=()=>window.mmpWhenVisible?window.mmpWhenVisible("#market-hunter",init,{rootMargin:"550px 0px"}):init();if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start,{once:true});else start();
 })();
 </script>
 <section id="radar-signal-page" data-quantum-module="signal-lab" hidden aria-hidden="true"></section>
@@ -6609,7 +6614,7 @@ window.mmpShareDownloadLink = async function () {
   }catch(error){fail("اتصال یا داده معتبر در دسترس نیست · "+(error?.message||"خطای نامشخص"));}
   finally{clearTimeout(timer);}
  }
- refresh();setInterval(refresh,60000);document.addEventListener("mmp-hunter-snapshot-updated",refresh);document.addEventListener("visibilitychange",()=>{if(!document.hidden)refresh();});
+ let started=false;window.mmpWhenVisible?window.mmpWhenVisible("#mmp-command-progress",()=>{started=true;refresh();setInterval(()=>{if(!document.hidden&&document.getElementById("mmp-command-progress")?.getBoundingClientRect().top<window.innerHeight+500)refresh();},180000);},{rootMargin:"450px 0px"}):(started=true,refresh());document.addEventListener("mmp-hunter-snapshot-updated",()=>{if(started)refresh();});document.addEventListener("visibilitychange",()=>{if(started&&!document.hidden)refresh();});
 })();
 </script><style id="mmp-home-engine-live-style">
 #quantum-center-entry .quantum-engine-link{position:relative;overflow:hidden}
@@ -6688,10 +6693,10 @@ window.mmpShareDownloadLink = async function () {
    const badge=document.querySelector("#quantum-center-entry .quantum-engine-board-head>span");if(badge)badge.textContent="◷ CONNECTION WAIT";
   }
  }
- refresh();if(window.__mmpHomeEngineTimer)clearInterval(window.__mmpHomeEngineTimer);
- window.__mmpHomeEngineTimer=setInterval(refresh,60000);
- document.addEventListener("mmp-hunter-snapshot-updated",refresh);
- document.addEventListener("visibilitychange",()=>{if(!document.hidden)refresh()});
+ let started=false;const start=()=>{started=true;refresh();if(window.__mmpHomeEngineTimer)clearInterval(window.__mmpHomeEngineTimer);window.__mmpHomeEngineTimer=setInterval(()=>{if(!document.hidden&&root.getBoundingClientRect().top<window.innerHeight+500)refresh();},180000);};
+ if(window.mmpWhenVisible)window.mmpWhenVisible("#quantum-center-entry",start,{rootMargin:"450px 0px"});else start();
+ document.addEventListener("mmp-hunter-snapshot-updated",()=>{if(started)refresh()});
+ document.addEventListener("visibilitychange",()=>{if(started&&!document.hidden)refresh()});
 })();
 </script>
 <style id="mmp-native-chart-quality-20261110">
