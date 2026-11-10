@@ -2189,13 +2189,16 @@ header.top .brand small{white-space:nowrap}
   <select id="tv-symbol" onchange="changeTradingViewSymbol()">
     <option value="BINANCE:BTCUSDT">Bitcoin (BTC)</option>
   </select>
-  <a class="btn secondary" href="https://www.tradingview.com/chart/?symbol=BINANCE%3ABTCUSDT" target="_blank" rel="noopener" style="text-decoration:none">↶ بازپخش در TradingView</a><button class="btn secondary" id="chart-fullscreen-btn" type="button" onclick="toggleChartFullscreen()">⛶ تمام‌صفحه</button>
+  <a class="btn secondary" id="chart-replay-link" href="https://www.tradingview.com/chart/?symbol=BINANCE%3ABTCUSDT" target="_blank" rel="noopener" style="text-decoration:none">↶ بازپخش در TradingView</a><button class="btn secondary" id="chart-fullscreen-btn" type="button" onclick="toggleChartFullscreen()">⛶ تمام‌صفحه</button>
   </div>
 </div>
-<div id="chart-container">
-  <button class="chart-exit-fullscreen-btn" id="chart-exit-fullscreen-btn" type="button" aria-label="بازگشت از حالت تمام‌صفحه نمودار" onclick="toggleChartFullscreen()">↙ بازگشت به صفحه</button>
-  <div id="tradingview_widget" style="width:100%; height:100%;"></div>
+<div class="mmp-chart-toolbar" aria-label="تنظیمات نمودار">
+ <div class="mmp-chart-timeframes" role="group" aria-label="بازه زمانی"><button type="button" data-chart-tf="1m" onclick="mmpSetChartInterval('1m')">۱د</button><button type="button" data-chart-tf="5m" onclick="mmpSetChartInterval('5m')">۵د</button><button type="button" data-chart-tf="15m" onclick="mmpSetChartInterval('15m')">۱۵د</button><button type="button" data-chart-tf="1h" class="active" onclick="mmpSetChartInterval('1h')">۱س</button><button type="button" data-chart-tf="4h" onclick="mmpSetChartInterval('4h')">۴س</button><button type="button" data-chart-tf="1d" onclick="mmpSetChartInterval('1d')">۱روز</button></div>
+ <label class="mmp-chart-market">بازار <select id="mmp-chart-market" onchange="mmpSetChartMarket(this.value)"><option value="spot">اسپات</option><option value="futures">فیوچرز</option></select></label>
+ <button type="button" id="mmp-chart-ema-toggle" class="mmp-chart-toggle active" onclick="mmpToggleChartEMA()">EMA 20/50</button><button type="button" id="mmp-chart-volume-toggle" class="mmp-chart-toggle active" onclick="mmpToggleChartVolume()">حجم</button><button type="button" class="mmp-chart-refresh" onclick="mmpLoadChart(true)">↻ تازه‌سازی</button>
 </div>
+<div id="mmp-chart-status" class="mmp-chart-status" role="status" aria-live="polite">در حال آماده‌سازی نمودار…</div>
+<div id="chart-container"><button class="chart-exit-fullscreen-btn" id="chart-exit-fullscreen-btn" type="button" aria-label="بازگشت از حالت تمام‌صفحه نمودار" onclick="toggleChartFullscreen()">↙ بازگشت به صفحه</button><div id="tradingview_widget" style="width:100%;height:100%;"></div></div>
 </section>
 
 
@@ -2453,29 +2456,66 @@ function formatVal(usdPrice) {
   }
 }
 
-function initTradingView(symbol = "BINANCE:BTCUSDT") {
-  document.getElementById('tradingview_widget').innerHTML = "";
-  new TradingView.widget({
-    "autosize": true,
-    "symbol": symbol,
-    "interval": "60",
-    "timezone": "Asia/Tehran",
-    "theme": "dark",
-    "style": "1",
-    "locale": "fa",
-    "toolbar_bg": "#151822",
-    "enable_publishing": false,
-    "allow_symbol_change": true,
-    "save_image": false,
-    "container_id": "tradingview_widget"
-  });
+let mmpChartState={chart:null,candles:null,volume:null,emaFast:null,emaSlow:null,rsiChart:null,rsiSeries:null,abort:null,seq:0,interval:"1h",market:"spot",showEMA:true,showVolume:true,cache:new Map(),resizeObserver:null,refreshTimer:null,viewKey:null};
+function mmpChartSymbol(){const raw=String(document.getElementById("tv-symbol")?.value||"BINANCE:BTCUSDT").split(":").pop().toUpperCase();return raw.endsWith("USDT")?raw:raw+"USDT";}
+function mmpChartStatus(message,kind=""){const el=document.getElementById("mmp-chart-status");if(el){el.textContent=message;el.className="mmp-chart-status"+(kind?" "+kind:"");}}
+function mmpChartRsi(rows,period=14){const out=[];let gain=0,loss=0;for(let i=1;i<rows.length;i++){const d=rows[i].close-rows[i-1].close;if(i<=period){gain+=Math.max(0,d);loss+=Math.max(0,-d);if(i===period)out.push({time:rows[i].time,value:loss===0?100:100-100/(1+gain/loss)});}else{gain=(gain*(period-1)+Math.max(0,d))/period;loss=(loss*(period-1)+Math.max(0,-d))/period;out.push({time:rows[i].time,value:loss===0?100:100-100/(1+gain/loss)});}}return out;}
+function mmpChartEma(rows,period){const out=[];let value=null;const alpha=2/(period+1);rows.forEach((r,i)=>{value=value===null?r.close:r.close*alpha+value*(1-alpha);if(i>=period-1)out.push({time:r.time,value});});return out;}
+function mmpCreateNativeChart(){
+ const host=document.getElementById("tradingview_widget");if(!host||!window.LightweightCharts)return false;
+ host.innerHTML='<div id="mmp-candle-canvas"></div><div id="mmp-rsi-canvas"></div>';
+ const candleEl=document.getElementById("mmp-candle-canvas"),rsiEl=document.getElementById("mmp-rsi-canvas");
+ const common={layout:{background:{type:"solid",color:"#0c1420"},textColor:"#aebdca",fontFamily:"Tahoma,Arial,sans-serif",fontSize:11},grid:{vertLines:{color:"rgba(120,145,165,.10)"},horzLines:{color:"rgba(120,145,165,.10)"}},crosshair:{mode:1},rightPriceScale:{borderColor:"rgba(145,165,185,.22)"},timeScale:{borderColor:"rgba(145,165,185,.22)",timeVisible:true,secondsVisible:false},localization:{locale:"fa-IR"}};
+ const chart=LightweightCharts.createChart(candleEl,{...common,width:candleEl.clientWidth||600,height:355,rightPriceScale:{borderColor:"rgba(145,165,185,.22)",scaleMargins:{top:.08,bottom:.25}}});
+ const candles=chart.addCandlestickSeries({upColor:"#20c997",downColor:"#f05c70",borderUpColor:"#20c997",borderDownColor:"#f05c70",wickUpColor:"#20c997",wickDownColor:"#f05c70",priceLineVisible:true});
+ const volume=chart.addHistogramSeries({color:"#20c997",priceFormat:{type:"volume"},priceScaleId:"volume",lastValueVisible:false,priceLineVisible:false});
+ chart.priceScale("volume").applyOptions({scaleMargins:{top:.82,bottom:0},visible:false});
+ const emaFast=chart.addLineSeries({color:"#e8c36f",lineWidth:2,priceLineVisible:false,lastValueVisible:false}),emaSlow=chart.addLineSeries({color:"#68a9ff",lineWidth:2,priceLineVisible:false,lastValueVisible:false});
+ const rsiChart=LightweightCharts.createChart(rsiEl,{...common,width:rsiEl.clientWidth||600,height:112,rightPriceScale:{borderColor:"rgba(145,165,185,.18)",scaleMargins:{top:.12,bottom:.12}},timeScale:{visible:false,borderColor:"rgba(145,165,185,.18)"}});
+ const rsiSeries=rsiChart.addLineSeries({color:"#b79cff",lineWidth:2,priceLineVisible:false,lastValueVisible:true,priceFormat:{type:"price",precision:1,minMove:.1}});
+ [70,30].forEach(v=>rsiSeries.createPriceLine({price:v,color:"rgba(183,156,255,.38)",lineWidth:1,lineStyle:2,axisLabelVisible:true,title:String(v)}));
+ Object.assign(mmpChartState,{chart,candles,volume,emaFast,emaSlow,rsiChart,rsiSeries});
+ const resize=()=>{const w=candleEl.clientWidth||host.clientWidth||600;chart.applyOptions({width:w});rsiChart.applyOptions({width:w});};
+ if(window.ResizeObserver){mmpChartState.resizeObserver=new ResizeObserver(resize);mmpChartState.resizeObserver.observe(host);}else window.addEventListener("resize",resize);
+ return true;
 }
-
-function changeTradingViewSymbol() {
-  let sym = $('tv-symbol').value;
-  initTradingView(sym);
+async function mmpLoadChart(force=false){
+ const host=document.getElementById("tradingview_widget");if(!host)return;
+ if(!mmpChartState.chart&&!mmpCreateNativeChart()){mmpChartStatus("کتابخانه نمودار بارگذاری نشد؛ اتصال اینترنت را بررسی کن.","error");return;}
+ const symbol=mmpChartSymbol(),interval=mmpChartState.interval,market=mmpChartState.market,key=[symbol,interval,market].join(":");
+ const cached=mmpChartState.cache.get(key),now=Date.now();if(!force&&cached&&now-cached.at<20000){mmpRenderChart(cached.payload);return;}
+ if(mmpChartState.abort)mmpChartState.abort.abort();
+ const controller=new AbortController(),seq=++mmpChartState.seq;mmpChartState.abort=controller;
+ mmpChartStatus("در حال دریافت کندل‌های "+symbol+" · "+interval+" …","loading");
+ const url="https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-candles?symbol="+encodeURIComponent(symbol)+"&interval="+encodeURIComponent(interval)+"&market="+market;
+ try{
+  let payload;
+  for(let attempt=0;attempt<2;attempt++){try{const response=await fetch(url,{cache:"no-store",signal:controller.signal,headers:{"Accept":"application/json"}});if(!response.ok)throw new Error("HTTP "+response.status);payload=await response.json();if(payload.error)throw new Error(payload.detail||payload.error);break;}catch(error){if(controller.signal.aborted)throw error;if(attempt===0&&(/429|5\d\d/.test(String(error.message)))){await new Promise(resolve=>setTimeout(resolve,650));continue;}throw error;}}
+  if(seq!==mmpChartState.seq)return;if(!payload||!Array.isArray(payload.candles))throw new Error("پاسخ کندلی نامعتبر است");
+  const rows=payload.candles.map(c=>({time:Number(c.time),open:Number(c.open),high:Number(c.high),low:Number(c.low),close:Number(c.close),volume:Number(c.volume)||0})).filter(c=>Number.isFinite(c.time)&&c.time>0&&[c.open,c.high,c.low,c.close].every(v=>Number.isFinite(v)&&v>0)&&c.high>=Math.max(c.open,c.close,c.low)&&c.low<=Math.min(c.open,c.close,c.high)).sort((a,b)=>a.time-b.time);
+  const unique=rows.filter((c,i)=>i===0||c.time>rows[i-1].time);if(unique.length<20)throw new Error("تعداد کندل معتبر کافی نیست ("+unique.length+")");
+  const clean={...payload,candles:unique};mmpChartState.cache.set(key,{at:now,payload:clean});mmpRenderChart(clean);
+ }catch(error){if(controller.signal.aborted||seq!==mmpChartState.seq)return;const old=mmpChartState.cache.get(key);if(old){mmpRenderChart({...old.payload,data_stale:true});mmpChartStatus("دریافت تازه ناموفق؛ آخرین داده ذخیره‌شده نمایش داده می‌شود · "+String(error.message||error),"warning");}else mmpChartStatus("داده نمودار دریافت نشد: "+String(error.message||error)+" · تازه‌سازی را دوباره بزن.","error");}
 }
-
+function mmpRenderChart(payload){
+ const rows=payload.candles||[],st=mmpChartState;if(!st.chart||!rows.length)return;
+ const viewKey=[payload.symbol,payload.interval,payload.market].join(":"),newView=viewKey!==st.viewKey,range=st.chart.timeScale().getVisibleLogicalRange();
+ st.candles.setData(rows.map(c=>({time:c.time,open:c.open,high:c.high,low:c.low,close:c.close})));
+ st.volume.setData(rows.map(c=>({time:c.time,value:c.volume,color:c.close>=c.open?"rgba(32,201,151,.48)":"rgba(240,92,112,.48)"})));
+ st.emaFast.setData(st.showEMA?mmpChartEma(rows,20):[]);st.emaSlow.setData(st.showEMA?mmpChartEma(rows,50):[]);st.volume.applyOptions({visible:st.showVolume});st.rsiSeries.setData(mmpChartRsi(rows));
+ if(newView||!range){st.chart.timeScale().fitContent();st.rsiChart.timeScale().fitContent();}else{try{st.chart.timeScale().setVisibleLogicalRange(range);}catch(e){}}
+ st.viewKey=viewKey;
+ const last=rows[rows.length-1],date=new Date(last.time*1000).toLocaleString("fa-IR"),stale=payload.data_stale?" · داده کش‌شده/قدیمی":" · داده تازه";
+ mmpChartStatus("منبع: "+(payload.provider||"Worker")+" · "+rows.length+" کندل معتبر · آخرین کندل: "+date+stale,payload.data_stale?"warning":"ok");
+ const link=document.getElementById("chart-replay-link");if(link){const p=String(payload.provider||"").toLowerCase(),ex=p.includes("bitget")?"BITGET":p.includes("bybit")?"BYBIT":p.includes("okx")?"OKX":p.includes("mexc")?"MEXC":"BINANCE";link.href="https://www.tradingview.com/chart/?symbol="+encodeURIComponent(ex+":"+payload.symbol);}
+ document.querySelectorAll("[data-chart-tf]").forEach(b=>b.classList.toggle("active",b.dataset.chartTf===st.interval));
+}
+function initTradingView(){mmpLoadChart(true);if(mmpChartState.refreshTimer)clearInterval(mmpChartState.refreshTimer);mmpChartState.refreshTimer=setInterval(()=>{if(!document.hidden&&document.getElementById("chart-section")?.getBoundingClientRect().top<window.innerHeight+600)mmpLoadChart(false);},45000);}
+function changeTradingViewSymbol(){mmpLoadChart(true);}
+function mmpSetChartInterval(value){if(!["1m","5m","15m","1h","4h","1d"].includes(value))return;mmpChartState.interval=value;mmpLoadChart(true);}
+function mmpSetChartMarket(value){mmpChartState.market=value==="futures"?"futures":"spot";mmpLoadChart(true);}
+function mmpToggleChartEMA(){mmpChartState.showEMA=!mmpChartState.showEMA;document.getElementById("mmp-chart-ema-toggle")?.classList.toggle("active",mmpChartState.showEMA);const c=mmpChartState.cache.get([mmpChartSymbol(),mmpChartState.interval,mmpChartState.market].join(":"));if(c)mmpRenderChart(c.payload);}
+function mmpToggleChartVolume(){mmpChartState.showVolume=!mmpChartState.showVolume;document.getElementById("mmp-chart-volume-toggle")?.classList.toggle("active",mmpChartState.showVolume);const c=mmpChartState.cache.get([mmpChartSymbol(),mmpChartState.interval,mmpChartState.market].join(":"));if(c)mmpRenderChart(c.payload);}
 async function toggleChartFullscreen() {
   const chart = $('chart-container');
   const fallbackActive = chart.classList.contains('chart-fullscreen-fallback');
@@ -6185,6 +6225,20 @@ window.mmpShareDownloadLink = async function () {
  window.setTimeout(checkForLiveUpdate,12000);
 })();
 </script>
+<style id="mmp-native-chart-quality-20261110">
+.mmp-chart-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0;padding:9px;border:1px solid #2d3b4b;border-radius:12px;background:linear-gradient(120deg,#111b28,#0b121c)}
+.mmp-chart-timeframes{display:flex;gap:4px;flex-wrap:wrap}.mmp-chart-timeframes button,.mmp-chart-toggle,.mmp-chart-refresh,.mmp-chart-market select{min-height:34px;padding:6px 10px;border:1px solid #344456;border-radius:8px;background:#111c29;color:#cbd7e2;font-size:11px;font-weight:700}
+.mmp-chart-timeframes button.active,.mmp-chart-toggle.active{border-color:#d9b66d;background:#342b1b;color:#f2d99b;box-shadow:inset 0 0 0 1px #d9b66d33}
+.mmp-chart-market{display:flex;align-items:center;gap:6px;color:#9fb0c0;font-size:10px}.mmp-chart-refresh{border-color:#8b7041;color:#f1d79b}
+.mmp-chart-status{min-height:30px;padding:7px 10px;margin:8px 0;color:#aebdca;font-size:10px;line-height:1.7;border-radius:8px;background:#101a26;border:1px solid #2b3a49;direction:rtl}
+.mmp-chart-status.ok{color:#7ee0bd;border-color:#246c59}.mmp-chart-status.warning{color:#e8c779;border-color:#806331}.mmp-chart-status.error{color:#ff929e;border-color:#7d3944}.mmp-chart-status.loading{color:#9dc7ee}
+#chart-container{height:510px!important;min-height:510px!important;background:#0c1420!important;border:1px solid #2c3c4c;border-radius:12px;overflow:hidden;position:relative}
+#tradingview_widget{height:100%!important;min-height:0!important;display:flex;flex-direction:column;gap:3px}
+#mmp-candle-canvas{width:100%;height:390px;min-height:280px;direction:ltr}
+#mmp-rsi-canvas{width:100%;height:112px;min-height:90px;direction:ltr;border-top:1px solid rgba(145,165,185,.14)}
+#chart-section .chart-top-bar h2{font-size:16px!important;color:#ead39c}
+@media(max-width:560px){.mmp-chart-toolbar{gap:6px;padding:7px}.mmp-chart-timeframes{width:100%;justify-content:space-between}.mmp-chart-timeframes button{flex:1;padding:6px 4px;font-size:10px}.mmp-chart-market{flex:1}.mmp-chart-market select{flex:1}.mmp-chart-toggle,.mmp-chart-refresh{flex:1}#chart-container{height:440px!important;min-height:440px!important}#mmp-candle-canvas{height:330px}#mmp-rsi-canvas{height:100px}}
+</style>
 </body>
 </html>
 
