@@ -212,7 +212,8 @@ async function runRadar(env,scheduledTime=Date.now()){
   const retentionNow=Date.now();
   const expiredSignals=previousSignals.filter(x=>retentionNow-Number(x?.updatedAt||0)>5*60*1000);
   const signals=new Map(previousSignals.filter(x=>Number(x?.score)>=RETENTION_SCORE&&retentionNow-Number(x?.updatedAt||0)<=5*60*1000).map(x=>[String(x.id),x]));
-  const scanPriorityVersion=1;\n  const start=(state?.scan_priority_version===scanPriorityVersion?Math.max(0,Number(state?.cursor)||0):0)%universe.length;
+  const scanPriorityVersion=1;
+  const start=(state?.scan_priority_version===scanPriorityVersion?Math.max(0,Number(state?.cursor)||0):0)%universe.length;
   const byId=new Map(universe.map(coin=>[String(coin.id),coin]));
   const bySymbol=new Map(universe.map(coin=>[String(coin.symbol).toUpperCase(),coin]));
   const prioritySignals=[...signals.values()]
