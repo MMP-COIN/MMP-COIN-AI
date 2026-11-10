@@ -340,7 +340,7 @@ async function runRadar(env,scheduledTime=Date.now()){
     const previousLearning=await env.RADAR_KV.get("radar:learning-ledger",{type:"json"})||{};
     const learning=updateLearningLedger(previousLearning,{observations:scannedSignals,signals:scannedSignals.filter(x=>x.quantum?.qualityGate===true&&x.flowConfirmed===true&&x.multiExchangeConfirmed===true&&x.depth?.confirmed===true),market:"spot",engine:"radar",now:Date.now()});
     learningSummary=learning.summary;
-    await env.RADAR_KV.put("radar:learning-ledger",JSON.stringify(learning));
+    if(learning.changed)await env.RADAR_KV.put("radar:learning-ledger",JSON.stringify(learning));
   }catch(error){learningSummary={...learningSummary,status:"unavailable",error:String(error?.message||error).slice(0,140)};}
   snapshot.learning=learningSummary;
   snapshot.engine_activity={...(snapshot.engine_activity||{}),learning:{processed:Number(learningSummary.totalSignals)||0,total:Number(learningSummary.totalSignals)||0,evidence:Number(learningSummary.matured5m)||0,calibrationStatus:learningSummary.calibrationStatus||"collecting"}};
