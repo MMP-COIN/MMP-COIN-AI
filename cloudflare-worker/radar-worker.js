@@ -247,7 +247,7 @@ async function runRadar(env,scheduledTime=Date.now()){
   // Validate the strongest fresh candidates with real executed trades, not candle volume alone.
   // Check early, multi-exchange candidates for executed flow before full 15m alignment.
   // These remain watch-only until the unchanged final quality gate passes.
-  const flowEligible=x=>x.multiExchangeConfirmed&&!x.overextended&&Number(x.coin?.total_volume||0)>=75000&&Number(x.volumeRatio)>=0.9&&Number(x.score)>=42;
+  const flowEligible=x=>x.multiExchangeConfirmed&&Math.abs(Number(x.change5m)||0)<2.5&&Math.abs(Number(x.change1m)||0)<1.2&&Number(x.coin?.total_volume||0)>=75000&&Number(x.volumeRatio)>=0.9&&Number(x.score)>=42;
   const flowCandidates=[...scannedSignals.filter(x=>x.trend==="bull"&&flowEligible(x)).sort((a,b)=>b.score-a.score).slice(0,2),...scannedSignals.filter(x=>x.trend==="bear"&&flowEligible(x)).sort((a,b)=>b.score-a.score).slice(0,2)];
   const flowCheckedSymbols=new Set(flowCandidates.map(signal=>String(signal.symbol).toUpperCase()));
   for(const signal of scannedSignals)signal.flowStatus=flowCheckedSymbols.has(String(signal.symbol).toUpperCase())?"checking_flow":"queued_for_flow_review";
