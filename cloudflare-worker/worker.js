@@ -55,6 +55,15 @@ async function runAIWithFallback(env,prompt){
  }
  throw new Error("All AI providers failed: "+failures.join(" | ").slice(0,700));
 }
+const ALLOWED_ORIGINS = new Set([
+ "https://mmp-coin.github.io",
+ "https://localhost",
+ "http://localhost",
+ "capacitor://localhost",
+ "ionic://localhost",
+ "http://localhost:8100",
+ "https://localhost:8100"
+]);
 function corsHeaders(request){
  const origin=request?.headers.get("Origin");
  const headers={"Vary":"Origin"};
