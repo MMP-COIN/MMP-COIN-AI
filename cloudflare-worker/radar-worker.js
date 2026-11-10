@@ -375,7 +375,23 @@ export default {
       const snapshot=await env.RADAR_KV.get("radar:snapshot",{type:"json"});
       return json(snapshot||{status:"warming_up",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,signals:[],message:"اولین اسکن زمان‌بندی‌شده هنوز کامل نشده است."});
     }
+    if(url.pathname==="/last-error"){
+      if(!env.RADAR_KV)return json({status:"not_configured"},503);
+      return json(await env.RADAR_KV.get("radar:last-error",{type:"json"})||{status:"none"});
+    }
     return json({error:"Not found"},404);
   },
-  async scheduled(controller,env){await runRadar(env,controller.scheduledTime);}
+  async scheduled(controller,env){
+    try{await runRadar(env,controller.scheduledTime);}
+    catch(error){
+      const message=String(error?.message||error).slice(0,500),now=Date.now();
+      try{
+        const prior=await env.RADAR_KV.get("radar:last-error",{type:"json"});
+        const priorAt=Date.parse(prior?.at||"")||Number(prior?.at)||0;
+        if(!prior||prior.message!==message||now-priorAt>10*60*1000)await env.RADAR_KV.put("radar:last-error",JSON.stringify({status:"error",at:new Date(now).toISOString(),message,stack:String(error?.stack||"").slice(0,1200)}),{expirationTtl:21600});
+      }catch(recordError){console.error("Radar error recording failed:",recordError?.message||recordError);}
+      console.error("Radar scheduled cycle failed:",message);
+      throw error;
+    }
+  }
 };
