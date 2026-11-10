@@ -1794,4 +1794,18 @@ async function runDigitalHunterCron(event,env,ctx){
  const scheduledAt=new Date(Number(event?.scheduledTime)||Date.now());
  if(ctx?.waitUntil&&scheduledAt.getUTCMinutes()%30===5){const refresh=refreshDigitalHunterUniverses(env).catch(error=>console.error("Digital Hunter universe refresh failed:",error?.message||error));ctx.waitUntil(Promise.race([refresh,new Promise(resolve=>setTimeout(resolve,8000))]));}
 }
-export default {fetch:handle,scheduled(event,env,ctx){ctx.waitUntil(runDigitalHunterCron(event,env,ctx).catch(error=>console.error("Digital Hunter scheduled cycle failed:",error?.message||error)));ctx.waitUntil(cleanupMarketFallbackCache(env));}};
+export default {
+ fetch:handle,
+ async scheduled(event,env,ctx){
+  // Cron events can run for up to 15 minutes. Await the work in the handler
+  // instead of returning immediately and relying on waitUntil's 30-second grace.
+  const cleanup=cleanupMarketFallbackCache(env);
+  try{
+   await runDigitalHunterCron(event,env,ctx);
+  }catch(error){
+   console.error("Digital Hunter scheduled cycle failed:",error?.message||error);
+   throw error;
+  }
+  await cleanup;
+ }
+};
