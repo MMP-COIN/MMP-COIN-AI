@@ -2598,6 +2598,7 @@ html body>main.wrap>#mmp-home-hero{margin-top:0!important;margin-block-start:0!i
 </section>
 
 <section class="market-heatmap-entry" aria-label="ورود به نقشه حرارتی بازار">
+ <img class="mmp-heatmap-logo" src="assets/logos/mmp-heatmap.svg" alt="نشان نقشه حرارتی بازار">
  <div class="market-heatmap-entry-copy"><span class="market-heatmap-entry-kicker">MARKET BREADTH · LIVE TURNOVER</span><h2>نقشه حرارتی بازار</h2><p>تمرکز حرکت و گردش معاملات بازار را در یک نمای تصویری بررسی کن؛ نقشه کامل فقط با ورود به این بخش بارگذاری می‌شود.</p><div class="market-heatmap-entry-tags"><span>تغییر قیمت ۲۴ ساعته</span><span>مقایسه گردش معاملات</span><span>نمادهای صعودی و نزولی</span></div></div>
  <a class="market-heatmap-entry-button" href="/market-heatmap.html"><span class="market-heatmap-entry-icon">▦</span><span><b>ورود به نقشه حرارتی</b><small>مشاهده نقشه زنده بازار</small></span><strong>←</strong></a>
 </section>
@@ -2831,11 +2832,11 @@ html body>main.wrap>#mmp-home-hero{margin-top:0!important;margin-block-start:0!i
 <button class="btn primary" id="risk-calc" style="margin-top:9px">محاسبه حجم معامله</button><div id="risk-result" class="ai-status" style="margin-top:10px">قیمت ورود و حد ضرر را وارد کنید تا مبلغ ورود و ضرر احتمالی نمایش داده شود.</div></div>
 
 </div></section>
-<section class="card">
-<div class="section-head"><h2>وضعیت زنده اتصال صرافی‌ها</h2><span class="badge" id="conn-summary">پایش لایو</span></div>
+<section class="card" id="connection-status">
+<div class="section-head"><div class="mmp-section-heading-content"><img class="mmp-module-logo" src="assets/logos/mmp-connections.svg" alt="نشان اتصال صرافی‌ها"><h2>وضعیت زنده اتصال صرافی‌ها</h2></div><span class="badge" id="conn-summary">پایش لایو</span></div>
 
 <section class="card" id="market-hours" data-quantum-module="global-clock">
-<div class="section-head"><div><div class="section-kicker">QUANTUM GLOBAL MARKET CLOCK</div><h2>ساعت کاری بازارهای مالی جهان</h2></div><span class="badge" id="market-clock-zone">زمان محلی دستگاه</span></div>
+<div class="section-head"><div class="mmp-section-heading-content"><img class="mmp-module-logo" src="assets/logos/mmp-clock.svg" alt="نشان ساعت بازار جهانی"><div class="section-kicker">QUANTUM GLOBAL MARKET CLOCK</div><h2>ساعت کاری بازارهای مالی جهان</h2></div><span class="badge" id="market-clock-zone">زمان محلی دستگاه</span></div>
 <div class="market-hours-grid" id="market-hours-grid"></div>
 <details class="market-hours-more" id="market-hours-more"><summary><span>نمایش سایر بازارها</span><small>ساعت لندن، توکیو و دیگر بازارها</small></summary><div class="market-hours-grid" id="market-hours-extra"></div></details>
 <p class="sub" style="margin-top:12px">ساعت‌ها بر اساس منطقه زمانی هر بازار و تغییر ساعت تابستانی محاسبه می‌شوند. تعطیلات رسمی و تغییرات اضطراری ممکن است وضعیت را تغییر دهند؛ این نمایش راهنمای زمان‌بندی است، نه تأییدیه رسمی بورس.</p>
@@ -2853,8 +2854,7 @@ html body>main.wrap>#mmp-home-hero{margin-top:0!important;margin-block-start:0!i
 
 
 <section class="card" id="app-download" data-quantum-module="app" aria-label="دانلود اپلیکیشن MMP COIN AI" style="margin:24px auto 22px;max-width:920px;padding:24px 20px;text-align:center;scroll-margin-top:24px">
- <div class="section-kicker">MMP QUANTUM · ANDROID APP</div>
- <h2 style="margin:6px 0 10px;color:var(--gold2);font-size:20px">دانلود و به‌روزرسانی اپلیکیشن</h2>
+ <div class="mmp-app-brand-lockup"><img class="mmp-section-inline-logo" src="assets/logos/mmp-app.svg" alt="نشان اپلیکیشن MMP"><div><div class="section-kicker">MMP QUANTUM · ANDROID APP</div><h2 style="margin:6px 0 10px;color:var(--gold2);font-size:20px">دانلود و به‌روزرسانی اپلیکیشن</h2></div></div>
  <p class="sub" style="line-height:2;margin:0 auto 16px;max-width:620px">آخرین نسخه رسمی اپلیکیشن اندروید را دریافت کنید. برای به‌روزرسانی، فایل را روی نسخه قبلی نصب کنید؛ نیازی به حذف برنامه نیست.</p>
  <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:10px">
   <a class="btn primary" href="https://github.com/MMP-COIN/MMP-COIN-AI/releases/latest/download/app-release.apk" style="display:inline-flex;align-items:center;justify-content:center;min-width:220px;text-decoration:none;padding:12px 18px">⬇ دانلود آخرین نسخه اندروید</a>
@@ -2864,7 +2864,7 @@ html body>main.wrap>#mmp-home-hero{margin-top:0!important;margin-block-start:0!i
 </section>
 
 <section id="contact-us" data-quantum-module="contact" aria-label="ارتباط با ما" style="margin:24px auto 22px;max-width:760px;padding:22px 18px;border:1px solid #80683f;border-radius:20px;background:linear-gradient(135deg,#171b24,#10131a 62%,#211b12);box-shadow:0 14px 34px #0006;text-align:center;scroll-margin-top:24px">
- <div style="color:var(--gold2);font-size:16px;font-weight:900;margin-bottom:12px">ارتباط با ما</div>
+ <div class="mmp-contact-brand-lockup"><img class="mmp-section-inline-logo" src="assets/logos/mmp-contact.svg" alt="نشان ارتباط با MMP"><div style="color:var(--gold2);font-size:16px;font-weight:900;margin-bottom:12px">ارتباط با ما</div></div>
  <a href="mailto:mmp.coin.ai@gmail.com" dir="ltr" style="display:inline-block;color:var(--gold2);font-size:14px;font-weight:900;text-decoration:none;border:1px solid #80683f;border-radius:11px;padding:10px 14px">mmp.coin.ai@gmail.com</a>
 </section>
 
@@ -7213,6 +7213,20 @@ main,.app-main,.container,.terminal-grid,.intel-suite{min-width:0}
  #chart-section .chart-actions>*{min-width:0;flex:1 1 auto}
 }
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+</style>
+
+
+<style id="mmp-site-system-layout-extra-20261110">
+.mmp-heatmap-logo{width:58px;height:58px;flex:0 0 58px;object-fit:contain;filter:drop-shadow(0 3px 8px #0005)}
+.market-heatmap-entry{align-items:center!important;gap:12px!important}
+.market-heatmap-entry-copy{flex:1;min-width:0}
+.mmp-app-brand-lockup,.mmp-contact-brand-lockup{display:flex;align-items:center;justify-content:center;gap:12px;margin:0 auto 10px}
+.mmp-section-inline-logo{width:48px;height:48px;object-fit:contain;flex:0 0 48px}
+.mmp-contact-brand-lockup{justify-content:flex-start}
+.mmp-contact-brand-lockup .mmp-section-inline-logo{width:42px;height:42px;flex-basis:42px}
+#connection-status .mmp-section-heading-content,#market-hours .section-head .mmp-section-heading-content{padding-inline-start:54px}
+#market-intelligence .intel-grid{gap:10px!important}
+@media(max-width:620px){.mmp-heatmap-logo{width:44px;height:44px;flex-basis:44px}.market-heatmap-entry{gap:8px!important}.mmp-section-inline-logo{width:38px;height:38px;flex-basis:38px}}
 </style>
 
 </body>
