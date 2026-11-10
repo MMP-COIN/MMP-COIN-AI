@@ -6288,6 +6288,146 @@ html body .wrap{padding-top:8px!important;margin-top:0!important}
 @media(max-width:900px){html body header.top{height:62px!important;min-height:62px!important;padding-inline:10px!important}html body .wrap{padding-top:8px!important}}
 @media(max-width:560px){html body header.top{height:58px!important;min-height:58px!important;padding-inline:8px!important;gap:5px!important}html body header.top>.top-actions{gap:4px!important}html body .wrap{padding-top:6px!important}}
 </style>
+
+<style id="mmp-flagship-terminal-redesign-20261110">
+:root{
+ --mmp-bg:#070b11;--mmp-panel:#101923;--mmp-panel-2:#142231;--mmp-edge:#2a3a4a;
+ --mmp-gold:#e1bd72;--mmp-gold-soft:#f6e2b5;--mmp-teal:#45d5b0;--mmp-ice:#9cc9ec;
+ --mmp-muted:#9aaabd;--mmp-shadow:0 18px 48px #0007;
+}
+html{scroll-behavior:smooth;scroll-padding-top:84px}
+body{
+ background:
+ radial-gradient(ellipse at 50% -15%,#72552a2c 0,transparent 40%),
+ radial-gradient(ellipse at 0 38%,#0e68602b 0,transparent 28%),
+ linear-gradient(180deg,#080c13 0%,#070b11 54%,#090e15 100%)!important;
+ color:#edf3f7;
+}
+::selection{background:#d8b56d55;color:#fff}
+:focus-visible{outline:2px solid var(--mmp-gold)!important;outline-offset:3px}
+html body .wrap{max-width:1640px!important;padding-inline:clamp(10px,2vw,28px)!important}
+html body .card,html body .chart-box-wrapper,html body .collapsible-coins-container,
+html body .intel-panel,html body .radar-card,html body .market-hunter,
+html body .ai-terminal,html body .mmp-boom-lab{
+ border:1px solid #304253!important;border-radius:20px!important;
+ background:linear-gradient(145deg,#15212df5 0%,#0d151ff7 70%,#111b27f5)!important;
+ box-shadow:var(--mmp-shadow),inset 0 1px #ffffff08!important;
+}
+html body .section-head h2,html body .section-head h3,html body .intel-suite-head h2{
+ color:#f2dfb7!important;letter-spacing:-.35px
+}
+html body .section-kicker,html body .section-head .section-kicker{
+ color:var(--mmp-gold)!important;letter-spacing:1.35px;font-weight:800
+}
+html body .sub,html body .muted{color:var(--mmp-muted)!important}
+html body .btn,html body .pill,html body .badge{
+ border-color:#3b4e60!important;background:linear-gradient(145deg,#1b2b3a,#111c28)!important;
+ color:#dce8f1!important;border-radius:10px!important
+}
+html body .btn.primary,html body .quantum-enter-btn,html body .mmp-refresh-button{
+ background:linear-gradient(115deg,#a77c3d,#e8cc8b)!important;color:#17130b!important;
+ border:1px solid #f0d89e!important;box-shadow:0 8px 22px #b58a3c24!important
+}
+html body #mmp-home-hero{
+ position:relative;isolation:isolate;overflow:hidden;min-height:245px;
+ padding:clamp(20px,3vw,38px)!important;margin:12px 0 16px!important;
+ border:1px solid #8c71444f!important;border-radius:26px!important;
+ background:
+ radial-gradient(circle at 84% 42%,#c49b4b20 0,transparent 27%),
+ linear-gradient(112deg,#172330 0%,#111a25 55%,#171b20 100%)!important;
+ box-shadow:0 24px 60px #0008,inset 0 1px #ffffff0b!important;
+}
+html body #mmp-home-hero:after{
+ content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;opacity:.26;
+ background:repeating-linear-gradient(0deg,transparent 0 31px,#91b3c40b 32px),
+ repeating-linear-gradient(90deg,transparent 0 31px,#91b3c40b 32px);
+ mask-image:linear-gradient(90deg,#000,transparent 82%);
+}
+html body #mmp-home-hero .mmp-hero-title{color:#f4f0e7!important;font-size:clamp(27px,4vw,46px)!important;line-height:1.35!important}
+html body #mmp-home-hero .mmp-hero-title span{color:var(--mmp-gold-soft)!important}
+html body #mmp-home-hero .mmp-hero-kicker{color:#e2c27d!important;font-size:10px!important;letter-spacing:1.7px!important}
+html body #mmp-home-hero .mmp-hero-copy>p{max-width:720px;color:#b4c1cd!important;line-height:2}
+html body #mmp-home-hero .mmp-emblem-coin{filter:drop-shadow(0 15px 26px #d8b56d35)}
+html body #mmp-home-hero .mmp-market-status{color:#a9c8bd!important}
+html body #market-snapshot{gap:10px!important;margin:0 0 18px!important}
+html body #market-snapshot>.mmp-market-card{
+ position:relative;overflow:hidden;min-height:126px;padding:15px!important;
+ border-radius:16px!important;border-color:#304354!important;
+ background:linear-gradient(145deg,#172635,#101923)!important;
+}
+html body #market-snapshot>.mmp-market-card:after{
+ content:"";position:absolute;inset:auto 0 0;height:2px;
+ background:linear-gradient(90deg,transparent,var(--mmp-teal),var(--mmp-gold),transparent);opacity:.72
+}
+html body #market-snapshot .stat-value{font-size:clamp(19px,2.2vw,27px)!important;color:#f1e2c1!important}
+html body #quantum-center-entry{
+ border:1px solid #92744788!important;border-radius:23px!important;
+ background:radial-gradient(ellipse at 88% 0%,#d2a64a24,transparent 38%),linear-gradient(115deg,#1b2734,#111923 64%,#171b20)!important;
+ box-shadow:0 22px 55px #0008,inset 0 1px #fff1!important;
+}
+html body #quantum-center-entry .quantum-hero-eyebrow{color:#e4c47d!important;letter-spacing:1.4px}
+html body #quantum-center-entry .quantum-gold-title{color:#f4d99e!important}
+html body #quantum-center-entry p{color:#b5c2cf!important;line-height:2}
+html body #quantum-center-entry .quantum-hero-tags span{
+ background:#182938!important;border:1px solid #42586a!important;color:#c9d8e4!important;border-radius:30px!important
+}
+html body #opportunities .radar-card,html body #market-hunter,html body #ai-section,
+html body #boom-hunter,html body #chart-section,html body #market-intelligence,
+html body #coins-section{
+ margin-top:15px!important;margin-bottom:15px!important
+}
+html body #opportunities .radar-card{border-color:#32665d!important}
+html body #market-hunter{border-color:#7e6035!important}
+html body #ai-section{border-color:#425d7a!important}
+html body #boom-hunter{border-color:#7c5c3a!important}
+html body #chart-section{padding:16px!important}
+html body #chart-section .chart-top-bar h2{color:#f1d99f!important}
+html body #chart-container{border:1px solid #35495b!important;border-radius:14px!important;background:#0a121b!important}
+html body #market-intelligence .intel-panel{border-radius:17px!important}
+html body #coins-section .mmp-market-tools input,
+html body #ai-section input,html body #ai-section select,
+html body #market-hunter input,html body #boom-hunter input{
+ background:#101c28!important;border:1px solid #3b5062!important;color:#edf3f7!important
+}
+html body #connections .conn,html body .conn{
+ background:linear-gradient(145deg,#172532,#0e1721)!important;border-color:#34495a!important;border-radius:13px!important
+}
+html body .lamp.ok{box-shadow:0 0 14px #45d5b088!important}
+html body .signal,html body .ai-report,html body .ai-empty{
+ background:linear-gradient(145deg,#14202c,#0d151e)!important;border-color:#34495a!important;border-radius:14px!important
+}
+html body .positive{color:#54e0b4!important}html body .negative{color:#ff7c8a!important}
+html body .dropdown-menu{border-color:#8a7148!important;background:#101b28f5!important}
+html body .dropdown-menu a:hover{background:#d9b66d1c!important}
+html body .mmp-market-search,html body .mmp-market-result-count{
+ border-color:#35495a!important;background:#111d29!important
+}
+html body .mmp-market-card,html body .tf-card,html body .ai-metric,html body .ai-level{
+ border-color:#34485a!important
+}
+html body .mmp-market-card:hover,html body .tf-card:hover,html body .intel-panel:hover{
+ border-color:#b8955c99!important;transform:translateY(-2px);transition:transform .2s,border-color .2s
+}
+@media(max-width:760px){
+ html body .wrap{padding-inline:10px!important}
+ html body #mmp-home-hero{min-height:0;padding:20px 16px!important;border-radius:19px!important}
+ html body #mmp-home-hero .mmp-hero-title{font-size:clamp(24px,7vw,34px)!important}
+ html body #market-snapshot{gap:8px!important}
+ html body #market-snapshot>.mmp-market-card{min-height:112px;padding:12px!important}
+ html body #quantum-center-entry{padding:16px!important;border-radius:18px!important}
+ html body #opportunities,html body #market-intelligence .intel-grid{grid-template-columns:1fr!important}
+ html body #chart-section{padding:10px!important}
+}
+@media(max-width:420px){
+ html body #market-snapshot>.mmp-market-card{min-height:106px}
+ html body #market-snapshot .stat-value{font-size:18px!important}
+ html body .section-head h2{font-size:15px!important}
+}
+@media(prefers-reduced-motion:reduce){
+ html{scroll-behavior:auto}
+ *,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
+</style>
 </body>
 </html>
 
