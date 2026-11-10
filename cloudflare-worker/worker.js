@@ -1017,7 +1017,7 @@ async function loadHunterFundingSentiment(symbol,trend,preferredProviders=[],sig
  return {available:true,score,fundingRate:Number(average.toFixed(8)),dispersion:Number(dispersion.toFixed(8)),sourceCount:samples.length,sources:samples.map(x=>x.source),bias:score>=58?"supportive":score<=42?"crowded_against":"neutral"};
 }
 function markQuantumEvidence(activity,key){if(activity?.[key]){activity[key].processed++;activity[key].evidence++;}}
-async function scanHunterSymbols(symbols,marketType="spot",assetList=[],env=null){
+async function scanHunterSymbols(symbols,marketType="spot",assetList=[],env=null,options={}){
  const assetMap=new Map((Array.isArray(assetList)?assetList:[]).map(x=>[String(x.symbol||"").toUpperCase(),x]));
  let i=0,failed=0,rejected=0,flowChecked=0;const candidates=[],errors=[],rejections=[],engineActivity=Object.fromEntries(QUANTUM_ACTIVITY_KEYS.map(key=>[key,{processed:0,evidence:0}]));
  const concurrency=8;
@@ -1073,7 +1073,7 @@ async function scanHunterSymbols(symbols,marketType="spot",assetList=[],env=null
   finally{clearTimeout(flowTimer);}
  }));
  signals.sort((a,b)=>b.score-a.score);
- if(signals.length&&env){
+ if(signals.length&&env&&options.reviewAI!==false){
   const x=signals[0],prompt=JSON.stringify({task:"Independent second-opinion review of a fully data-confirmed quantitative market setup. Do not invent data, indicators, levels, or news. Do not modify any numeric fields. If evidence conflicts, say caution. Return JSON only: {verdict:'confirm'|'caution'|'reject',confidence:0-100,thesis:string,risks:string[],invalidation:string}.",symbol:x.symbol,market:marketType,direction:x.trend,score:x.score,price:x.price,timeframes:x.timeframes,indicators:x.indicators,evidence:x.evidence,flow:x.flow,orderBook:x.depth,tradePlan:x.tradePlan,quantum:x.quantum});
   try{const review=await runAIWithFallback(env,prompt),parsed=JSON.parse(review.raw);if(!["confirm","caution","reject"].includes(parsed.verdict)||!Number.isFinite(Number(parsed.confidence))||typeof parsed.thesis!=="string")throw new Error("AI review schema invalid");x.aiReview={status:"reviewed",provider:review.provider,verdict:parsed.verdict,confidence:Math.max(0,Math.min(100,Number(parsed.confidence))),thesis:parsed.thesis.slice(0,700),risks:Array.isArray(parsed.risks)?parsed.risks.slice(0,6).map(v=>String(v).slice(0,180)):[],invalidation:String(parsed.invalidation||"").slice(0,300),fallbacks:review.fallbacks};}
   catch(error){x.aiReview={status:"unavailable",reason:String(error?.message||error).slice(0,180)};}
@@ -1112,7 +1112,7 @@ async function cacheDigitalHunterUniverse(env,marketType){
  await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(cacheId,JSON.stringify(payload),new Date(updatedAt).toISOString()).run();
  return {market:marketType,universe_count:assets.length,provider:payload.universeProvider,updated_at:new Date(updatedAt).toISOString()};
 }
-async function refreshDigitalHunterUniverses(env){
+export async function refreshDigitalHunterUniverses(env){
  const results=await Promise.allSettled(["spot","futures"].map(market=>cacheDigitalHunterUniverse(env,market))),markets={},errors={};
  for(let i=0;i<results.length;i++){const market=i===0?"spot":"futures";if(results[i].status==="fulfilled")markets[market]=results[i].value;else errors[market]=String(results[i].reason?.message||results[i].reason).slice(0,220);}
  const payload={status:Object.keys(errors).length?(Object.keys(markets).length?"partial":"error"):"success",updated_at:new Date().toISOString(),markets,errors};
@@ -1161,7 +1161,7 @@ export async function runDigitalHunterMarketCycle(env,marketType="spot"){
   if(!symbol||selectedSymbols.has(symbol)||Number(failureCooldown[symbol]||0)>now)continue;
   batch.push(asset);selectedSymbols.add(symbol);
  }
- const result=await scanHunterSymbols(batch.map(x=>x.symbol),marketType,batch,env);
+ const result=await scanHunterSymbols(batch.map(x=>x.symbol),marketType,batch,env,{reviewAI:false});
  // Retry transient exchange/network failures sooner; quality rejects are not
  // permanent exclusions and are reconsidered after a short cooling period.
  for(const item of result.errors||[])failureCooldown[item.symbol]=now+90*1000;
