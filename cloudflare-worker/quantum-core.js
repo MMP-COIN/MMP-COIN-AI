@@ -99,7 +99,7 @@ export function scoreQuantumOpportunity(input={}){
   multiTimeframe:multiTimeframeAvailable,regime:regimeAvailable,volatility:volatilityAvailable,sentiment:sentimentAvailable,
   smartMoney:smartMoneyAvailable,scenario:scenarioAvailable,risk:riskAvailable,dataQuality:dataQualityAvailable};
  // QIE-4 adaptive weighting: weights shift only when the corresponding market evidence exists.
- const adaptiveProfile=regime>=68?"risk_on":regime<=38?"defensive":volatilityAvailable&&volatility>=82?"high_volatility":"balanced";
+ const adaptiveProfile=regimeAvailable?(regime>=68?"risk_on":regime<=38?"defensive":volatilityAvailable&&volatility>=82?"high_volatility":"balanced"):(volatilityAvailable&&volatility>=82?"high_volatility":"balanced");
  const effectiveWeights={...QUANTUM_SCORE_WEIGHTS};
  if(adaptiveProfile==="risk_on"){
   effectiveWeights.momentum*=1.12;effectiveWeights.flow*=1.16;effectiveWeights.structure*=1.12;
