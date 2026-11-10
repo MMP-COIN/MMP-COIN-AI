@@ -22,7 +22,10 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="icon" type="image/svg+xml" href="assets/mmp-coin-ai-icon.svg?v=20261108-qcoin2">
 <link rel="manifest" href="manifest.webmanifest?v=20261108-qcoin2">
-<title>MMP QUANTUM | ترمینال جامع و هوشمند بازارهای مالی</title>
+<title>مرکز هوشمند رمزارزها | MMP COIN AI</title>
+<meta name="application-name" content="مرکز هوشمند رمزارزها">
+<meta name="apple-mobile-web-app-title" content="مرکز هوشمند رمزارزها">
+<link rel="shortcut icon" href="assets/mmp-coin-ai-icon.svg?v=20261110-browser-icon" type="image/svg+xml">
 
 <style>
 :root{--bg:#08090d;--panel:#11131b;--panel2:#171a24;--line:#282c38;--gold:#d9b66d;--gold2:#f2d99b;--text:#f4f1e9;--muted:#9a9eaa;--green:#25d695;--red:#ff5e6c;--yellow:#f4c45e;--blue:#78a9ff}
@@ -2182,6 +2185,38 @@ body.mmp-app-mode :where(button,a):focus-visible{outline:2px solid #e9c77e!impor
 }
 @media(prefers-reduced-motion:reduce){body.mmp-app-mode *{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
+
+<style id="mmp-requested-compact-header-favicon-20261110">
+/* User-requested final layout: compact identity banner, plain market naming, flush top header. */
+html,html body,body.mmp-app-mode{margin-block-start:0!important;padding-block-start:0!important}
+body.mmp-app-mode>header.top{top:0!important;inset-block-start:0!important;margin:0!important;border-top:0!important;outline:0!important;transform:none!important}
+body.mmp-app-mode #mmp-home-hero.mmp-home-hero{
+ min-height:0!important;height:auto!important;display:grid!important;
+ grid-template-columns:minmax(0,1fr) 132px!important;align-items:center!important;
+ gap:12px!important;margin:7px 0 13px!important;padding:14px 22px!important;
+ border-radius:17px!important;box-shadow:0 10px 26px #0005,inset 0 1px #ffffff0a!important;
+}
+body.mmp-app-mode #mmp-home-hero .mmp-hero-title{font-size:clamp(22px,2.6vw,30px)!important;line-height:1.35!important;margin:5px 0 6px!important}
+body.mmp-app-mode #mmp-home-hero .mmp-hero-kicker{font-size:8px!important;letter-spacing:1.2px!important}
+body.mmp-app-mode #mmp-home-hero .mmp-hero-copy>p{font-size:11px!important;line-height:1.8!important;max-width:760px!important;margin:0!important}
+body.mmp-app-mode #mmp-home-hero .mmp-hero-emblem{width:112px!important;height:112px!important;min-width:0!important;justify-self:center!important;transform:scale(.78)!important;transform-origin:center!important}
+body.mmp-app-mode #mmp-home-hero .mmp-emblem-caption{font-size:7px!important}
+body.mmp-app-mode #mmp-home-hero .mmp-hero-index{display:none!important}
+body.mmp-app-mode #mmp-home-hero .mmp-hero-actions{margin-top:7px!important;gap:8px!important}
+body.mmp-app-mode #mmp-home-hero .mmp-refresh-button{padding:7px 10px!important;font-size:9px!important}
+#quantum-center-entry .hero-title .quantum-gold-title{font-size:clamp(17px,1.9vw,22px)!important}
+@media(max-width:760px){
+ body.mmp-app-mode>header.top{height:58px!important;min-height:58px!important;padding-inline:8px!important}
+ body.mmp-app-mode #mmp-home-hero.mmp-home-hero{grid-template-columns:minmax(0,1fr) 78px!important;gap:4px!important;padding:11px 12px!important;margin:5px 0 10px!important;border-radius:13px!important}
+ body.mmp-app-mode #mmp-home-hero .mmp-hero-title{font-size:21px!important;margin:4px 0!important}
+ body.mmp-app-mode #mmp-home-hero .mmp-hero-copy>p{font-size:9px!important;line-height:1.7!important}
+ body.mmp-app-mode #mmp-home-hero .mmp-hero-kicker{font-size:6.5px!important;letter-spacing:.65px!important}
+ body.mmp-app-mode #mmp-home-hero .mmp-hero-emblem{width:82px!important;height:82px!important;transform:scale(.68)!important}
+ body.mmp-app-mode #mmp-home-hero .mmp-hero-actions{margin-top:5px!important}
+ body.mmp-app-mode #mmp-home-hero .mmp-market-status{font-size:8px!important}
+}
+@media(max-width:390px){body.mmp-app-mode #mmp-home-hero.mmp-home-hero{grid-template-columns:minmax(0,1fr) 58px!important;padding:9px!important}body.mmp-app-mode #mmp-home-hero .mmp-hero-emblem{width:66px!important;height:66px!important;transform:scale(.6)!important}body.mmp-app-mode #mmp-home-hero .mmp-hero-title{font-size:19px!important}}
+</style>
 </head>
 <body class="mmp-app-mode">
 
@@ -2201,7 +2236,7 @@ body.mmp-app-mode :where(button,a):focus-visible{outline:2px solid #e9c77e!impor
 </div>
 <div class="dropdown-menu" id="dropdownMenu" aria-label="منوی اصلی">
   <div class="menu-section-label">بخش‌های اصلی</div>
-  <a href="/quantum-lab.html">◈ ورود به مرکز فرماندهی کوانتومی MMP</a>
+  <a href="/quantum-lab.html">◈ ورود به مرکز هوشمند بازار MMP</a>
   <a href="/market-heatmap.html">▦ نقشه حرارتی بازار</a>
   <a href="#opportunities">📡 رادار هوشمند بازار</a>
   <a href="#market-hunter">🎯 شکارچی کوانتومی بازار</a>
@@ -2218,7 +2253,7 @@ body.mmp-app-mode :where(button,a):focus-visible{outline:2px solid #e9c77e!impor
   <div class="side-brand"><div class="side-emblem" style="background:transparent;box-shadow:none"><img src="assets/mmp-coin-mark.svg?v=20261108-qcoin2" alt="نشان سکه کوانتومی MMP" style="width:100%;height:100%;object-fit:contain"></div><div><b>MMP <span>COIN AI</span></b><small>PRO TRADING TERMINAL</small></div></div>
   <div class="side-caption">INTELLIGENCE FIRST</div>
   <a class="side-link active" href="#hero"><i>◈</i><span>نمای کلی بازار</span><em>01</em></a>
-  <a class="side-link quantum-center-nav" href="#quantum-center-entry"><i>✧</i><span>مرکز فرماندهی کوانتومی MMP</span><em>CORE</em></a>
+  <a class="side-link quantum-center-nav" href="#quantum-center-entry"><i>✧</i><span>مرکز هوشمند رمزارزها</span><em>CORE</em></a>
   <a class="side-link" href="/market-heatmap.html"><i>▦</i><span>نقشه حرارتی بازار</span><em>LIVE</em></a>
   <a class="side-link" href="#opportunities"><i>⌖</i><span>رادار صعودی و نزولی</span><em>02</em></a>
   <a class="side-link hunter-nav-link" href="#market-hunter"><i>🎯</i><span>شکارچی بازار</span><em>03</em></a>
@@ -2246,8 +2281,8 @@ body.mmp-app-mode :where(button,a):focus-visible{outline:2px solid #e9c77e!impor
 <section class="hero mmp-home-hero" id="mmp-home-hero">
   <div class="mmp-hero-copy">
     <div class="mmp-hero-kicker"><span class="mmp-live-pulse"></span>MMP QUANTUM INTELLIGENCE NETWORK</div>
-    <h1 class="mmp-hero-title">مرکز هوشمند فرماندهی <span>بازار رمزارزها</span></h1>
-    <p>یک نمای فرماندهی یکپارچه برای قیمت‌های زنده، کشف زودهنگام حرکت‌ها، رادار فرصت‌ها، شکار اسپات و فیوچرز و تحلیل چندلایه؛ همه‌چیز در یک ترمینال سریع و خوانا.</p>
+    <h1 class="mmp-hero-title">مرکز هوشمند <span>رمزارزها</span></h1>
+    <p>نمایی یکپارچه از قیمت‌های زنده، کشف زودهنگام حرکت‌ها، رادار فرصت‌ها، شکار اسپات و فیوچرز و تحلیل چندلایه؛ سریع، دقیق و خوانا.</p>
     <div class="mmp-hero-actions">
       <span class="mmp-market-status" id="updated">در حال دریافت داده…</span>
       <button class="mmp-refresh-button" id="market-refresh-btn" type="button"><span aria-hidden="true">↻</span> بروزرسانی بازار</button>
@@ -2299,8 +2334,8 @@ body.mmp-app-mode :where(button,a):focus-visible{outline:2px solid #e9c77e!impor
 
 <section class="quantum-command-hero" id="quantum-center-entry" data-quantum-module="quantum-center" aria-labelledby="quantum-center-title">
  <div class="quantum-hero-copy">
-  <div class="quantum-hero-eyebrow">MMP QUANTUM COMMAND · MARKET INTELLIGENCE</div>
-  <h2 class="hero-title" id="quantum-center-title"><span class="quantum-gold-title">مرکز فرماندهی کوانتومی MMP</span><span>اتاق فرمان تحلیل و شکار بازار</span></h2>
+  <div class="quantum-hero-eyebrow">MMP QUANTUM INTELLIGENCE · MARKET INTELLIGENCE</div>
+  <h2 class="hero-title" id="quantum-center-title"><span class="quantum-gold-title">هسته هوشمند بازار MMP</span><span>تحلیل، کشف فرصت و مدیریت ریسک</span></h2>
   <p>اتاق تصمیم‌گیری یکپارچه برای رصد بازار، کشف فرصت‌های زودهنگام، تحلیل جریان سفارش و سنجش سناریوهای معاملاتی؛ متصل به رادار، شکارچی بازار و تحلیلگر هوشمند.</p>
   <div class="quantum-hero-tags"><span>۱۲ قابلیت یکپارچه</span><span>اسکن پویای جفت‌های واجد شرایط USDT</span><span>تحلیل چندلایه و مدیریت ریسک</span></div>
   <div class="quantum-hero-actions"><a class="quantum-enter-btn" href="/quantum-lab.html"><span>ورود به مرکز کوانتومی</span><b>←</b></a><a class="quantum-run-compact" href="/quantum-lab.html?run-engines=1" aria-label="ورود و اجرای چرخه ابرموتور"><span>⟳ اجرای چرخه ابرموتور</span><small>اسکن واقعی بازار</small></a><span class="badge">مرکز یکپارچه تحلیل بازار</span></div>
