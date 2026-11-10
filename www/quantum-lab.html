@@ -88,6 +88,53 @@ body{overflow-wrap:anywhere;word-break:normal}
 <style id="mmp-quantum-floating-coin">
 .quantum-art-core{width:33%!important;transform:translate(8%,-7%)!important;background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important;gap:0!important}.quantum-art-core img{width:100%!important;height:100%!important;filter:brightness(1.18) saturate(1.16) drop-shadow(0 0 7px #f5d98b) drop-shadow(0 0 17px #d9b66d99)!important}.quantum-art-core span{display:none!important}
 </style>
+
+<style id="mmp-quantum-lab-frame-system">
+/* Quantum Lab frame integrity across phones, tablets and desktop */
+html,body{width:100%;max-width:100%;overflow-x:clip}
+body,.wrap,main,section,article,.panel,.engine,.chart-card{min-width:0;max-width:100%}
+.wrap{width:100%;padding-inline:clamp(9px,2vw,24px)}
+:where(h1,h2,h3,h4,p,small,b,strong,label,span,a,button){max-width:100%;overflow-wrap:anywhere;word-break:normal}
+:where(input,select,textarea,button,a){min-width:0;max-width:100%}
+:where(img,svg,canvas,video,iframe){max-width:100%}
+.stats,.details,.engines,.quantum-charts,.asset-search-results,.asset-overflow-list{min-width:0}
+.tablewrap{width:100%;max-width:100%;overflow-x:auto;overscroll-behavior-inline:contain}
+table{min-width:680px;width:100%}th,td{white-space:nowrap;overflow-wrap:normal}
+.log,.empty,.disclaimer{overflow-wrap:anywhere;word-break:normal}
+header{gap:9px;min-width:0}header .actions{min-width:0;justify-content:flex-end}
+.quantum-inner-nav{max-width:100%;overscroll-behavior-inline:contain}
+@media(max-width:760px){
+ .wrap{padding:12px 10px 40px}
+ header{align-items:flex-start;flex-wrap:wrap;padding:9px 10px}
+ header .brand{flex:1 1 100%}
+ header .actions{width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+ header .actions .btn{min-width:0;padding:9px 8px;font-size:11px}
+ .hero{padding:20px 16px}
+ .hero h1{max-width:100%;font-size:clamp(22px,6vw,32px);line-height:1.5}
+ .hero p{max-width:100%;line-height:2}
+ .section-title{align-items:flex-start;flex-wrap:wrap}
+ .toolbar{min-width:0}
+ .toolbar input,.toolbar select{min-width:0;flex:1 1 130px}
+ .architecture-flow{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:560px){
+ .wrap{padding-inline:8px}
+ .stats,.details{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .engines{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .quantum-charts{grid-template-columns:minmax(0,1fr)}
+ .quantum-charts .chart-card:last-child{grid-column:auto}
+ .asset-search-results,.asset-overflow-list{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .architecture-flow{grid-template-columns:minmax(0,1fr)}
+ .engine{min-height:0}
+ .chart-head,.qof-head{align-items:flex-start;flex-wrap:wrap}
+ .qof-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:360px){
+ .stats,.details,.engines,.asset-search-results,.asset-overflow-list{grid-template-columns:minmax(0,1fr)}
+ header .actions{grid-template-columns:minmax(0,1fr)}
+ .qof-metric{padding-inline:3px}
+}
+</style>
 </head>
 <body>
 <header><div class="brand"><div class="mark" aria-label="MMP Quantum coin">M</div><div><b>مرکز کوانتومی MMP</b><small>MMP QUANTUM CENTER · MARKET INTELLIGENCE</small></div></div><div class="actions"><button class="btn" id="back">بازگشت به ترمینال</button><button class="btn primary" id="run-all-engines">اجرای ابرموتور هوشمند</button><button class="btn" id="scan">به‌روزرسانی وضعیت</button></div></header>
