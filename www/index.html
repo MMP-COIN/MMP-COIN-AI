@@ -3199,7 +3199,7 @@ function setupConnectionsToggle(){
   const expanded=button.getAttribute("aria-expanded")==="true";
   button.setAttribute("aria-expanded",String(!expanded));
   extra.classList.toggle("show",!expanded);
-  button.innerHTML=(!expanded?"بستن منابع دیگر":"نمایش ۴ منبع دیگر")+' <span class="chevron" aria-hidden="true">⌄</span>';
+  button.innerHTML=(!expanded?"بستن منابع دیگر":"نمایش "+(button.dataset.extraCount||"4")+" منبع دیگر")+' <span class="chevron" aria-hidden="true">⌄</span>';
  });
 }
 async function checkConnections(){
@@ -3210,7 +3210,7 @@ async function checkConnections(){
   if(!response.ok)throw new Error("HTTP "+response.status);
   const payload=await response.json();
   if(!Array.isArray(payload?.checks))throw new Error("پاسخ بررسی اتصال کامل نیست");
-  const expected=["binance spot","bybit spot","okx spot","bitget spot","gate.io spot","kucoin spot","nobitex","wallex"];
+  const expected=["binance spot","bybit spot","okx spot","bitget spot","gate.io spot","kucoin spot","mexc spot","whitebit spot","binance futures","bybit futures","okx futures","bitget futures","gate futures","mexc futures","kucoin futures","whitebit futures","nobitex","wallex"];
   const checks=new Map(payload.checks.map(c=>[String(c?.name||"").trim().toLowerCase(),c]));
   const bybitCheck=checks.get("bybit spot");
   if(bybitCheck?.status==="down"){
@@ -3282,16 +3282,18 @@ async function checkConnections(){
    const detail=c.error?'<small class="conn-purpose">'+aiEscape(c.error)+'</small>':'<small class="conn-purpose">'+aiEscape(c.purpose||"وضعیت اتصال صرافی")+'</small>';
    const lamp=c.status==="ok"?"ok":c.status==="slow"?"slow":"down";
    const key=String(c.name||"").toLowerCase();
-   const brands={"binance spot":["binance","https://cdn.simpleicons.org/binance/F0B90B"],"bybit spot":["bybit","https://cdn.simpleicons.org/bybit/F7A600"],"okx spot":["okx","https://cdn.simpleicons.org/okx/FFFFFF"],"bitget spot":["bitget","https://cdn.simpleicons.org/bitget/00D6A3"],"gate.io spot":["gateio","https://cdn.simpleicons.org/gateio/FFFFFF"],"kucoin spot":["kucoin","https://cdn.simpleicons.org/kucoin/23AF91"],"nobitex":["ن","https://www.google.com/s2/favicons?domain=nobitex.ir&sz=64"],"wallex":["W","https://www.google.com/s2/favicons?domain=wallex.ir&sz=64"]};
+   const brands={"binance spot":["binance","https://cdn.simpleicons.org/binance/F0B90B"],"binance futures":["binance","https://cdn.simpleicons.org/binance/F0B90B"],"bybit spot":["bybit","https://cdn.simpleicons.org/bybit/F7A600"],"bybit futures":["bybit","https://cdn.simpleicons.org/bybit/F7A600"],"okx spot":["okx","https://cdn.simpleicons.org/okx/FFFFFF"],"okx futures":["okx","https://cdn.simpleicons.org/okx/FFFFFF"],"bitget spot":["bitget","https://cdn.simpleicons.org/bitget/00D6A3"],"bitget futures":["bitget","https://cdn.simpleicons.org/bitget/00D6A3"],"gate.io spot":["gateio","https://cdn.simpleicons.org/gateio/FFFFFF"],"gate futures":["gateio","https://cdn.simpleicons.org/gateio/FFFFFF"],"kucoin spot":["kucoin","https://cdn.simpleicons.org/kucoin/23AF91"],"kucoin futures":["kucoin","https://cdn.simpleicons.org/kucoin/23AF91"],"mexc spot":["M","https://cdn.simpleicons.org/mexc/2EBD85"],"mexc futures":["M","https://cdn.simpleicons.org/mexc/2EBD85"],"whitebit spot":["W","https://cdn.simpleicons.org/whitebit/FFFFFF"],"whitebit futures":["W","https://cdn.simpleicons.org/whitebit/FFFFFF"],"nobitex":["ن","https://www.google.com/s2/favicons?domain=nobitex.ir&sz=64"],"wallex":["W","https://www.google.com/s2/favicons?domain=wallex.ir&sz=64"]};
    const brand=brands[key]||["↗",""];
    const icon=brand[1]?'<img class="conn-brand-icon" src="'+brand[1]+'" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement(\'span\'),{className:\'conn-brand-fallback\',textContent:\''+brand[0]+'\'}))">':'<span class="conn-brand-fallback">'+brand[0]+'</span>';
    return '<div class="conn"><div class="conn-top"><span class="conn-brand">'+icon+'<span class="conn-name">'+aiEscape(c.name)+'</span></span><span class="lamp '+lamp+'"></span></div><div class="conn-meta"><span>'+label+'</span><b dir="ltr">'+latency+'</b></div>'+detail+'</div>';
   };
-  $("connections").innerHTML=ordered.map(makeCard).join("");
-  $("connections-extra").innerHTML="";
-  const toggle=$("connections-toggle");if(toggle)toggle.hidden=true;
+  const primary=ordered.slice(0,8),extra=ordered.slice(8);
+  $("connections").innerHTML=primary.map(makeCard).join("");
+  $("connections-extra").innerHTML=extra.map(makeCard).join("");
+  const toggle=$("connections-toggle");
+  if(toggle){const expanded=toggle.getAttribute("aria-expanded")==="true";toggle.dataset.extraCount=String(extra.length);toggle.hidden=!extra.length;toggle.innerHTML=(expanded?"بستن منابع دیگر":"نمایش "+extra.length+" منبع دیگر")+' <span class="chevron" aria-hidden="true">⌄</span>';}
   const summary=$("conn-summary");
-  if(summary){const connected=ordered.filter(x=>x.status!=="down").length;summary.textContent=connected+" از "+expected.length+" صرافی متصل · "+(expected.length-connected)+" قطع";}
+  if(summary){const connected=ordered.filter(x=>x.status!=="down").length;summary.textContent=connected+" از "+expected.length+" اتصال فعال · "+(expected.length-connected)+" قطع";}
   return ordered;
  }catch(error){
   const message=error.name==="AbortError"?"مهلت بررسی اتصال تمام شد":"سرویس بررسی اتصال پاسخ نداد";
