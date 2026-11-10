@@ -731,8 +731,8 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
   order=unique([...(primaryTrusted&&available.includes(primary)?[primary]:[]),...available]);
  }else{
   const indices={Binance:0,Bybit:1,Bitget:2,OKX:3,Gate:4,"Gate.io":4,KuCoin:5,WhiteBIT:6,"Binance.US":7,BinanceUS:7,MEXC:8};
-  const preferred=(Array.isArray(asset?.marketPairs)?asset.marketPairs.slice().sort((a,b)=>Number(b.volume||0)-Number(a.volume||0)):[]).map(x=>indices[String(x.exchange||"")]).filter(Number.isInteger),priority=[3,8,2,5,6,4,7,1,0],available=unique(preferred).sort((a,b)=>priority.indexOf(a)-priority.indexOf(b)),primary=preferred[0],primaryTrusted=[2,4,5,6,7,8].includes(primary);
-  order=unique([...(primaryTrusted?[primary]:[]),...available]);
+  const preferred=(Array.isArray(asset?.marketPairs)?asset.marketPairs.slice().sort((a,b)=>Number(b.volume||0)-Number(a.volume||0)):[]).map(x=>indices[String(x.exchange||"")]).filter(Number.isInteger),priority=[5,6,4,8,3,2,7,1,0],available=unique(preferred).sort((a,b)=>priority.indexOf(a)-priority.indexOf(b)),primary=preferred[0],primaryTrusted=[4,5,6,8,7].includes(primary);
+  order=unique([...(primaryTrusted&&available.includes(primary)?[primary]:[]),...available]);
  }
  const fallbackPriority=marketType==="futures"?[4,6,5,3,2,1,0]:[5,6,4,8,3,2,7,1,0];
  const preferredOrder=unique(order);
@@ -740,7 +740,7 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
  const symbolHash=String(symbol).split("").reduce((sum,char)=>sum+char.charCodeAt(0),0);
  const rotation=fallbackOrder.length?(symbolHash+Math.floor(Date.now()/60000))%fallbackOrder.length:0;
  const rotatedFallback=[...fallbackOrder.slice(rotation),...fallbackOrder.slice(0,rotation)];
- const orderedIndices=marketType==="futures"?unique([...preferredOrder.slice(0,1),...fallbackOrder]):unique([...preferredOrder.slice(0,1),...rotatedFallback]);
+ const orderedIndices=unique([...preferredOrder.slice(0,1),...fallbackOrder]);
  const sourceLimit=Math.min(3,sources.length),orderedSources=orderedIndices.map(index=>sources[index]).filter(Boolean).slice(0,sourceLimit),verified=[];
  let selectedPair=null,bestObservedPair=null;
  const evaluatePairs=()=>{
