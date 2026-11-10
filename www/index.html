@@ -2875,11 +2875,7 @@ html body #ai-section .tf-card{min-width:0!important;max-width:100%!important;ov
 </section>
 <div class="connection-grid" id="connections"></div>
  <div class="connection-more"><button class="connection-more-btn" id="connections-toggle" type="button" aria-expanded="false" aria-controls="connections-extra">نمایش ۴ منبع دیگر <span class="chevron" aria-hidden="true">⌄</span></button><div class="connection-grid connection-extra" id="connections-extra"></div></div>
-<div class="mmp-exchange-directory" id="exchange-directory">
- <div class="mmp-exchange-directory-head"><div><b>فهرست صرافی‌های تحت پایش</b><small>وضعیت اتصال و بازارهای قابل شناسایی از منابع زنده</small></div><button type="button" class="btn" id="exchange-directory-refresh">↻ بروزرسانی</button></div>
- <div id="exchange-directory-summary" class="mmp-exchange-summary">در حال بررسی صرافی‌ها…</div>
- <details class="mmp-directory-details"><summary><span>نمایش فهرست کامل صرافی‌ها</span><span class="mmp-summary-count" id="exchange-directory-count">—</span></summary><div id="exchange-directory-list" class="mmp-exchange-grid"><div class="ai-empty">در حال بررسی اتصال…</div></div></details>
-</div>
+
 </section>
 
 <!-- فقط لیست ارزهای دیجیتال -->
@@ -3783,7 +3779,7 @@ function checkConnections(force=false){
   if(!response.ok)throw new Error("HTTP "+response.status);
   const payload=await response.json();
   if(!Array.isArray(payload?.checks))throw new Error("پاسخ بررسی اتصال کامل نیست");
-  const expected=["binance spot","bybit spot","okx spot","bitget spot","gate.io spot","kucoin spot","mexc spot","whitebit spot","binance futures","bybit futures","okx futures","bitget futures","gate futures","mexc futures","kucoin futures","whitebit futures","nobitex","wallex"];
+  const expected=["binance spot","okx spot","gate.io spot","nobitex","bybit spot","bitget spot","kucoin spot","wallex","mexc spot","whitebit spot","binance futures","bybit futures","okx futures","bitget futures","gate futures","mexc futures","kucoin futures","whitebit futures"];
   const checks=new Map(payload.checks.map(c=>[String(c?.name||"").trim().toLowerCase(),c]));
   const bybitCheck=checks.get("bybit spot");
   if(bybitCheck?.status==="down"){
@@ -3850,7 +3846,7 @@ function checkConnections(force=false){
   if(ordered.length!==expected.length)throw new Error("پاسخ بررسی اتصال کامل نیست");
 
   const makeCard=c=>{
-   const label=c.status==="down"?"قطع":c.status==="slow"?"کند":"متصل";
+   const label=c.status==="down"?"قطع":c.status==="slow"?"کند":c.status==="ok"?"متصل":"نامشخص";
    const latency=c.ping===null||c.ping===undefined?"—":c.ping+" ms";
    const detail=c.error?'<small class="conn-purpose">'+aiEscape(c.error)+'</small>':'<small class="conn-purpose">'+aiEscape(c.purpose||"وضعیت اتصال صرافی")+'</small>';
    const lamp=c.status==="ok"?"ok":c.status==="slow"?"slow":"down";
@@ -3866,7 +3862,7 @@ function checkConnections(force=false){
   const toggle=$("connections-toggle");
   if(toggle){const expanded=toggle.getAttribute("aria-expanded")==="true";toggle.dataset.extraCount=String(extra.length);toggle.hidden=!extra.length;toggle.innerHTML=(expanded?"بستن منابع دیگر":"نمایش "+extra.length+" منبع دیگر")+' <span class="chevron" aria-hidden="true">⌄</span>';}
   const summary=$("conn-summary");
-  if(summary){const connected=ordered.filter(x=>x.status!=="down").length;summary.textContent=connected+" از "+expected.length+" اتصال فعال · "+(expected.length-connected)+" قطع";}
+  if(summary){const connected=ordered.filter(x=>x.status==="ok"||x.status==="slow").length;summary.textContent=connected+" از "+expected.length+" اتصال فعال · "+(expected.length-connected)+" قطع";}
   connectionCheckCache=ordered;
   return ordered;
  }catch(error){
