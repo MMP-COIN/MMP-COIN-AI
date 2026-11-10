@@ -12,5 +12,25 @@ export default {
    catch(error){return json({error:String(error?.message||error).slice(0,240),engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION},502);}
   }
   return json({error:"Not found"},404);
+ },
+ async scheduled(event,env){
+  if(!env.ADMIN_DB)throw new Error("ADMIN_DB binding missing");
+  const id="digital-hunter-futures-cron-heartbeat",started=Date.now(),stamp=new Date(started).toISOString();
+  const save=payload=>env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(id,JSON.stringify(payload),payload.updated_at||new Date().toISOString()).run();
+  await save({status:"started",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,market:"futures",cron:event?.cron||"* * * * *",scheduledTime:event?.scheduledTime||null,updated_at:stamp});
+  let timer;
+  try{
+   const result=await Promise.race([
+    runDigitalHunterMarketCycle(env,"futures"),
+    new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error("Futures cycle timeout after 48000ms")),48000);})
+   ]);
+   const finished=Date.now(),hasDataFailures=Number(result.failed_count||0)>0,hasQualityRejections=Number(result.rejected_count||0)>0,hasIncompleteCycle=!!result.universe_refreshed||!!result.universe_stale||Number(result.scanned_count||0)===0;
+   const payload={status:hasDataFailures||hasQualityRejections||hasIncompleteCycle?"partial":"success",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,market:"futures",cron:event?.cron||"* * * * *",scheduledTime:event?.scheduledTime||null,startedAt:stamp,finishedAt:new Date(finished).toISOString(),updated_at:new Date(finished).toISOString(),market_data:{queue_position:result.queue_position||0,scanned:result.scanned_count||0,preliminary:result.preliminary_signals?.length||0,failed:result.failed_count||0,rejected:result.rejected_count||0,cooldown_count:result.cooldown_count||0,universe_refreshed:result.universe_refreshed===true,universe:result.universe_count||0,signals:result.signals?.length||0,last_errors:result.last_errors||[],last_rejections:result.last_rejections||[]}};
+   await save(payload);
+  }catch(error){
+   const finished=Date.now(),payload={status:"error",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,market:"futures",cron:event?.cron||"* * * * *",scheduledTime:event?.scheduledTime||null,startedAt:stamp,finishedAt:new Date(finished).toISOString(),updated_at:new Date(finished).toISOString(),error:String(error?.message||error).slice(0,240)};
+   await save(payload);
+   throw error;
+  }finally{clearTimeout(timer);}
  }
 };
