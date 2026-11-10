@@ -994,6 +994,14 @@ async function scanHunterSymbols(symbols,marketType="spot",assetList=[],env=null
  const flowCandidates=(marketType==="futures"?[...candidates.filter(x=>x.candidateGate===true&&!x.lowLiquidity)].sort((a,b)=>b.score-a.score).slice(0,2):["bull","bear"].flatMap(trend=>candidates.filter(x=>x.trend===trend&&x.candidateGate===true&&!x.lowLiquidity).sort((a,b)=>b.score-a.score).slice(0,1))).filter(x=>x.score>=60);
  await Promise.all(flowCandidates.map(async x=>{
   try{
+   let sentiment={available:false,score:null,sourceCount:0,sources:[]};
+   if(marketType==="futures"){
+    if(engineActivity?.sentiment)engineActivity.sentiment.processed++;
+    sentiment=await loadHunterFundingSentiment(x.symbol,x.trend);
+    if(sentiment.available&&engineActivity?.sentiment)engineActivity.sentiment.evidence++;
+    x.sentiment=sentiment.available?sentiment:null;
+    if(sentiment.available){const earlyQuantum=scoreQuantumOpportunity({...x,sentimentScore:sentiment.score,sentimentConfirmed:true,sentimentSource:sentiment.sources.join(" + ")});x.quantum=earlyQuantum;x.score=earlyQuantum.score;}
+   }
    let f=marketType==="futures"?await loadFuturesMarketFlow(x.symbol,5):await loadMarketFlow(x.symbol,5);
    if(f.complete!==true){const shorter=marketType==="futures"?await loadFuturesMarketFlow(x.symbol,1):await loadMarketFlow(x.symbol,1);if(shorter.complete===true&&shorter.trade_count>=8)f=shorter;}
    const gross=f.buy5m+f.sell5m,imb=gross?f.net5m/gross:0,ok=x.trend==="bull"?imb>=.045:imb<=-.045;
@@ -1001,13 +1009,10 @@ async function scanHunterSymbols(symbols,marketType="spot",assetList=[],env=null
    const depth=await loadHunterDepth(x.symbol,marketType,[x.multiExchangeEvidence?.primary,x.multiExchangeEvidence?.secondary]);if(!depth.confirmed)return;markQuantumEvidence(engineActivity,"smartMoney");
    const qBars=Array.isArray(x.rows)?x.rows.slice(-70):[],qRanges=qBars.slice(1).map((bar,i)=>Math.max(Number(bar[2])-Number(bar[3]),Math.abs(Number(bar[2])-Number(qBars[i][4])),Math.abs(Number(bar[3])-Number(qBars[i][4])))).filter(v=>Number.isFinite(v)&&v>0),qAtr=qRanges.length?qRanges.slice(-14).reduce((a,b)=>a+b,0)/Math.min(14,qRanges.length):0,qEntry=Number(x.price),qAtrPct=qEntry>0?qAtr/qEntry*100:null,qStopPct=qEntry>0?Math.max(qAtr*1.25,qEntry*.002)/qEntry*100:null,qDepthImbalance=Number(depth.totalDepthUsdt)>0?(Number(depth.bidUsdt)-Number(depth.askUsdt))/Number(depth.totalDepthUsdt):0,qSmartMoneyScore=Math.max(0,Math.min(100,50+Math.sign(imb)*(x.trend==="bull"?1:-1)*Math.min(22,Math.abs(imb)*90)+qDepthImbalance*(x.trend==="bull"?1:-1)*18+Math.min(10,Math.log2(Math.max(1,f.trade_count))*2))),qExplosionScore=Math.max(0,Math.min(100,Math.max(0,Number(x.volumeRatio)-1)*28+Math.abs(imb)*45+Math.min(25,Math.log2(Math.max(1,f.trade_count))*5)));
    const scenarioScore=Math.max(0,Math.min(100,42+(x.breakout?18:0)+(x.technicalAligned?18:0)+Math.min(15,Math.max(0,x.volumeRatio-1)*12)-(x.overextended?25:0)));markQuantumEvidence(engineActivity,"scenario");markQuantumEvidence(engineActivity,"risk");
-   let sentiment={available:false,score:null,sourceCount:0,sources:[]};
-   if(marketType==="futures"){
-    if(engineActivity?.sentiment)engineActivity.sentiment.processed++;
-    sentiment=await loadHunterFundingSentiment(x.symbol,x.trend);
-    if(sentiment.available&&engineActivity?.sentiment)engineActivity.sentiment.evidence++;
-   }
-   const quantum=scoreQuantumOpportunity({...x,flowImbalance:imb,flowConfirmed:true,multiExchangeConfirmed:x.multiExchangeConfirmed,volumeRatio:x.volumeRatio,depthConfirmed:true,depthImbalance:qDepthImbalance,atrPct:qAtrPct,explosionScore:qExplosionScore,smartMoneyScore:qSmartMoneyScore,smartMoneyConfirmed:true,scenarioScore,stopDistancePct:qStopPct,requireDepthConfirmation:true,dataAgeMs:Date.now()-x.candleTime,sentimentScore:sentiment.available?sentiment.score:undefined,sentimentConfirmed:sentiment.available,sentimentSource:sentiment.available?sentiment.sources.join(" + "):undefined});if(!quantum.qualityGate)return;markQuantumEvidence(engineActivity,"decision");x.quantum=quantum;x.score=quantum.score;x.depth=depth;x.sentiment=sentiment.available?sentiment:null;
+   const quantum=scoreQuantumOpportunity({...x,flowImbalance:imb,flowConfirmed:true,multiExchangeConfirmed:x.multiExchangeConfirmed,volumeRatio:x.volumeRatio,depthConfirmed:true,depthImbalance:qDepthImbalance,atrPct:qAtrPct,explosionScore:qExplosionScore,smartMoneyScore:qSmartMoneyScore,smartMoneyConfirmed:true,scenarioScore,stopDistancePct:qStopPct,requireDepthConfirmation:true,dataAgeMs:Date.now()-x.candleTime,sentimentScore:sentiment.available?sentiment.score:undefined,sentimentConfirmed:sentiment.available,sentimentSource:sentiment.available?sentiment.sources.join(" + "):undefined});
+   x.quantum=quantum;x.score=quantum.score;x.depth=depth;x.sentiment=sentiment.available?sentiment:null;
+   if(!quantum.qualityGate)return;
+   markQuantumEvidence(engineActivity,"decision");
    x.flow={buy5m:f.buy5m,sell5m:f.sell5m,net5m:f.net5m,windowMinutes:f.window_minutes||5,tradeCount:f.trade_count,provider:f.provider,complete:f.complete,coverageStart:f.coverage_start,rows:f.rows,imbalance:+imb.toFixed(4)};
    x.flowSignal=f.net5m>0?"inflow":"outflow";
    const bars=Array.isArray(x.rows)?x.rows.slice(-16):[],ranges=bars.slice(1).map((bar,i)=>Math.max(Number(bar[2])-Number(bar[3]),Math.abs(Number(bar[2])-Number(bars[i][4])),Math.abs(Number(bar[3])-Number(bars[i][4])))).filter(v=>Number.isFinite(v)&&v>0);
