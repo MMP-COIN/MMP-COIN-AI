@@ -427,8 +427,11 @@ async function readMarketFallback(env,key){
   return payload&&typeof payload==="object"?{payload,ageMs}:null;
  }catch{return null;}
 }
-async function writeMarketFallback(env,key,payload,previous=null,minIntervalMs=60000){
- if(!env.MARKET_CACHE_DB||previous?.ageMs<minIntervalMs)return;
+async function writeMarketFallback(env,key,payload,previous=null,minIntervalMs=300000){
+ // Keep D1 fallback writes sparse. Upstream fetches already use Cloudflare edge caching;
+ // D1 is only the outage fallback and must not be rewritten on every page refresh.
+ const writeIntervalMs=Math.max(300000,Number(minIntervalMs)||0);
+ if(!env.MARKET_CACHE_DB||previous?.ageMs<writeIntervalMs)return;
  try{
   await env.MARKET_CACHE_DB.prepare("INSERT INTO market_data_cache (cache_key,payload,cached_at) VALUES (?, ?, ?) ON CONFLICT(cache_key) DO UPDATE SET payload=excluded.payload,cached_at=excluded.cached_at").bind(key,JSON.stringify(payload),Date.now()).run();
  }catch(error){console.warn("Market fallback cache write failed:",String(error?.message||error).slice(0,180));}
