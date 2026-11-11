@@ -1567,33 +1567,12 @@ async function handle(request,env){
  }
 
  if(request.method==="GET"&&new URL(request.url).pathname==="/local-market-watch"){
-  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"local-market-watch"),request);if(limited)return limited;
-  const headers={"Accept":"application/json, text/plain, */*","User-Agent":"MMP-COIN-AI/1.0","Accept-Language":"en-US,en;q=0.9"};
-  const sources=[];
-  const read=async(url,source,normalize)=>{
-   try{const response=await fetchWithTimeout(url,{headers},6500);if(!response.ok)throw new Error("HTTP "+response.status);const data=await response.json();const value=normalize(data);if(!(Number(value)>0))throw new Error("invalid price");sources.push({exchange:source,price_irr:Number(value),price_toman:Number(value)/10,checked_at:new Date().toISOString(),fresh:true});}
-   catch(error){sources.push({exchange:source,price_irr:null,price_toman:null,fresh:false,error:String(error?.message||error).slice(0,100)});}
-  };
-  await Promise.all([
-   read("https://apiv2.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls","Nobitex",d=>d?.status==="ok"?(d.stats?.["usdt-rls"]?.latest??d.stats?.["usdt-irt"]?.latest):null),
-   read("https://api.wallex.ir/hector/web/v1/markets","Wallex",d=>{
-    const raw=d?.result?.symbols||d?.result?.markets||{},markets=Array.isArray(raw)?raw:Object.values(raw);
-    const toman=markets.find(m=>String(m?.symbol||"").toUpperCase()==="USDTTMN");
-    const rial=markets.find(m=>String(m?.symbol||"").toUpperCase()==="USDTIRT");
-    const t=Number(toman?.stats?.lastPrice??toman?.lastPrice),r=Number(rial?.stats?.lastPrice??rial?.lastPrice);
-    return t>0?t*10:r>0?r:null;
-   })
-  ]);
-  const valid=sources.filter(x=>x.fresh&&Number.isFinite(x.price_toman));
-  const values=valid.map(x=>x.price_toman).sort((a,b)=>a-b);
-  const median=values.length?(values.length%2?values[(values.length-1)/2]:(values[values.length/2-1]+values[values.length/2])/2):null;
-  const deviation=median?Math.max(...values.map(x=>Math.abs(x-median)/median*100)):null;
-  return json({market:"USDT/IRR",unit:"Toman",sources,source_count:valid.length,median_toman:median,source_deviation_pct:deviation,
-   status:valid.length>=2?"multi_source":valid.length===1?"single_source":"offline",
-   warning:valid.length===1?"فقط یک منبع معتبر پاسخ داده؛ مقایسه چندصرافی در دسترس نیست.":valid.length===0?"هیچ منبع زنده معتبر پاسخ نداده است.":null,
-   checked_at:new Date().toISOString(),cache:"bypassed"},200,request,{"Cache-Control":"no-store","X-MMP-Data-Source":"Nobitex live"});
- }
- if(request.method==="GET"&&new URL(request.url).pathname==="/market-proxy"){
+   const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"local-market-watch"),request);if(limited)return limited;
+   const [sample,saved]=await Promise.all([fetchLocalTetherSnapshot(),readLocalTetherState(env)]);
+   const alertAt=Date.parse(saved?.alert_at||""),serverAlert=!!(saved?.alert&&Number.isFinite(alertAt)&&Date.now()-alertAt<=120000);
+   return json({...sample,server_change_pct:Number.isFinite(Number(saved?.change_pct))?Number(saved.change_pct):null,server_alert:serverAlert,server_alert_at:saved?.alert_at||null,server_monitor:saved?.monitor||"warming_up"},200,request,{"Cache-Control":"no-store","X-MMP-Data-Source":"Nobitex + Wallex live"});
+  }
+if(request.method==="GET"&&new URL(request.url).pathname==="/market-proxy"){
   const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"market-proxy");
   const limited=rateLimitReply(limitResult,request);if(limited)return limited;
   const url=new URL(request.url),source=url.searchParams.get("source")||"";
@@ -1885,6 +1864,30 @@ async function settleHunterCycle(task,label,timeoutMs=50000,onTimeout=null){
  try{return await Promise.race([Promise.resolve().then(task).then(value=>({status:"fulfilled",value}),reason=>({status:"rejected",reason})),timedOut]);}
  finally{clearTimeout(timer);}
 }
+async function fetchLocalTetherSnapshot(){
+ const headers={"Accept":"application/json, text/plain, */*","User-Agent":"MMP-COIN-AI/1.0","Accept-Language":"en-US,en;q=0.9"},sources=[];
+ const read=async(url,exchange,normalize)=>{try{const response=await fetchWithTimeout(url,{headers},6500);if(!response.ok)throw new Error("HTTP "+response.status);const data=await response.json(),value=Number(normalize(data));if(!(value>0))throw new Error("invalid price");sources.push({exchange,price_irr:value,price_toman:value/10,fresh:true});}catch(error){sources.push({exchange,price_irr:null,price_toman:null,fresh:false,error:String(error?.message||error).slice(0,100)});}};
+ await Promise.all([
+  read("https://apiv2.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls","Nobitex",d=>d?.status==="ok"?(d.stats?.["usdt-rls"]?.latest??d.stats?.["usdt-irt"]?.latest):null),
+  read("https://api.wallex.ir/hector/web/v1/markets","Wallex",d=>{const raw=d?.result?.symbols||d?.result?.markets||{},markets=Array.isArray(raw)?raw:Object.values(raw),t=markets.find(m=>String(m?.symbol||"").toUpperCase()==="USDTTMN"),r=markets.find(m=>String(m?.symbol||"").toUpperCase()==="USDTIRT"),toman=Number(t?.stats?.lastPrice??t?.lastPrice),rial=Number(r?.stats?.lastPrice??r?.lastPrice);return toman>0?toman*10:rial>0?rial:null;})
+ ]);
+ const valid=sources.filter(x=>x.fresh&&Number.isFinite(x.price_toman)),values=valid.map(x=>x.price_toman).sort((a,b)=>a-b);
+ const median=values.length?(values.length%2?values[(values.length-1)/2]:(values[values.length/2-1]+values[values.length/2])/2):null;
+ const deviation=median?Math.max(...values.map(x=>Math.abs(x-median)/median*100)):null;
+ return {market:"USDT/IRR",unit:"Toman",sources,source_count:valid.length,median_toman:median,source_deviation_pct:deviation,status:valid.length>=2?"multi_source":valid.length===1?"single_source":"offline",warning:valid.length===1?"فقط یک منبع معتبر پاسخ داده؛ مقایسه چندصرافی در دسترس نیست.":valid.length===0?"هیچ منبع زنده معتبر پاسخ نداده است.":null,checked_at:new Date().toISOString(),cache:"bypassed"};
+}
+async function readLocalTetherState(env){
+ if(!env.ADMIN_DB)return null;
+ try{const row=await env.ADMIN_DB.prepare("SELECT payload FROM hunter_engine_state WHERE id = ?").bind("local-tether-watch").first();return row?.payload?JSON.parse(row.payload):null;}catch{return null;}
+}
+async function monitorLocalTether(env){
+ if(!env.ADMIN_DB)return;
+ const sample=await fetchLocalTetherSnapshot(),previous=await readLocalTetherState(env),current=Number(sample.median_toman),prior=Number(previous?.median_toman);
+ if(!(current>0))return;
+ const change=prior>0?(current/prior-1)*100:null,alert=change!==null&&Math.abs(change)>=2.5,now=new Date().toISOString();
+ const payload={...sample,previous_toman:prior>0?prior:null,change_pct:change,alert,alert_at:alert?now:(previous?.alert_at||null),monitor:"server-cron-1m"};
+ await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind("local-tether-watch",JSON.stringify(payload),now).run();
+}
 async function runDigitalHunterCron(event,env){
  const id="digital-hunter-cron-heartbeat",started=Date.now(),stamp=new Date(started).toISOString();
  const save=payload=>env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(id,JSON.stringify(payload),payload.updated_at||new Date().toISOString()).run();
@@ -1910,12 +1913,13 @@ export default {
   // Cron events can run for up to 15 minutes. Await the work in the handler
   // instead of returning immediately and relying on waitUntil's 30-second grace.
   const cleanup=cleanupMarketFallbackCache(env);
+  const localTether=monitorLocalTether(env).catch(error=>console.error("Local Tether server monitor failed:",error?.message||error));
   try{
    await runDigitalHunterCron(event,env,ctx);
   }catch(error){
    console.error("Digital Hunter scheduled cycle failed:",error?.message||error);
    throw error;
   }
-  await cleanup;
+  await Promise.allSettled([cleanup,localTether]);
  }
 };
