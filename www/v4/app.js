@@ -58,10 +58,12 @@
  }
  async function loadHealth(){
   try{
-   const d=await get(MAIN+"/health");
-   $("coreStatus").textContent=d.status==="online"||d.worker==="online"?"متصل":"پاسخ دریافت شد";
-   $("coreUpdated").textContent=new Date().toLocaleTimeString("fa-IR");
-  }catch(e){$("coreStatus").textContent="عدم دریافت پاسخ";$("coreUpdated").textContent="اتصال بررسی نشد";}
+   const d=await get(MAIN+"/connections-health");
+   const checks=Array.isArray(d.checks)?d.checks:[],up=checks.filter(x=>x.status==="ok"||x.status==="slow").length;
+   $("coreStatus").textContent=checks.length?up+" از "+checks.length+" اتصال سالم":"پاسخ ناقص";
+   $("coreUpdated").textContent=d.checked_at?new Date(d.checked_at).toLocaleTimeString("fa-IR"):"—";
+   const live=document.getElementById("serviceStatus");if(live)live.textContent=up?"سرویس‌ها بررسی شدند":"اختلال اتصال";
+  }catch(e){$("coreStatus").textContent="عدم دریافت پاسخ";$("coreUpdated").textContent="اتصال بررسی نشد";const live=document.getElementById("serviceStatus");if(live)live.textContent="عدم دریافت پاسخ";}
  }
  async function refresh(which){
   if(which==="radar")return loadRadar();
