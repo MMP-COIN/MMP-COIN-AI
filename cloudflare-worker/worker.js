@@ -39,15 +39,15 @@ async function runAIWithFallback(env,prompt){
  const failures=[];
  if(env.GROQ_API_KEY){
   const groqModels=[
-   {id:"openai/gpt-oss-120b",maxTokens:1800,timeoutMs:18000},
-   {id:"openai/gpt-oss-20b",maxTokens:1200,timeoutMs:12000}
+   {id:"openai/gpt-oss-120b",maxTokens:1800,timeoutMs:18000,reasoning_effort:"low"},
+   {id:"openai/gpt-oss-20b",maxTokens:1200,timeoutMs:12000,reasoning_effort:"low"}
   ];
   for(const model of groqModels){
    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),model.timeoutMs);
    try{
     const response=await fetch("https://api.groq.com/openai/v1/chat/completions",{
      method:"POST",headers:{"Authorization":"Bearer "+env.GROQ_API_KEY,"Content-Type":"application/json"},
-     body:JSON.stringify({model:model.id,messages:[{role:"system",content:"Return only one valid JSON object. Do not use markdown fences."},{role:"user",content:prompt}],response_format:{type:"json_object"},temperature:0.2,max_completion_tokens:model.maxTokens,reasoning_effort:"low"}),
+     body:JSON.stringify({model:model.id,messages:[{role:"system",content:"Return only one valid JSON object. Do not use markdown fences."},{role:"user",content:prompt}],response_format:{type:"json_object"},temperature:0.2,max_completion_tokens:model.maxTokens,reasoning_effort:model.reasoning_effort}),
      signal:controller.signal
     });
     if(!response.ok){const detail=(await response.text()).slice(0,220);failures.push("Groq "+model.id+" HTTP "+response.status+": "+detail);continue;}
