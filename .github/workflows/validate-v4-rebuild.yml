@@ -52,11 +52,12 @@ jobs:
             }
           }
           const radarCors = await fetch("https://mmp-coin-ai-radar.mehrdadmohammadi1988.workers.dev/fast-radar-snapshot", {
-            method: "OPTIONS", headers: {Origin: "capacitor://localhost", "Access-Control-Request-Method": "GET"}
+            headers: {Origin: "capacitor://localhost", Accept: "application/json"}
           });
+          if (!radarCors.ok) throw new Error("Radar GET failed for Capacitor origin: HTTP " + radarCors.status);
           if (radarCors.headers.get("access-control-allow-origin") !== "*")
-            throw new Error("Radar CORS policy rejected Capacitor origin");
-          console.log("PASS Radar CORS wildcard");
+            throw new Error("Radar GET CORS missing wildcard; received " + radarCors.headers.get("access-control-allow-origin"));
+          console.log("PASS Radar GET CORS wildcard");
           JS
       - name: Validate rebuild structure and assets
         run: |
