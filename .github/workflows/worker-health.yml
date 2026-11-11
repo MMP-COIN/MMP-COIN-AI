@@ -628,6 +628,23 @@ jobs:
             echo "- Derivatives: endpoint responding with provider attribution"
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Smoke-test Iranian tether watch and early pressure APIs
+        if: always() && github.ref == 'refs/heads/main'
+        env:
+          WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
+        run: |
+          set -euo pipefail
+          status=$(curl --silent --show-error --max-time 25 -o /tmp/local-watch.json -w "%{http_code}" "$WORKER_URL/local-market-watch")
+          echo "Iranian USDT watch HTTP $status"
+          if [ "$status" != "200" ]; then cat /tmp/local-watch.json; exit 1; fi
+          jq -e '.market == "USDT/IRR" and (.sources | length == 2) and (.status == "multi_source" or .status == "single_source" or .status == "offline")' /tmp/local-watch.json >/dev/null
+          jq -r '"Iranian USDT/Toman watch: " + .status + " | valid venues: " + (.source_count|tostring)' /tmp/local-watch.json
+          status=$(curl --silent --show-error --max-time 25 -o /tmp/early-pressure.json -w "%{http_code}" "$WORKER_URL/early-pressure?symbol=BTC")
+          echo "Early pressure endpoint HTTP $status"
+          if [ "$status" != "200" ]; then cat /tmp/early-pressure.json; exit 1; fi
+          jq -e '.symbol == "BTC" and .pressure.version == "MMP-EARLY-PRESSURE-1.0" and .pressure.pre_move_only == true and (.pressure.direction == "up" or .pressure.direction == "down")' /tmp/early-pressure.json >/dev/null
+          jq -r '"BTC early pressure: " + .pressure.state + " | " + .pressure.direction + " | score " + (.pressure.score|tostring)' /tmp/early-pressure.json
+
       - name: Validate daily Cloudflare AI budget guard
         run: |
           set -euo pipefail
