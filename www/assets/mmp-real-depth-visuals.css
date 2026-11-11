@@ -1,0 +1,126 @@
+/* MMP REAL DEPTH VISUAL SYSTEM — shared web + Capacitor WebView */
+:root{
+ --mmp-depth-gold:#e9c77e;--mmp-depth-teal:#45dfcf;--mmp-depth-green:#35e5a8;
+ --mmp-depth-red:#ff657e;--mmp-depth-blue:#73b8ff;--mmp-depth-violet:#bd8cff;
+}
+@keyframes mmpDepthOrbit{to{transform:rotate(360deg)}}
+@keyframes mmpDepthPulse{0%,100%{opacity:.55;filter:brightness(.9)}50%{opacity:1;filter:brightness(1.35)}}
+@keyframes mmpDepthScan{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+@keyframes mmpDepthRise{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+@keyframes mmpDepthShimmer{0%{background-position:0 0}100%{background-position:180% 0}}
+/* Common premium surface: layered glass, metallic edge, real depth */
+#quantum-center-entry.quantum-command-hero,
+#opportunities>.radar-card,
+#market-hunter,
+#ai-section,
+#boom-hunter,
+#trading-tools{
+ position:relative;isolation:isolate;overflow:hidden;
+ border:1px solid color-mix(in srgb,var(--mmp-depth-accent,#d7b46a) 42%,#263648);
+ background:
+  radial-gradient(ellipse at 88% 8%,color-mix(in srgb,var(--mmp-depth-accent,#d7b46a) 17%,transparent),transparent 39%),
+  linear-gradient(145deg,#172230 0%,#101722 48%,#0a111b 100%);
+ box-shadow:0 20px 48px #0008,inset 0 1px #ffffff14,inset 0 -1px #0009;
+}
+#quantum-center-entry.quantum-command-hero:after,
+#opportunities>.radar-card:after,
+#market-hunter:after,
+#ai-section:after,
+#boom-hunter:after,
+#trading-tools:after{
+ content:"";position:absolute;z-index:-1;pointer-events:none;right:-55px;top:-92px;
+ width:260px;height:260px;border-radius:50%;
+ border:1px solid color-mix(in srgb,var(--mmp-depth-accent,#d7b46a) 28%,transparent);
+ box-shadow:0 0 0 13px color-mix(in srgb,var(--mmp-depth-accent,#d7b46a) 4%,transparent),
+  0 0 0 29px color-mix(in srgb,var(--mmp-depth-accent,#d7b46a) 3%,transparent),
+  inset 0 0 38px color-mix(in srgb,var(--mmp-depth-accent,#d7b46a) 10%,transparent);
+ opacity:.8;animation:mmpDepthRise 8s ease-in-out infinite;
+}
+#quantum-center-entry.quantum-command-hero{--mmp-depth-accent:var(--mmp-depth-gold)}
+#opportunities>.radar-card{--mmp-depth-accent:var(--mmp-depth-green)}
+#market-hunter{--mmp-depth-accent:var(--mmp-depth-red)}
+#ai-section{--mmp-depth-accent:var(--mmp-depth-blue)}
+#boom-hunter{--mmp-depth-accent:var(--mmp-depth-violet)}
+#trading-tools{--mmp-depth-accent:var(--mmp-depth-teal)}
+#quantum-center-entry.quantum-command-hero:before,
+#opportunities>.radar-card:before,
+#market-hunter:before,
+#ai-section:before,
+#boom-hunter:before,
+#trading-tools:before{
+ content:"";position:absolute;z-index:-1;pointer-events:none;right:-15px;top:-35px;
+ width:210px;height:210px;border-radius:50%;
+ background:radial-gradient(circle at 50% 50%,color-mix(in srgb,var(--mmp-depth-accent) 19%,transparent) 0 2%,transparent 3% 100%);
+ background-size:13px 13px;mask-image:radial-gradient(circle,#000,transparent 70%);
+ opacity:.5;
+}
+/* Radar: scanning aperture and concentric sweep */
+#opportunities>.radar-card:after{
+ width:230px;height:230px;border:1px solid #35e5a866;
+ background:conic-gradient(from 20deg,transparent 0 72%,#35e5a81c 82%,transparent 88%);
+ box-shadow:0 0 0 12px #35e5a80b,0 0 0 28px #35e5a807,0 0 45px #35e5a81c;
+ animation:mmpDepthScan 24s linear infinite;
+}
+/* Hunter: target reticle */
+#market-hunter:after{
+ width:220px;height:220px;border:1px dashed #ff657e88;
+ background:radial-gradient(circle,transparent 0 25%,#ff657e16 26% 27%,transparent 28% 48%,#ff657e20 49% 50%,transparent 51%);
+ box-shadow:0 0 0 11px #ff657e0b,0 0 0 26px #ff657e08,0 0 38px #ff657e1a;
+ animation:mmpDepthOrbit 32s linear infinite;
+}
+/* Analyzer: luminous layered data lens */
+#ai-section:after{
+ width:235px;height:235px;border:1px solid #73b8ff88;
+ background:repeating-conic-gradient(from 0deg,#73b8ff12 0 2deg,transparent 2deg 18deg);
+ box-shadow:inset 0 0 45px #73b8ff1c,0 0 0 14px #73b8ff0b,0 0 42px #73b8ff18;
+ animation:mmpDepthOrbit 42s linear infinite reverse;
+}
+/* Momentum lab: energetic violet reactor */
+#boom-hunter:after{
+ width:225px;height:225px;border:1px solid #bd8cff88;
+ background:radial-gradient(circle,#bd8cff20 0 3%,transparent 4% 24%,#bd8cff16 25% 26%,transparent 27% 47%,#bd8cff1a 48% 49%,transparent 50%);
+ box-shadow:inset 0 0 48px #bd8cff20,0 0 0 13px #bd8cff0b,0 0 45px #bd8cff22;
+ animation:mmpDepthPulse 5s ease-in-out infinite,mmpDepthOrbit 36s linear infinite;
+}
+/* Trader toolkit: precision turquoise instrument dial */
+#trading-tools:after{
+ width:225px;height:225px;border:1px solid #45dfcf88;
+ background:repeating-linear-gradient(0deg,transparent 0 17px,#45dfcf0d 18px 19px),repeating-linear-gradient(90deg,transparent 0 17px,#45dfcf0d 18px 19px);
+ box-shadow:inset 0 0 40px #45dfcf18,0 0 0 13px #45dfcf0a,0 0 40px #45dfcf18;
+ animation:mmpDepthPulse 7s ease-in-out infinite;
+}
+/* Make headings and real controls remain above decorative artwork */
+#quantum-center-entry>*,
+#opportunities>.radar-card>*,
+#market-hunter>*,
+#ai-section>*,
+#boom-hunter>*,
+#trading-tools>*{position:relative;z-index:1}
+#quantum-center-entry .quantum-hero-art{filter:drop-shadow(0 18px 22px #0009)}
+#quantum-center-entry .quantum-art-core{animation:mmpDepthPulse 4.8s ease-in-out infinite}
+#quantum-center-entry .quantum-art-orbit{filter:drop-shadow(0 0 7px #e9c77e66)}
+/* Module marks become dimensional, without changing their source artwork */
+.mmp-module-logo{filter:drop-shadow(0 5px 9px #0009) drop-shadow(0 0 8px color-mix(in srgb,var(--mmp-depth-accent,#d7b46a) 32%,transparent))}
+#opportunities .mmp-module-logo{--mmp-depth-accent:var(--mmp-depth-green)}
+#market-hunter .mmp-module-logo{--mmp-depth-accent:var(--mmp-depth-red)}
+#ai-section .mmp-module-logo{--mmp-depth-accent:var(--mmp-depth-blue)}
+#boom-hunter .mmp-module-logo{--mmp-depth-accent:var(--mmp-depth-violet)}
+#trading-tools .mmp-module-logo{--mmp-depth-accent:var(--mmp-depth-teal)}
+/* Keep mobile fast and legible; preserve touch targets and all existing data flows */
+@media(max-width:760px){
+ #quantum-center-entry.quantum-command-hero,
+ #opportunities>.radar-card,#market-hunter,#ai-section,#boom-hunter,#trading-tools{border-radius:17px}
+ #quantum-center-entry.quantum-command-hero:after,
+ #opportunities>.radar-card:after,#market-hunter:after,#ai-section:after,#boom-hunter:after,#trading-tools:after{
+  width:155px;height:155px;right:-48px;top:-45px;opacity:.55
+ }
+ #quantum-center-entry.quantum-command-hero:before,
+ #opportunities>.radar-card:before,#market-hunter:before,#ai-section:before,#boom-hunter:before,#trading-tools:before{
+  width:145px;height:145px;right:-12px;top:-22px
+ }
+}
+@media(prefers-reduced-motion:reduce){
+ #quantum-center-entry.quantum-command-hero:after,#opportunities>.radar-card:after,
+ #market-hunter:after,#ai-section:after,#boom-hunter:after,#trading-tools:after,
+ #quantum-center-entry .quantum-art-core{animation:none!important}
+}
