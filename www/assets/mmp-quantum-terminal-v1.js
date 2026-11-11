@@ -52,6 +52,10 @@ function init(){
   document.querySelectorAll("[data-mmp-open-center]").forEach(el=>el.setAttribute("aria-current",el.dataset.mmpOpenCenter===view?"page":"false"));
   const menuBtn=$(".menu-btn");if(menuBtn)menuBtn.setAttribute("aria-expanded","false");if(menu)menu.classList.remove("show","open");
   window.scrollTo({top:0,behavior:"auto"});
+  if(view==="command"){
+   // Re-entering Market Command always refreshes the live market snapshot instead of leaving empty placeholders.
+   try{if(typeof window.refreshSiteData==="function")window.refreshSiteData();else if(typeof window.refreshLiveQuotes==="function")window.refreshLiveQuotes();}catch(error){console.warn("Market Command refresh failed:",error);}
+  }
   document.dispatchEvent(new CustomEvent("mmp:center-change",{detail:{view}}));
  }
  document.addEventListener("click",e=>{
