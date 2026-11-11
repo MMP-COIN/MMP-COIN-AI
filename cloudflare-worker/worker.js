@@ -1528,11 +1528,18 @@ async function handle(request,env){
    const recentRange=avg(ranges.slice(-5)),baseRange=avg(ranges.slice(-25,-5)),recentVol=avg(volumes.slice(-5)),baseVol=avg(volumes.slice(-25,-5));
    const compression=baseRange>0?recentRange/baseRange:null,volumeAcceleration=baseVol>0?recentVol/baseVol:null;
    const recent=bars.slice(-5),signed=recent.reduce((sum,x)=>sum+(Number(x.c)-Number(x.o))*Number(x.v),0),gross=recent.reduce((sum,x)=>sum+Math.abs(Number(x.c)-Number(x.o))*Number(x.v),0);
-   const candlePressure=gross>0?signed/gross:null;
-   const age=Date.now()-Number(bars.at(-1)?.t||0),fresh=age<=180000;
-   const pressure=detectEarlyMovePressure({rangeCompression:compression,volumeAcceleration,flowImbalance:candlePressure,dataFresh:fresh});
+   const candlePressure=gross>0?signed/gross:null,age=Date.now()-Number(bars.at(-1)?.t||0),fresh=age<=180000;
+   let orderflow=null,orderflowStatus="unavailable";
+   try{const internal=new Request("https://mmp-internal/market-orderflow?symbol="+encodeURIComponent(raw),{headers:request.headers});const response=await handle(internal,env);if(response.ok){orderflow=await response.json();orderflowStatus="available";}}catch{}
+   const buy=Number(orderflow?.flow?.buy_usdt),sell=Number(orderflow?.flow?.sell_usdt),tradeTotal=buy+sell;
+   const executedFlow=orderflow?.flow?.available===true&&tradeTotal>0?(buy-sell)/tradeTotal:null;
+   const depthPct=orderflow?.depth?.available===true&&Number.isFinite(Number(orderflow.depth.imbalance_pct))?Number(orderflow.depth.imbalance_pct):null;
+   const flowBasis=executedFlow!==null?"executed_trades":"candle_body_volume_proxy",flowInput=executedFlow!==null?executedFlow:candlePressure;
+   const depthInput=depthPct===null?null:depthPct/100;
+   const pressure=detectEarlyMovePressure({rangeCompression:compression,volumeAcceleration,flowImbalance:flowInput,depthImbalance:depthInput,dataFresh:fresh});
    return json({symbol:raw,market:"spot",provider:market.data_provider,price:market.price,data_age_ms:age,
-    pressure:{...pressure,inputs:{...pressure.inputs,flow:null,depth:null},evidence_note:"جهت فشار از بدنه کندل و حجم کندل‌های یک‌دقیقه‌ای برآورد شده؛ دفتر سفارش و معاملات لحظه‌ای در این خروجی دخیل نیست."},
+    pressure:{...pressure,evidence_note:"پیش‌آگاهی از فشردگی دامنه، شتاب حجم، فشار معاملات اجراشده و عدم‌تعادل دفتر سفارش؛ هر شاهدِ در دسترس جداگانه مشخص شده است."},
+    microstructure:{flow_basis:flowBasis,flow_source:orderflow?.flow?.source||null,trade_count:Number(orderflow?.flow?.trade_count)||0,flow_complete:orderflow?.flow?.complete===true,depth_source:orderflow?.depth?.source||null,depth_imbalance_pct:depthPct,candle_pressure_proxy:candlePressure,orderflow_status:orderflowStatus},
     sampled_at:new Date().toISOString()},200,request);
   }catch(error){return json({symbol:raw,state:"insufficient_data",error:String(error?.message||error).slice(0,180),sampled_at:new Date().toISOString()},502,request);}
  }
