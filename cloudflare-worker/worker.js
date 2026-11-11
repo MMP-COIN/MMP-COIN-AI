@@ -35,6 +35,27 @@ async function reserveCloudflareAIDailyBudget(env){
   return {allowed:false,day,calls:null,max_calls:maxCalls,remaining:0,reason:"Daily budget storage error; Cloudflare AI blocked fail-closed: "+String(error?.message||error).slice(0,140)};
  }
 }
+const ANALYSIS_CACHE_TTL_MS=90000;
+async function readSharedAnalysisCache(env,id){
+ if(!env.ADMIN_DB)return null;
+ try{
+  const row=await env.ADMIN_DB.prepare("SELECT payload,updated_at FROM hunter_engine_state WHERE id = ?").bind(id).first();
+  if(!row?.payload)return null;
+  const payload=JSON.parse(row.payload);
+  if(!payload?.analysis||!payload?.market)return null;
+  const updatedAt=Date.parse(row.updated_at||payload.generated_at||"");
+  if(!Number.isFinite(updatedAt))return null;
+  return {payload,ageMs:Math.max(0,Date.now()-updatedAt)};
+ }catch(error){console.warn("Shared analysis cache read failed:",String(error?.message||error).slice(0,140));return null;}
+}
+async function writeSharedAnalysisCache(env,id,payload){
+ if(!env.ADMIN_DB)return false;
+ try{
+  const updatedAt=new Date().toISOString();
+  await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,updated_at=excluded.updated_at").bind(id,JSON.stringify(payload),updatedAt).run();
+  return true;
+ }catch(error){console.warn("Shared analysis cache write failed:",String(error?.message||error).slice(0,140));return false;}
+}
 async function runAIWithFallback(env,prompt){
  const failures=[];
  if(env.GROQ_API_KEY){
@@ -1276,6 +1297,12 @@ async function handle(request,env){
  if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-universe"){
   const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-universe");
   const limited=rateLimitReply(limitResult,request);if(limited)return limited;
+  // Share the expensive multi-exchange catalog across web and Android clients for 90 seconds.
+  const universeCacheKey=await marketFallbackKey("hunter-universe:v1");
+  const cachedUniverse=await readMarketFallback(env,universeCacheKey);
+  if(cachedUniverse?.payload&&cachedUniverse.ageMs<90000){
+   return json(cachedUniverse.payload,200,request,{"X-MMP-Cache":"HIT","X-MMP-Data-Age":String(Math.floor(cachedUniverse.ageMs))});
+  }
   const timedJson=async(url,timeout=12000,cacheTtl=30,extraHeaders={})=>{
    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeout);
    try{
@@ -1378,8 +1405,16 @@ async function handle(request,env){
   }).filter(asset=>asset.current_price>0&&discoveryMarkets.get(asset.symbol).venues.size>=2&&asset.total_volume>=50000);
   const hunterAssets=[...rankedAssets.filter(asset=>asset.hasUsdtMarket===true),...discoveredAssets].sort((a,b)=>Number(b.total_volume||0)-Number(a.total_volume||0));
   const radarAssets=[...rankedAssets,...discoveredAssets].sort((a,b)=>Number(b.total_volume||0)-Number(a.total_volume||0));
-  if(!rankedAssets.length&&!hunterAssets.length&&!radarAssets.length)return json({error:"هیچ بازار معتبر و قابل‌تأییدی از صرافی‌ها دریافت نشد.",sources},502,request);
-  return json({checked_at:new Date().toISOString(),count:rankedAssets.length,hunter_count:hunterAssets.length,radar_count:radarAssets.length,discovered_count:discoveredAssets.length,binance_spot_symbols:binanceSymbols.size,cmc_listings:cmcRows.length,universe_mode:"unified_catalog_plus_independent_exchange_discovery",metadata_provider:metadataProvider,assets:rankedAssets,hunter_assets:hunterAssets,radar_assets:radarAssets,sources},200,request,{"X-MMP-Data-Source":"Binance, Bybit, OKX, Bitget, Gate, KuCoin, WhiteBIT, Nobitex, Wallex + "+metadataProvider});
+  if(!rankedAssets.length&&!hunterAssets.length&&!radarAssets.length){
+   if(cachedUniverse?.payload)return json(cachedUniverse.payload,200,request,{"X-MMP-Cache":"STALE","X-MMP-Data-Age":String(Math.floor(cachedUniverse.ageMs)),"Warning":'110 - "Response is stale"'});
+   return json({error:"هیچ بازار معتبر و قابل‌تأییدی از صرافی‌ها دریافت نشد.",sources},502,request);
+  }
+  const universePayload={checked_at:new Date().toISOString(),count:rankedAssets.length,hunter_count:hunterAssets.length,radar_count:radarAssets.length,discovered_count:discoveredAssets.length,binance_spot_symbols:binanceSymbols.size,cmc_listings:cmcRows.length,universe_mode:"unified_catalog_plus_independent_exchange_discovery",metadata_provider:metadataProvider,assets:rankedAssets,hunter_assets:hunterAssets,radar_assets:radarAssets,sources};
+  if(env.MARKET_CACHE_DB){
+   try{await env.MARKET_CACHE_DB.prepare("INSERT INTO market_data_cache (cache_key,payload,cached_at) VALUES (?, ?, ?) ON CONFLICT(cache_key) DO UPDATE SET payload=excluded.payload,cached_at=excluded.cached_at").bind(universeCacheKey,JSON.stringify(universePayload),Date.now()).run();}
+   catch(error){console.warn("Hunter universe shared cache write failed:",String(error?.message||error).slice(0,140));}
+  }
+  return json(universePayload,200,request,{"X-MMP-Data-Source":"Binance, Bybit, OKX, Bitget, Gate, KuCoin, WhiteBIT, Nobitex, Wallex + "+metadataProvider,"X-MMP-Cache":"MISS"});
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/support-check"){
   const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"support-check");
@@ -1681,6 +1716,12 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/futures-engine-heal
  if(!validSymbol(symbol))return json({error:"Invalid asset symbol"},400,request);
  let pair=symbol.endsWith("USDT")?symbol:symbol+"USDT";
  const mode=["spot","futures","both"].includes(body.market_mode)?body.market_mode:"both";
+ const analysisCacheId="analysis-cache-v1:"+symbol+":"+mode;
+ const sharedAnalysis=await readSharedAnalysisCache(env,analysisCacheId);
+ // Coalesce website/app refreshes that arrive within 12 seconds of the same fresh report.
+ if(sharedAnalysis&&sharedAnalysis.ageMs<ANALYSIS_CACHE_TTL_MS&&(!body.force_refresh||sharedAnalysis.ageMs<12000)){
+  return json(sharedAnalysis.payload,200,request,{"X-MMP-Cache":"HIT","X-MMP-Data-Age":String(Math.floor(sharedAnalysis.ageMs))});
+ }
  let stage="شناسایی جفت‌های فعال";
  try{
   const catalogs=await getExchangeCatalogs();
@@ -1801,7 +1842,10 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/futures-engine-heal
   analysis.plan_method="سطوح محاسبه‌شده از داده ۴ ساعته، ATR و حمایت/مقاومت؛ ورود مشروط به بسته‌شدن کندل ۴ ساعته";
   analysis.holding_horizon=analysis.holding_horizon||"تا بسته‌شدن و تأیید کندل ۴ ساعته بعدی";
   if(!analysis.recommendations.length)analysis.recommendations=["برای ورود LONG منتظر بسته‌شدن کندل ۱ ساعته بالای مقاومت و تثبیت قیمت بمان.","برای ورود SHORT منتظر بسته‌شدن کندل ۱ ساعته زیر حمایت و تثبیت قیمت بمان.","پس از ورود، حد ضرر و اهداف عددی برنامه را رعایت کن.","اگر هیچ‌کدام از شکست‌ها تأیید نشد، معامله نکن."];
-  return json({analysis,market:snapshot},200,request);
+  const responsePayload={analysis,market:snapshot,generated_at:new Date().toISOString()};
+  // Never cache deterministic fallback reports over a valid model-generated result.
+  if(aiProvider!=="Local quantitative fallback"&&marketDataFresh)await writeSharedAnalysisCache(env,analysisCacheId,responsePayload);
+  return json(responsePayload,200,request,{"X-MMP-Cache":"MISS"});
  }catch(e){return json({error:String(e?.message||"Analysis failed").slice(0,300),stage,symbol:pair,market_mode:mode},502,request)}
 }
 async function settleHunterCycle(task,label,timeoutMs=50000,onTimeout=null){
