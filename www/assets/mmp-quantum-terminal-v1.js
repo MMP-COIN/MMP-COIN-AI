@@ -27,7 +27,7 @@ function init(){
  toolbar.innerHTML='<div class="mmp-center-title"><img src="assets/mmp-coin-mark.svg" alt=""><div><strong id="mmp-center-title-text"></strong><small id="mmp-center-title-en"></small></div></div><div class="mmp-center-actions"><div id="mmp-center-jumps"></div><button type="button" class="mmp-center-back" data-mmp-home>بازگشت به صفحه اصلی</button></div>';
  hub.after(toolbar);
  const jumpHost=$("#mmp-center-jumps",toolbar);
- function menuMarkup(){return '<div class="menu-section-label">هشت مرکز تخصصی MMP</div>'+Object.entries(CENTERS).map(([id,c],i)=>'<a href="'+(c.url||"#center-"+id)+'" data-mmp-open-center="'+id+'"><i class="menu-icon">'+c.icon+'</i><span>'+esc(c.title)+'</span></a>').join("")+'<div class="menu-divider"></div><a href="#app-download"><i class="menu-icon">⬇</i><span>دانلود اپلیکیشن</span></a><a href="#contact-us"><i class="menu-icon">✉</i><span>ارتباط با ما</span></a>';}
+ function menuMarkup(){return '<a href="/" data-mmp-home><i class="menu-icon">⌂</i><span>صفحه اصلی</span></a><div class="menu-section-label">هشت مرکز تخصصی MMP</div>'+Object.entries(CENTERS).map(([id,c],i)=>'<a href="'+(c.url||"#center-"+id)+'" data-mmp-open-center="'+id+'"><i class="menu-icon">'+c.icon+'</i><span>'+esc(c.title)+'</span></a>').join("")+'<div class="menu-divider"></div><a href="#app-download"><i class="menu-icon">⬇</i><span>دانلود اپلیکیشن</span></a><a href="#contact-us"><i class="menu-icon">✉</i><span>ارتباط با ما</span></a>';}
  const menu=$("#dropdownMenu");if(menu)menu.innerHTML=menuMarkup();
  function show(view,updateHistory){
   const config=CENTERS[view];if(!config)view="home";
@@ -43,13 +43,15 @@ function init(){
   if(updateHistory){const url=new URL(location.href);if(view==="home")url.searchParams.delete("center");else url.searchParams.set("center",view);history.pushState({mmpView:view},"",url.pathname+url.search+url.hash);}
   document.querySelectorAll("[data-mmp-open-center]").forEach(el=>el.setAttribute("aria-current",el.dataset.mmpOpenCenter===view?"page":"false"));
   const menuBtn=$(".menu-btn");if(menuBtn)menuBtn.setAttribute("aria-expanded","false");if(menu)menu.classList.remove("show","open");
-  window.scrollTo({top:0,behavior:"instant"});
+  window.scrollTo({top:0,behavior:"auto"});
   document.dispatchEvent(new CustomEvent("mmp:center-change",{detail:{view}}));
  }
  document.addEventListener("click",e=>{
   const opener=e.target.closest("[data-mmp-open-center]");
   if(opener){e.preventDefault();e.stopPropagation();show(opener.dataset.mmpOpenCenter,true);return;}
-  if(e.target.closest("[data-mmp-home]")){e.preventDefault();show("home",true);}
+  if(e.target.closest("[data-mmp-home]")){e.preventDefault();show("home",true);return;}
+  const footerLink=e.target.closest('a[href="#app-download"],a[href="#contact-us"]');
+  if(footerLink){e.preventDefault();const target=footerLink.getAttribute("href");show("home",true);requestAnimationFrame(()=>{const node=$(target);if(node)node.scrollIntoView({behavior:"smooth",block:"start"});});}
  });
  window.addEventListener("popstate",()=>show(new URL(location.href).searchParams.get("center")||"home",false));
  const initial=new URL(location.href).searchParams.get("center")||"home";show(initial,false);
