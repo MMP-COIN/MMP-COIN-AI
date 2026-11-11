@@ -1127,7 +1127,19 @@ async function cacheDigitalHunterUniverse(env,marketType){
 }
 export async function refreshDigitalHunterUniverses(env){
  const results=await Promise.allSettled(["spot","futures"].map(market=>cacheDigitalHunterUniverse(env,market))),markets={},errors={};
- for(let i=0;i<results.length;i++){const market=i===0?"spot":"futures";if(results[i].status==="fulfilled")markets[market]=results[i].value;else errors[market]=String(results[i].reason?.message||results[i].reason).slice(0,220);}
+ for(let i=0;i<results.length;i++){
+  const market=i===0?"spot":"futures",stateId=market==="futures"?"digital-hunter-v2-futures":"digital-hunter-v2";
+  if(results[i].status==="fulfilled"){markets[market]=results[i].value;continue;}
+  const message=String(results[i].reason?.message||results[i].reason).slice(0,220);errors[market]=message;
+  // Keep the last known universe usable, but never relabel stale cache as fresh.
+  try{
+   const row=await env.ADMIN_DB.prepare("SELECT payload FROM hunter_engine_state WHERE id = ?").bind(stateId+"-universe-cache").first();
+   const cached=row?.payload?JSON.parse(row.payload):null;
+   if(Array.isArray(cached?.assets)&&cached.assets.length){
+    markets[market]={market,universe_count:cached.assets.length,provider:cached.universeProvider||"cached",updated_at:Number(cached.universeUpdatedAt)>0?new Date(Number(cached.universeUpdatedAt)).toISOString():null,fresh:false,cached_fallback:true};
+   }
+  }catch(cacheError){errors[market]+="; cache read failed: "+String(cacheError?.message||cacheError).slice(0,100);}
+ }
  const payload={status:Object.keys(errors).length?(Object.keys(markets).length?"partial":"error"):"success",updated_at:new Date().toISOString(),markets,errors};
  await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind("digital-hunter-universe-refresh",JSON.stringify(payload),payload.updated_at).run();
  return payload;
