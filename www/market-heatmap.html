@@ -63,7 +63,8 @@ async function load(){
  let selected=null;const errors=[];
  for(const provider of providers){
   try{
-   const response=await fetch(provider.url,{cache:"no-store",headers:{Accept:"application/json"}});
+   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),6500);let response;
+   try{response=await fetch(provider.url,{cache:"no-store",signal:controller.signal,headers:{Accept:"application/json"}});}finally{clearTimeout(timer);}
    if(!response.ok)throw new Error("HTTP "+response.status);
    const payload=await response.json(),rows=provider.normalize(payload);
    const valid=rows.filter(x=>/^[A-Z0-9]+USDT$/.test(String(x.symbol||""))&&Number(x.lastPrice)>0&&Number.isFinite(Number(x.priceChangePercent))&&Number(x.quoteVolume)>0);
