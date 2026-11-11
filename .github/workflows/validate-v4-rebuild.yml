@@ -68,7 +68,7 @@ jobs:
           js = Path("www/v4/app.js").read_text(encoding="utf-8")
           for required in ["id=\"command\"", "id=\"radar\"", "id=\"hunter\"", "id=\"analyzer\"", "id=\"engines\"", "app.css", "app.js"]:
               assert required in html, f"Missing required UI mount: {required}"
-          for required in ["QIE-4.0.0", "مرکز فرماندهی کوانتومی", "رادار", "شکارچی", "تحلیل‌گر", "موتورهای"]:
+          for required in ["QIE-4.0.0", "مرکز فرماندهی کوانتومی", "رادار", "شکارچی", "تحلیل‌گر", "حوزه"]:
               assert required in html, f"Missing required product section: {required}"
           for required in ["hunter-combined-snapshot", "fast-radar-snapshot", "/connections-health", "cache:\"no-store\""]:
               assert required in js, f"Missing live integration: {required}"
