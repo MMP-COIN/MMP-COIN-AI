@@ -754,7 +754,7 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
  const preferredOrder=unique(order.filter(index=>reliableIndices.includes(index)));
  const primaryIndex=preferredOrder[0]??fallbackPriority[0],primaryOrder=[primaryIndex];
  const fallbackPool=unique([...fallbackPriority.filter(index=>!primaryOrder.includes(index)),...preferredOrder.slice(1),...sources.map((_,index)=>index)]).filter(index=>!primaryOrder.includes(index));
- const sourceLimit=Math.min(4,sources.length),orderedIndices=unique([...primaryOrder,...fallbackPool]),orderedSources=orderedIndices.map(index=>sources[index]).filter(Boolean).slice(0,sourceLimit),verified=[];
+ const sourceLimit=Math.min(2,sources.length),orderedIndices=unique([...primaryOrder,...fallbackPool]),orderedSources=orderedIndices.map(index=>sources[index]).filter(Boolean).slice(0,sourceLimit),verified=[];
  let selectedPair=null,bestObservedPair=null;
  const evaluatePairs=()=>{
   const pairs=[];
