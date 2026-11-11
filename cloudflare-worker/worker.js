@@ -1571,7 +1571,7 @@ async function handle(request,env){
     const toman=markets.find(m=>String(m?.symbol||"").toUpperCase()==="USDTTMN");
     const rial=markets.find(m=>String(m?.symbol||"").toUpperCase()==="USDTIRT");
     const t=Number(toman?.stats?.lastPrice??toman?.lastPrice),r=Number(rial?.stats?.lastPrice??rial?.lastPrice);
-    return t>0?t:r>0?r/10:null;
+    return t>0?t*10:r>0?r:null;
    })
   ]);
   const valid=sources.filter(x=>x.fresh&&Number.isFinite(x.price_toman));
