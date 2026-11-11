@@ -180,3 +180,93 @@ button:active,.btn:active,.radar-action:active{transform:translateY(1px);filter:
  .mmp-market-card,.tf-card,.ai-metric,.hunter-stat,.conn,.mmp-module-logo,button,.btn,.pill{transition:none!important}
  .hero-coin img,#mmp-home-hero .mmp-emblem-coin{animation:none!important}
 }
+
+
+/* MMP VISIBLE 3D PASS — stronger dimensional artwork for real module containers */
+#quantum-center-entry.quantum-command-hero,
+#opportunities>.radar-card,
+#market-hunter,
+#ai-section,
+#boom-hunter,
+#trading-tools{
+  transform:translateZ(0);
+  transform-style:preserve-3d;
+  box-shadow:
+    0 26px 56px #000b,
+    0 8px 0 #05080d,
+    inset 0 2px 0 #ffffff20,
+    inset 0 -3px 0 #000b,
+    inset 0 0 0 1px #ffffff0b;
+}
+#quantum-center-entry.quantum-command-hero:before,
+#opportunities>.radar-card:before,
+#market-hunter:before,
+#ai-section:before,
+#boom-hunter:before,
+#trading-tools:before{
+  z-index:0;
+  right:10px;top:12px;width:clamp(150px,22vw,230px);height:clamp(150px,22vw,230px);
+  border:1px solid color-mix(in srgb,var(--mmp-depth-accent,#e9c77e) 48%,transparent);
+  border-radius:50%;
+  background:
+    radial-gradient(circle at 34% 28%,#ffffff30 0 1px,transparent 2px),
+    radial-gradient(circle at 50% 50%,transparent 0 31%,color-mix(in srgb,var(--mmp-depth-accent,#e9c77e) 24%,transparent) 32% 33%,transparent 34% 49%,color-mix(in srgb,var(--mmp-depth-accent,#e9c77e) 18%,transparent) 50% 51%,transparent 52%),
+    conic-gradient(from 25deg,transparent 0 18%,color-mix(in srgb,var(--mmp-depth-accent,#e9c77e) 24%,transparent) 20%,transparent 24% 48%,color-mix(in srgb,var(--mmp-depth-accent,#e9c77e) 18%,transparent) 52%,transparent 57% 100%);
+  box-shadow:0 0 0 7px #ffffff05,0 0 0 16px #ffffff04,0 12px 36px #0008,inset 0 0 24px color-mix(in srgb,var(--mmp-depth-accent,#e9c77e) 22%,transparent);
+  opacity:.9;
+  animation:mmpDepthOrbit 34s linear infinite;
+}
+#quantum-center-entry.quantum-command-hero:after,
+#opportunities>.radar-card:after,
+#market-hunter:after,
+#ai-section:after,
+#boom-hunter:after,
+#trading-tools:after{
+  z-index:0;
+  right:clamp(45px,9vw,105px);top:clamp(48px,6vw,72px);
+  width:clamp(62px,9vw,104px);height:clamp(62px,9vw,104px);
+  border:2px solid color-mix(in srgb,var(--mmp-depth-accent,#e9c77e) 65%,#fff);
+  border-radius:50%;
+  background:
+    radial-gradient(circle at 32% 26%,#ffffffa8 0 3%,#ffffff20 4% 8%,transparent 9%),
+    radial-gradient(circle at 38% 30%,color-mix(in srgb,var(--mmp-depth-accent,#e9c77e) 70%,#fff),var(--mmp-depth-accent,#e9c77e) 36%,#765b2c 72%,#17100a 100%);
+  box-shadow:
+    0 12px 22px #000c,
+    0 0 0 5px color-mix(in srgb,var(--mmp-depth-accent,#e9c77e) 14%,transparent),
+    0 0 28px color-mix(in srgb,var(--mmp-depth-accent,#e9c77e) 38%,transparent),
+    inset 0 3px 5px #ffffff80,
+    inset 0 -8px 12px #000b;
+  opacity:.88;
+  animation:mmpDepthRise 6s ease-in-out infinite;
+}
+#quantum-center-entry.quantum-command-hero>*,
+#opportunities>.radar-card>*,
+#market-hunter>*,
+#ai-section>*,
+#boom-hunter>*,
+#trading-tools>*{position:relative;z-index:1}
+.card,.tool-card,.intel-panel,.radar-side,.hunter-stat,.ai-metric,.tf-card,
+.mmp-market-card,.mmp-card-top,.tool-row,.risk-row,.conn,.market-hours-grid,
+.radar-detail-section,.hunter-mode-panel,.intel-symbol-row,.market-catalog-grid{
+  position:relative;
+  border-top:1px solid #ffffff28!important;
+  border-left:1px solid #ffffff1c!important;
+  box-shadow:0 14px 26px #0008,0 3px 0 #05080d,inset 0 1px 0 #ffffff14,inset 0 -2px 0 #0009!important;
+  background-image:linear-gradient(150deg,#ffffff12 0%,#ffffff03 28%,transparent 55%),linear-gradient(145deg,#1c2938,#101722 72%,#090f17)!important;
+}
+@media(max-width:760px){
+ #quantum-center-entry.quantum-command-hero:before,#opportunities>.radar-card:before,
+ #market-hunter:before,#ai-section:before,#boom-hunter:before,#trading-tools:before{
+   width:132px;height:132px;right:5px;top:7px;opacity:.72
+ }
+ #quantum-center-entry.quantum-command-hero:after,#opportunities>.radar-card:after,
+ #market-hunter:after,#ai-section:after,#boom-hunter:after,#trading-tools:after{
+   width:54px;height:54px;right:44px;top:48px;opacity:.78
+ }
+}
+@media(prefers-reduced-motion:reduce){
+ #quantum-center-entry.quantum-command-hero:before,#opportunities>.radar-card:before,
+ #market-hunter:before,#ai-section:before,#boom-hunter:before,#trading-tools:before,
+ #quantum-center-entry.quantum-command-hero:after,#opportunities>.radar-card:after,
+ #market-hunter:after,#ai-section:after,#boom-hunter:after,#trading-tools:after{animation:none!important}
+}
