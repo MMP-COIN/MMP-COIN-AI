@@ -124,3 +124,59 @@
  #market-hunter:after,#ai-section:after,#boom-hunter:after,#trading-tools:after,
  #quantum-center-entry .quantum-art-core{animation:none!important}
 }
+
+
+/* MMP DEPTH FINISH — inner cards, market instruments, coin identity */
+@keyframes mmpDepthCoinBreath{0%,100%{filter:drop-shadow(0 10px 14px #000b) drop-shadow(0 0 10px #d9b66d33);transform:translateY(0) rotateY(-5deg)}50%{filter:drop-shadow(0 16px 20px #000c) drop-shadow(0 0 17px #d9b66d55);transform:translateY(-3px) rotateY(5deg)}}
+@keyframes mmpDepthEdge{0%,100%{opacity:.45}50%{opacity:.9}}
+/* Consistent depth for every nested information surface, not just hero sections. */
+.card,.tool-card,.intel-panel,.radar-side,.hunter-stat,.ai-metric,.tf-card,
+.mmp-market-card,.mmp-card-top,.tool-row,.risk-row,.conn,.market-hours-grid,
+.radar-detail-section,.hunter-mode-panel,.intel-symbol-row,.market-catalog-grid{
+ background-image:linear-gradient(145deg,#ffffff08,transparent 38%),linear-gradient(145deg,#171e2a,#101722 72%,#0b111a);
+ border-color:#ffffff18;
+ box-shadow:0 12px 28px #0006,inset 0 1px #ffffff0b,inset 0 -1px #0008;
+}
+.tool-card,.intel-panel,.radar-side,.hunter-mode-panel,.radar-detail-section{
+ border-radius:15px;
+}
+.mmp-market-card,.tf-card,.ai-metric,.hunter-stat,.conn{
+ transition:transform .22s ease,border-color .22s ease,box-shadow .22s ease;
+}
+@media(hover:hover) and (pointer:fine){
+ .mmp-market-card:hover,.tf-card:hover,.ai-metric:hover,.hunter-stat:hover,.conn:hover{
+  transform:translateY(-3px);
+  border-color:#d9b66d66;
+  box-shadow:0 17px 34px #0008,0 0 18px #d9b66d12,inset 0 1px #ffffff16;
+ }
+}
+button,.btn,.pill,.side-link,.radar-action,.menu-icon{
+ transition:filter .18s ease,transform .18s ease,border-color .18s ease,box-shadow .18s ease;
+}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{
+ outline:2px solid var(--mmp-depth-gold,#e9c77e);
+ outline-offset:3px;
+}
+button:active,.btn:active,.radar-action:active{transform:translateY(1px);filter:brightness(1.12)}
+/* Give the original M coin a premium metallic presence without replacing its artwork. */
+.hero-coin img,#mmp-home-hero .mmp-emblem-coin{
+ transform-style:preserve-3d;
+ backface-visibility:visible;
+ filter:drop-shadow(0 14px 18px #000c) drop-shadow(0 0 13px #d9b66d44);
+}
+#quantum-center-entry .quantum-art-core.mmp-quantum-emblem{
+ transform-style:preserve-3d;
+ box-shadow:0 0 0 5px #55e0d022,0 0 0 12px #d9b66d12,
+  0 0 52px #42ddcf66,inset 0 0 20px #fff6c977,inset 0 -14px 24px #061820bb;
+}
+.mmp-module-logo{transition:filter .2s ease,transform .2s ease}
+@media(hover:hover) and (pointer:fine){.mmp-module-logo:hover{transform:translateY(-2px) scale(1.04)}}
+/* Compact touch-safe layout and restrained effects on phones. */
+@media(max-width:760px){
+ .card,.tool-card,.intel-panel,.radar-side,.hunter-mode-panel,.radar-detail-section{box-shadow:0 9px 22px #0006,inset 0 1px #ffffff0b}
+ .mmp-market-card,.tf-card,.ai-metric,.hunter-stat,.conn{transition:none}
+}
+@media(prefers-reduced-motion:reduce){
+ .mmp-market-card,.tf-card,.ai-metric,.hunter-stat,.conn,.mmp-module-logo,button,.btn,.pill{transition:none!important}
+ .hero-coin img,#mmp-home-hero .mmp-emblem-coin{animation:none!important}
+}
