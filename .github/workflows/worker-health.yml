@@ -646,7 +646,7 @@ jobs:
           status=$(curl --silent --show-error --max-time 25 -o /tmp/early-pressure.json -w "%{http_code}" "$WORKER_URL/early-pressure?symbol=BTC")
           echo "Early pressure endpoint HTTP $status"
           if [ "$status" != "200" ]; then cat /tmp/early-pressure.json; exit 1; fi
-          jq -e '.symbol == "BTC" and .pressure.version == "MMP-EARLY-PRESSURE-1.0" and .pressure.pre_move_only == true and (.pressure.direction == "up" or .pressure.direction == "down") and (.microstructure.flow_basis == "executed_trades" or .microstructure.flow_basis == "candle_body_volume_proxy") and (.microstructure | has("depth_source"))' /tmp/early-pressure.json >/dev/null
+          jq -e '.symbol == "BTC" and .pressure.version == "MMP-EARLY-PRESSURE-1.1" and .pressure.pre_move_only == true and (.pressure.direction == "up" or .pressure.direction == "down" or .pressure.direction == "neutral") and (.microstructure.flow_basis == "executed_trades" or .microstructure.flow_basis == "candle_body_volume_proxy") and (.microstructure | has("depth_source"))' /tmp/early-pressure.json >/dev/null
           jq -r '"BTC early pressure: " + .pressure.state + " | " + .pressure.direction + " | score " + (.pressure.score|tostring)' /tmp/early-pressure.json
 
       - name: Validate daily Cloudflare AI budget guard
