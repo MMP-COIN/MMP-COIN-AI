@@ -1809,24 +1809,7 @@ body:before{opacity:.23;background-size:34px 34px}
  #market-hunter .hunter-early-item>span>small{font-size:10px;line-height:1.9;}
 }
 </style>
-<style id="mmp-command-progress-ui">
-#mmp-command-progress{position:relative;isolation:isolate;margin:14px 0 12px;padding:13px 15px;border:1px solid rgba(220,181,99,.34);border-radius:15px;overflow:hidden;background:radial-gradient(ellipse at 8% 50%,rgba(221,177,91,.13),transparent 46%),linear-gradient(112deg,#172331,#0b121b 72%);box-shadow:inset 0 1px #ffffff12,0 12px 28px #0004}
-#mmp-command-progress:before{content:"";position:absolute;inset:0 0 auto;height:1px;background:linear-gradient(90deg,transparent,#e6c77e,transparent);opacity:.8;pointer-events:none}
-#mmp-command-progress .mcp-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
-#mmp-command-progress .mcp-head>div{display:grid;gap:4px;min-width:0}
-#mmp-command-progress .mcp-kicker{font-size:8px;letter-spacing:1.5px;color:#c9a75f;font-weight:900}
-#mmp-command-progress .mcp-head b{font-size:12px;color:#f1e1bd}
-#mmp-command-progress .mcp-head strong{font-size:22px;color:#f0cf83;font-variant-numeric:tabular-nums;white-space:nowrap}
-#mmp-command-progress .mcp-track{height:9px;margin:11px 0 9px;border:1px solid #b18c4b33;border-radius:30px;background:#ffffff12;overflow:hidden}
-#mmp-command-progress .mcp-track i{display:block;width:0;height:100%;border-radius:inherit;background:linear-gradient(90deg,#9b7029,#f4d88d 65%,#4ec6a1);box-shadow:0 0 14px #e5c47777;transition:width .45s ease}
-#mmp-command-progress .mcp-metrics{display:flex;flex-wrap:wrap;gap:6px 18px;color:#9eacbb;font-size:9px}
-#mmp-command-progress .mcp-metrics b{color:#e8d4a7;font-variant-numeric:tabular-nums;margin-inline-start:4px}
-#mmp-command-progress>small{display:block;margin-top:8px;color:#8494a5;font-size:9px;line-height:1.7}
-#mmp-command-progress.is-error{border-color:#9b555566}
-#mmp-command-progress.is-error .mcp-head b{color:#e6a5a5}
-@media(max-width:560px){#mmp-command-progress{padding:11px}#mmp-command-progress .mcp-head strong{font-size:19px}#mmp-command-progress .mcp-metrics{gap:5px 12px}}
-@media(prefers-reduced-motion:reduce){#mmp-command-progress .mcp-track i{transition:none}}
-</style><style id="mmp-market-intelligence-v3">
+<style id="mmp-market-intelligence-v3">
 .market-heatmap-panel{grid-column:1/-1;position:relative;overflow:hidden}
 .market-heatmap-panel:before{content:"";position:absolute;inset:0 0 auto;height:2px;background:linear-gradient(90deg,transparent,#d9b66d,#25d695,#d9b66d,transparent);opacity:.8}
 .heatmap-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:12px 0}
@@ -2648,11 +2631,7 @@ html body #ai-section .tf-card{min-width:0!important;max-width:100%!important;ov
   <div class="quantum-core-flow"><span>داده زنده</span><i>←</i><span>تحلیل و پیش‌آگاهی</span><i>←</i><span>اعتبارسنجی</span><i>←</i><b>تصمیم نهایی</b></div>
   <a class="quantum-engine-enter" href="/quantum-lab.html">ورود به مرکز فرماندهی کوانتومی <b>←</b></a>
 </section>
- <section class="mmp-command-progress" id="mmp-command-progress" aria-live="polite" aria-label="پیشرفت واقعی موتور مرکزی">
-<div class="mcp-head"><div><span class="mcp-kicker">QUANTUM CORE · LIVE CYCLE</span><b id="mcp-state">در انتظار دریافت وضعیت موتور مرکزی</b></div><strong id="mcp-percent">—</strong></div>
-<div class="mcp-track" role="progressbar" aria-label="پیشرفت اسکن موتور مرکزی" aria-valuemin="0" aria-valuemax="100"><i id="mcp-bar"></i></div>
-<div class="mcp-metrics"><span>پوشش چرخه <b id="mcp-done">—</b> از <b id="mcp-total">—</b> نماد</span><span>موفق در نوبت اخیر <b id="mcp-batch">—</b></span><span>لایه‌های دارای شواهد واقعی <b id="mcp-engines">—</b></span><span>خطاهای نوبت اخیر <b id="mcp-errors">—</b></span></div>
-<small id="mcp-updated">این نوار فقط از snapshot واقعی موتور مرکزی تغذیه می‌شود؛ در نبود داده، درصد نمایش داده نمی‌شود.</small></section>
+ 
 <div class="quantum-hero-foot"><span>اسکن پویا جفت‌های واجد شرایط USDT Spot</span><span>یک موتور مرکزی · تصمیم‌گیری یکپارچه</span><span>داده ناموجود = بدون امتیازسازی جعلی</span></div>
 </section>
 
@@ -6589,41 +6568,7 @@ window.mmpShareDownloadLink = async function () {
 
 
 
-<script id="mmp-command-progress-live">
-(function(){
- "use strict";
- const root=document.getElementById("mmp-command-progress");if(!root||root.dataset.bound==="1")return;root.dataset.bound="1";
- const el=id=>document.getElementById(id),fmt=v=>Number(v).toLocaleString("fa-IR");
- const keys=["momentum","flow","structure","liquidity","multiTimeframe","regime","volatility","sentiment","smartMoney","scenario","risk","dataQuality"];
- function fail(message){
-  root.classList.add("is-error");el("mcp-state").textContent="وضعیت موتور مرکزی دریافت نشد";
-  ["mcp-percent","mcp-done","mcp-total","mcp-batch","mcp-engines","mcp-errors"].forEach(id=>el(id).textContent="—");
-  el("mcp-bar").style.width="0%";const track=root.querySelector('[role="progressbar"]');if(track)track.removeAttribute("aria-valuenow");
-  el("mcp-updated").textContent=message||"داده معتبر در دسترس نیست؛ درصد ساختگی نمایش داده نمی‌شود.";
- }
- async function refresh(){
-  if(document.hidden)return;const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),12000);
-  try{
-   const snap=window.__mmpDigitalHunterSnapshot;
-   if(!snap||snap.status==="offline")throw new Error("منتظر Snapshot موتور مرکزی هستیم");
-   const total=Number(snap.universe_count),batchDone=Math.max(0,Number(snap.scanned_count)||0),batchSize=Math.max(0,Number(snap.batch_size)||0),cursor=Math.max(0,Number(snap.next_cursor)||0);
-   if(!Number.isFinite(total)||total<=0||!Number.isFinite(batchDone))throw new Error("شمارنده معتبر اسکن در snapshot موجود نیست");
-   const covered=cursor===0&&batchDone>0?total:Math.min(total,cursor||batchDone),pct=Math.max(0,Math.min(100,Math.round(covered/total*100))),signals=Array.isArray(snap.signals)?snap.signals:[],activity=snap.engine_activity&&typeof snap.engine_activity==="object"?snap.engine_activity:{};
-   const evidenced=keys.filter(key=>{const m=activity[key];return !!(m&&Number(m.evidence)>0)||signals.some(x=>x?.quantum?.componentAvailability?.[key]===true)}).length;
-   const stamp=Date.parse(snap.checked_at||snap.scanned_at||""),stale=!stamp||Date.now()-stamp>120000;
-   el("mcp-state").textContent=stale?"آخرین چرخه ثبت‌شده · نیازمند به‌روزرسانی":pct>=100?"پوشش کامل بازار · چرخه آماده تکرار":"موتور مرکزی · پوشش چرخه در حال تکمیل";
-   el("mcp-percent").textContent=fmt(pct)+"٪";el("mcp-done").textContent=fmt(covered);el("mcp-total").textContent=fmt(total);
-   el("mcp-batch").textContent=fmt(batchDone)+(batchSize?" / "+fmt(batchSize):"");
-   el("mcp-engines").textContent=fmt(evidenced)+" / ۱۲";el("mcp-errors").textContent=fmt(Math.max(0,Number(snap.failed_count)||0));
-   el("mcp-bar").style.width=pct+"%";const track=root.querySelector('[role="progressbar"]');if(track)track.setAttribute("aria-valuenow",String(pct));
-   el("mcp-updated").textContent=(stale?"داده قدیمی یا زمان آخرین اسکن نامشخص است · ":"آخرین دریافت: ")+(stamp?new Date(stamp).toLocaleString("fa-IR"):"زمان نامشخص")+" · پیشرفت از next_cursor محاسبه شده؛ عدد نوبت اخیر جداست. صفر بودن شواهد خروجی به معنی خاموش بودن موتور نیست.";
-   root.classList.remove("is-error");
-  }catch(error){fail("اتصال یا داده معتبر در دسترس نیست · "+(error?.message||"خطای نامشخص"));}
-  finally{clearTimeout(timer);}
- }
- let started=false;window.mmpWhenVisible?window.mmpWhenVisible("#mmp-command-progress",()=>{started=true;refresh();setInterval(()=>{if(!document.hidden&&document.getElementById("mmp-command-progress")?.getBoundingClientRect().top<window.innerHeight+500)refresh();},180000);},{rootMargin:"450px 0px"}):(started=true,refresh());document.addEventListener("mmp-hunter-snapshot-updated",()=>{if(started)refresh();});document.addEventListener("visibilitychange",()=>{if(started&&!document.hidden)refresh();});
-})();
-</script><style id="mmp-home-engine-live-style">
+<style id="mmp-home-engine-live-style">
 #quantum-center-entry .quantum-engine-link{position:relative;overflow:hidden}
 #quantum-center-entry .quantum-engine-link .engine-live-row{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:3px;font-size:8px;color:#aeb9c8}
 #quantum-center-entry .quantum-engine-link .engine-live-state{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
@@ -6889,56 +6834,7 @@ html body.mmp-app-mode>header.top{
 
 
 
-<style id="mmp-compact-horizontal-live-cycle-20261110">
-/* Compact horizontal live-cycle strip: keep all metrics readable without a tall status panel. */
-html body #mmp-command-progress{
- display:grid!important;grid-template-columns:minmax(0,1fr)!important;
- gap:5px!important;margin:7px 0 8px!important;padding:8px 12px!important;
- min-height:0!important;border-radius:11px!important;
- box-shadow:inset 0 1px #ffffff10,0 5px 14px #0003!important;
-}
-html body #mmp-command-progress .mcp-head{
- display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;
- align-items:center!important;gap:8px!important;
-}
-html body #mmp-command-progress .mcp-head>div{
- display:flex!important;align-items:center!important;gap:9px!important;
- min-width:0!important;flex-wrap:wrap!important;
-}
-html body #mmp-command-progress .mcp-kicker{font-size:7px!important;letter-spacing:1.1px!important;white-space:nowrap!important}
-html body #mmp-command-progress .mcp-head b{font-size:10px!important;line-height:1.4!important}
-html body #mmp-command-progress .mcp-head strong{font-size:17px!important;line-height:1!important}
-html body #mmp-command-progress .mcp-track{
- grid-row:2!important;height:5px!important;margin:0!important;border:0!important;
- background:#ffffff13!important;
-}
-html body #mmp-command-progress .mcp-track i{box-shadow:0 0 8px #e5c47755!important}
-html body #mmp-command-progress .mcp-metrics{
- display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;
- gap:5px!important;align-items:center!important;
-}
-html body #mmp-command-progress .mcp-metrics>span{
- min-width:0!important;white-space:nowrap!important;overflow:hidden!important;
- text-overflow:ellipsis!important;padding:4px 6px!important;border:1px solid #ffffff10!important;
- border-radius:6px!important;background:#ffffff06!important;font-size:8px!important;line-height:1.35!important;
-}
-html body #mmp-command-progress .mcp-metrics b{font-size:9px!important;margin-inline-start:3px!important}
-html body #mmp-command-progress>small{
- margin:0!important;font-size:7px!important;line-height:1.35!important;
- white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;
-}
-@media(max-width:560px){
- html body #mmp-command-progress{padding:7px 9px!important;gap:5px!important}
- html body #mmp-command-progress .mcp-head>div{gap:5px!important}
- html body #mmp-command-progress .mcp-kicker{font-size:6px!important;letter-spacing:.7px!important}
- html body #mmp-command-progress .mcp-head b{font-size:9px!important}
- html body #mmp-command-progress .mcp-head strong{font-size:16px!important}
- html body #mmp-command-progress .mcp-metrics{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:4px!important}
- html body #mmp-command-progress .mcp-metrics>span{font-size:7.5px!important;padding:4px 5px!important}
- html body #mmp-command-progress .mcp-metrics b{font-size:8px!important}
- html body #mmp-command-progress>small{font-size:6.5px!important}
-}
-</style>
+
 
 <style id="mmp-quantum-compact-fixed-frame-20261110">
 /* Compact, fixed-width responsive command frame: content remains in its own grid tracks. */
@@ -6993,7 +6889,6 @@ html body .quantum-command-hero .quantum-hero-art{
 }
 html body .quantum-command-hero .quantum-art-caption{font-size:8px!important}
 html body .quantum-command-hero .quantum-engine-board,
-html body .quantum-command-hero .mmp-command-progress,
 html body .quantum-command-hero .quantum-hero-foot{
   grid-column:1/-1!important;width:100%!important;min-width:0!important;
 }
@@ -7031,9 +6926,6 @@ html body .quantum-command-hero .quantum-engine-link small{
   min-width:0!important;font-size:7px!important;line-height:1.4!important;
   overflow-wrap:anywhere!important;
 }
-html body .quantum-command-hero .mmp-command-progress{
-  margin:0!important;padding:8px 10px!important;border-radius:10px!important;
-}
 html body .quantum-command-hero .quantum-hero-foot{
   display:flex!important;flex-wrap:wrap!important;gap:5px 12px!important;
   justify-content:space-between!important;margin:0!important;font-size:8px!important;
@@ -7065,7 +6957,6 @@ html body .quantum-command-hero .quantum-hero-foot{
   html body .quantum-command-hero .quantum-engine-link b{font-size:8px!important}
   html body .quantum-command-hero .quantum-engine-link small{font-size:6.5px!important}
   html body .quantum-command-hero .quantum-engine-links{flex-wrap:wrap!important;gap:5px!important;font-size:7px!important}
-  html body .quantum-command-hero .mmp-command-progress{padding:7px!important}
   html body .quantum-command-hero .quantum-hero-foot{justify-content:flex-start!important;font-size:7px!important}
 }
 @media(max-width:360px){
