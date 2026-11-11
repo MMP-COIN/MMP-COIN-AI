@@ -155,6 +155,7 @@ function analyzeClosedKlines(rows,interval){
  result.chart_data_age_ms=chartAge;
  result.chart_data_fresh=!!chartLast&&chartAge<=duration*1.5;
  result.chart_data_freshness_reason=result.chart_data_fresh?"latest candle timestamp is within the live freshness window":"latest candle is older than "+Math.round(duration*1.5/60000)+" minutes";
+ if(!result.chart_data_fresh)throw new Error("کندل‌های منبع قدیمی هستند؛ "+result.chart_data_freshness_reason);
  result.candle_interval=interval;
  return result;
 }
