@@ -3832,6 +3832,19 @@ function setupConnectionsToggle(){
   button.innerHTML=(!expanded?"بستن منابع دیگر":"نمایش "+(button.dataset.extraCount||"4")+" منبع دیگر")+' <span class="chevron" aria-hidden="true">⌄</span>';
  });
 }
+async function probeDirectFallback(check,url,validate,purpose){
+ if(!check||check.status!=="down")return false;
+ const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),3500);
+ try{
+  const response=await fetch(url,{cache:"no-store",signal:controller.signal,headers:{"Accept":"application/json"}});
+  if(!response.ok)return false;
+  const payload=await response.json();
+  if(typeof validate!=="function"||!validate(payload))return false;
+  check.status="ok";check.error=null;check.ping=null;check.purpose=purpose+" · مسیر مستقیم مرورگر";
+  return true;
+ }catch(error){return false;}
+ finally{clearTimeout(timer);}
+}
 let connectionCheckPromise=null,connectionCheckLastAt=0,connectionCheckCache=[];
 function checkConnections(force=false){
  const now=Date.now();
@@ -3848,6 +3861,11 @@ function checkConnections(force=false){
   if(!Array.isArray(payload?.checks))throw new Error("پاسخ بررسی اتصال کامل نیست");
   const expected=["binance spot","okx spot","gate.io spot","nobitex","bybit spot","bitget spot","kucoin spot","wallex","mexc spot","whitebit spot","binance futures","bybit futures","okx futures","bitget futures","gate futures","mexc futures","kucoin futures","whitebit futures"];
   const checks=new Map(payload.checks.map(c=>[String(c?.name||"").trim().toLowerCase(),c]));
+  await Promise.all([
+   probeDirectFallback(checks.get("binance spot"),"https://data-api.binance.vision/api/v3/ticker/price?symbol=BTCUSDT",d=>Number(d?.price)>0,"Binance Spot"),
+   probeDirectFallback(checks.get("nobitex"),"https://apiv2.nobitex.ir/v3/orderbook/USDTIRT",d=>Number(d?.lastTradePrice??d?.last)>0,"Nobitex"),
+   probeDirectFallback(checks.get("kucoin spot"),"https://api.kucoin.com/api/v1/market/stats?symbol=BTC-USDT",d=>d?.code==="200000"&&Number(d?.data?.last)>0,"KuCoin Spot")
+  ]);
   const ordered=expected.map(name=>checks.get(name)).filter(Boolean);
   if(ordered.length!==expected.length)throw new Error("پاسخ بررسی اتصال کامل نیست");
 
