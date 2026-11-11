@@ -752,12 +752,11 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
  }
  const fallbackPriority=marketType==="futures"?[4,5,6,2,1,3,0]:[4,8,5,6,2,3,1,7,0];
  const preferredOrder=unique(order.filter(index=>reliableIndices.includes(index)));
- const primaryOrder=preferredOrder.slice(0,2);
- const fallbackPool=unique([...fallbackPriority.filter(index=>!primaryOrder.includes(index)),...preferredOrder.slice(2),...sources.map((_,index)=>index)]).filter(index=>!primaryOrder.includes(index));
+ const primaryOrder=preferredOrder.slice(0,1);
+ const fallbackPool=unique([...fallbackPriority.filter(index=>!primaryOrder.includes(index)),...preferredOrder.slice(1),...sources.map((_,index)=>index)]).filter(index=>!primaryOrder.includes(index));
  const symbolHash=String(symbol).split("").reduce((sum,char)=>sum+char.charCodeAt(0),0);
  const rotation=fallbackPool.length?(symbolHash+Math.floor(Date.now()/60000))%fallbackPool.length:0;
- const rotationTail=fallbackPool.slice(2),tailRotation=rotationTail.length?rotation%rotationTail.length:0;
- const rotatedFallback=[...fallbackPool.slice(0,2),...rotationTail.slice(tailRotation),...rotationTail.slice(0,tailRotation)];
+ const rotatedFallback=[...fallbackPool.slice(rotation),...fallbackPool.slice(0,rotation)];
  const sourceLimit=Math.min(2,sources.length),orderedIndices=unique([...primaryOrder,...rotatedFallback]),orderedSources=orderedIndices.map(index=>sources[index]).filter(Boolean).slice(0,sourceLimit),verified=[];
  let selectedPair=null,bestObservedPair=null;
  const evaluatePairs=()=>{
