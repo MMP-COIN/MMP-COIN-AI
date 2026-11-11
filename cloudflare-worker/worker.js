@@ -1544,7 +1544,13 @@ async function handle(request,env){
   };
   await Promise.all([
    read("https://apiv2.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls","Nobitex",d=>d?.status==="ok"?(d.stats?.["usdt-rls"]?.latest??d.stats?.["usdt-irt"]?.latest):null),
-   read("https://api.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls","Nobitex backup",d=>d?.status==="ok"?(d.stats?.["usdt-rls"]?.latest??d.stats?.["usdt-irt"]?.latest):null)
+   read("https://api.wallex.ir/hector/web/v1/markets","Wallex",d=>{
+    const raw=d?.result?.symbols||d?.result?.markets||{},markets=Array.isArray(raw)?raw:Object.values(raw);
+    const toman=markets.find(m=>String(m?.symbol||"").toUpperCase()==="USDTTMN");
+    const rial=markets.find(m=>String(m?.symbol||"").toUpperCase()==="USDTIRT");
+    const t=Number(toman?.stats?.lastPrice??toman?.lastPrice),r=Number(rial?.stats?.lastPrice??rial?.lastPrice);
+    return t>0?t:r>0?r/10:null;
+   })
   ]);
   const valid=sources.filter(x=>x.fresh&&Number.isFinite(x.price_toman));
   const values=valid.map(x=>x.price_toman).sort((a,b)=>a-b);
