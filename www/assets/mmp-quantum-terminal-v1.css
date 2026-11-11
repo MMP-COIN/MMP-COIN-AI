@@ -189,3 +189,7 @@ body.mmp-quantum-terminal .mmp-hub-card[data-center-style="lab"]::after{content:
  body.mmp-quantum-terminal .mmp-hub-card small{font-size:9.5px;line-height:1.75}
  body.mmp-quantum-terminal .mmp-hub-card::after{right:8px;top:44px;font-size:62px}
 }
+
+/* Homepage hub is the sole homepage destination; center feature cards must respect the workspace visibility state. */
+body.mmp-quantum-terminal #hero>section[hidden]{display:none!important}
+body.mmp-quantum-terminal #quantum-center-entry[hidden]{display:none!important}
