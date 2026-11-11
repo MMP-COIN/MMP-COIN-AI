@@ -14,12 +14,29 @@
  }
  function money(v){const n=Number(v);return Number.isFinite(n)&&n>0?n.toLocaleString("en-US",{maximumFractionDigits:n>100?2:4}):"—";}
  async function loadTicker(){
-  try{
-   const symbols=["BTCUSDT","ETHUSDT","BNBUSDT","SOLUSDT"];
-   const data=await get("https://api.binance.com/api/v3/ticker/price?symbols="+encodeURIComponent(JSON.stringify(symbols)));
-   const by=Object.fromEntries((Array.isArray(data)?data:[]).map(x=>[x.symbol,x.price]));
-   $("ticker").innerHTML=symbols.map(s=>'<div class="ticker-item"><small>'+s.replace("USDT"," / USDT")+'</small><b>'+money(by[s])+'</b></div>').join("");
-  }catch(e){$("ticker").innerHTML=["BTC","ETH","BNB","SOL"].map(s=>'<div class="ticker-item"><small>'+s+' / USDT</small><b>داده در دسترس نیست</b></div>').join("");}
+  const symbols=["BTCUSDT","ETHUSDT","BNBUSDT","SOLUSDT"];
+  const normalize=(source,data)=>{
+   if(source==="binance-tickers"||source==="gate-tickers"||source==="mexc-tickers")return Array.isArray(data)?data.map(x=>[x.symbol||x.currency_pair, x.lastPrice||x.last||x.close]):[];
+   if(source==="okx-tickers")return (data.data||[]).map(x=>[String(x.instId||"").replace("-",""),x.last]);
+   if(source==="bybit-tickers")return (data.result?.list||[]).map(x=>[x.symbol,x.lastPrice]);
+   if(source==="kucoin-tickers")return (data.data?.ticker||[]).map(x=>[String(x.symbol||"").replace("-",""),x.last]);
+   if(source==="bitget-tickers")return (data.data||[]).map(x=>[x.symbol,x.lastPr||x.last]);
+   return [];
+  };
+  let prices=null,lastError=null;
+  for(const source of ["binance-tickers","okx-tickers","bybit-tickers","gate-tickers","kucoin-tickers","bitget-tickers","mexc-tickers"]){
+   try{
+    const data=await get(MAIN+"/market-proxy?source="+source);
+    const rows=normalize(source,data),map=Object.fromEntries(rows.map(([s,p])=>[String(s||"").toUpperCase(),Number(p)]));
+    if(symbols.every(s=>Number.isFinite(map[s])&&map[s]>0)){prices=map;break;}
+   }catch(e){lastError=e;}
+  }
+  if(prices){
+   $("ticker").innerHTML=symbols.map(s=>'<div class="ticker-item"><small>'+s.replace("USDT"," / USDT")+'</small><b>'+money(prices[s])+'</b></div>').join("");
+  }else{
+   $("ticker").innerHTML=["BTC","ETH","BNB","SOL"].map(s=>'<div class="ticker-item"><small>'+s+' / USDT</small><b>داده در دسترس نیست</b></div>').join("");
+   console.warn("MMP ticker unavailable",lastError);
+  }
  }
  function empty(el,title,detail){el.innerHTML='<div class="empty-state"><b>'+title+'</b><small>'+detail+'</small></div>';}
  function renderSignals(el,signals){
