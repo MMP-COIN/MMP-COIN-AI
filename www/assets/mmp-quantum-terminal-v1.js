@@ -33,7 +33,15 @@ function init(){
   const config=CENTERS[view];if(!config)view="home";
   if(view==="lab"){location.href=CENTERS.lab.url;return;}
   body.dataset.mmpView=view;
-  allSections.forEach(el=>{const group=el.dataset.mmpCenter||"";const visible=view==="home"?(group==="command"||group==="footer"):group===view;el.hidden=!visible;});
+  allSections.forEach(el=>{
+   const group=el.dataset.mmpCenter||"";
+   // The global MMP hero and market snapshot belong only to the homepage.
+   // The Quantum Command / Smart Core card belongs only to the AI center.
+   let visible=view==="home"?(group==="command"||group==="footer"):group===view;
+   if(el.id==="mmp-home-hero"||el.id==="market-snapshot")visible=view==="home";
+   if(el.id==="quantum-center-entry")visible=view==="ai";
+   el.hidden=!visible;
+  });
   hub.hidden=view!=="home";toolbar.hidden=view==="home";
   if(view!=="home"){
    $("#mmp-center-title-text").textContent=config.title;
