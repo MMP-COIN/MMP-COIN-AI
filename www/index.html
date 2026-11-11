@@ -28,6 +28,9 @@
 <link rel="shortcut icon" href="assets/mmp-coin-ai-icon.svg?v=20261110-browser-icon" type="image/svg+xml">
 <link rel="apple-touch-icon" href="assets/mmp-coin-ai-icon.svg?v=20261110-browser-icon">
 
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#08090d;--panel:#11131b;--panel2:#171a24;--line:#282c38;--gold:#d9b66d;--gold2:#f2d99b;--text:#f4f1e9;--muted:#9a9eaa;--green:#25d695;--red:#ff5e6c;--yellow:#f4c45e;--blue:#78a9ff}
 *{box-sizing:border-box}
@@ -149,7 +152,7 @@ button{cursor:pointer}
 @media(max-width:760px){.ai-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ai-toolbar{grid-template-columns:1fr 1fr}.ai-toolbar button{grid-column:1/-1}.ai-report .ai-levels{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
 
-@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800;900&display=swap');
+
 :root{--font-fa:'Vazirmatn',Tahoma,Arial,sans-serif;--glow:0 14px 42px #0006}
 body,button,input,select{font-family:var(--font-fa)}
 body{background:radial-gradient(ellipse at 82% -10%,#29223b 0,transparent 36%),radial-gradient(ellipse at 4% 30%,#102b32 0,transparent 28%),#080a10}
@@ -2512,6 +2515,16 @@ html body #ai-section .tf-card{min-width:0!important;max-width:100%!important;ov
 .quantum-currency-switch button.active{background:linear-gradient(135deg,#f0d58f,#c69d4d);color:#17202a;box-shadow:0 2px 9px #0004}
 @media(max-width:620px){.quantum-hero-actions{gap:8px!important}.quantum-currency-switch{order:4}.quantum-currency-switch button{padding:6px 10px;font-size:9px}}
 </style>
+
+<style id="mmp-compact-menu-groups-20261111">
+.dropdown-menu .menu-group{border-bottom:1px solid #ffffff12}
+.dropdown-menu .menu-group>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:43px;padding:10px 16px;color:var(--gold2);font-size:12px;font-weight:800;cursor:pointer;list-style:none;user-select:none}
+.dropdown-menu .menu-group>summary::-webkit-details-marker{display:none}
+.dropdown-menu .menu-group>summary span:last-child{font-size:17px;line-height:1;color:var(--muted);transition:transform .18s}
+.dropdown-menu .menu-group[open]>summary span:last-child{transform:rotate(180deg)}
+.dropdown-menu .menu-group>a{min-height:40px;padding:9px 25px 9px 14px;font-size:12px}
+.dropdown-menu .menu-group>summary:focus-visible{outline:2px solid var(--gold);outline-offset:-3px;border-radius:8px}
+</style>
 </head>
 <body class="mmp-app-mode">
 <header class="top">
@@ -2539,6 +2552,26 @@ html body #ai-section .tf-card{min-width:0!important;max-width:100%!important;ov
   <a href="#chart-section"><i class="menu-icon">▥</i><span>نمودار حرفه‌ای</span></a>
   <a href="#trading-tools"><i class="menu-icon">⌗</i><span>ابزارهای معامله</span></a>
   <div class="menu-divider"></div>
+  <details class="menu-group">
+    <summary><span>تحلیل‌های تخصصی</span><span aria-hidden="true">⌄</span></summary>
+    <a href="#market-intelligence">مرکز هوشمندی بازار</a>
+    <a href="#derivatives-panel">نبض بازار فیوچرز</a>
+    <a href="#orderflow-panel">جریان سفارش و نقدینگی</a>
+    <a href="#candle-intelligence">آزمایشگاه سناریوهای کندلی</a>
+    <a href="#forecast-summary">تحلیل سناریو و پیش‌بینی</a>
+    <a href="#whale-panel">پایش انتقال‌های بزرگ</a>
+  </details>
+  <details class="menu-group">
+    <summary><span>بازار و داده‌ها</span><span aria-hidden="true">⌄</span></summary>
+    <a href="#coins-section">فهرست بازار رمزارزها</a>
+    <a href="#market-hours">ساعت بازارهای جهانی</a>
+    <a href="#connections">وضعیت اتصال صرافی‌ها</a>
+  </details>
+  <details class="menu-group">
+    <summary><span>اپلیکیشن و ارتباط</span><span aria-hidden="true">⌄</span></summary>
+    <a href="#app-download">دریافت اپلیکیشن اندروید</a>
+    <a href="#contact-us">ارتباط با ما</a>
+  </details>
   <a class="menu-admin-link" href="https://mmp-coin.github.io/admin.html"><i class="menu-icon">⚙</i><span>پنل مدیریت</span><b>›</b></a>
 </div>
 </header>
@@ -3164,6 +3197,11 @@ async function enrichWithBinance(coins){
    if(Array.isArray(d)&&d.length)return d;
    throw new Error("Binance Worker ticker proxy unavailable");
   }},
+  {name:"Bybit Spot",load:async()=>{
+   const d=await fetchJson(AI_ANALYSIS_ENDPOINT+"/market-proxy?source=bybit-tickers",7000);
+   if(d?.retCode!==0||!Array.isArray(d.result?.list)||!d.result.list.length)throw new Error("Invalid Bybit ticker response");
+   return d.result.list.map(t=>({symbol:t.symbol,lastPrice:t.lastPrice,priceChangePercent:Number(t.price24hPcnt)*100,closeTime:Number(d.time)||Date.now()}));
+  }},
   {name:"Gate.io Spot",load:async()=>{
    const d=await fetchJson(AI_ANALYSIS_ENDPOINT+"/market-proxy?source=gate-tickers",6500);
    if(!Array.isArray(d)||!d.length)throw new Error("Invalid Gate ticker response");
@@ -3188,7 +3226,7 @@ async function enrichWithBinance(coins){
    // Bitget allows browser CORS but rejects Cloudflare Worker egress; use its public browser-safe endpoint directly.
    const d=await fetchJson("https://api.bitget.com/api/v3/market/tickers?category=SPOT",6500);
    if(d?.code!=="00000"||!Array.isArray(d.data)||!d.data.length)throw new Error("Invalid Bitget ticker response");
-   return d.data.map(t=>({symbol:t.symbol,lastPrice:t.lastPrice,priceChangePercent:Number(t.price24hPcnt)*100,closeTime:t.ts}));
+   return d.data.map(t=>({symbol:t.symbol,lastPrice:t.lastPr??t.lastPrice,priceChangePercent:Number.isFinite(Number(t.change24h))?Number(t.change24h)*100:Number(t.price24hPcnt)*100,closeTime:t.ts??t.tsMs??Date.now()}));
   }}
  ];
  let tickers=[],priceSource="",failures=[];
@@ -3690,11 +3728,11 @@ function renderCoinsTables(data) {
     const cap=Number(c.market_cap),volume=Number(c.total_volume),supply=Number(c.circulating_supply),pairList=Array.isArray(c.marketPairs)?[...new Set(c.marketPairs.map(x=>x.exchange).filter(Boolean))]:[];
     const detailMetric=(label,value)=>'<div><small>'+label+'</small><b>'+value+'</b></div>';
     const detailMoney=value=>Number.isFinite(value)&&value>0?money(value,0)+" USDT":"ناموجود";
-    host.innerHTML='<div class="mmp-coin-detail-identity"><img src="'+aiEscape(c.image||("https://assets.coincap.io/assets/icons/"+String(c.symbol||"").toLowerCase()+"@2x.png"))+'" alt="" onerror="handleAiCoinIconError(this)" data-symbol="'+symbol+'" data-fallback-step="0"><div><h3 id="mmp-coin-detail-title">'+name+'</h3><small>'+symbol+'</small></div></div><div class="mmp-coin-detail-metrics">'+detailMetric("قیمت دلاری",price>0?money(price,price<1?8:2)+" USDT":"ناموجود")+detailMetric("قیمت تومانی",price>0&&currentTetherPrice>0?toman(price*currentTetherPrice)+" تومان":"ناموجود")+detailMetric("تغییر ۲۴ ساعته",Number.isFinite(change)?(change>=0?"+":"")+change.toFixed(2)+"%":"ناموجود")+detailMetric("رتبه بازار",Number(c.market_cap_rank)>0?"#"+Number(c.market_cap_rank):"نامشخص")+detailMetric("ارزش بازار",detailMoney(cap))+detailMetric("حجم معاملات ۲۴ساعته",detailMoney(volume))+detailMetric("عرضه در گردش",supply>0?money(supply,0)+" "+symbol:"ناموجود")+detailMetric("بازارهای شناسایی‌شده",pairList.length?pairList.length.toLocaleString("fa-IR")+" بازار":"نامشخص")+'</div><div class="mmp-coin-detail-note"><b>بازارهای شناسایی‌شده:</b> '+(pairList.length?aiEscape(pairList.join(" · ")):"اطلاعات صرافی برای این دارایی موجود نیست")+'<br>برای دیدن اطلاعات کامل، روی هر ارز بزنید. داده‌های بدون منبع معتبر ساختگی نمایش داده نمی‌شوند.</div><div class="mmp-coin-detail-actions"><button type="button" class="btn primary" id="mmp-coin-analyze">تحلیل این ارز در موتور هوشمند</button></div>';
+    host.innerHTML='<div class="mmp-coin-detail-identity"><img src="'+aiEscape(c.image||("https://assets.coincap.io/assets/icons/"+String(c.symbol||"").toLowerCase()+"@2x.png"))+'" alt="" onerror="handleAiCoinIconError(this)" data-symbol="'+symbol+'" data-fallback-step="0"><div><h3 id="mmp-coin-detail-title">'+name+'</h3><small>'+symbol+'</small></div></div><div class="mmp-coin-detail-metrics">'+detailMetric("قیمت دلاری",price>0?money(price,price<1?8:2)+" USDT":"ناموجود")+detailMetric("قیمت تومانی",price>0&&currentTetherPrice>0?toman(price*currentTetherPrice)+" تومان":"ناموجود")+detailMetric("تغییر ۲۴ ساعته",Number.isFinite(change)?(change>=0?"+":"")+change.toFixed(2)+"%":"ناموجود")+detailMetric("رتبه بازار",Number(c.market_cap_rank)>0?"#"+Number(c.market_cap_rank):"نامشخص")+detailMetric("ارزش بازار",detailMoney(cap))+detailMetric("حجم معاملات ۲۴ساعته",detailMoney(volume))+detailMetric("عرضه در گردش",supply>0?money(supply,0)+" "+symbol:"ناموجود")+detailMetric("بازارهای شناسایی‌شده",pairList.length?pairList.length.toLocaleString("fa-IR")+" بازار":"نامشخص")+'</div><div class="mmp-coin-detail-note"><b>بازارهای شناسایی‌شده:</b> '+(pairList.length?aiEscape(pairList.join(" · ")):"اطلاعات صرافی برای این دارایی موجود نیست")+'<br>برای دیدن اطلاعات کامل، روی هر ارز بزنید. داده‌های بدون منبع معتبر ساختگی نمایش داده نمی‌شوند.</div><div class="mmp-coin-detail-actions"><button type="button" class="btn primary mmp-coin-analyze-action">تحلیل این ارز در موتور هوشمند</button></div>';
    $("mmp-coin-detail").hidden=false;return;
   }
   if(event.target.closest("#mmp-coin-detail-close")||event.target.id==="mmp-coin-detail"){close();return;}
-  if(event.target.closest("#mmp-coin-analyze")&&selectedMarketCoin){
+  if(event.target.closest(".mmp-coin-analyze-action")&&selectedMarketCoin){
    const select=$("ai-coin-select"),id=String(selectedMarketCoin.id||"");
    if(select){if(![...select.options].some(o=>o.value===id)){const option=document.createElement("option");option.value=id;option.textContent=(selectedMarketCoin.name||selectedMarketCoin.symbol)+" ("+selectedMarketCoin.symbol+")";select.appendChild(option);}select.value=id;select.dispatchEvent(new Event("change",{bubbles:true}));}
    close();$("ai-section")?.scrollIntoView({behavior:"smooth",block:"start"});if(typeof runAiAnalysis==="function")runAiAnalysis(true);
