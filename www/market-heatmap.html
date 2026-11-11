@@ -51,18 +51,59 @@ function render(){
  $("heatmap").innerHTML=rows.length?rows.map(x=>{const ratio=x.volume/max,c=ratio>=.18?2:1,r=ratio>=.45?2:1,share=total?x.volume/total*100:0,cls=x.change>.05?"positive":x.change<-.05?"negative":"neutral";return '<article class="tile '+cls+((c>1||r>1)?" major":"")+'" style="--c:'+c+';--r:'+r+'"><b>'+x.symbol+'/USDT</b><strong>'+(x.change>0?"+":"")+fmt(x.change,2)+'٪</strong><small>'+usd(x.price)+'</small><em>سهم گردش '+fmt(share,1)+'٪ · '+usd(x.volume)+'</em></article>';}).join(""):'<div class="empty">برای این فیلتر داده‌ای وجود ندارد.</div>';
 }
 async function load(){
- if(busy)return;busy=true;$("refresh").disabled=true;$("refresh").textContent="در حال دریافت…";$("status").textContent="در حال دریافت تیکرهای واقعی ۲۴ ساعته…";
+ if(busy)return;busy=true;$("refresh").disabled=true;$("refresh").textContent="در حال دریافت…";$("status").textContent="در حال دریافت تیکرهای واقعی از صرافی‌های متصل…";
+ const providers=[
+  {name:"Bybit Spot",source:"bybit-tickers",normalize:d=>{
+   if(d?.retCode!==0||!Array.isArray(d.result?.list))throw new Error(d?.retMsg||"پاسخ Bybit معتبر نیست");
+   return d.result.list.map(t=>({symbol:t.symbol,lastPrice:t.lastPrice,priceChangePercent:Number(t.price24hPcnt)*100,quoteVolume:t.turnover24h,closeTime:Number(d.time)||Date.now()}));
+  }},
+  {name:"Gate.io Spot",source:"gate-tickers",normalize:d=>{
+   if(!Array.isArray(d))throw new Error("پاسخ Gate معتبر نیست");
+   return d.filter(t=>String(t.currency_pair||"").endsWith("_USDT")).map(t=>({symbol:String(t.currency_pair).replace("_",""),lastPrice:t.last,priceChangePercent:Number(t.change_percentage),quoteVolume:t.quote_volume,closeTime:Number(t.update_time_ms)||Number(t.update_time)*1000||Date.now()}));
+  }},
+  {name:"KuCoin Spot",source:"kucoin-tickers",normalize:d=>{
+   const rows=Array.isArray(d?.data?.ticker)?d.data.ticker:[];
+   if(d?.code!=="200000"||!rows.length)throw new Error(d?.msg||"پاسخ KuCoin معتبر نیست");
+   return rows.filter(t=>String(t.symbol||"").endsWith("-USDT")).map(t=>({symbol:String(t.symbol).replace("-",""),lastPrice:t.last,priceChangePercent:Number(t.changeRate)*100,quoteVolume:t.volValue,closeTime:Number(d.data.time)||Date.now()}));
+  }},
+  {name:"MEXC Spot",source:"mexc-tickers",normalize:d=>{
+   if(!Array.isArray(d))throw new Error("پاسخ MEXC معتبر نیست");
+   return d.map(t=>({symbol:t.symbol,lastPrice:t.lastPrice,priceChangePercent:Number(t.priceChangePercent),quoteVolume:t.quoteVolume,closeTime:Number(t.closeTime)||Date.now()}));
+  }},
+  {name:"OKX Spot",source:"okx-tickers",normalize:d=>{
+   if(d?.code!=="0"||!Array.isArray(d.data))throw new Error(d?.msg||"پاسخ OKX معتبر نیست");
+   return d.data.filter(t=>String(t.instId||"").endsWith("-USDT")).map(t=>({symbol:String(t.instId).replace("-USDT","")+"USDT",lastPrice:t.last,priceChangePercent:Number(t.open24h)>0?(Number(t.last)/Number(t.open24h)-1)*100:NaN,quoteVolume:t.vol24h,closeTime:Number(t.ts)||Date.now()}));
+  }},
+  {name:"Bitget Spot",source:"bitget-tickers",normalize:d=>{
+   if(!["00000","0"].includes(String(d?.code))||!Array.isArray(d.data))throw new Error(d?.msg||"پاسخ Bitget معتبر نیست");
+   return d.data.map(t=>({symbol:t.symbol,lastPrice:t.lastPr??t.lastPrice,priceChangePercent:Number.isFinite(Number(t.change24h))?Number(t.change24h)*100:Number(t.price24hPcnt)*100,quoteVolume:t.usdtVolume??t.quoteVolume,closeTime:Number(t.ts??t.tsMs)||Date.now()}));
+  }},
+  {name:"Binance Spot",source:"binance-tickers",normalize:d=>{
+   if(!Array.isArray(d))throw new Error("پاسخ Binance معتبر نیست");
+   return d.map(t=>({symbol:t.symbol,lastPrice:t.lastPrice,priceChangePercent:Number(t.priceChangePercent),quoteVolume:t.quoteVolume,closeTime:Number(t.closeTime)||Date.now()}));
+  }}
+ ];
+ let selected=null;const errors=[];
+ for(const provider of providers){
+  try{
+   const response=await fetch(API+"/market-proxy?source="+provider.source,{cache:"no-store",headers:{Accept:"application/json"}});
+   if(!response.ok)throw new Error("HTTP "+response.status);
+   const payload=await response.json(),rows=provider.normalize(payload);
+   const valid=rows.filter(x=>/^[A-Z0-9]+USDT$/.test(String(x.symbol||""))&&Number(x.lastPrice)>0&&Number.isFinite(Number(x.priceChangePercent))&&Number(x.quoteVolume)>0);
+   if(!valid.length)throw new Error("تیکر معتبر دریافت نشد");
+   selected={name:provider.name,rows:valid};break;
+  }catch(error){errors.push(provider.name+": "+String(error?.message||error).slice(0,90));}
+ }
  try{
-  const response=await fetch(API+"/market-proxy?source=binance-tickers",{cache:"no-store",headers:{Accept:"application/json"}});
-  if(!response.ok)throw new Error("HTTP "+response.status);
-  const rows=await response.json();if(!Array.isArray(rows))throw new Error("ساختار داده معتبر نیست");
+  if(!selected)throw new Error(errors.slice(0,4).join(" · ")||"هیچ منبع تیکر معتبری پاسخ نداد");
   const stable=new Set(["USDC","FDUSD","TUSD","USDP","DAI","USDE","EUR","BUSD"]);
-  data=rows.filter(x=>/^[A-Z0-9]+USDT$/.test(String(x.symbol||""))&&!stable.has(String(x.symbol).replace(/USDT$/,""))&&Number(x.lastPrice)>0&&Number.isFinite(Number(x.priceChangePercent))&&Number(x.quoteVolume)>0).map(x=>({symbol:String(x.symbol).replace(/USDT$/,""),price:Number(x.lastPrice),change:Number(x.priceChangePercent),volume:Number(x.quoteVolume),time:Number(x.closeTime)||0}));
+  data=selected.rows.filter(x=>!stable.has(String(x.symbol).replace(/USDT$/,""))).map(x=>({symbol:String(x.symbol).replace(/USDT$/,""),price:Number(x.lastPrice),change:Number(x.priceChangePercent),volume:Number(x.quoteVolume),time:Number(x.closeTime)||Date.now()}));
   if(!data.length)throw new Error("نماد معتبر دریافت نشد");
-  render();const stamp=Math.max(...data.map(x=>x.time));$("status").textContent="منبع: Binance Spot · "+data.length+" جفت معتبر USDT · آخرین زمان تیکر "+(stamp?new Date(stamp).toLocaleTimeString("fa-IR"):"نامشخص")+" · اندازه خانه‌ها بر اساس گردش ۲۴ ساعته است، نه ارزش بازار یا جریان خالص پول.";
+  render();const stamp=Math.max(...data.map(x=>x.time));$("status").textContent="منبع: "+selected.name+" · "+data.length+" جفت معتبر USDT · آخرین زمان تیکر "+(stamp?new Date(stamp).toLocaleTimeString("fa-IR"):"نامشخص")+" · اندازه خانه‌ها بر اساس گردش ۲۴ ساعته است، نه ارزش بازار یا جریان خالص پول.";
  }catch(e){$("heatmap").innerHTML='<div class="empty">دریافت نقشه ناموفق بود: '+String(e.message||e).replace(/[<>]/g,"")+'</div>';$("status").textContent="داده معتبر در دسترس نیست؛ اطلاعات قبلی به‌عنوان زنده نمایش داده نمی‌شود.";}
  finally{busy=false;$("refresh").disabled=false;$("refresh").textContent="↻ تازه‌سازی";}
 }
+
 document.querySelectorAll("[data-filter]").forEach(b=>b.addEventListener("click",()=>{filter=b.dataset.filter;document.querySelectorAll("[data-filter]").forEach(x=>x.classList.toggle("active",x===b));render();}));
 $("count").addEventListener("change",render);$("sort").addEventListener("change",render);$("refresh").addEventListener("click",load);
 load();setInterval(load,60000);
