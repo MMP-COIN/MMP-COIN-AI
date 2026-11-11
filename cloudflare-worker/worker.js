@@ -702,7 +702,7 @@ if(!trades?.length||truncated||trades.length<8){
   // OKX Spot history is cursor-paginated; walk back until the requested window is fully covered.
   // This avoids treating a capped 500/1000-trade sample as a complete 5-minute flow window.
   const instId=pair.replace(/USDT$/,"")+"-USDT",history=[],seen=new Set();let after="",historyTruncated=true;
-  for(let page=0;page<25;page++){
+  for(let page=0;page<35;page++){
    const query="https://www.okx.com/api/v5/market/history-trades?instId="+encodeURIComponent(instId)+"&limit=100"+(after?"&after="+encodeURIComponent(after):"");
    const d=await get(query,4500);
    if(String(d.code)!=="0")throw new Error(d.msg||"OKX Spot history trades unavailable");
@@ -921,7 +921,7 @@ async function loadFuturesMarketFlow(symbol,windowMinutes=5,signal=null){
  if(!trades?.length||truncated||trades.length<8){
   try{
    const instId=base+"-USDT-SWAP",history=[],seen=new Set();let after="",historyTruncated=true;
-   for(let page=0;page<25;page++){
+   for(let page=0;page<35;page++){
     const query="https://www.okx.com/api/v5/market/history-trades?instId="+encodeURIComponent(instId)+"&limit=100"+(after?"&after="+encodeURIComponent(after):"");
     const d=await get(query,4500);
     if(String(d.code)!=="0")throw Error(d.msg||"OKX history Futures trades unavailable");
