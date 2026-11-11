@@ -340,6 +340,15 @@ function applyLiveSnapshot(snap){
    time:Number(x.updatedAt)||Date.now(),provider:x.provider||snap.universe_provider||"اسکن چندصرافی",
    tradePlan:plan,raw:x};
  }).sort((a,b)=>b.score-a.score);
+ // Keep preliminary, still-unconfirmed candidates discoverable in the same asset search.
+ for(const candidate of Array.isArray(snap.preliminary_signals)?snap.preliminary_signals:[]){
+  const symbol=String(candidate.symbol||candidate.coin?.symbol||"").toUpperCase();
+  const priceValue=Number(candidate.price)||Number(candidate.coin?.current_price)||0;
+  if(!symbol||!(priceValue>0))continue;
+  const existing=state.searchUniverse.find(a=>String(a.symbol||"").toUpperCase()===symbol);
+  if(existing){existing._mmpAnalyzed=true;existing._mmpPreliminary=true;existing._mmpPreliminaryScore=Number(candidate.score)||0;}
+  else state.searchUniverse.push({id:"preliminary:"+symbol,symbol,name:candidate.coin?.name||symbol,current_price:priceValue,total_volume:Number(candidate.coin?.total_volume)||0,hunterChange24h:Number(candidate.coin?.hunterChange24h)||0,hasUsdtMarket:true,marketPairs:candidate.coin?.marketPairs||[{quote:"USDT"}],_mmpAnalyzed:true,_mmpPreliminary:true,_mmpPreliminaryScore:Number(candidate.score)||0});
+ }
  $("universe").textContent=state.universe.length.toLocaleString("fa-IR");
  $("scanned").textContent=state.done.toLocaleString("fa-IR");
  $("opps").textContent=state.rows.length.toLocaleString("fa-IR");
