@@ -10,7 +10,7 @@ on:
       - "www/assets/mmp-quantum-terminal-v1.*"
       - ".github/workflows/validate-quantum-terminal.yml"
   push:
-    branches: ["rebuild/quantum-terminal-v1"]
+    branches: ["rebuild/**"]
     paths:
       - "www/index.html"
       - "www/assets/mmp-quantum-terminal-v1.*"
