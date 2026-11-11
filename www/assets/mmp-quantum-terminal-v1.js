@@ -38,7 +38,7 @@ function init(){
    // The global MMP hero and market snapshot belong only to the homepage.
    // The Quantum Command / Smart Core card belongs only to the AI center.
    let visible=view==="home"?(group==="command"||group==="footer"):group===view;
-   if(el.id==="mmp-home-hero"||el.id==="market-snapshot")visible=view==="home";
+   if(el.id==="mmp-home-hero"||el.id==="market-snapshot")visible=view==="home"||view==="command";
    if(el.id==="quantum-center-entry")visible=view==="ai";
    el.hidden=!visible;
   });
