@@ -153,7 +153,7 @@ header{gap:9px;min-width:0}header .actions{min-width:0;justify-content:flex-end}
 <section class="quantum-output-frame" id="quantum-overview" aria-label="آخرین خروجی ثبت‌شده"><div class="qof-head"><div><span class="qof-kicker">QUANTUM INTELLIGENCE</span><b>آخرین خروجی ثبت‌شده</b></div><span class="qof-cycle" id="cycle-status">بدون چرخه</span></div><div class="qof-metrics"><div class="qof-metric"><small>ارز بررسی‌شده</small><b id="scanned">۰</b></div><div class="qof-metric"><small>فرصت‌های ۵۵+</small><b id="opps">۰</b></div><div class="qof-metric"><small>حداقل امتیاز</small><b>۵۵</b></div></div><p class="qof-note">این خروجی هنوز چرخهٔ اسکن معتبری ندارد؛ عدد صفر به معنی نبود فرصت در بازار نیست.</p><span id="universe" hidden>—</span><span id="health" hidden>—</span></section>
 <div class="section-title" id="quantum-architecture"><h2>هسته هوشمند واحد</h2><small>یک مسیر تصمیم‌گیری یکپارچه؛ بدون موتورهای مستقل</small></div>
 <section class="architecture-flow" aria-label="هسته تصمیم‌گیری واحد"><article class="architecture-step" style="grid-column:1/-1"><span>هسته مرکزی یکپارچه · QIE-4</span><b>یک مسیر واحد از داده تا تصمیم</b><p>دریافت داده زنده ← سنجش فشار صعودی و نزولی ← اعتبارسنجی چندبازه‌ای و کیفیت داده ← تصمیم نهایی و ثبت نتیجه</p><small>هیچ زیرقابلیتی به‌تنهایی سیگنال صادر نمی‌کند؛ خروجی فقط پس از عبور از کنترل کیفیت نمایش داده می‌شود.</small></article></section>
-<div id="engines" hidden aria-hidden="true"></div>
+
 <div class="section-title" id="quantum-charts-section"><h2>داشبورد نموداری مرکز کوانتومی</h2><small>نمودارها فقط از نتایج واقعی ثبت‌شده ساخته می‌شوند</small></div><section class="quantum-charts" id="quantum-charts"><div class="chart-card"><div class="empty">پس از دریافت داده بازار، نمودارها به‌روزرسانی می‌شوند.</div></div></section>\n<div class="section-title" id="quantum-assets"><h2>انتخاب ارز برای تحلیل کوانتومی</h2><small>۱۰ ارز پرمعامله اول · سایر ارزها در فهرست جمع‌شونده · USDT Spot</small></div>
 <section class="panel" id="independent-search"><div class="toolbar"><input id="asset-search" autocomplete="off" placeholder="نام یا نماد ارز را جستجو کن؛ مثل BTC یا Bitcoin…"><button class="btn" id="asset-search-clear" type="button">پاک‌کردن</button><button class="btn" id="asset-search-stop" type="button" hidden>توقف پایش</button></div><div id="asset-search-status" class="muted tiny" style="margin-top:8px">در حال دریافت فهرست دارایی‌های واجد شرایط بازار…</div><div id="asset-search-results" class="asset-search-results"></div><div class="asset-more-wrap"><button class="btn" id="asset-search-more" type="button">نمایش ارزهای بیشتر</button><small id="asset-count-label" class="muted tiny"></small></div></section>
 <div class="section-title" id="quantum-opportunities"><h2>فرصت‌های شناسایی‌شده</h2><small>امتیاز ترکیبی ۰ تا ۱۰۰</small></div>
@@ -170,8 +170,6 @@ header{gap:9px;min-width:0}header .actions{min-width:0;justify-content:flex-end}
 const API="https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev";
 const $=id=>document.getElementById(id);
 const state={universe:[],rows:[],selected:null,busy:false,done:0,errors:0,ledger:loadLedger(),depth:new Map(),searchUniverse:[],searchBusy:false,assetLimit:10,independentStop:false,engineActivity:{}};
-const engineCapabilities=[
-["Market Intelligence","رژیم بازار، جهت BTC و همبستگی زمینه‌ای"],["Explosion Predictor","فشردگی دامنه، افزایش حجم و شتاب اولیه"],["Early Opportunity Hunter","کشف تغییرات اولیه در کل نمادهای واجد شرایط"],["Smart Money Flow","جریان معاملات اجراشده و عدم تعادل خرید/فروش؛ بدون ادعای شناسایی هویت نهنگ"],["Liquidity Hunter","عدم تعادل دفتر سفارش و نواحی نقدینگی"],["Multi-Timeframe","هم‌جهتی ۵ دقیقه و یک ساعت"],["Volatility Intelligence","ATR، دامنه و فشردگی نوسان"],["Market Sentiment","شاخص Fear & Greed جهانی؛ زمینه کلی بازار، نه احساسات اختصاصی هر ارز"],["Scenario Simulator","سناریوی صعودی/نزولی و نقطه ابطال"],["Adaptive Learning","ثبت پیش‌بینی‌ها و سنجش نتیجه با داده‌های بعدی؛ وابسته به سابقه ثبت‌شده"],["Risk Intelligence","فاصله حدضرر، ATR و نسبت ریسک/بازده"],["Quantum Decision Engine","ترکیب شواهد، کیفیت داده و رتبه‌بندی"]];
 function log(s){const el=$("log");el.textContent=(new Date().toLocaleTimeString("fa-IR")+" · "+s+"\n"+el.textContent).slice(0,6500)}
 function setStatus(s,kind){$("status").textContent=s;$("dot").className="dot "+(kind||"")}
 function loadLedger(){try{return JSON.parse(localStorage.getItem("mmp_quantum_ledger_v1")||"[]")}catch(e){return[]}}
@@ -209,48 +207,6 @@ function std(a){let m=mean(a);return Math.sqrt(mean(a.map(x=>(x-m)**2)))}
 function ema(a,p){if(!a.length)return 0;let k=2/(p+1),v=a[0];for(let i=1;i<a.length;i++)v=a[i]*k+v*(1-k);return v}
 function rsi(a,p=14){if(a.length<p+1)return 50;let up=0,dn=0;for(let i=a.length-p;i<a.length;i++){let d=a[i]-a[i-1];if(d>0)up+=d;else dn-=d}return dn===0?100:100-100/(1+(up/p)/(dn/p))}
 function calcATR(k,p=14){let tr=[];for(let i=1;i<k.length;i++){let h=+k[i][2],l=+k[i][3],pc=+k[i-1][4];tr.push(Math.max(h-l,Math.abs(h-pc),Math.abs(l-pc)))}return mean(tr.slice(-p))}
-function engineEvidence(i){
- const rows=state.rows||[],valid=rows.filter(x=>Number(x.last)>0);
- const flow=valid.filter(x=>x.flow&&x.flow.complete===true).length;
- const depth=valid.filter(x=>(x.depth&&x.depth.confirmed)||x.book).length;
- const plans=valid.filter(x=>x.tradePlan&&Object.keys(x.tradePlan).length).length;
- const quality=valid.filter(x=>x.raw&&x.raw.quantum&&x.raw.quantum.qualityGate).length;
- const metrics=[
- ["نمادهای دارای داده",valid.length,state.universe.length||valid.length],
- ["نامزدهای حرکت انفجاری",valid.filter(x=>Number(x.explosion)>=.55).length,valid.length],
- ["فرصت‌های ثبت‌شده",rows.length,state.universe.length||rows.length],
- ["نمادهای دارای جریان کامل",flow,valid.length],
- ["نمادهای دارای شواهد عمق",depth,valid.length],
- ["هم‌جهتی روندها",valid.filter(x=>x.trend5===x.trend1&&x.trend5!==0).length,valid.length],
- ["نمادهای دارای ATR",valid.filter(x=>Number(x.atrPct)>0).length,valid.length],
- ["نمادهای دارای نشانه جهت",valid.filter(x=>x.direction==="bull"||x.direction==="bear").length,valid.length],
- ["برنامه‌های سناریو",plans,valid.length],
- ["پیش‌بینی‌های ثبت‌شده",state.ledger.length,Math.max(1,state.ledger.length)],
- ["برنامه‌های دارای حد ریسک",valid.filter(x=>Number(x.tradePlan?.riskPercent)>0).length,valid.length],
- ["تصمیم‌های عبورکرده از گیت کیفیت",quality,valid.length]
- ];
- const activityKeys=["regime","explosion","earlyOpportunity","smartMoney","liquidity","multiTimeframe","volatility","sentiment","scenario","learning","risk","decision"];
- const live=i===9?null:state.engineActivity?.[activityKeys[i]];
- if(live){const value=Math.max(0,Number(live.processed)||0),total=Math.max(value,Number(live.total)||state.universe.length||value),evidence=Math.max(0,Number(live.evidence)||0),pct=total?Math.min(100,Math.round(value/total*100)):0;return {label:evidence>0?"پردازش و شواهد ثبت‌شده":value>0?"پردازش انجام شده · بدون شاهد تأییدشده":"در این چرخه اجرا/گزارش نشده",value,total,pct,evidence};}
- const [label,value,total]=metrics[i],pct=total?Math.min(100,Math.round(value/total*100)):0;
- return {label,value,total,pct};
-}
-function renderEngines(statuses=null){
- const idle=statuses===null,current=statuses||{};
- const validRows=(state.rows||[]).filter(x=>Number(x.last)>0);
- const confirmed=validRows.filter(x=>x.raw?.quantum?.qualityGate===true).length;
- const overall=state.busy?"busy":state.errors>0&&state.done===0?"bad":validRows.length?"ready":"idle";
- const label=state.busy?"در حال پردازش داده‌های بازار":overall==="bad"?"خطا در دریافت داده":validRows.length?"داده دریافت شده · در انتظار ارزیابی شواهد":"در انتظار داده معتبر";
- const cycleLive=Date.now()-Number(window.__mmpLastQuantumUpdate||0)<120000;
- const capabilities=engineCapabilities.map((e,i)=>{
-  const status=current[i]||(idle?"idle":"partial"),m=engineEvidence(i),meterWidth=m.pct;
-  const stateLabel=status==="ready"?"داده تأییدشده":status==="busy"?"در حال پردازش":status==="bad"?"خطا":status==="partial"?"نیازمند داده":"در انتظار";
-  return '<div class="engine-capability" id="engine-detail-'+String(i+1).padStart(2,"0")+'"><div class="engine-capability-head"><b>'+String(i+1).padStart(2,"0")+'. '+e[0]+'</b><span class="state '+status+'">'+stateLabel+'</span></div><p>'+e[1]+'</p><div class="engine-live-meter'+(cycleLive&&status!=="bad"?" is-live":"")+'"><span style="width:'+meterWidth+'%"></span></div><div class="engine-live-meta"><small>'+(cycleLive&&status!=="bad"?"چرخه زنده · "+m.label:m.label)+'</small><strong>'+m.value.toLocaleString("fa-IR")+' / '+m.total.toLocaleString("fa-IR")+' · '+m.pct.toLocaleString("fa-IR")+'٪</strong></div></div>';
- }).join("");
- $("engines").innerHTML='<details class="super-engine-shell" id="super-engine-capabilities"><summary><span class="super-engine-summary-copy"><b>۱۲ قابلیت تخصصی ابرموتور</b><small>وضعیت شواهد در چرخه واحد ابرموتور · برای جزئیات باز کنید</small></span><span class="state '+overall+'">'+label+'</span><i aria-hidden="true">⌄</i></summary><div class="super-engine-body"><p>تمام ۱۲ قابلیت در یک چرخه مشترک کار می‌کنند؛ داده یک‌بار دریافت و اعتبارسنجی می‌شود و شواهد تخصصی با هم تطبیق داده می‌شوند.</p><div class="super-engine-stats"><div><small>نمادهای بررسی‌شده</small><b>'+Number(state.done||validRows.length).toLocaleString("fa-IR")+'</b></div><div><small>فرصت‌های دارای داده</small><b>'+validRows.length.toLocaleString("fa-IR")+'</b></div><div><small>تصمیم‌های عبورکرده از گیت کیفیت</small><b>'+confirmed.toLocaleString("fa-IR")+'</b></div><div><small>خطاهای چرخه</small><b>'+Number(state.errors||0).toLocaleString("fa-IR")+'</b></div></div><div class="super-engine-capability-grid">'+capabilities+'</div></div></details>';
- const target=decodeURIComponent(location.hash.slice(1));
- if(target==="super-engine-capabilities"){const el=$("super-engine-capabilities");if(el){el.open=true;setTimeout(()=>el.scrollIntoView({behavior:"smooth",block:"center"}),100)}}else if(/^engine-detail-\d{2}$/.test(target)){const drawer=$("super-engine-capabilities"),el=$(target);if(drawer)drawer.open=true;if(el)setTimeout(()=>el.scrollIntoView({behavior:"smooth",block:"center"}),150)}
-}
 function analyze(t,k5,k1h,marketData){
  const close=k5.map(x=>+x[4]),high=k5.map(x=>+x[2]),low=k5.map(x=>+x[3]),quote=k5.map(x=>+x[7]),last=close.at(-1),prev=close.at(-2),atr=calcATR(k5),atrPct=last?atr/last*100:0;
  const fast=ema(close.slice(-60),9),slow=ema(close.slice(-60),21),r=rsi(close),volAvg=mean(quote.slice(-20,-1)),volRatio=volAvg?quote.at(-1)/volAvg:1;
@@ -357,10 +313,7 @@ function applyLiveSnapshot(snap){
  $("source").textContent=(snap.universe_provider||"چندصرافی")+" · پایگاه مرکزی پایدار · "+(snap.market||"spot").toUpperCase();
  $("progress").textContent="چرخه ۶۰ ثانیه‌ای · نشانگر بازار "+Number(snap.next_cursor||0).toLocaleString("fa-IR")+" / "+state.universe.length.toLocaleString("fa-IR");
  autoRecordSignals(signals);
- state.engineActivity=snap.engine_activity||{};
- const engineKeys=["regime","explosion","earlyOpportunity","smartMoney","liquidity","multiTimeframe","volatility","sentiment","scenario","learning","risk","decision"];
- const statuses=engineKeys.map(key=>{if(key==="learning")return state.ledger.length?"ready":"idle";const metric=state.engineActivity[key];if(metric){if(Number(metric.evidence)>0)return "ready";if(Number(metric.processed)>0)return "partial";return "idle";}return signals.some(x=>x.quantum?.componentAvailability?.[key]===true)?"ready":"idle";});
- renderEngines(statuses);renderAssetSearch();renderRows();
+ renderAssetSearch();renderRows();
  const live=snap.status==="online"&&state.done>0&&Date.now()-Date.parse(snap.checked_at||snap.scanned_at||"")<120000;setStatus(live?("اسکن خودکار بازار فعال است · "+state.done+" نماد در آخرین چرخه بررسی شد"+(signals.length?" · فرصت‌های تأییدشده به‌روز شدند":" · فعلاً فرصت تأییدشده‌ای وجود ندارد")):"در انتظار چرخه بعدی اسکن مرکزی؛ نتایج قبلی حفظ می‌شوند",live?"ok":"");
  if(!window.__mmpLiveLogAt||Date.now()-window.__mmpLiveLogAt>60000){log("وضعیت مرکزی به‌روزرسانی شد · یونیورس "+state.universe.length+" · بررسی چرخه اخیر "+state.done+" · فرصت تأییدشده "+state.rows.length);window.__mmpLiveLogAt=Date.now()}
 }
@@ -543,7 +496,7 @@ async function refreshLocalTether(){
  localStorage.setItem("mmp_local_usdt_last_toman",String(current));stateEl.textContent=(data.status==="multi_source"?"اتصال چندمنبعی":data.status==="single_source"?"اتصال تک‌منبعی":"بدون منبع معتبر")+" · پایش سروری هر دقیقه · "+new Date(data.checked_at).toLocaleTimeString("fa-IR");
  }catch(error){stateEl.textContent="اتصال نرخ داخلی ناموفق";alertEl.textContent="نرخ زنده تتر ایران دریافت نشد: "+error.message;alertEl.style.color="var(--yellow)";}
 }
-renderEngines(null);renderLedger();renderQuantumCharts();loadIndependentCatalog();startLiveMonitor();if(state.ledger.length)log("حافظه محلی شامل "+state.ledger.length+" پیش‌بینی قبلی است.");refreshLocalTether();setInterval(refreshLocalTether,60000);
+renderLedger();renderQuantumCharts();loadIndependentCatalog();startLiveMonitor();if(state.ledger.length)log("حافظه محلی شامل "+state.ledger.length+" پیش‌بینی قبلی است.");refreshLocalTether();setInterval(refreshLocalTether,60000);
 })();
 </script>
 
@@ -555,55 +508,6 @@ renderEngines(null);renderLedger();renderQuantumCharts();loadIndependentCatalog(
 
 
 
-<style id="mmp-super-engine-unified-layout">
-#quantum-engines{display:block!important;width:100%;min-width:0}
-.super-engine-card{width:100%;min-width:0;padding:16px;border-color:#b99755;box-shadow:0 12px 34px #0005,inset 0 1px #ffffff12}
-.super-engine-card>p{font-size:12px;line-height:2;color:#c5cedb}
-.super-engine-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:14px 0}
-.super-engine-stats>div{padding:11px;border:1px solid #384455;border-radius:10px;background:#0c131d}
-.super-engine-stats small{display:block;color:var(--muted);font-size:10px}
-.super-engine-stats b{display:block;margin-top:7px;color:var(--gold2);font-size:19px;font-variant-numeric:tabular-nums}
-.super-engine-capabilities{margin-top:12px;border:1px solid #8b713e88;border-radius:12px;background:#0c131d}
-.super-engine-capabilities summary{cursor:pointer;list-style:none;padding:12px;color:var(--gold2);font-weight:800;display:flex;justify-content:space-between;gap:8px}
-.super-engine-capabilities summary::-webkit-details-marker{display:none}
-.super-engine-capability-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;padding:10px}
-.engine-capability{padding:11px;border:1px solid #303b4b;border-radius:10px;background:#111a26;min-width:0}
-.engine-capability-head{display:flex;justify-content:space-between;align-items:center;gap:7px}
-.engine-capability-head b{font-size:11px;color:var(--gold2)}
-.engine-capability p{font-size:10px;line-height:1.8;color:#aeb9c8;min-height:36px}
-.engine-capability .engine-live-meter{height:5px;background:#293444;border-radius:9px;overflow:hidden}
-.engine-capability .engine-live-meter span{display:block;height:100%;background:linear-gradient(90deg,#8d682e,#f3d58b)}
-.engine-capability .engine-live-meta{display:flex;justify-content:space-between;gap:7px;margin-top:7px;color:var(--muted);font-size:9px}
-@media(max-width:720px){.super-engine-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.super-engine-capability-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:460px){.super-engine-capability-grid{grid-template-columns:1fr}.super-engine-capability-head b{font-size:10px}}
 </style>
-<style id="mmp-super-engine-horizontal-accordion">
-#quantum-engines{display:block!important;width:100%;min-width:0}
-.super-engine-shell{width:100%;border:1px solid #9b7b45aa;border-radius:13px;background:linear-gradient(110deg,#172536,#101923 62%,#1b1b18);overflow:hidden;box-shadow:0 8px 22px #0004}
-.super-engine-shell>summary{min-height:58px;padding:10px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;list-style:none}
-.super-engine-shell>summary::-webkit-details-marker{display:none}
-.super-engine-summary-copy{display:flex;flex-direction:column;gap:3px;min-width:0}
-.super-engine-summary-copy b{font-size:13px;color:var(--gold2)}
-.super-engine-summary-copy small{font-size:10px;color:var(--muted)}
-.super-engine-shell>summary>.state{margin-right:auto;white-space:nowrap;font-size:9px}
-.super-engine-shell>summary>i{font-style:normal;color:var(--gold2);font-size:18px;transition:transform .2s}
-.super-engine-shell[open]>summary{border-bottom:1px solid #8b713e66;background:#ffffff05}
-.super-engine-shell[open]>summary>i{transform:rotate(180deg)}
-.super-engine-body{padding:12px}
-.super-engine-body>p{margin:0 0 10px;color:#c5cedb;font-size:11px;line-height:1.8}
-.super-engine-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:0 0 10px}
-.super-engine-stats>div{padding:8px 10px;border:1px solid #384455;border-radius:9px;background:#0c131d}
-.super-engine-stats small{display:block;color:var(--muted);font-size:9px}
-.super-engine-stats b{display:block;margin-top:4px;color:var(--gold2);font-size:16px;font-variant-numeric:tabular-nums}
-.super-engine-capability-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-.engine-capability{padding:9px;border:1px solid #303b4b;border-radius:9px;background:#111a26;min-width:0}
-.engine-capability-head{display:flex;justify-content:space-between;align-items:center;gap:6px}
-.engine-capability-head b{font-size:10px;color:var(--gold2)}
-.engine-capability p{font-size:9px;line-height:1.7;color:#aeb9c8;min-height:30px;margin:6px 0}
-.engine-capability .engine-live-meter{height:4px;background:#293444;border-radius:9px;overflow:hidden}
-.engine-capability .engine-live-meter span{display:block;height:100%;background:linear-gradient(90deg,#8d682e,#f3d58b)}
-.engine-capability .engine-live-meta{display:flex;justify-content:space-between;gap:6px;margin-top:6px;color:var(--muted);font-size:8px}
-@media(max-width:720px){.super-engine-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.super-engine-capability-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:460px){.super-engine-shell>summary{padding:9px 10px;gap:7px}.super-engine-summary-copy b{font-size:11px}.super-engine-summary-copy small{font-size:8px}.super-engine-shell>summary>.state{font-size:8px}.super-engine-body{padding:9px}.super-engine-capability-grid{grid-template-columns:1fr}}
 </style>
 </body></html>
