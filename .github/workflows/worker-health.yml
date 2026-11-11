@@ -585,7 +585,8 @@ jobs:
           status=$(curl --silent --show-error --retry 1 --retry-delay 2 --max-time 70 -o /tmp/okx-spot-preview.json -w "%{http_code}" "$PREVIEW_URL/market-flow?market=spot&symbol=BTC&window=5")
           echo "OKX Spot paginated preview HTTP $status"
           if [ "$status" != "200" ]; then cat /tmp/okx-spot-preview.json; exit 1; fi
-          jq -e '.symbol == "BTCUSDT" and .market == "spot" and .window_minutes == 5 and .complete == true and (.trade_count >= 100) and (.provider | contains("OKX Spot"))' /tmp/okx-spot-preview.json >/dev/null
+          jq '{symbol,market,trade_count,provider,complete,window_minutes,fallback_error}' /tmp/okx-spot-preview.json
+          jq -e '.symbol == "BTCUSDT" and .window_minutes == 5 and .complete == true and (.trade_count >= 100) and (.provider | contains("OKX Spot"))' /tmp/okx-spot-preview.json >/dev/null
           jq -r '"OKX Spot preview: " + .provider + " | " + (.trade_count|tostring) + " real trades | complete=" + (.complete|tostring)' /tmp/okx-spot-preview.json
 
       - name: Smoke-test Spot/Futures trade flow, order book and analysis
@@ -728,7 +729,7 @@ jobs:
         if: always() && github.ref == 'refs/heads/main'
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
-          CANARY_URL: https://02afe1c1-mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
+          CANARY_URL: https://578716fa-mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
           set -euo pipefail
           payload='{"coin_id":"bitcoin","symbol":"BTC","name":"Bitcoin","market_mode":"spot"}'
