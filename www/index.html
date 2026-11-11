@@ -3017,6 +3017,7 @@ function setCurrency(curr) {
   [['btn-irt',isToman],['btn-usdt',!isToman],['quantum-currency-irt',isToman],['quantum-currency-usdt',!isToman],['native-currency-irt',isToman],['native-currency-usdt',!isToman]].forEach(([id,active])=>{
     const button=$(id);if(button){button.classList.toggle('active',active);button.setAttribute('aria-pressed',active?'true':'false');}
   });
+  document.querySelectorAll('[data-mmp-currency]').forEach(button=>{const active=button.dataset.mmpCurrency===currentCurrency;button.classList.toggle('active',active);button.setAttribute('aria-pressed',active?'true':'false');});
   renderTetherCard();
   const indicator=$('currency-indicator');
   if(indicator)indicator.innerText='واحد انتخاب‌شده: '+(isToman?'تومان':'تتر · USDT');
