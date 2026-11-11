@@ -347,7 +347,7 @@ function applyLiveSnapshot(snap){
  state.engineActivity=snap.engine_activity||{};
  const engineKeys=["regime","explosion","earlyOpportunity","smartMoney","liquidity","multiTimeframe","volatility","sentiment","scenario","learning","risk","decision"];
  const statuses=engineKeys.map(key=>{if(key==="learning")return state.ledger.length?"ready":"idle";const metric=state.engineActivity[key];if(metric){if(Number(metric.evidence)>0)return "ready";if(Number(metric.processed)>0)return "partial";return "idle";}return signals.some(x=>x.quantum?.componentAvailability?.[key]===true)?"ready":"idle";});
- renderEngines(statuses);renderRows();
+ renderEngines(statuses);renderAssetSearch();renderRows();
  const live=snap.status==="online"&&state.done>0&&Date.now()-Date.parse(snap.checked_at||snap.scanned_at||"")<120000;setStatus(live?("اسکن خودکار بازار فعال است · "+state.done+" نماد در آخرین چرخه بررسی شد"+(signals.length?" · فرصت‌های تأییدشده به‌روز شدند":" · فعلاً فرصت تأییدشده‌ای وجود ندارد")):"در انتظار چرخه بعدی اسکن مرکزی؛ نتایج قبلی حفظ می‌شوند",live?"ok":"");
  if(!window.__mmpLiveLogAt||Date.now()-window.__mmpLiveLogAt>60000){log("وضعیت مرکزی به‌روزرسانی شد · یونیورس "+state.universe.length+" · بررسی چرخه اخیر "+state.done+" · فرصت تأییدشده "+state.rows.length);window.__mmpLiveLogAt=Date.now()}
 }
@@ -430,6 +430,7 @@ async function loadIndependentCatalog(){
    const pairs=Array.isArray(a.marketPairs)?a.marketPairs:[];
    return a.hasUsdtMarket===true||pairs.some(p=>String(p.quote||p.quoteAsset||"").toUpperCase()==="USDT");
   }).map(a=>({...a,symbol:String(a.symbol).toUpperCase(),current_price:Number(a.current_price)||0,total_volume:Number(a.total_volume)||0}));
+   for(const row of state.rows){if(!state.searchUniverse.some(a=>String(a.symbol).toUpperCase()===String(row.symbol).toUpperCase()))state.searchUniverse.push({symbol:row.symbol,name:row.symbol,current_price:Number(row.last)||0,total_volume:Number(row.quoteVolume)||0,hasUsdtMarket:true,marketPairs:[{quote:"USDT"}],_mmpAnalyzed:true});}
   if(!state.searchUniverse.length)throw new Error("پاسخ Worker فهرست دارایی قابل‌نمایشی ندارد؛ hunter_count="+String(data.hunter_count??"نامشخص")+" · count="+String(data.count??"نامشخص"));
   status.textContent="فهرست بازار دریافت شد · "+state.searchUniverse.length.toLocaleString("fa-IR")+" جفت USDT Spot · مرتب‌شده بر اساس حجم ۲۴ساعته.";
   renderAssetSearch();
