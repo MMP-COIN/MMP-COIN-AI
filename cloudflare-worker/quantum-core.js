@@ -203,13 +203,14 @@ export function detectEarlyMovePressure(input={}){
   depth:depth===null?null:clamp(50+depth*180),
   spread:spread===null?null:clamp(50+spread*12)};
  const available=Object.values(parts).filter(v=>v!==null).length;
+ const directionalAvailable=flow!==null||depth!==null;
  const weight={compression:.22,volume:.22,flow:.24,depth:.24,spread:.08};
- const calc=(direction)=>{let sum=0,w=0;for(const [key,value] of Object.entries(parts)){if(value===null)continue;const aligned=key==="compression"||key==="volume"?value:(direction==="up"?value:100-value);sum+=aligned*weight[key];w+=weight[key];}return w?Math.round(sum/w):0;};
- const up=calc("up"),down=calc("down");
- const score=Math.max(up,down),direction=up>=down?"up":"down";
- const evidence=available>=2&&fresh;
+ const calc=(side)=>{let sum=0,w=0;for(const [key,value] of Object.entries(parts)){if(value===null)continue;const aligned=key==="compression"||key==="volume"?value:(side==="up"?value:100-value);sum+=aligned*weight[key];w+=weight[key];}return w?Math.round(sum/w):0;};
+ const up=calc("up"),down=calc("down"),edge=Math.abs(up-down);
+ const score=Math.max(up,down),direction=directionalAvailable&&edge>=8?(up>down?"up":"down"):"neutral";
+ const evidence=available>=2&&fresh&&directionalAvailable&&edge>=8;
  const state=!evidence?"insufficient_data":score>=78?"high_pressure":score>=62?"watch":"quiet";
- return {version:"MMP-EARLY-PRESSURE-1.0",state,direction,up_score:up,down_score:down,score,available_inputs:available,
-  inputs:parts,pre_move_only:true,confidence_label:available>=4&&fresh?"multi-signal":"limited",
-  message:!evidence?"داده تازه و چند شاهد مستقل کافی نیست":direction==="up"?"فشار اولیه صعودی؛ هنوز شکست قیمت تأیید نشده":"فشار اولیه نزولی؛ هنوز شکست قیمت تأیید نشده"};
+ return {version:"MMP-EARLY-PRESSURE-1.1",state,direction,up_score:up,down_score:down,score,available_inputs:available,
+  directional_inputs:Number(flow!==null)+Number(depth!==null),directional_edge:edge,inputs:parts,pre_move_only:true,confidence_label:available>=4&&fresh&&directionalAvailable?"multi-signal":"limited",
+  message:!fresh?"داده بازار تازه نیست":!directionalAvailable?"شاهد جهت‌دار از جریان معاملات یا عمق سفارش موجود نیست":edge<8?"شواهد صعودی و نزولی تفاوت معناداری ندارند":direction==="up"?"فشار اولیه صعودی؛ هنوز شکست قیمت تأیید نشده":"فشار اولیه نزولی؛ هنوز شکست قیمت تأیید نشده"};
 }
