@@ -643,6 +643,7 @@ jobs:
           if [ "$status" != "200" ]; then cat /tmp/local-watch.json; exit 1; fi
           jq -e '.market == "USDT/IRR" and (.sources | length == 3) and (.status == "multi_source" or .status == "single_source" or .status == "offline") and (.server_alert | type == "boolean") and (.server_monitor == "server-cron-1m" or .server_monitor == "warming_up")' /tmp/local-watch.json >/dev/null
           jq -r '"Iranian USDT/Toman watch: " + .status + " | valid venues: " + (.source_count|tostring)' /tmp/local-watch.json
+jq -r '.sources[]? | "  " + .exchange + ": " + (if .fresh then "fresh" else "offline" end) + (if .error then " · " + .error else "" end)' /tmp/local-watch.json
           status=$(curl --silent --show-error --max-time 25 -o /tmp/early-pressure.json -w "%{http_code}" "$WORKER_URL/early-pressure?symbol=BTC")
           echo "Early pressure endpoint HTTP $status"
           if [ "$status" != "200" ]; then cat /tmp/early-pressure.json; exit 1; fi
