@@ -88,6 +88,9 @@ jobs:
           const ledgerA = learning.updateLearningLedger({}, {observations:[],signals:[signal],market:"spot",engine:"test",now:start});
           const ledgerB = learning.updateLearningLedger(ledgerA, {observations:[{symbol:"BTC",price:101}],signals:[],market:"spot",engine:"test",now:start+6*60000});
           if (ledgerB.records.length !== 1 || !(ledgerB.records[0].outcome_5m > 0) || ledgerB.summary.matured5m !== 1) throw new Error("Persistent signal outcome learning failed");
+          const lateLedgerA = learning.updateLearningLedger({}, {observations:[],signals:[signal],market:"spot",engine:"late-test",now:start});
+          const lateLedgerB = learning.updateLearningLedger(lateLedgerA, {observations:[{symbol:"BTC",price:105}],signals:[],market:"spot",engine:"late-test",now:start+20*60000});
+          if (lateLedgerB.records[0].outcome_5m !== null || lateLedgerB.records[0].outcome_15m !== null || lateLedgerB.records[0].missed_5m !== true || lateLedgerB.records[0].missed_15m !== true || lateLedgerB.summary.matured5m !== 0) throw new Error("Late learning marks must not contaminate earlier outcome horizons");
           const calibrated = learning.applyLearningCalibration(signal,ledgerB.summary);
           if (calibrated.quantum.calibratedConfidence !== 70 || calibrated.quantum.learningCalibration.status !== "collecting") throw new Error("Learning calibration must remain inactive below 30 samples");
           const matureRecords = Array.from({length:40},(_,i)=>({id:"sample-"+i,market:"spot",status:"completed",outcome_5m:1.25}));
@@ -100,6 +103,7 @@ jobs:
           const futuresUniverseSource = workerSource.slice(futuresUniverseStart, futuresUniverseEnd);
           if (futuresUniverseStart < 0 || !futuresUniverseSource.includes("MEXC USDT Futures") || !futuresUniverseSource.includes("contract.mexc.com/api/v1/contract/detail") || !futuresUniverseSource.includes("contract.mexc.com/api/v1/contract/ticker") || !futuresUniverseSource.includes('x.state===0&&x.quoteCoin==="USDT"&&x.settleCoin==="USDT"')) throw new Error("MEXC active USDT perpetual discovery is missing");
           if (!workerSource.includes("cached_fallback:true") || !workerSource.includes("fresh:false")) throw new Error("Hunter universe refresh must expose stale cache fallback without relabelling it fresh");
+          if (!workerSource.includes("const dueLearningRecords=") || !workerSource.includes("fetchHunterCandles(record.symbol,marketType,asset)") || !workerSource.includes("...learningMarks")) throw new Error("Self-learning must capture fresh 5m/15m/60m outcome marks for open signals");
           const hunterCandlesStart = workerSource.indexOf('async function fetchHunterCandles(symbol,marketType="spot",asset=null){');
           const hunterCandlesEnd = workerSource.indexOf("async function analyzeDigitalHunterSymbol", hunterCandlesStart);
           const hunterCandlesSource = workerSource.slice(hunterCandlesStart, hunterCandlesEnd);
