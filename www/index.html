@@ -5660,24 +5660,25 @@ body{background:radial-gradient(ellipse at 74% 0,#1b626755,transparent 29%),radi
   const symbol=safeSymbol(byId("intel-symbol")?.value||"BTC")||"BTC";
   if(byId("intel-symbol"))byId("intel-symbol").value=symbol;
   const status=byId("derivatives-status"),box=byId("derivatives-metrics");
-  if(status)status.textContent="در حال دریافت اطلاعات قراردادهای دائمی…";
-  const tasks=await Promise.allSettled([
-   getJson("https://fapi.binance.com/fapi/v1/premiumIndex?symbol="+symbol+"USDT"),
-   getJson("https://fapi.binance.com/fapi/v1/openInterest?symbol="+symbol+"USDT"),
-   getJson("https://fapi.binance.com/futures/data/globalLongShortAccountRatio?symbol="+symbol+"USDT&period=5m&limit=1"),
-  ]);
-  const premium=tasks[0].status==="fulfilled"?tasks[0].value:null,oi=tasks[1].status==="fulfilled"?tasks[1].value:null,ratio=tasks[2].status==="fulfilled"?(Array.isArray(tasks[2].value)?tasks[2].value[0]:null):null;
-  if(box){
+  if(status)status.textContent="در حال دریافت شاخص‌های مشتقات از موتور مرکزی چندصرافی…";
+  try{
+   const payload=await getJson(AI_ANALYSIS_ENDPOINT+"/market-derivatives?symbol="+encodeURIComponent(symbol),14000);
+   const has=(value)=>value!==null&&value!==undefined&&Number.isFinite(Number(value));
    const values=[
-    premium?fmt(Number(premium.lastFundingRate)*100,5)+"٪":"دریافت نشد",
-    oi?fmt(oi.openInterest,2)+" "+symbol:"دریافت نشد",
-    ratio?fmt(ratio.longShortRatio,3):"دریافت نشد",
-    premium?usd(premium.markPrice):"دریافت نشد"
+    has(payload.funding_rate)?fmt(Number(payload.funding_rate)*100,5)+"٪":"دریافت نشد",
+    has(payload.open_interest)?fmt(payload.open_interest,2)+" "+symbol:"دریافت نشد",
+    has(payload.long_short_ratio)?fmt(payload.long_short_ratio,3):"دریافت نشد",
+    has(payload.mark_price)?usd(payload.mark_price):"دریافت نشد"
    ];
-   box.innerHTML=values.map((v,i)=>'<div><small>'+["نرخ تأمین مالی","موجودی قرارداد باز","نسبت خرید به فروش","قیمت نشانگر"][i]+'</small><b>'+v+'</b><em>'+["Funding Rate","Open Interest","Long / Short","Mark Price"][i]+'</em></div>').join("");
+   if(box)box.innerHTML=values.map((v,i)=>'<div><small>'+["نرخ تأمین مالی","موجودی قرارداد باز","نسبت خرید به فروش","قیمت نشانگر"][i]+'</small><b>'+v+'</b><em>'+["Funding Rate","Open Interest","Long / Short","Mark Price"][i]+'</em></div>').join("");
+   const ok=values.filter(v=>v!=="دریافت نشد").length;
+   if(status)status.textContent=ok?"منبع: "+(payload.source||"MMP Futures Engine")+" · "+ok+" از ۴ شاخص واقعی دریافت شد"+(payload.missing?.length?" · موارد ناموجود: "+payload.missing.join("، "):""):"هیچ شاخص مشتقاتی از منابع تأییدشده دریافت نشد.";
+   return ok>0;
+  }catch(error){
+   if(box)box.innerHTML=["نرخ تأمین مالی","موجودی قرارداد باز","نسبت خرید به فروش","قیمت نشانگر"].map(label=>'<div><small>'+label+'</small><b>دریافت نشد</b><em>بدون داده زنده</em></div>').join("");
+   if(status)status.textContent="داده مشتقات از موتور مرکزی دریافت نشد؛ مقدار ساختگی نمایش داده نمی‌شود. "+String(error?.message||error).slice(0,120);
+   return false;
   }
-  const ok=tasks.filter(x=>x.status==="fulfilled").length;
-  if(status)status.textContent=ok===3?"منبع: Binance USDⓈ-M Futures · داده زنده دریافت شد":ok?("فقط "+ok+" مورد از ۳ شاخص دریافت شد؛ محدودیت دسترسی به بعضی مسیرها وجود دارد."):"منبع فیوچرز از این شبکه پاسخ نداد؛ داده ساختگی جایگزین نشده است.";
  }
  async function loadOrderflow(){
   const symbol=safeSymbol(byId("intel-symbol")?.value||"BTC")||"BTC";
