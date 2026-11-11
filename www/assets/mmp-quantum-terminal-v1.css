@@ -193,3 +193,15 @@ body.mmp-quantum-terminal .mmp-hub-card[data-center-style="lab"]::after{content:
 /* Homepage hub is the sole homepage destination; center feature cards must respect the workspace visibility state. */
 body.mmp-quantum-terminal #hero>section[hidden]{display:none!important}
 body.mmp-quantum-terminal #quantum-center-entry[hidden]{display:none!important}
+
+/* Center workspace toolbar: keep navigation controls compact and horizontal on mobile. */
+body.mmp-quantum-terminal #mmp-center-toolbar{align-items:center!important;flex-direction:row!important}
+body.mmp-quantum-terminal .mmp-center-actions{display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:7px!important;flex-wrap:nowrap!important;width:auto!important;min-width:0!important}
+body.mmp-quantum-terminal .mmp-center-back{display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:6px!important;flex:0 0 auto!important;width:auto!important;min-width:116px!important;min-height:38px!important;white-space:nowrap!important;writing-mode:horizontal-tb!important;line-height:1.2!important}
+body.mmp-quantum-terminal .mmp-center-jump{display:inline-flex!important;align-items:center!important;justify-content:center!important;flex:0 0 auto!important;white-space:nowrap!important}
+@media(max-width:620px){
+ body.mmp-quantum-terminal #mmp-center-toolbar{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:9px!important}
+ body.mmp-quantum-terminal .mmp-center-actions{width:100%!important;display:flex!important;flex-direction:row!important;align-items:center!important;justify-content:flex-start!important;flex-wrap:nowrap!important;overflow-x:auto!important;padding-bottom:2px!important}
+ body.mmp-quantum-terminal .mmp-center-back{flex:0 0 auto!important;width:auto!important;min-width:116px!important}
+ body.mmp-quantum-terminal .mmp-center-jump{flex:0 0 auto!important}
+}
