@@ -3594,7 +3594,7 @@ function renderCoinsTables(data) {
  if(result)result.textContent=query?filtered.length.toLocaleString("fa-IR")+" نتیجه از "+rows.length.toLocaleString("fa-IR")+" دارایی معتبر":rows.length.toLocaleString("fa-IR")+" دارایی معتبر شناسایی‌شده";
  const featuredCount=4,visible=showAll?ranked:ranked.slice(0,featuredCount),hiddenCount=Math.max(0,ranked.length-featuredCount),visibleCount=$("market-catalog-visible-count");
  if(visibleCount)visibleCount.textContent=(showAll?ranked.length:Math.min(featuredCount,ranked.length)).toLocaleString("fa-IR")+" / "+ranked.length.toLocaleString("fa-IR");
- if(toggle){toggle.hidden=!!query||ranked.length<=6;toggle.setAttribute("aria-expanded",String(expanded));toggle.querySelector("span").textContent=expanded?"بستن فهرست کامل":"نمایش همه "+hiddenCount.toLocaleString("fa-IR")+" دارایی دیگر";toggle.querySelector("b").textContent=expanded?"⌃":"⌄";}
+ if(toggle){toggle.hidden=!!query||ranked.length<=4;toggle.setAttribute("aria-expanded",String(expanded));toggle.querySelector("span").textContent=expanded?"بستن فهرست کامل":"نمایش همه "+hiddenCount.toLocaleString("fa-IR")+" دارایی دیگر";toggle.querySelector("b").textContent=expanded?"⌃":"⌄";}
  if(grid){
   grid.classList.toggle("is-expanded",expanded&&!query);grid.classList.toggle("is-searching",!!query);
   if(!ranked.length)grid.innerHTML='<div class="ai-empty">'+(rows.length?'ارزی با این نام یا نماد در فهرست پشتیبانی‌شده پیدا نشد.':'فهرست دارایی‌ها هنوز دریافت نشده است.')+'</div>';
@@ -3620,16 +3620,19 @@ function renderCoinsTables(data) {
  const $=id=>document.getElementById(id);let selectedMarketCoin=null;
  const close=()=>{const modal=$("mmp-coin-detail");if(modal)modal.hidden=true;};
  document.addEventListener("click",event=>{
+  if(event.target.closest("#market-catalog-close")){const t=$("market-catalog-toggle");if(t)t.setAttribute("aria-expanded","false");renderCoinsTables(cachedCoinsData);return;}
   const toggle=event.target.closest("#market-catalog-toggle");
-  if(toggle){toggle.setAttribute("aria-expanded",String(toggle.getAttribute("aria-expanded")!=="true"));renderCoinsTables(cachedCoinsData);return;
-  if(event.target.closest("#market-catalog-close")){const t=$("market-catalog-toggle");if(t)t.setAttribute("aria-expanded","false");renderCoinsTables(cachedCoinsData);return;}}
+  if(toggle){toggle.setAttribute("aria-expanded",String(toggle.getAttribute("aria-expanded")!=="true"));renderCoinsTables(cachedCoinsData);return;}
   const card=event.target.closest("[data-market-coin-id]");
   if(card){
    const id=card.dataset.marketCoinId;
    selectedMarketCoin=(Array.isArray(cachedCoinsData)?cachedCoinsData:[]).find(c=>String(c.id)===id)||(typeof hunterCoinIndex!=="undefined"?hunterCoinIndex.get(id):null);
    if(!selectedMarketCoin)return;
    const c=selectedMarketCoin,symbol=aiEscape(String(c.symbol||"").toUpperCase()),name=aiEscape(c.name||symbol),price=Number(c.current_price),change=Number(c.price_change_percentage_24h),host=$("mmp-coin-detail-content");
-   host.innerHTML='<div class="mmp-coin-detail-identity"><img src="'+aiEscape(c.image||("https://assets.coincap.io/assets/icons/"+String(c.symbol||"").toLowerCase()+"@2x.png"))+'" alt="" onerror="handleAiCoinIconError(this)" data-symbol="'+symbol+'" data-fallback-step="0"><div><h3 id="mmp-coin-detail-title">'+name+'</h3><small>'+symbol+'</small></div></div><div class="mmp-coin-detail-metrics"><div><small>قیمت دلاری</small><b>'+(price>0?money(price,price<1?8:2)+" USDT":"ناموجود")+'</b></div><div><small>قیمت تومانی</small><b>'+(price>0&&currentTetherPrice>0?toman(price*currentTetherPrice)+" تومان":"ناموجود")+'</b></div><div><small>تغییر ۲۴ ساعته</small><b class="'+(change>=0?"positive":"negative")+'">'+(Number.isFinite(change)?(change>=0?"+":"")+change.toFixed(2)+"%":"—")+'</b></div><div><small>رتبه بازار</small><b>'+(Number(c.market_cap_rank)>0?"#"+Number(c.market_cap_rank):"نامشخص")+'</b></div></div><p class="mmp-coin-detail-note">برای بررسی عمیق‌تر، این دارایی را مستقیماً به تحلیلگر هوشمند منتقل کن. داده‌های ناموجود به‌صورت ساختگی نمایش داده نمی‌شوند.</p>';
+    const cap=Number(c.market_cap),volume=Number(c.total_volume),supply=Number(c.circulating_supply),pairList=Array.isArray(c.marketPairs)?[...new Set(c.marketPairs.map(x=>x.exchange).filter(Boolean))]:[];
+    const detailMetric=(label,value)=>'<div><small>'+label+'</small><b>'+value+'</b></div>';
+    const detailMoney=value=>Number.isFinite(value)&&value>0?money(value,0)+" USDT":"ناموجود";
+    host.innerHTML='<div class="mmp-coin-detail-identity"><img src="'+aiEscape(c.image||("https://assets.coincap.io/assets/icons/"+String(c.symbol||"").toLowerCase()+"@2x.png"))+'" alt="" onerror="handleAiCoinIconError(this)" data-symbol="'+symbol+'" data-fallback-step="0"><div><h3 id="mmp-coin-detail-title">'+name+'</h3><small>'+symbol+'</small></div></div><div class="mmp-coin-detail-metrics">'+detailMetric("قیمت دلاری",price>0?money(price,price<1?8:2)+" USDT":"ناموجود")+detailMetric("قیمت تومانی",price>0&&currentTetherPrice>0?toman(price*currentTetherPrice)+" تومان":"ناموجود")+detailMetric("تغییر ۲۴ ساعته",Number.isFinite(change)?(change>=0?"+":"")+change.toFixed(2)+"%":"ناموجود")+detailMetric("رتبه بازار",Number(c.market_cap_rank)>0?"#"+Number(c.market_cap_rank):"نامشخص")+detailMetric("ارزش بازار",detailMoney(cap))+detailMetric("حجم معاملات ۲۴ساعته",detailMoney(volume))+detailMetric("عرضه در گردش",supply>0?money(supply,0)+" "+symbol:"ناموجود")+detailMetric("بازارهای شناسایی‌شده",pairList.length?pairList.length.toLocaleString("fa-IR")+" بازار":"نامشخص")+'</div><div class="mmp-coin-detail-note"><b>بازارهای شناسایی‌شده:</b> '+(pairList.length?aiEscape(pairList.join(" · ")):"اطلاعات صرافی برای این دارایی موجود نیست")+'<br>برای دیدن اطلاعات کامل، روی هر ارز بزنید. داده‌های بدون منبع معتبر ساختگی نمایش داده نمی‌شوند.</div><div class="mmp-coin-detail-actions"><button type="button" class="btn primary" id="mmp-coin-analyze">تحلیل این ارز در موتور هوشمند</button></div>';
    $("mmp-coin-detail").hidden=false;return;
   }
   if(event.target.closest("#mmp-coin-detail-close")||event.target.id==="mmp-coin-detail"){close();return;}
