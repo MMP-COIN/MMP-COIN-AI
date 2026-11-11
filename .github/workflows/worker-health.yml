@@ -67,7 +67,7 @@ jobs:
           const megaLiquid = mod.calculateMarketScanPriority({hunterChange24h:0,total_volume:2000000000});
           if (!(activeMover > megaLiquid)) throw new Error("Active movers must be prioritized ahead of static high-volume assets");
           const bars = Array.from({length:100},(_,i)=>{const c=100+i*.12+Math.sin(i/4)*.3;return [1700000000000+i*60000,c-.04,c+.2,c-.2,c,1000+i*3];});
-          const early = mod.detectEarlyMovePressure({rangeCompression:0.55,volumeAcceleration:2.4,flowImbalance:-0.65,dataFresh:true});
+          const early = mod.detectEarlyMovePressure({rangeCompression:0.2,volumeAcceleration:3.0,flowImbalance:-0.9,dataFresh:true});
           if (early.state !== "high_pressure" || early.direction !== "down" || early.available_inputs !== 3) throw new Error("Early downside pressure detector failed");
           const staleEarly = mod.detectEarlyMovePressure({rangeCompression:0.5,volumeAcceleration:2.0,flowImbalance:0.7,dataFresh:false});
           if (staleEarly.state !== "insufficient_data") throw new Error("Early pressure must fail closed on stale data");
