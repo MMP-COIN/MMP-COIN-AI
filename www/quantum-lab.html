@@ -154,7 +154,8 @@ header{gap:9px;min-width:0}header .actions{min-width:0;justify-content:flex-end}
 <div class="section-title" id="quantum-architecture"><h2>هسته هوشمند واحد</h2><small>یک مسیر تصمیم‌گیری یکپارچه؛ بدون موتورهای مستقل</small></div>
 <section class="architecture-flow" aria-label="هسته تصمیم‌گیری واحد"><article class="architecture-step" style="grid-column:1/-1"><span>هسته مرکزی یکپارچه · QIE-4</span><b>یک مسیر واحد از داده تا تصمیم</b><p>دریافت داده زنده ← سنجش فشار صعودی و نزولی ← اعتبارسنجی چندبازه‌ای و کیفیت داده ← تصمیم نهایی و ثبت نتیجه</p><small>هیچ زیرقابلیتی به‌تنهایی سیگنال صادر نمی‌کند؛ خروجی فقط پس از عبور از کنترل کیفیت نمایش داده می‌شود.</small></article></section>
 
-<div class="section-title" id="quantum-charts-section"><h2>داشبورد نموداری مرکز کوانتومی</h2><small>نمودارها فقط از نتایج واقعی ثبت‌شده ساخته می‌شوند</small></div><section class="quantum-charts" id="quantum-charts"><div class="chart-card"><div class="empty">پس از دریافت داده بازار، نمودارها به‌روزرسانی می‌شوند.</div></div></section>\n<div class="section-title" id="quantum-assets"><h2>انتخاب ارز برای تحلیل کوانتومی</h2><small>۱۰ ارز پرمعامله اول · سایر ارزها در فهرست جمع‌شونده · USDT Spot</small></div>
+<div class="section-title" id="quantum-charts-section"><h2>داشبورد نموداری مرکز کوانتومی</h2><small>نمودارها فقط از نتایج واقعی ثبت‌شده ساخته می‌شوند</small></div><section class="quantum-charts" id="quantum-charts"><div class="chart-card"><div class="empty">پس از دریافت داده بازار، نمودارها به‌روزرسانی می‌شوند.</div></div></section>
+<div class="section-title" id="quantum-assets"><h2>انتخاب ارز برای تحلیل کوانتومی</h2><small>۱۰ ارز پرمعامله اول · سایر ارزها در فهرست جمع‌شونده · USDT Spot</small></div>
 <section class="panel" id="independent-search"><div class="toolbar"><input id="asset-search" autocomplete="off" placeholder="نام یا نماد ارز را جستجو کن؛ مثل BTC یا Bitcoin…"><button class="btn" id="asset-search-clear" type="button">پاک‌کردن</button><button class="btn" id="asset-search-stop" type="button" hidden>توقف پایش</button></div><div id="asset-search-status" class="muted tiny" style="margin-top:8px">در حال دریافت فهرست دارایی‌های واجد شرایط بازار…</div><div id="asset-search-results" class="asset-search-results"></div><div class="asset-more-wrap"><button class="btn" id="asset-search-more" type="button">نمایش ارزهای بیشتر</button><small id="asset-count-label" class="muted tiny"></small></div></section>
 <div class="section-title" id="quantum-opportunities"><h2>فرصت‌های شناسایی‌شده</h2><small>امتیاز ترکیبی ۰ تا ۱۰۰</small></div>
 <section class="panel"><div class="toolbar"><input id="filter" placeholder="جستجوی نماد ارز…"><select id="direction"><option value="all">همه جهت‌ها</option><option value="bull">سناریوی صعودی</option><option value="bear">سناریوی نزولی</option></select><select id="sort"><option value="score">بالاترین امتیاز</option><option value="volume">بیشترین حجم</option><option value="change">بیشترین تغییر ۲۴ ساعته</option></select><button class="btn" id="export">خروجی CSV</button></div><div class="tablewrap" style="margin-top:12px"><table><thead><tr><th>ارز</th><th>قیمت USDT</th><th>تغییر ۲۴ساعته</th><th>حجم ۲۴ساعته USDT</th><th>جهت سناریو</th><th>امتیاز</th><th>شواهد کلیدی</th><th>جزئیات</th></tr></thead><tbody id="rows"><tr><td colspan="8" class="muted">برای شروع، اسکن بازار را اجرا کنید.</td></tr></tbody></table></div></section>
@@ -401,8 +402,14 @@ async function loadIndependentCatalog(){
   status.textContent="فهرست بازار دریافت شد · "+state.searchUniverse.length.toLocaleString("fa-IR")+" جفت USDT Spot · مرتب‌شده بر اساس حجم ۲۴ساعته.";
   renderAssetSearch();
  }catch(e){
-  status.textContent="دریافت فهرست ارزها ناموفق بود: "+e.message;
-  if(host){host.hidden=false;host.innerHTML='<div class="empty">فهرست ارزها بارگذاری نشد. اتصال Worker یا پاسخ کاتالوگ بازار را بررسی کن.<br><button class="btn" type="button" data-catalog-retry="1">تلاش دوباره برای دریافت فهرست</button></div>'}
+  // Keep the selector usable during temporary catalog outages; these are symbols only, never fabricated prices.
+  if(!state.searchUniverse.length)state.searchUniverse=[
+   {id:"bitcoin",symbol:"BTC",name:"Bitcoin",current_price:0,total_volume:0,hasUsdtMarket:true,marketPairs:[{quote:"USDT"}],_mmpFallback:true},
+   {id:"ethereum",symbol:"ETH",name:"Ethereum",current_price:0,total_volume:0,hasUsdtMarket:true,marketPairs:[{quote:"USDT"}],_mmpFallback:true}
+  ];
+  status.textContent="کاتالوگ کامل فعلاً در دسترس نیست؛ نمادهای پایه BTC و ETH برای انتخاب باقی مانده‌اند. قیمت یا سیگنال ساختگی نمایش داده نمی‌شود.";
+  renderAssetSearch();
+  if(host){host.hidden=false;host.insertAdjacentHTML("beforeend",'<div class="empty"><button class="btn" type="button" data-catalog-retry="1">تلاش دوباره برای دریافت فهرست کامل</button></div>');}
  }
 }
 function renderAssetSearch(){
