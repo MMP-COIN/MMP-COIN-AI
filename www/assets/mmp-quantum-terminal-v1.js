@@ -75,7 +75,6 @@ function init(){
   const footerLink=e.target.closest('a[href="#app-download"],a[href="#contact-us"]');
   if(footerLink){e.preventDefault();const target=footerLink.getAttribute("href");show(appMode?"support":"home",true);requestAnimationFrame(()=>{const node=$(target);if(node)node.scrollIntoView({behavior:"smooth",block:"start"});});}
  });
- window.addEventListener("popstate",()=>show(new URL(location.href).searchParams.get("center")||"home",false));
  if(appDock)appDock.addEventListener("click",e=>{const button=e.target.closest("[data-mmp-app-page]");if(button)show(button.dataset.mmpAppPage,true);});
  if(appMode){
   let touchStart=null;
