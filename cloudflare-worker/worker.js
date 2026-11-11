@@ -142,12 +142,19 @@ function analyzeClosedKlines(rows,interval){
  const duration=({"1m":60000,"3m":180000,"5m":300000,"15m":900000,"1h":3600000,"4h":14400000,"1d":86400000})[interval];
  if(!duration)throw new Error("Unsupported candle interval: "+interval);
  const minimum=interval==="1d"?20:30,now=Date.now();
- const closed=normalizeMarketCandles(rows).filter(row=>Number(row[0])+duration<=now-1000);
+ const normalized=normalizeMarketCandles(rows);
+ const closed=normalized.filter(row=>Number(row[0])+duration<=now-1000);
  if(closed.length<minimum)throw new Error("داده کندل‌های بسته‌شده کافی نیست؛ داده کندل باز برای تحلیل استفاده نمی‌شود.");
  const result=analyzeKlines(closed),lastOpen=Number(closed[closed.length-1][0]),closedAt=lastOpen+duration;
  result.candle_time=new Date(lastOpen).toISOString();
  result.candle_closed_at=new Date(closedAt).toISOString();
  const freshness=assessMarketDataFreshness(closedAt,now,duration*2);result.data_age_ms=freshness.ageMs;result.data_fresh=freshness.fresh;result.data_freshness_reason=freshness.reason;
+ // Keep the active, still-forming candle for chart display; all analysis above remains closed-candle-only.
+ const chartRows=normalized.slice(-250),chartLast=chartRows[chartRows.length-1],chartAge=Math.max(0,now-Number(chartLast?.[0]||0));
+ result.chart_candles=chartRows.map(row=>({time:Math.floor(Number(row[0])/1000),open:Number(row[1]),high:Number(row[2]),low:Number(row[3]),close:Number(row[4]),volume:Number(row[5])||0}));
+ result.chart_data_age_ms=chartAge;
+ result.chart_data_fresh=!!chartLast&&chartAge<=duration*1.5;
+ result.chart_data_freshness_reason=result.chart_data_fresh?"latest candle timestamp is within the live freshness window":"latest candle is older than "+Math.round(duration*1.5/60000)+" minutes";
  result.candle_interval=interval;
  return result;
 }
@@ -1575,9 +1582,12 @@ async function handle(request,env){
   const staleCandles=await readMarketFallback(env,candleCacheKey);
   try{
    const result=await candles(symbol,interval,env,marketType);
-   const payload={symbol,interval,market:marketType,provider:result.data_provider,price:result.price,change_pct:result.change_pct,candles:result.candles.map(c=>({time:Math.floor(c.t/1000),open:c.o,high:c.h,low:c.l,close:c.c,volume:c.v})),data_checked_at:new Date().toISOString(),data_stale:false};
+   if(result.chart_data_fresh!==true)throw new Error("کندل زنده منبع "+String(result.data_provider||"بازار")+" قدیمی است: "+String(result.chart_data_freshness_reason||"freshness check failed"));
+   const chartCandles=Array.isArray(result.chart_candles)&&result.chart_candles.length?result.chart_candles:result.candles.map(c=>({time:Math.floor(c.t/1000),open:c.o,high:c.h,low:c.l,close:c.c,volume:c.v}));
+   const lastChartCandle=chartCandles[chartCandles.length-1],checkedAt=new Date().toISOString();
+   const payload={symbol,interval,market:marketType,provider:result.data_provider,price:result.price,change_pct:result.change_pct,candles:chartCandles,candle_time:lastChartCandle?.time?new Date(Number(lastChartCandle.time)*1000).toISOString():null,data_checked_at:checkedAt,data_age_ms:Number(result.chart_data_age_ms)||0,data_stale:false};
    await writeMarketFallback(env,candleCacheKey,payload,staleCandles,3600000);
-   return json(payload,200,request,{"X-MMP-Cache":"fresh"});
+   return json(payload,200,request,{"X-MMP-Cache":"fresh","X-MMP-Data-Age":String(payload.data_age_ms)});
   }catch(error){
    if(staleCandles?.payload?.candles?.length)return json({...staleCandles.payload,data_stale:true,data_age_ms:staleCandles.ageMs,stale_reason:String(error?.message||"upstream unavailable").slice(0,160)},200,request,{"X-MMP-Cache":"stale","X-MMP-Data-Age":String(staleCandles.ageMs)});
    return json({error:"داده کندلی این ارز فعلاً در دسترس نیست.",detail:String(error?.message||"upstream error").slice(0,220),symbol,interval},502,request);
