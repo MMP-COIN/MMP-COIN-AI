@@ -5749,33 +5749,32 @@ body{background:radial-gradient(ellipse at 74% 0,#1b626755,transparent 29%),radi
  async function loadOrderflow(){
   const symbol=safeSymbol(byId("intel-symbol")?.value||"BTC")||"BTC";
   const status=byId("orderflow-status"),box=byId("orderflow-metrics");
-  if(status)status.textContent="در حال دریافت دفتر سفارش و معاملات یک‌دقیقه‌ای…";
-  const tasks=await Promise.allSettled([
-   getJson("https://api.binance.com/api/v3/depth?symbol="+symbol+"USDT&limit=100"),
-   getJson("https://api.binance.com/api/v3/klines?symbol="+symbol+"USDT&interval=1m&limit=60")
-  ]);
-  const depth=tasks[0].status==="fulfilled"?tasks[0].value:null,klines=tasks[1].status==="fulfilled"?tasks[1].value:null;
-  let bid=0,ask=0,cvd=0,buy=0,sell=0;
-  if(depth){
-   const mid=((Number(depth.bids?.[0]?.[0]||0)+Number(depth.asks?.[0]?.[0]||0))/2);
-   for(const [p,q] of depth.bids||[])if(mid&&Number(p)>=mid*.99)bid+=Number(p)*Number(q);
-   for(const [p,q] of depth.asks||[])if(mid&&Number(p)<=mid*1.01)ask+=Number(p)*Number(q);
+  if(status)status.textContent="در حال دریافت دفتر سفارش و جریان معاملات از Worker…";
+  try{
+   if(!api())throw new Error("نشانی موتور داده تنظیم نشده است");
+   const data=await getJson(api()+"/market-orderflow?symbol="+encodeURIComponent(symbol)+"&market=spot",18000);
+   const depth=data?.depth||{},flow=data?.flow||{};
+   const depthOk=depth.available===true,flowOk=flow.available===true;
+   const bid=Number(depth.bid_usdt)||0,ask=Number(depth.ask_usdt)||0,imbalance=Number(depth.imbalance_pct);
+   const cvd=Number(flow.cvd_usdt),buy=Number(flow.buy_usdt)||0,sell=Number(flow.sell_usdt)||0;
+   if(box){
+    const vals=[depthOk?usd(bid):"دریافت نشد",depthOk?usd(ask):"دریافت نشد",depthOk&&Number.isFinite(imbalance)?fmt(imbalance,1)+"٪":"دریافت نشد",flowOk&&Number.isFinite(cvd)?(cvd>=0?"+":"")+usd(cvd):"دریافت نشد"];
+    box.innerHTML=vals.map((v,i)=>'<div><small>'+["عمق خرید ۱٪","عمق فروش ۱٪","عدم‌تعادل دفتر سفارش","جریان خالص معاملات ۵ دقیقه"] [i]+'</small><b>'+v+'</b><em>'+["Bid liquidity","Ask liquidity","Order-book imbalance","Executed-trade CVD · 5m"][i]+'</em></div>').join("");
+   }
+   const total=buy+sell,buyPct=total>0?buy/total*100:50;
+   if(byId("orderflow-buy-bar"))byId("orderflow-buy-bar").style.width=buyPct+"%";
+   if(byId("orderflow-sell-bar"))byId("orderflow-sell-bar").style.width=(100-buyPct)+"%";
+   if(status){
+    if(depthOk&&flowOk)status.textContent="دفتر سفارش: "+(depth.source||"منبع نامشخص")+" · جریان واقعی: "+(flow.source||"منبع نامشخص")+" · "+Number(flow.trade_count||0).toLocaleString("fa-IR")+" معامله"+(flow.complete===true?" · پوشش کامل پنجره":" · نمونه محدود/ناقص");
+    else if(depthOk||flowOk)status.textContent="داده جریان سفارش ناقص است؛ "+(depthOk?"دفتر سفارش: "+(depth.source||"فعال"):"دفتر سفارش ناموجود")+" · "+(flowOk?"جریان: "+(flow.source||"فعال"):"جریان معاملات ناموجود")+" · "+String(data.errors?.depth||data.errors?.flow||"");
+    else status.textContent="داده معتبر دفتر سفارش یا جریان معاملات دریافت نشد؛ "+String(data.errors?.depth||data.errors?.flow||"منابع در دسترس نیستند");
+   }
+  }catch(error){
+   if(box)box.innerHTML=["عمق خرید ۱٪","عمق فروش ۱٪","عدم‌تعادل دفتر سفارش","جریان خالص معاملات ۵ دقیقه"].map(label=>'<div><small>'+label+'</small><b>—</b><em>داده معتبر در دسترس نیست</em></div>').join("");
+   if(status)status.textContent="دریافت جریان سفارش ناموفق بود: "+String(error?.message||"خطای اتصال");
   }
-  if(Array.isArray(klines)){
-   for(const k of klines){const total=Number(k[5])||0,aggressiveBuy=Number(k[9])||0;const b=aggressiveBuy*Number(k[4]),s=Math.max(0,total-aggressiveBuy)*Number(k[4]);buy+=b;sell+=s;}
-   cvd=buy-sell;
-  }
-  const imbalance=bid+ask?(bid-ask)/(bid+ask)*100:null;
-  if(box){
-   const vals=[depth?usd(bid):"دریافت نشد",depth?usd(ask):"دریافت نشد",imbalance===null?"دریافت نشد":fmt(imbalance,1)+"٪",Array.isArray(klines)?(cvd>=0?"+":"")+usd(cvd):"دریافت نشد"];
-   box.innerHTML=vals.map((v,i)=>'<div><small>'+["عمق خرید ۱٪","عمق فروش ۱٪","عدم‌تعادل دفتر سفارش","جریان خالص خرید/فروش ۶۰ دقیقه"][i]+'</small><b>'+v+'</b><em>'+["Bid liquidity","Ask liquidity","Order-book imbalance","CVD · 1m"][i]+'</em></div>').join("");
-  }
-  const total=buy+sell,buyPct=total?buy/total*100:50;
-  if(byId("orderflow-buy-bar"))byId("orderflow-buy-bar").style.width=buyPct+"%";
-  if(byId("orderflow-sell-bar"))byId("orderflow-sell-bar").style.width=(100-buyPct)+"%";
-  const ok=tasks.filter(x=>x.status==="fulfilled").length;
-  if(status)status.textContent=ok===2?"منبع: Binance Spot · عمق ۱۰۰ سطح و ۶۰ کندل یک‌دقیقه‌ای؛ CVD از حجم خرید تهاجمی برآورد شده است.":ok?"بخشی از داده‌های جریان سفارش در دسترس است؛ ممکن است محدودیت منطقه‌ای یا نرخ درخواست وجود داشته باشد.":"صرافی از این شبکه پاسخ نداد؛ برای جلوگیری از نمایش داده نادرست، مقادیر خالی ماندند.";
  }
+
  async function loadForecast(){
   const symbol=safeSymbol(byId("ai-coin-select")?.value||byId("intel-symbol")?.value||"BTC")||"BTC";
   const summary=byId("forecast-summary"),grid=byId("forecast-grid"),button=byId("forecast-run");
