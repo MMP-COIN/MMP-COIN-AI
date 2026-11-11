@@ -20,7 +20,7 @@ body.mmp-quantum-terminal .dropdown-menu a{display:flex!important;align-items:ce
 body.mmp-quantum-terminal .dropdown-menu a:hover{background:#202c3a!important}
 body.mmp-quantum-terminal .dropdown-menu .menu-section-label{padding:8px 10px;color:var(--mmp-gold)!important;font-size:11px;font-weight:900;letter-spacing:.1em}
 body.mmp-quantum-terminal .dropdown-menu .menu-icon{width:25px;text-align:center;color:var(--mmp-gold2);font-style:normal}
-body.mmp-quantum-terminal .wrap{width:min(1480px,100%)!important;max-width:1480px!important;margin:0 auto!important;padding:clamp(12px,2vw,26px)!important}
+body.mmp-quantum-terminal .wrap{width:min(1480px,100%)!important;max-width:1480px!important;margin:0 auto!important;padding:10px clamp(12px,2vw,26px)!important}
 body.mmp-quantum-terminal .mmp-home-hero{min-height:124px!important;max-height:170px!important;overflow:hidden!important;display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:center!important;gap:12px!important;padding:15px clamp(14px,2vw,24px)!important;margin:0 0 12px!important;border:1px solid #9c7b405c!important;border-radius:17px!important;background:linear-gradient(110deg,#111a27 0%,#101722 58%,#1b1a17 100%)!important}
 body.mmp-quantum-terminal .mmp-home-hero .mmp-hero-copy{min-width:0}
 body.mmp-quantum-terminal .mmp-home-hero .mmp-hero-title{font-size:clamp(19px,2.5vw,29px)!important;line-height:1.35!important;margin:3px 0!important}
