@@ -150,7 +150,7 @@ jobs:
               !workerSource.includes('primaryTrusted=[4,5,6,8].includes(primary)') ||
               !workerSource.includes('const priority=[4,5,6,2,1,3,0]') ||
               !workerSource.includes('priority=[4,8,5,6,2,3,1,7,0]') ||
-              !workerSource.includes('const primaryOrder=preferredOrder.slice(0,1);') ||
+              !workerSource.includes('const primaryIndex=preferredOrder[0]??fallbackPriority[0],primaryOrder=[primaryIndex];') ||
               !workerSource.includes('const fallbackPool=unique([...fallbackPriority.filter(index=>!primaryOrder.includes(index)),...preferredOrder.slice(1),...sources.map((_,index)=>index)]).filter(index=>!primaryOrder.includes(index));') ||
               !workerSource.includes('const rotatedFallback=[...fallbackPool.slice(rotation),...fallbackPool.slice(0,rotation)];') ||
               !workerSource.includes('...primaryOrder,...rotatedFallback') ||
@@ -462,7 +462,7 @@ jobs:
             status=$(curl --silent --show-error --max-time 25 -D /tmp/hunter-cache-headers.txt -o /dev/null -w "%{http_code}" "$WORKER_URL/hunter-universe")
             if [ "$status" != "200" ]; then cat /tmp/hunter-cache-headers.txt; exit 1; fi
           done
-          if ! grep -qi '^cf-cache-status: HIT' /tmp/hunter-cache-headers.txt; then
+          if ! grep -Eqi '^cf-cache-status: HIT|^x-mmp-cache: HIT' /tmp/hunter-cache-headers.txt; then
             cat /tmp/hunter-cache-headers.txt
             echo "Hunter universe edge cache did not return HIT on repeated request." >&2
             exit 1
