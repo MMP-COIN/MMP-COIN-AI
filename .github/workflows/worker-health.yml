@@ -67,6 +67,10 @@ jobs:
           const megaLiquid = mod.calculateMarketScanPriority({hunterChange24h:0,total_volume:2000000000});
           if (!(activeMover > megaLiquid)) throw new Error("Active movers must be prioritized ahead of static high-volume assets");
           const bars = Array.from({length:100},(_,i)=>{const c=100+i*.12+Math.sin(i/4)*.3;return [1700000000000+i*60000,c-.04,c+.2,c-.2,c,1000+i*3];});
+          const early = mod.detectEarlyMovePressure({rangeCompression:0.55,volumeAcceleration:2.4,flowImbalance:-0.65,dataFresh:true});
+          if (early.state !== "high_pressure" || early.direction !== "down" || early.available_inputs !== 3) throw new Error("Early downside pressure detector failed");
+          const staleEarly = mod.detectEarlyMovePressure({rangeCompression:0.5,volumeAcceleration:2.0,flowImbalance:0.7,dataFresh:false});
+          if (staleEarly.state !== "insufficient_data") throw new Error("Early pressure must fail closed on stale data");
           const indicators = mod.calculateQuantumIndicators(bars);
           if (!indicators.available || !Number.isFinite(indicators.rsi14) || !Number.isFinite(indicators.ema50) || !Number.isFinite(indicators.macdHistogram) || !Number.isFinite(indicators.atrPct) || !Number.isFinite(indicators.vwap)) throw new Error("QIE 4 RSI/EMA/MACD/ATR/VWAP calculation failed");
           const marketSource = fs.readFileSync("cloudflare-worker/market-data-core.js", "utf8");
@@ -103,7 +107,7 @@ jobs:
           if (!workerSource.includes("digital-hunter-futures-cron-heartbeat") || !workerSource.includes("markets:{spot,futures}")) throw new Error("Hunter status endpoint must merge independent Spot/Futures heartbeats");
           if (!radarSource.includes("cacheAge<=6*60*60*1000") || !radarSource.includes("cached universe; live candles") || !radarSource.includes("radar:last-error")) throw new Error("Radar must keep a recent cached universe fallback and record failures");
           if (!radarSource.includes("async function writeRadarRecord") || !radarSource.includes("env.ADMIN_DB.prepare") || radarSource.includes("RADAR_KV.put")) throw new Error("Radar persistence must use D1 and keep KV read-only");
-          if (!workerSource.includes("previous?.ageMs<minIntervalMs") || !(workerSource.includes("previous=null,minIntervalMs=60000") || workerSource.includes("previous=null,minIntervalMs=21600000")) || !workerSource.includes("getUTCHours()!==0||now.getUTCMinutes()!==15") || workerSource.includes("DELETE FROM market_data_cache WHERE cache_key = ?") || workerSource.includes("ORDER BY cached_at DESC LIMIT 2000") || !workerSource.includes("staleCandles,30000")) throw new Error("Market fallback D1 writes must be throttled and cleanup bounded");
+          if (!workerSource.includes("previous?.ageMs<minIntervalMs") || !(workerSource.includes("previous=null,minIntervalMs=60000") || workerSource.includes("previous=null,minIntervalMs=21600000")) || !workerSource.includes("getUTCHours()!==0||now.getUTCMinutes()!==15") || workerSource.includes("DELETE FROM market_data_cache WHERE cache_key = ?") || workerSource.includes("ORDER BY cached_at DESC LIMIT 2000") || !(workerSource.includes("staleCandles,30000") || workerSource.includes("staleCandles,3600000"))) throw new Error("Market fallback D1 writes must be throttled and cleanup bounded");
           if (!workerSource.includes("/hunter-combined-snapshot") || !htmlSource.includes("/hunter-combined-snapshot") || !htmlSource.includes("setInterval(load,600000)") || !htmlSource.includes("setInterval(refreshAll, 600000)") || !htmlSource.includes("20*60*1000")) throw new Error("Client polling must use combined Hunter snapshots and bounded refresh intervals");
           if (!workerSource.includes("buildLocalAnalysisFallback") || !workerSource.includes("Local quantitative fallback") || !workerSource.includes('action:"WAIT"')) throw new Error("AI analysis must degrade safely when all providers are unavailable");
 
