@@ -756,7 +756,8 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
  const symbolHash=String(symbol).split("").reduce((sum,char)=>sum+char.charCodeAt(0),0);
  const rotation=fallbackPool.length?(symbolHash+Math.floor(Date.now()/60000))%fallbackPool.length:0;
  const rotatedFallback=[...fallbackPool.slice(rotation),...fallbackPool.slice(0,rotation)];
- const sourceLimit=Math.min(2,sources.length),orderedIndices=unique([...primaryOrder,...rotatedFallback]),orderedSources=orderedIndices.map(index=>sources[index]).filter(Boolean).slice(0,sourceLimit),verified=[];
+ // Try the preferred pair first, then two independent fallback exchanges. A failed preferred pair must not end the scan before Gate/MEXC/KuCoin can confirm the same closed candle.
+ const sourceLimit=Math.min(4,sources.length),orderedIndices=unique([...primaryOrder,...rotatedFallback]),orderedSources=orderedIndices.map(index=>sources[index]).filter(Boolean).slice(0,sourceLimit),verified=[];
  let selectedPair=null,bestObservedPair=null;
  const evaluatePairs=()=>{
   const pairs=[];
