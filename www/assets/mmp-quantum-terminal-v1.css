@@ -205,3 +205,38 @@ body.mmp-quantum-terminal .mmp-center-jump{display:inline-flex!important;align-i
  body.mmp-quantum-terminal .mmp-center-back{flex:0 0 auto!important;width:auto!important;min-width:116px!important}
  body.mmp-quantum-terminal .mmp-center-jump{flex:0 0 auto!important}
 }
+
+
+/* Market Command currency switch: keep Toman / USDT side-by-side in every viewport.
+   Scoped to the center toolbar so other cards and menus retain their existing layout. */
+body.mmp-quantum-terminal #mmp-center-toolbar .mmp-center-currency{
+  display:inline-flex!important;
+  flex-direction:row!important;
+  flex-wrap:nowrap!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:4px!important;
+  width:max-content!important;
+  min-width:max-content!important;
+  max-width:100%!important;
+  flex:0 0 auto!important;
+  white-space:nowrap!important;
+  writing-mode:horizontal-tb!important;
+}
+body.mmp-quantum-terminal #mmp-center-toolbar .mmp-center-currency>button{
+  display:inline-flex!important;
+  flex:0 0 auto!important;
+  align-items:center!important;
+  justify-content:center!important;
+  width:auto!important;
+  min-width:76px!important;
+  min-height:34px!important;
+  margin:0!important;
+  white-space:nowrap!important;
+  writing-mode:horizontal-tb!important;
+  text-orientation:mixed!important;
+}
+@media(max-width:620px){
+  body.mmp-quantum-terminal #mmp-center-toolbar .mmp-center-currency{flex-shrink:0!important}
+  body.mmp-quantum-terminal #mmp-center-toolbar .mmp-center-currency>button{min-width:70px!important;padding:7px 9px!important}
+}
