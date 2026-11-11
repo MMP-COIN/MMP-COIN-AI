@@ -251,3 +251,7 @@ body.mmp-app-mode .mmp-app-page-dock button[aria-current="page"] i{color:#17130b
 body.mmp-app-mode #app-download a[href*="/releases/latest/download/app-release.apk"]{display:none!important}
 body.mmp-app-mode #app-download{margin-bottom:112px!important}
 @media(max-width:360px){body.mmp-app-mode .mmp-app-page-dock button{font-size:7px}body.mmp-app-mode .mmp-app-page-dock button i{font-size:14px}}
+
+/* Native app: keep the global header currency selector as the single source of display currency. */
+body.mmp-app-mode #mmp-center-toolbar .mmp-center-currency{display:none!important}
+body.mmp-app-mode #mmp-center-toolbar .mmp-center-actions{gap:7px!important}
