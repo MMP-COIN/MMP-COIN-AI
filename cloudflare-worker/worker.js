@@ -1710,15 +1710,11 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/futures-engine-heal
   try{const response=await env.FUTURES_ENGINE.fetch(new Request("https://futures-engine/health"));const payload=await response.json();return json({...payload,service_binding:"connected"},response.status,request);}catch(error){return json({service_binding:"error",detail:String(error?.message||error).slice(0,180)},502,request);}
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/health"){
-  const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"health");
-  const limited=rateLimitReply(limitResult,request);if(limited)return limited;
-  const probe=async(url)=>{try{const r=await fetch(url,{headers:{"Accept":"application/json, text/plain, */*","User-Agent":"MMP-COIN-AI/1.0","Accept-Language":"en-US,en;q=0.9"}});return {ok:r.ok,status:r.status};}catch(e){return {ok:false,error:e.message||"network error"};}};
-  const [spot,futures,bybit]=await Promise.all([
-   probe("https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1h&limit=1"),
-   probe("https://fapi.binance.com/fapi/v1/klines?symbol=BTCUSDT&interval=1h&limit=1"),
-   probe("https://api.bybit.com/v5/market/kline?category=linear&symbol=BTCUSDT&interval=60&limit=1")
-  ]);
-  return json({service:"MMP COIN AI",worker:"online",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,ai_binding:!!env.AI,futures_engine_binding:!!env.FUTURES_ENGINE,market_cache_binding:!!env.MARKET_CACHE_DB,providers:{spot_binance:spot,futures_binance:futures,futures_bybit_fallback:bybit},checked_at:new Date().toISOString()},200,request);
+  // Keep liveness checks deterministic and independent of upstream exchange/CDN availability.
+  // Provider reachability is reported by /connections-health, not by this lightweight route.
+  return json({service:"MMP COIN AI",worker:"online",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,
+   ai_binding:!!env.AI,futures_engine_binding:!!env.FUTURES_ENGINE,market_cache_binding:!!env.MARKET_CACHE_DB,
+   checked_at:new Date().toISOString()},200,request);
  }
  if(request.method!=="POST")return json({error:"Method not allowed"},405,request);
  const limitResult=await checkRateLimit(env.AI_ANALYSIS_LIMITER,request,"ai-analysis");
