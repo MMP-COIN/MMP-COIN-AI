@@ -543,7 +543,7 @@ async function refreshLocalTether(){
  localStorage.setItem("mmp_local_usdt_last_toman",String(current));stateEl.textContent=(data.status==="multi_source"?"اتصال چندمنبعی":data.status==="single_source"?"اتصال تک‌منبعی":"بدون منبع معتبر")+" · پایش سروری هر دقیقه · "+new Date(data.checked_at).toLocaleTimeString("fa-IR");
  }catch(error){stateEl.textContent="اتصال نرخ داخلی ناموفق";alertEl.textContent="نرخ زنده تتر ایران دریافت نشد: "+error.message;alertEl.style.color="var(--yellow)";}
 }
-renderEngines(null);renderLedger();renderQuantumCharts();loadIndependentCatalog();startLiveMonitor();if(state.ledger.length)log("حافظه محلی شامل "+state.ledger.length+" پیش‌بینی قبلی است.");refreshLocalTether();setInterval(refreshLocalTether,5000);
+renderEngines(null);renderLedger();renderQuantumCharts();loadIndependentCatalog();startLiveMonitor();if(state.ledger.length)log("حافظه محلی شامل "+state.ledger.length+" پیش‌بینی قبلی است.");refreshLocalTether();setInterval(refreshLocalTether,60000);
 })();
 </script>
 
