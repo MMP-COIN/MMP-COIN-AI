@@ -3069,7 +3069,10 @@ async function mmpLoadChart(force=false){
   if(seq!==mmpChartState.seq)return;if(!payload||!Array.isArray(payload.candles))throw new Error("پاسخ کندلی نامعتبر است");
   const rows=payload.candles.map(c=>({time:Number(c.time),open:Number(c.open),high:Number(c.high),low:Number(c.low),close:Number(c.close),volume:Number(c.volume)||0})).filter(c=>Number.isFinite(c.time)&&c.time>0&&[c.open,c.high,c.low,c.close].every(v=>Number.isFinite(v)&&v>0)&&c.high>=Math.max(c.open,c.close,c.low)&&c.low<=Math.min(c.open,c.close,c.high)).sort((a,b)=>a.time-b.time);
   const unique=rows.filter((c,i)=>i===0||c.time>rows[i-1].time);if(unique.length<20)throw new Error("تعداد کندل معتبر کافی نیست ("+unique.length+")");
-  const clean={...payload,candles:unique};mmpChartState.cache.set(key,{at:now,payload:clean});mmpRenderChart(clean);
+  const durationMs=({"1m":60000,"3m":180000,"5m":300000,"15m":900000,"1h":3600000,"4h":14400000,"1d":86400000})[interval]||3600000;
+  const candleAgeMs=Math.max(0,Date.now()-unique[unique.length-1].time*1000);
+  if(payload.data_stale===true||candleAgeMs>durationMs*1.5)throw new Error("آخرین کندل قدیمی است · سن کندل "+Math.round(candleAgeMs/60000)+" دقیقه؛ داده کهنه به‌عنوان زنده پذیرفته نشد.");
+  const clean={...payload,candles:unique,data_age_ms:Number(payload.data_age_ms)||candleAgeMs};mmpChartState.cache.set(key,{at:now,payload:clean});mmpRenderChart(clean);
  }catch(error){if(controller.signal.aborted||seq!==mmpChartState.seq)return;const old=mmpChartState.cache.get(key);if(old){mmpRenderChart({...old.payload,data_stale:true});mmpChartStatus("دریافت تازه ناموفق؛ آخرین داده ذخیره‌شده نمایش داده می‌شود · "+String(error.message||error),"warning");}else mmpChartStatus("داده نمودار دریافت نشد: "+String(error.message||error)+" · تازه‌سازی را دوباره بزن.","error");}
  finally{clearTimeout(timer);}
 }
@@ -3081,12 +3084,12 @@ function mmpRenderChart(payload){
  st.emaFast.setData(st.showEMA?mmpChartEma(rows,20):[]);st.emaSlow.setData(st.showEMA?mmpChartEma(rows,50):[]);st.volume.applyOptions({visible:st.showVolume});st.rsiSeries.setData(mmpChartRsi(rows));
  if(newView||!range){st.chart.timeScale().fitContent();st.rsiChart.timeScale().fitContent();}else{try{st.chart.timeScale().setVisibleLogicalRange(range);}catch(e){}}
  st.viewKey=viewKey;
- const last=rows[rows.length-1],date=new Date(last.time*1000).toLocaleString("fa-IR"),stale=payload.data_stale?" · داده کش‌شده/قدیمی":" · داده تازه";
- mmpChartStatus("منبع: "+(payload.provider||"Worker")+" · "+rows.length+" کندل معتبر · آخرین کندل: "+date+stale,payload.data_stale?"warning":"ok");
+ const last=rows[rows.length-1],date=new Date(last.time*1000).toLocaleString("fa-IR"),ageMs=Math.max(0,Number(payload.data_age_ms)||Date.now()-last.time*1000),ageLabel=ageMs<60000?"کمتر از یک دقیقه":Math.round(ageMs/60000).toLocaleString("fa-IR")+" دقیقه",stale=payload.data_stale?" · داده کش‌شده/قدیمی":" · دریافت زنده از منبع";
+ mmpChartStatus("منبع: "+(payload.provider||"Worker")+" · "+rows.length+" کندل معتبر · آخرین کندل: "+date+" · سن داده: "+ageLabel+stale,payload.data_stale?"warning":"ok");
  const link=document.getElementById("chart-replay-link");if(link){const p=String(payload.provider||"").toLowerCase(),ex=p.includes("bitget")?"BITGET":p.includes("bybit")?"BYBIT":p.includes("okx")?"OKX":p.includes("mexc")?"MEXC":"BINANCE";link.href="https://www.tradingview.com/chart/?symbol="+encodeURIComponent(ex+":"+payload.symbol);}
  document.querySelectorAll("[data-chart-tf]").forEach(b=>b.classList.toggle("active",b.dataset.chartTf===st.interval));
 }
-function initTradingView(){mmpLoadChart(true);if(mmpChartState.refreshTimer)clearInterval(mmpChartState.refreshTimer);mmpChartState.refreshTimer=setInterval(()=>{if(!document.hidden&&document.getElementById("chart-section")?.getBoundingClientRect().top<window.innerHeight+600)mmpLoadChart(false);},300000);}
+function initTradingView(){mmpLoadChart(true);if(mmpChartState.refreshTimer)clearInterval(mmpChartState.refreshTimer);mmpChartState.refreshTimer=setInterval(()=>{if(!document.hidden&&document.getElementById("chart-section")?.getBoundingClientRect().top<window.innerHeight+600)mmpLoadChart(false);},60000);}
 function changeTradingViewSymbol(){mmpLoadChart(true);}
 function mmpSetChartInterval(value){if(!["1m","5m","15m","1h","4h","1d"].includes(value))return;mmpChartState.interval=value;mmpLoadChart(true);}
 function mmpSetChartMarket(value){mmpChartState.market=value==="futures"?"futures":"spot";mmpLoadChart(true);}
