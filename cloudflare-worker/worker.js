@@ -1883,10 +1883,15 @@ async function readLocalTetherState(env){
 }
 async function monitorLocalTether(env){
  if(!env.ADMIN_DB)return;
- const sample=await fetchLocalTetherSnapshot(),previous=await readLocalTetherState(env),current=Number(sample.median_toman),prior=Number(previous?.median_toman);
+ const sample=await fetchLocalTetherSnapshot(),previous=await readLocalTetherState(env),current=Number(sample.median_toman);
  if(!(current>0))return;
- const change=prior>0?(current/prior-1)*100:null,alert=change!==null&&Math.abs(change)>=2.5,now=new Date().toISOString();
- const payload={...sample,previous_toman:prior>0?prior:null,change_pct:change,alert,alert_at:alert?now:(previous?.alert_at||null),monitor:"server-cron-1m"};
+ const priorPrices={...(previous?.last_prices||{})},changes=[];
+ for(const source of sample.sources.filter(x=>x.fresh&&Number(x.price_toman)>0)){
+  const prior=Number(priorPrices[source.exchange]);if(prior>0)changes.push({exchange:source.exchange,previous:prior,current:Number(source.price_toman),pct:(Number(source.price_toman)/prior-1)*100});
+  priorPrices[source.exchange]=Number(source.price_toman);
+ }
+ const shock=changes.find(x=>Math.abs(x.pct)>=2.5),change=shock?.pct??(changes[0]?.pct??null),now=new Date().toISOString();
+ const payload={...sample,previous_toman:Number(previous?.median_toman)||null,change_pct:change,alert:!!shock,alert_exchange:shock?.exchange||null,alert_at:shock?now:(previous?.alert_at||null),last_prices:priorPrices,monitor:"server-cron-1m"};
  await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind("local-tether-watch",JSON.stringify(payload),now).run();
 }
 async function runDigitalHunterCron(event,env){
