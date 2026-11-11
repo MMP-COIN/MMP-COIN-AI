@@ -96,6 +96,7 @@ jobs:
           const workerSource = fs.readFileSync("cloudflare-worker/worker.js", "utf8");
           const htmlSource = fs.readFileSync("www/index.html", "utf8");
           if (!workerSource.includes("function emaSeries(values,period)") || workerSource.includes("closes.slice(0,i+1)")) throw new Error("Multi-timeframe MACD must use linear-time EMA series, not quadratic recomputation");
+          if (!workerSource.includes("const ASSET_SYMBOL_OVERRIDES=Object.freeze(")) throw new Error("AI analyzer must define safe asset-id to ticker overrides before request parsing");
 
           const radarSource = fs.readFileSync("cloudflare-worker/radar-worker.js", "utf8");
           const futuresSource = fs.readFileSync("cloudflare-worker/futures-worker.js", "utf8");
