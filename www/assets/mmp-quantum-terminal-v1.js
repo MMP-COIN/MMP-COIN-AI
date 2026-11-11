@@ -1,7 +1,7 @@
 (function(){
 "use strict";
 const CENTERS={
- command:{title:"فرماندهی بازار",en:"MARKET COMMAND",desc:"نمای کلی بازار، دارایی‌های شاخص و نرخ تتر به تومان",icon:"◈",sections:["mmp-home-hero","market-snapshot"],jumps:[]},
+ command:{title:"فرماندهی بازار",en:"MARKET COMMAND",desc:"نمای کلی بازار، دارایی‌های شاخص و نرخ تتر به تومان",icon:"◈",sections:["mmp-home-hero","market-snapshot"],jumps:[["نمای کلی بازار","#mmp-home-hero"],["قیمت‌های شاخص","#market-snapshot"],["بیت‌کوین","#mmp-btc-card"],["اتریوم","#mmp-eth-card"],["تتر به تومان","#mmp-usdt-card"],["اونس طلا","#mmp-gold-card"]]},
  hunter:{title:"شکار بازار",en:"QUANTUM HUNTER",desc:"رادار، شکارچی اسپات و فیوچرز و آزمایشگاه مومنتوم",icon:"⌖",sections:["opportunities","market-hunter","boom-hunter"],jumps:[["رادار","#opportunities"],["شکارچی","#market-hunter"],["مومنتوم","#boom-hunter"]]},
  charts:{title:"تحلیل تکنیکال",en:"ADVANCED CHARTING",desc:"نمودار زنده، کندل‌ها و تحلیل چندتایم‌فریمی",icon:"▥",sections:["chart-section"],jumps:[["نمودار","#chart-section"]]},
  flow:{title:"پول هوشمند و نقدینگی",en:"SMART MONEY & FLOW",desc:"مشتقات، دفتر سفارش، جریان معاملات و نقدینگی",icon:"◉",sections:["market-intelligence"],jumps:[["مشتقات","#derivatives-panel"],["Order Flow","#orderflow-panel"],["سناریوهای کندلی","#candle-intelligence"],["نهنگ‌ها","#whale-panel"]]},
