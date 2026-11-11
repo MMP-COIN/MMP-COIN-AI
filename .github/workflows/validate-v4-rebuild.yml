@@ -26,11 +26,11 @@ jobs:
         run: |
           node --input-type=module <<'JS'
           const checks = [
-            ["main health", "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/connections-health", d => Array.isArray(d.checks) && d.checks.length >= 10],
-            ["hunter snapshot", "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/hunter-combined-snapshot", d => !!d.spot && !!d.futures && Array.isArray(d.spot.signals) && Array.isArray(d.futures.signals)],
-  ["market proxy", "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-proxy?source=okx-tickers", d => Array.isArray(d.data) && d.data.some(x => x.instId === "BTC-USDT" && Number(x.last) > 0)],
+            ["main health", "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/connections-health", d => Array.isArray(d.checks) && d.checks.length >= 10 && d.checks.some(x => x.status === "ok" || x.status === "slow")],
+            ["hunter snapshot", "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/hunter-combined-snapshot", d => !!d.spot && !!d.futures && Array.isArray(d.spot.signals) && Array.isArray(d.futures.signals) && Number(d.spot.universe_count) > 0 && Number(d.futures.universe_count) > 0],
+            ["market proxy", "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-proxy?source=okx-tickers", d => Array.isArray(d.data) && d.data.some(x => x.instId === "BTC-USDT" && Number(x.last) > 0)],
             ["radar health", "https://mmp-coin-ai-radar.mehrdadmohammadi1988.workers.dev/health", d => d.worker === "online"],
-            ["radar snapshot", "https://mmp-coin-ai-radar.mehrdadmohammadi1988.workers.dev/fast-radar-snapshot", d => Array.isArray(d.signals)],
+            ["radar snapshot", "https://mmp-coin-ai-radar.mehrdadmohammadi1988.workers.dev/fast-radar-snapshot", d => Array.isArray(d.signals) && !!d.engine && !!d.engine_version && Number(d.universe_count) > 0 && !!d.scanned_at],
                   ];
           for (const [name, url, valid] of checks) {
             const response = await fetch(url, {headers: {accept: "application/json"}});
@@ -39,16 +39,24 @@ jobs:
             if (!valid(data)) throw new Error(name + " returned an unexpected payload");
             console.log("PASS", name);
           }
-          const origin = "https://mmp-coin.github.io";
-          for (const url of [
+          const mainEndpoints = [
             "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/connections-health",
             "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/hunter-combined-snapshot",
-          ]) {
-            const response = await fetch(url, {method: "OPTIONS", headers: {Origin: origin, "Access-Control-Request-Method": "GET"}});
-            if (response.headers.get("access-control-allow-origin") !== origin)
-              throw new Error("CORS origin rejected for " + new URL(url).pathname);
-            console.log("PASS CORS", new URL(url).pathname);
+          ];
+          for (const origin of ["https://mmp-coin.github.io", "capacitor://localhost"]) {
+            for (const url of mainEndpoints) {
+              const response = await fetch(url, {method: "OPTIONS", headers: {Origin: origin, "Access-Control-Request-Method": "GET"}});
+              if (response.headers.get("access-control-allow-origin") !== origin)
+                throw new Error("CORS origin rejected for " + origin + " " + new URL(url).pathname);
+              console.log("PASS CORS", origin, new URL(url).pathname);
+            }
           }
+          const radarCors = await fetch("https://mmp-coin-ai-radar.mehrdadmohammadi1988.workers.dev/fast-radar-snapshot", {
+            method: "OPTIONS", headers: {Origin: "capacitor://localhost", "Access-Control-Request-Method": "GET"}
+          });
+          if (radarCors.headers.get("access-control-allow-origin") !== "*")
+            throw new Error("Radar CORS policy rejected Capacitor origin");
+          console.log("PASS Radar CORS wildcard");
           JS
       - name: Validate rebuild structure and assets
         run: |
