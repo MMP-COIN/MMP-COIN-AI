@@ -15,8 +15,18 @@ export default {
  },
  async scheduled(event,env){
   if(!env.ADMIN_DB)throw new Error("ADMIN_DB binding missing");
-  const result=await refreshDigitalHunterUniverses(env);
-  console.log("Hunter universe refresh",JSON.stringify({status:result.status,updated_at:result.updated_at,markets:result.markets,errors:result.errors,cron:event?.cron||""}));
-  if(result.status==="error")throw new Error("Hunter universe refresh failed: "+JSON.stringify(result.errors));
+  const id="digital-hunter-universe-refresh-heartbeat",started=Date.now(),cron=event?.cron||"*/15 * * * *";
+  const save=payload=>env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(id,JSON.stringify(payload),payload.updated_at||new Date().toISOString()).run();
+  await save({status:"started",cron,scheduledTime:event?.scheduledTime||null,startedAt:new Date(started).toISOString(),updated_at:new Date(started).toISOString()});
+  try{
+   const result=await refreshDigitalHunterUniverses(env),finished=Date.now();
+   await save({status:result.status,cron,scheduledTime:event?.scheduledTime||null,startedAt:new Date(started).toISOString(),finishedAt:new Date(finished).toISOString(),updated_at:new Date(finished).toISOString(),markets:result.markets,errors:result.errors});
+   console.log("Hunter universe refresh",JSON.stringify({status:result.status,updated_at:result.updated_at,markets:result.markets,errors:result.errors,cron}));
+   if(result.status==="error")throw new Error("Hunter universe refresh failed: "+JSON.stringify(result.errors));
+  }catch(error){
+   const finished=Date.now(),message=String(error?.message||error).slice(0,240);
+   await save({status:"error",cron,scheduledTime:event?.scheduledTime||null,startedAt:new Date(started).toISOString(),finishedAt:new Date(finished).toISOString(),updated_at:new Date(finished).toISOString(),error:message});
+   throw error;
+  }
  }
 };
