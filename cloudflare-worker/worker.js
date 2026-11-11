@@ -1932,16 +1932,19 @@ async function runDigitalHunterCron(event,env){
 export default {
  fetch:handle,
  async scheduled(event,env,ctx){
-  // Cron events can run for up to 15 minutes. Await the work in the handler
-  // instead of returning immediately and relying on waitUntil's 30-second grace.
+  // The analyzer's minute Cron is the confirmed scheduler for both Hunter universes.
+  // Refresh the shared Spot/Futures universe every 15 minutes without relying on
+  // a separate Cron-only Worker whose schedule is not being invoked.
   const cleanup=cleanupMarketFallbackCache(env);
   const localTether=monitorLocalTether(env).catch(error=>console.error("Local Tether server monitor failed:",error?.message||error));
+  const scheduledAt=Number(event?.scheduledTime)||Date.now(),minute=new Date(scheduledAt).getUTCMinutes();
+  const universeRefresh=minute%15===0?refreshDigitalHunterUniverses(env).catch(error=>console.error("Hunter universe refresh failed:",error?.message||error)):Promise.resolve();
   try{
    await runDigitalHunterCron(event,env,ctx);
   }catch(error){
    console.error("Digital Hunter scheduled cycle failed:",error?.message||error);
    throw error;
   }
-  await Promise.allSettled([cleanup,localTether]);
+  await Promise.allSettled([cleanup,localTether,universeRefresh]);
  }
 };
