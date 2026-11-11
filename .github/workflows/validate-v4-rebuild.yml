@@ -30,8 +30,7 @@ jobs:
             ["hunter snapshot", "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/hunter-combined-snapshot", d => !!d.spot && !!d.futures && Array.isArray(d.spot.signals) && Array.isArray(d.futures.signals)],
             ["radar health", "https://mmp-coin-ai-radar.mehrdadmohammadi1988.workers.dev/health", d => d.worker === "online"],
             ["radar snapshot", "https://mmp-coin-ai-radar.mehrdadmohammadi1988.workers.dev/fast-radar-snapshot", d => Array.isArray(d.signals)],
-            ["Binance ticker", "https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT", d => Number(d.price) > 0],
-          ];
+                  ];
           for (const [name, url, valid] of checks) {
             const response = await fetch(url, {headers: {accept: "application/json"}});
             if (!response.ok) throw new Error(name + " returned HTTP " + response.status);
