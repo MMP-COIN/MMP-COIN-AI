@@ -4064,7 +4064,7 @@ async function runAiAnalysis(force=false){
   const timeout=setTimeout(()=>controller.abort(),55000);
   let res,data;
   try{
-   res=await fetch(AI_ANALYSIS_ENDPOINT+"/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({coin_id:c.id,symbol:c.symbol.toUpperCase(),name:c.name,market_mode:selectedMode,force_refresh:force}),signal:controller.signal});
+   res=await fetch(AI_ANALYSIS_ENDPOINT+"/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({coin_id:c.id,symbol:c.symbol.toUpperCase(),name:c.name,market_mode:selectedMode}),signal:controller.signal});
    // Keep the timeout active until the complete response body has been read.
    data=await res.json();
   }finally{clearTimeout(timeout);}
