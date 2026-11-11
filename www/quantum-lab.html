@@ -517,11 +517,12 @@ async function refreshLocalTether(){
  const data=await response.json(),valid=(data.sources||[]).filter(x=>x.fresh&&Number(x.price_toman)>0);if(!valid.length)throw new Error("هیچ منبع داخلی نرخ معتبر نداد");
  const current=Number(data.median_toman)||Number(valid[0].price_toman),previous=Number(localStorage.getItem("mmp_local_usdt_last_toman")||0);
  priceEl.textContent=Math.round(current).toLocaleString("fa-IR")+" تومان";sourcesEl.textContent=valid.length.toLocaleString("fa-IR")+" / ۲";
- if(previous>0){const pct=(current/previous-1)*100;changeEl.textContent=(pct>0?"+":"")+pct.toFixed(2)+"٪";changeEl.style.color=pct>=0?"var(--green)":"var(--red)";
- if(Math.abs(pct)>=2.5){alertEl.textContent="⚠️ شوک قیمت تتر ایران: "+(pct>0?"جهش ":"ریزش ")+Math.abs(pct).toFixed(2)+"٪ نسبت به نمونه قبلی · قبلی "+Math.round(previous).toLocaleString("fa-IR")+" · فعلی "+Math.round(current).toLocaleString("fa-IR")+" تومان";alertEl.style.color="var(--red)";}
+ if(previous>0){const pct=(current/previous-1)*100,serverPct=Number(data.server_change_pct);changeEl.textContent=(pct>0?"+":"")+pct.toFixed(2)+"٪";changeEl.style.color=pct>=0?"var(--green)":"var(--red)";
+ if(data.server_alert){alertEl.textContent="⚠️ هشدار سروری تتر ایران: "+(serverPct>=0?"جهش ":"ریزش ")+Math.abs(serverPct).toFixed(2)+"٪ در پایش مستقل یک‌دقیقه‌ای؛ این هشدار حتی بدون باز بودن صفحه ثبت می‌شود.";alertEl.style.color="var(--red)";}
+ else if(Math.abs(pct)>=2.5){alertEl.textContent="⚠️ شوک قیمت تتر ایران: "+(pct>0?"جهش ":"ریزش ")+Math.abs(pct).toFixed(2)+"٪ نسبت به نمونه قبلی · قبلی "+Math.round(previous).toLocaleString("fa-IR")+" · فعلی "+Math.round(current).toLocaleString("fa-IR")+" تومان";alertEl.style.color="var(--red)";}
  else{alertEl.textContent="آخرین تغییر: "+(pct>0?"+":"")+pct.toFixed(2)+"٪ · زیر آستانه هشدار شوک.";alertEl.style.color="var(--muted)";}
  }else{changeEl.textContent="در حال ساخت مبنا";alertEl.textContent="نمونه مبنا ثبت شد؛ پایش تغییرات سریع آغاز شد.";}
- localStorage.setItem("mmp_local_usdt_last_toman",String(current));stateEl.textContent=(data.status==="multi_source"?"اتصال چندمنبعی":"اتصال تک‌منبعی")+" · "+new Date(data.checked_at).toLocaleTimeString("fa-IR");
+ localStorage.setItem("mmp_local_usdt_last_toman",String(current));stateEl.textContent=(data.status==="multi_source"?"اتصال چندمنبعی":data.status==="single_source"?"اتصال تک‌منبعی":"بدون منبع معتبر")+" · پایش سروری هر دقیقه · "+new Date(data.checked_at).toLocaleTimeString("fa-IR");
  }catch(error){stateEl.textContent="اتصال نرخ داخلی ناموفق";alertEl.textContent="نرخ زنده تتر ایران دریافت نشد: "+error.message;alertEl.style.color="var(--yellow)";}
 }
 renderEngines(null);renderLedger();renderQuantumCharts();loadIndependentCatalog();startLiveMonitor();if(state.ledger.length)log("حافظه محلی شامل "+state.ledger.length+" پیش‌بینی قبلی است.");refreshLocalTether();setInterval(refreshLocalTether,5000);
