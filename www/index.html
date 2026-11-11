@@ -4066,67 +4066,35 @@ let unifiedAssetCatalogCache=[];
 let hunterMetadataCache={expires:0,coins:[]};
 let fastRadarBusy=false,fastRadarLastRun=0,fastRadarLastMessage="در انتظار اولین پایش سریع",fastRadarCursor=0;
 async function fetchFastCandles(symbol,coin){
- const base=String(symbol||"").toUpperCase();
- const domestic=!!(coin?.hasDomesticMarket&&coin?.hasUsdtMarket!==true);
- const pair=base+"USDT";
- // مسیر تجمیع‌شده خود MMP اولویت دارد؛ این مسیر از محدودیت CORS و مسدودشدن
- // درخواست‌های مستقیم مرورگر به بعضی صرافی‌ها جلوگیری می‌کند.
- try{
-  const marketSymbol=domestic?base+"IRT":pair;
-  const local=await hunterFetchJson(AI_ANALYSIS_ENDPOINT+"/market-candles?symbol="+encodeURIComponent(marketSymbol)+"&interval=1m",16000);
-  const candles=Array.isArray(local?.candles)?local.candles:[];
-  if(candles.length>=25){
-   const rows=candles.map(c=>{const t=Number(c.time);return [t<1e12?t*1000:t,Number(c.open),Number(c.high),Number(c.low),Number(c.close),Number(c.volume)||0];}).sort((a,b)=>a[0]-b[0]);
-   if(rows.length>=25&&rows.every(row=>row.slice(1,6).every(Number.isFinite)&&row[4]>0)){
-    return {rows,provider:local.provider|| (domestic?"Nobitex Spot":"MMP Market API")};
-   }
-  }else if(!domestic){
-   // پاسخ موفق Worker بدون تاریخچه کافی، به‌جای شش درخواست تکراری مرورگر، قابل‌تلاش‌مجدد ثبت می‌شود.
-   throw new Error("HTTP 502 · MMP candle history insufficient");
-  }
-  if(domestic)throw new Error("کندل یک‌دقیقه‌ای بازار داخلی کافی نیست");
- }catch(error){
-  if(domestic)throw error;
-  const message=String(error?.message||error);
-  // خطای سهمیه/شبکه را با شش درخواست مستقیم دیگر تشدید نکن؛ در صف بعدی دوباره تلاش می‌شود.
-  if(/HTTP\s*(408|425|429|5\d\d)|rate.?limit|too many requests|timeout|timed out|abort|network|failed to fetch|load failed|temporar/i.test(message))throw error;
-  console.debug("MMP candle aggregator unavailable for "+base+"; using exchange fallbacks:",message);
- }
- if(domestic)throw new Error("داده معتبر بازار داخلی دریافت نشد");
- const attempts=[
-  ["Binance Spot",async()=>{let last;for(const base of ["https://api.binance.com","https://data-api.binance.vision"]){try{const d=await hunterFetchJson(base+"/api/v3/klines?symbol="+encodeURIComponent(pair)+"&interval=1m&limit=30");if(!Array.isArray(d)||d.length<25)throw new Error("کمبود کندل");return d.map(x=>x.slice(0,6).map(Number));}catch(e){last=e;}}throw last||new Error("Binance unavailable");}],
-  ["Bybit Spot",async()=>{const d=await hunterFetchJson("https://api.bybit.com/v5/market/kline?category=spot&symbol="+encodeURIComponent(pair)+"&interval=1&limit=30");if(String(d.retCode)!=="0"||!Array.isArray(d.result?.list)||d.result.list.length<25)throw new Error(d.retMsg||"Bybit candles unavailable");return d.result.list.map(x=>[Number(x[0]),Number(x[1]),Number(x[2]),Number(x[3]),Number(x[4]),Number(x[5])]).sort((a,b)=>a[0]-b[0]);}],
-  ["OKX Spot",async()=>{const inst=String(symbol).toUpperCase()+"-USDT";const d=await hunterFetchJson("https://www.okx.com/api/v5/market/candles?instId="+encodeURIComponent(inst)+"&bar=1m&limit=30");if(String(d.code)!=="0"||!Array.isArray(d.data)||d.data.length<25)throw new Error(d.msg||"OKX candles unavailable");return d.data.map(x=>[Number(x[0]),Number(x[1]),Number(x[2]),Number(x[3]),Number(x[4]),Number(x[5])]).sort((a,b)=>a[0]-b[0]);}],
-  ["Bitget Spot",async()=>{const d=await hunterFetchJson("https://api.bitget.com/api/v3/market/candles?category=SPOT&symbol="+encodeURIComponent(pair)+"&interval=1m&limit=30");if(!["00000","0"].includes(String(d.code))||!Array.isArray(d.data)||d.data.length<25)throw new Error(d.msg||"Bitget candles unavailable");return d.data.map(x=>[Number(x[0]),Number(x[1]),Number(x[2]),Number(x[3]),Number(x[4]),Number(x[5]||0)]).sort((a,b)=>a[0]-b[0]);}],
-  ["Gate Spot",async()=>{const d=await hunterFetchJson("https://api.gateio.ws/api/v4/spot/candlesticks?currency_pair="+encodeURIComponent(String(symbol).toUpperCase()+"_USDT")+"&interval=1m&limit=30");if(!Array.isArray(d)||d.length<25)throw new Error("Gate candles unavailable");return d.map(x=>[Number(x[0])*1000,Number(x[5]),Number(x[3]),Number(x[4]),Number(x[2]),Number(x[1])]).sort((a,b)=>a[0]-b[0]);}],
-  ["KuCoin Spot",async()=>{const d=await hunterFetchJson("https://api.kucoin.com/api/v1/market/candles?type=1min&symbol="+encodeURIComponent(String(symbol).toUpperCase()+"-USDT"));if(String(d.code)!=="200000"||!Array.isArray(d.data)||d.data.length<25)throw new Error("KuCoin candles unavailable");return d.data.map(x=>[Number(x[0])*1000,Number(x[1]),Number(x[3]),Number(x[4]),Number(x[2]),Number(x[6]||x[5]||0)]).sort((a,b)=>a[0]-b[0]);}]
- ];
- let errors=[];
- // اولویت منبع کندل بین صرافی‌های معتبر چرخشی است تا همیشه فقط Binance بررسی نشود.
- const preferred=Object.entries(coin?.hunterVenueVolume||{}).filter(([,volume])=>Number(volume)>=15000).sort((a,b)=>Number(b[1])-Number(a[1])).map(([name])=>name);
- const byName=new Map(attempts);const preferredAttempts=preferred.map(name=>[name,byName.get(name)]).filter(x=>x[1]);
- const fallback=attempts.filter(([name])=>!preferred.includes(name));
- const rotation=Math.floor(Date.now()/60000)%Math.max(1,fallback.length);
- const ordered=preferredAttempts.concat(fallback.slice(rotation),fallback.slice(0,rotation));
- for(const [provider,load] of ordered){try{const rows=await load();if(rows.length>=25&&rows.every(r=>r.slice(1,6).every(Number.isFinite)))return {rows,provider};}catch(error){errors.push(provider+": "+(error?.message||"unavailable"));}}
- throw new Error(errors.join(" · "));
+ const base=String(symbol||"").toUpperCase(),domestic=!!(coin?.hasDomesticMarket&&coin?.hasUsdtMarket!==true);
+ const marketSymbol=domestic?base+"IRT":base+"USDT";
+ const payload=await hunterFetchJson(AI_ANALYSIS_ENDPOINT+"/market-candles?symbol="+encodeURIComponent(marketSymbol)+"&interval=1m&market=spot",16000);
+ const candles=Array.isArray(payload?.candles)?payload.candles:[];
+ if(candles.length<25)throw new Error(payload?.detail||"تاریخچه کندل معتبر از سرویس مرکزی کافی نیست");
+ const rows=candles.map(c=>{const t=Number(c.time);return [t<1e12?t*1000:t,Number(c.open),Number(c.high),Number(c.low),Number(c.close),Number(c.volume)||0];}).sort((x,y)=>x[0]-y[0]);
+ if(rows.length<25||!rows.every(row=>row.slice(1,6).every(Number.isFinite)&&row[1]>0&&row[2]>=row[3]&&row[3]>0&&row[4]>0&&row[5]>=0))throw new Error("ساختار کندل‌های سرویس مرکزی معتبر نیست");
+ if(payload.data_stale===true&&Number(payload.data_age_ms)>4*60*1000)throw new Error("داده کندلی قدیمی است و برای شکار سریع پذیرفته نمی‌شود");
+ return {rows,provider:payload.provider||(domestic?"Nobitex Spot":"MMP Market API"),dataStale:payload.data_stale===true};
 }
 async function fetchHunterOrderFlow(symbol){
- const pair=String(symbol||"").toUpperCase()+"USDT";let raw,lastError;
- for(const base of ["https://api.binance.com","https://data-api.binance.vision"]){
-  try{raw=await hunterFetchJson(base+"/api/v3/klines?symbol="+encodeURIComponent(pair)+"&interval=1m&limit=36",8500);if(Array.isArray(raw)&&raw.length>=25)break;throw new Error("کندل جریان سفارش کافی نیست");}catch(error){lastError=error;raw=null;}
- }
- if(!Array.isArray(raw)||raw.length<25)throw lastError||new Error("جریان سفارش در دسترس نیست");
- const rows=raw.map(k=>{const quote=Number(k[7])||0,buy=Number(k[10])||0,sell=Math.max(0,quote-buy);return [Number(k[0]),quote,buy,sell,buy-sell];});
- const closed=rows.slice(0,-1),idx=closed.length-1,last=closed[idx],base=closed.slice(Math.max(0,idx-20),idx).map(x=>x[1]).filter(x=>x>0);
- if(!last||base.length<16)throw new Error("خط مبنای حجم کافی نیست");
- const avg=base.reduce((a,b)=>a+b,0)/base.length,ratio1=avg>0?last[1]/avg:0;
- const sum=(arr,k)=>arr.reduce((a,x)=>a+(Number(x[k])||0),0);
- const recent3=closed.slice(-3),quote3=sum(recent3,1),buy3=sum(recent3,2),sell3=sum(recent3,3),net3=buy3-sell3,netPct3=quote3>0?net3/quote3*100:0;
- const prev3=closed.slice(-23,-3),prevAvg=prev3.length?sum(prev3,1)/prev3.length:0,ratio3=prevAvg>0?quote3/(prevAvg*3):0;
- const netPct1=last[1]>0?last[4]/last[1]*100:0;
- const chartRows=closed.slice(-30).map((x,i,arr)=>{const prior=arr.slice(Math.max(0,i-20),i).map(v=>v[1]).filter(v=>v>0),mean=prior.length?prior.reduce((a,b)=>a+b,0)/prior.length:avg;return [...x,mean>0?x[1]/mean:0];});
- return {source:"Binance Spot · خرید/فروش تهاجمی",quote1m:last[1],buy1m:last[2],sell1m:last[3],net1m:last[4],netPct1m:netPct1,ratio1m:ratio1,quote3m:quote3,buy3m:buy3,sell3m:sell3,net3m:net3,netPct3m:netPct3,volumeRatio3m:ratio3,rows:chartRows,updatedAt:Date.now(),unusual:ratio1>=1.8||ratio3>=2};
+ const pair=String(symbol||"").toUpperCase()+"USDT";
+ const payload=await hunterFetchJson(AI_ANALYSIS_ENDPOINT+"/market-flow?market=spot&symbol="+encodeURIComponent(pair)+"&window=15",18000);
+ const sourceRows=Array.isArray(payload?.rows)?payload.rows:[];
+ if(payload.complete!==true||Number(payload.trade_count)<8||sourceRows.length<4)throw new Error(payload?.error||"جریان معاملات واقعی کامل نیست");
+ const end=Number(payload.window_end)||Date.now(),endMinute=Math.floor(end/60000)*60000;
+ const source=new Map(sourceRows.map(row=>[Math.floor(Number(row[0])/60000)*60000,{buy:Number(row[1])||0,sell:Number(row[2])||0}]));
+ const rows=Array.from({length:15},(_,i)=>{
+  const time=endMinute-(15-i)*60000,flow=source.get(time)||{buy:0,sell:0},quote=flow.buy+flow.sell;
+  return [time,quote,flow.buy,flow.sell,flow.buy-flow.sell];
+ });
+ const baseline=rows.slice(0,12).map(row=>row[1]),avg=baseline.reduce((a,b)=>a+b,0)/Math.max(1,baseline.length);
+ const recent=rows.slice(-3),sum=(list,index)=>list.reduce((total,row)=>total+(Number(row[index])||0),0);
+ const quote3m=sum(recent,1),buy3m=sum(recent,2),sell3m=sum(recent,3),net3m=buy3m-sell3m;
+ const last=rows.at(-1),quote1m=last[1],buy1m=last[2],sell1m=last[3],net1m=last[4];
+ const netPct1m=quote1m>0?net1m/quote1m*100:0,netPct3m=quote3m>0?net3m/quote3m*100:0;
+ const ratio1m=avg>0?quote1m/avg:0,ratio3m=avg>0?quote3m/(avg*3):0;
+ const chartRows=rows.map((row,i)=>[...row,avg>0?row[1]/avg:0]);
+ return {source:payload.provider||"MMP · معاملات واقعی",quote1m,buy1m,sell1m,net1m,netPct1m,ratio1m,quote3m,buy3m,sell3m,net3m,netPct3m,volumeRatio3m:ratio3m,rows:chartRows,updatedAt:Number(payload.updated_at)||Date.now(),unusual:ratio1m>=1.8||ratio3m>=2,complete:true,tradeCount:Number(payload.trade_count)||0};
 }
 async function scanFastCoin(coin){
  const symbol=String(coin?.symbol||"").toUpperCase();
@@ -4544,31 +4512,15 @@ function hunter4hParse(payload){
 let hunterDetailState={symbol:"",market:"spot",coin:null,signal:null,interval:"60",busy:false,rows:[]};
 function hunterDetailPrice(v){return hunterPrice(v);}
 async function hunterDetailFetch(symbol,market,interval){
- // اول از تجمیع‌گر اصلی کندل استفاده کن؛ این مسیر نمادهای واقعی هر صرافی را
- // بررسی می‌کند و برای جفت‌هایی که در Binance/Bybit/OKX نیستند به WhiteBIT و منابع جایگزین می‌رود.
- const workerIntervals={"15":"15m","60":"1h","240":"4h","D":"1d"};
- const workerInterval=workerIntervals[String(interval)]||"1h";
- try{
-  const workerUrl=AI_ANALYSIS_ENDPOINT+"/market-candles?symbol="+encodeURIComponent(String(symbol).toUpperCase()+"USDT")+"&interval="+workerInterval+"&market="+(market==="futures"?"futures":"spot");
-  const payload=await hunterFetchJson(workerUrl,16000);
-  const source=Array.isArray(payload?.candles)?payload.candles:[];
-  const rows=hunter4hParse(source.map(c=>[Number(c.time)*1000,c.open,c.high,c.low,c.close,c.volume]));
-  if(rows.length>=30)return rows;
-  throw new Error(payload?.detail||"کندل معتبر کافی از تجمیع‌گر دریافت نشد");
- }catch(error){
-  console.warn("MMP candle aggregator unavailable for "+symbol+"; trying direct exchange fallbacks:",error?.message||error);
- }
- const map={15:{binance:"15m",bybit:"15",okx:"15m"},60:{binance:"1h",bybit:"60",okx:"1H"},240:{binance:"4h",bybit:"240",okx:"4H"},D:{binance:"1d",bybit:"D",okx:"1D"}},tf=map[interval]||map[60],pair=symbol.toUpperCase()+"USDT",limit=interval==="D"?220:220;
- const urls=market==="spot"?[
-  async()=>hunter4hParse(await hunterFetchJson("https://api.binance.com/api/v3/klines?symbol="+pair+"&interval="+tf.binance+"&limit="+limit,12000)),
-  async()=>{const d=await hunterFetchJson("https://api.bybit.com/v5/market/kline?category=spot&symbol="+pair+"&interval="+tf.bybit+"&limit="+limit,12000);if(d.retCode!==0)throw new Error(d.retMsg||"Bybit Spot");return hunter4hParse((d.result?.list||[]).slice().reverse());},
-  async()=>{const d=await hunterFetchJson("https://www.okx.com/api/v5/market/candles?instId="+symbol.toUpperCase()+"-USDT&bar="+tf.okx+"&limit=220",12000);if(d.code!=="0")throw new Error(d.msg||"OKX Spot");return hunter4hParse((d.data||[]).slice().reverse());}
- ]:[
-  async()=>hunter4hParse(await hunterFetchJson("https://fapi.binance.com/fapi/v1/klines?symbol="+pair+"&interval="+tf.binance+"&limit="+limit,12000)),
-  async()=>{const d=await hunterFetchJson("https://api.bybit.com/v5/market/kline?category=linear&symbol="+pair+"&interval="+tf.bybit+"&limit="+limit,12000);if(d.retCode!==0)throw new Error(d.retMsg||"Bybit Linear");return hunter4hParse((d.result?.list||[]).slice().reverse());}
- ];
- let last;for(const load of urls){try{const rows=await load();if(rows.length>=30)return rows;}catch(e){last=e;}}
- throw last||new Error("داده کندلی این تایم‌فریم دریافت نشد");
+ const workerIntervals={"15":"15m","60":"1h","240":"4h","D":"1d"},workerInterval=workerIntervals[String(interval)]||"1h";
+ const marketType=market==="futures"?"futures":"spot";
+ const url=AI_ANALYSIS_ENDPOINT+"/market-candles?symbol="+encodeURIComponent(String(symbol).toUpperCase()+"USDT")+"&interval="+workerInterval+"&market="+marketType;
+ const payload=await hunterFetchJson(url,18000);
+ const candles=Array.isArray(payload?.candles)?payload.candles:[];
+ const rows=hunter4hParse(candles.map(c=>[Number(c.time)*1000,Number(c.open),Number(c.high),Number(c.low),Number(c.close),Number(c.volume)||0]));
+ if(rows.length<30)throw new Error(payload?.detail||"کندل معتبر کافی از موتور مرکزی دریافت نشد");
+ if(payload.data_stale===true&&Number(payload.data_age_ms)>Math.max(15*60*1000,Number(workerInterval==="1d"?86400000:3600000)*2))throw new Error("داده نمودار قدیمی است");
+ return rows;
 }
 function hunterDetailIndicators(rows,interval){
  const duration=(interval==="D"?1440:Number(interval))*60000,closed=(rows||[]).filter(x=>x.t+duration<=Date.now());
