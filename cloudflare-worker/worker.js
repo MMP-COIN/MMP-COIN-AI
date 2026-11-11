@@ -1,5 +1,5 @@
 // MMP Quantum Intelligence Engine: dynamic market discovery with no fixed asset ceiling
-import { QUANTUM_ENGINE_NAME, QUANTUM_ENGINE_VERSION, normalizeQuantumUniverse, scoreQuantumOpportunity, calculateQuantumIndicators, calculateMarketScanPriority } from "./quantum-core.js";
+import { QUANTUM_ENGINE_NAME, QUANTUM_ENGINE_VERSION, normalizeQuantumUniverse, scoreQuantumOpportunity, calculateQuantumIndicators, calculateMarketScanPriority, detectEarlyMovePressure } from "./quantum-core.js";
 import { normalizeMarketCandles, alignMarketCandles, assessMarketDataFreshness } from "./market-data-core.js";
 import { updateLearningLedger, applyLearningCalibration } from "./learning-engine.js";
 const HUNTER_BATCH_SIZE = 8; // per-cycle budget; the full rotating universe remains uncapped
@@ -1513,6 +1513,28 @@ async function handle(request,env){
    const txs=(Array.isArray(rows)?rows:[]).map(x=>({txid:String(x.txid||""),value_btc:Number(x.value)/1e8,fee:Number(x.fee)||0,fee_rate:Number(x.feeRate)||0})).filter(x=>x.txid&&x.value_btc>=10).sort((a,b)=>b.value_btc-a.value_btc).slice(0,20);
    return json({asset:"BTC",scope:"unconfirmed_mempool_recent_sample",provider:"mempool.space",scanned_count:Array.isArray(rows)?rows.length:0,sample_count:Array.isArray(rows)?rows.length:0,count:txs.length,threshold_btc:10,transfers:txs,checked_at:new Date().toISOString(),limitation:"این داده فقط تراکنش‌های بزرگِ در انتظار تأیید شبکه بیت‌کوین را نشان می‌دهد؛ آدرس‌های صرافی برچسب‌گذاری نشده‌اند و جریان ورودی/خروجی صرافی از آن استنباط نمی‌شود."},200,request);
   }catch(e){return json({error:"داده عمومی تراکنش‌های بزرگ بیت‌کوین در دسترس نیست.",detail:String(e?.message||e).slice(0,180)},502,request);}
+ }
+
+ if(request.method==="GET"&&new URL(request.url).pathname==="/early-pressure"){
+  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"early-pressure"),request);if(limited)return limited;
+  const url=new URL(request.url),raw=String(url.searchParams.get("symbol")||"BTC").toUpperCase();
+  if(!/^[A-Z0-9]{2,24}$/.test(raw))return json({error:"نماد نامعتبر است."},400,request);
+  const symbol=splitQuotePair(raw)?raw:raw+"USDT";
+  try{
+   const market=await candles(symbol,"1m",env,"spot"),bars=market.candles||[];
+   if(bars.length<25)throw new Error("کندل یک‌دقیقه‌ای کافی نیست");
+   const ranges=bars.map(x=>Math.max(0,Number(x.h)-Number(x.l))),volumes=bars.map(x=>Math.max(0,Number(x.v)));
+   const avg=x=>x.length?x.reduce((a,b)=>a+b,0)/x.length:0;
+   const recentRange=avg(ranges.slice(-5)),baseRange=avg(ranges.slice(-25,-5)),recentVol=avg(volumes.slice(-5)),baseVol=avg(volumes.slice(-25,-5));
+   const compression=baseRange>0?recentRange/baseRange:null,volumeAcceleration=baseVol>0?recentVol/baseVol:null;
+   const recent=bars.slice(-5),signed=recent.reduce((sum,x)=>sum+(Number(x.c)-Number(x.o))*Number(x.v),0),gross=recent.reduce((sum,x)=>sum+Math.abs(Number(x.c)-Number(x.o))*Number(x.v),0);
+   const candlePressure=gross>0?signed/gross:null;
+   const age=Date.now()-Number(bars.at(-1)?.t||0),fresh=age<=180000;
+   const pressure=detectEarlyMovePressure({rangeCompression:compression,volumeAcceleration,flowImbalance:candlePressure,dataFresh:fresh});
+   return json({symbol:raw,market:"spot",provider:market.data_provider,price:market.price,data_age_ms:age,
+    pressure:{...pressure,inputs:{...pressure.inputs,flow:null,depth:null},evidence_note:"جهت فشار از بدنه کندل و حجم کندل‌های یک‌دقیقه‌ای برآورد شده؛ دفتر سفارش و معاملات لحظه‌ای در این خروجی دخیل نیست."},
+    sampled_at:new Date().toISOString()},200,request);
+  }catch(error){return json({symbol:raw,state:"insufficient_data",error:String(error?.message||error).slice(0,180),sampled_at:new Date().toISOString()},502,request);}
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/market-candles"){
   const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"market-candles");
