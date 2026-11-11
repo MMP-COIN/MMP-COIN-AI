@@ -3900,7 +3900,8 @@ function checkConnections(force=false){
   await Promise.all([
    probeDirectFallback(checks.get("binance spot"),"https://data-api.binance.vision/api/v3/ticker/price?symbol=BTCUSDT",d=>Number(d?.price)>0,"Binance Spot"),
    probeDirectFallback(checks.get("nobitex"),"https://apiv2.nobitex.ir/v3/orderbook/USDTIRT",d=>Number(d?.lastTradePrice??d?.last)>0,"Nobitex"),
-   probeDirectFallback(checks.get("kucoin spot"),"https://api.kucoin.com/api/v1/market/stats?symbol=BTC-USDT",d=>d?.code==="200000"&&Number(d?.data?.last)>0,"KuCoin Spot")
+   probeDirectFallback(checks.get("kucoin spot"),"https://api.kucoin.com/api/v1/market/stats?symbol=BTC-USDT",d=>d?.code==="200000"&&Number(d?.data?.last)>0,"KuCoin Spot"),
+   probeDirectFallback(checks.get("bitget spot"),"https://api.bitget.com/api/v3/market/tickers?category=SPOT",d=>["00000","0"].includes(String(d?.code))&&Array.isArray(d?.data)&&d.data.some(x=>String(x.symbol||"")==="BTCUSDT"&&Number(x.lastPr??x.lastPrice)>0),"Bitget Spot")
   ]);
   const ordered=expected.map(name=>checks.get(name)).filter(Boolean);
   if(ordered.length!==expected.length)throw new Error("پاسخ بررسی اتصال کامل نیست");
