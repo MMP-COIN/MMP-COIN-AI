@@ -45,7 +45,7 @@ export function updateLearningLedger(previous={},options={}){
   let next=null;
   for(const minutes of HORIZONS){
    const key="outcome_"+minutes+"m",missedKey="missed_"+minutes+"m";
-   if((record[key]===null||record[key]===undefined)&&record[missedKey]!==true&&elapsed>=minutes*60000+120000){
+   if((record[key]===null||record[key]===undefined)&&record[missedKey]!==true&&elapsed>minutes*60000+120000){
     if(!next)next={...record};next[missedKey]=true;next[missedKey+"_at"]=nowMs;
    }
   }
