@@ -496,7 +496,7 @@ async function checkEarlyPressure(){
 $("run-all-engines").addEventListener("click",runAllQuantumEngines);
 const engineLaunchParams=new URLSearchParams(location.search);
 if(engineLaunchParams.get("run-engines")==="1")setTimeout(()=>{engineLaunchParams.delete("run-engines");const cleanQuery=engineLaunchParams.toString();history.replaceState(null,"",location.pathname+(cleanQuery?"?"+cleanQuery:"")+location.hash);runAllQuantumEngines();},650);
-$("asset-search").addEventListener("input",()=>{clearTimeout(searchTimer);searchTimer=setTimeout(renderAssetSearch,120)});$("asset-search-clear").addEventListener("click",()=>{state.independentStop=true;$("asset-search").value="";state.assetLimit=10;renderAssetSearch();$("asset-search").focus()});$("asset-search-stop").addEventListener("click",()=>{state.independentStop=true});$("asset-search-results").addEventListener("click",e=>{const retry=e.target.closest("[data-catalog-retry]");if(retry){loadIndependentCatalog();return;}const b=e.target.closest("[data-independent-analyze]");if(b)analyzeIndependent(b.dataset.independentAnalyze)});$("early-check").addEventListener("click",checkEarlyPressure);$("scan").addEventListener("click",scan);$("back").addEventListener("click",()=>location.href="/");$("filter").addEventListener("input",renderRows);$("direction").addEventListener("change",renderRows);$("sort").addEventListener("change",renderRows);$("rows").addEventListener("click",e=>{const b=e.target.closest("[data-detail]");if(b)showDetail(b.dataset.detail)});$("record").addEventListener("click",record);$("history").addEventListener("click",updateLedger);$("export").addEventListener("click",exportCSV);
+$("asset-search").addEventListener("input",()=>{clearTimeout(searchTimer);searchTimer=setTimeout(renderAssetSearch,120)});$("asset-search-clear").addEventListener("click",()=>{state.independentStop=true;$("asset-search").value="";state.assetLimit=10;renderAssetSearch();$("asset-search").focus()});$("asset-search-stop").addEventListener("click",()=>{state.independentStop=true});$("asset-search-results").addEventListener("click",e=>{const retry=e.target.closest("[data-catalog-retry]");if(retry){loadIndependentCatalog();return;}const b=e.target.closest("[data-independent-analyze]");if(b)analyzeIndependent(b.dataset.independentAnalyze)});$("early-check").addEventListener("click",checkEarlyPressure);$("scan").addEventListener("click",scan);$("back").addEventListener("click",()=>{const q=new URLSearchParams(location.search),v=q.get("mmp_native_version");location.href=v?"/?mmp_native_version="+encodeURIComponent(v)+"&center=command":"/";});$("filter").addEventListener("input",renderRows);$("direction").addEventListener("change",renderRows);$("sort").addEventListener("change",renderRows);$("rows").addEventListener("click",e=>{const b=e.target.closest("[data-detail]");if(b)showDetail(b.dataset.detail)});$("record").addEventListener("click",record);$("history").addEventListener("click",updateLedger);$("export").addEventListener("click",exportCSV);
 async function refreshLocalTether(){
  const stateEl=$("local-watch-state"),priceEl=$("local-usdt-price"),changeEl=$("local-usdt-change"),sourcesEl=$("local-usdt-sources"),alertEl=$("local-usdt-alert");
  try{const response=await fetch(API+"/local-market-watch?ts="+Date.now(),{cache:"no-store"});if(!response.ok)throw new Error("HTTP "+response.status);
@@ -525,4 +525,28 @@ renderLedger();renderQuantumCharts();loadIndependentCatalog();startLiveMonitor()
 
 </style>
 </style>
+
+<script id="mmp-native-app-navigation">
+(()=>{
+ const params=new URLSearchParams(location.search),version=params.get("mmp_native_version");
+ if(!version)return;
+ document.body.classList.add("mmp-app-mode");
+ const pages=[
+  ["command","فرمان","◈"],["hunter","شکار","⌖"],["charts","چارت","▥"],["flow","نقدینگی","◉"],
+  ["ai","هوش","✧"],["strategy","استراتژی","⌗"],["markets","بازار","▦"],["lab","آزمایشگاه","⌬"]
+ ];
+ const go=id=>location.href=id==="lab"?"/quantum-lab.html?mmp_native_version="+encodeURIComponent(version):"/?mmp_native_version="+encodeURIComponent(version)+"&center="+encodeURIComponent(id);
+ const dock=document.createElement("nav");dock.id="mmp-app-page-dock";dock.className="mmp-app-page-dock";dock.setAttribute("aria-label","صفحه‌های اپلیکیشن MMP");
+ dock.innerHTML=pages.map(([id,label,icon])=>'<a href="'+(id==="lab"?"/quantum-lab.html?mmp_native_version="+encodeURIComponent(version):"/?mmp_native_version="+encodeURIComponent(version)+"&center="+id)+'" '+(id==="lab"?'aria-current="page"':'')+'><i>'+icon+'</i><span>'+label+'</span></a>').join("");
+ document.body.append(dock);
+ const actions=document.querySelector("header .actions");
+ if(actions){const support=document.createElement("button");support.type="button";support.className="btn";support.textContent="اشتراک و ارتباط";support.addEventListener("click",()=>go("support"));actions.append(support);}
+ const back=document.querySelector("#back");if(back)back.addEventListener("click",event=>{event.preventDefault();event.stopImmediatePropagation();go("command");},true);
+ let touchStart=null;
+ document.addEventListener("touchstart",event=>{if(event.touches.length!==1)return;const target=event.target;if(target.closest("input,textarea,select,button,a,[contenteditable='true'],.mmp-app-page-dock"))return;const t=event.touches[0];touchStart={x:t.clientX,y:t.clientY};},{passive:true});
+ document.addEventListener("touchend",event=>{if(!touchStart||!event.changedTouches.length)return;const t=event.changedTouches[0],dx=t.clientX-touchStart.x,dy=t.clientY-touchStart.y;touchStart=null;if(Math.abs(dx)<65||Math.abs(dx)<Math.abs(dy)*1.25)return;go(dx<0?"command":"markets");},{passive:true});
+ const style=document.createElement("style");style.textContent='body.mmp-app-mode .wrap{padding-bottom:112px!important}body.mmp-app-mode .mmp-app-page-dock{position:fixed;z-index:1200;left:8px;right:8px;bottom:max(7px,env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:2px;padding:7px 4px;border:1px solid #78613a;border-radius:16px;background:linear-gradient(115deg,#111b28f5,#0b131df5);box-shadow:0 10px 32px #000b,inset 0 1px #ffffff18;backdrop-filter:blur(18px)}body.mmp-app-mode .mmp-app-page-dock a{min-width:0;min-height:42px;padding:4px 1px;border-radius:10px;color:#91a4b6;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-decoration:none;font:700 8px Vazirmatn,Tahoma,sans-serif;white-space:nowrap}body.mmp-app-mode .mmp-app-page-dock a i{font-style:normal;font-size:16px;line-height:1;color:#c6a568}body.mmp-app-mode .mmp-app-page-dock a[aria-current="page"]{background:linear-gradient(145deg,#d8b66f,#8f6b36);color:#141820}body.mmp-app-mode .mmp-app-page-dock a[aria-current="page"] i{color:#17130b}';
+ document.head.append(style);
+})();
+</script>
 </body></html>
