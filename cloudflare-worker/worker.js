@@ -117,13 +117,15 @@ function rateLimitReply(result,request){
 }
 function mean(a){return a.length?a.reduce((x,y)=>x+y,0)/a.length:0}
 function ema(values,period){if(values.length<period)return null;let k=2/(period+1),v=mean(values.slice(0,period));for(let i=period;i<values.length;i++)v=values[i]*k+v*(1-k);return v}
+function emaSeries(values,period){const out=new Array(values.length).fill(null);if(values.length<period)return out;const k=2/(period+1);let value=mean(values.slice(0,period));out[period-1]=value;for(let i=period;i<values.length;i++){value=values[i]*k+value*(1-k);out[i]=value;}return out;}
 function rsi(values,p=14){if(values.length<=p)return null;let up=0,dn=0;for(let i=values.length-p;i<values.length;i++){let d=values[i]-values[i-1];if(d>0)up+=d;else dn-=d;}if(dn===0)return 100;let rs=(up/p)/(dn/p);return 100-100/(1+rs)}
 function analyzeKlines(rows){
  const candles=rows.map(x=>({t:x[0],o:+x[1],h:+x[2],l:+x[3],c:+x[4],v:+x[5]}));
  const closes=candles.map(x=>x.c), highs=candles.map(x=>x.h), lows=candles.map(x=>x.l), vols=candles.map(x=>x.v);
  const last=candles[candles.length-1],e20=ema(closes,20),e50=ema(closes,50),e200=ema(closes,200);
  const fast=ema(closes,12),slow=ema(closes,26);
- const macdSeries=closes.map((_,i)=>{const a=ema(closes.slice(0,i+1),12),b=ema(closes.slice(0,i+1),26);return a==null||b==null?null:a-b;}).filter(x=>x!=null);
+ const fastSeries=emaSeries(closes,12),slowSeries=emaSeries(closes,26);
+ const macdSeries=fastSeries.map((value,i)=>value==null||slowSeries[i]==null?null:value-slowSeries[i]).filter(Number.isFinite);
  const macd=fast!=null&&slow!=null?fast-slow:null,signal=macdSeries.length?ema(macdSeries,9):null;
  const tr=candles.slice(1).map((x,i)=>Math.max(x.h-x.l,Math.abs(x.h-candles[i].c),Math.abs(x.l-candles[i].c)));
  const atr=tr.length>=14?mean(tr.slice(-14)):null;
