@@ -95,3 +95,23 @@ body.mmp-quantum-terminal .mmp-quantum-footer-note{margin:22px auto 8px;color:#7
  body.mmp-quantum-terminal .mmp-center-back,body.mmp-quantum-terminal .mmp-center-jump{flex:1}
 }
 @media(prefers-reduced-motion:reduce){body.mmp-quantum-terminal .mmp-hub-card{transition:none!important}}
+
+/* Distinct visual identity for each of the eight MMP centers. */
+body.mmp-quantum-terminal .mmp-hub-card{isolation:isolate;overflow:hidden;position:relative;transition:transform .22s ease,border-color .22s ease,box-shadow .22s ease}
+body.mmp-quantum-terminal .mmp-hub-card:before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;background:radial-gradient(ellipse at 90% 0,var(--center-glow),transparent 58%),linear-gradient(135deg,var(--center-tint),transparent 62%)}
+body.mmp-quantum-terminal .mmp-hub-card:after{content:"";position:absolute;inset:auto 12px 0;height:2px;background:linear-gradient(90deg,transparent,var(--center-accent),transparent)}
+body.mmp-quantum-terminal .mmp-hub-card[data-center-style="command"]{--center-accent:#e5bd62;--center-glow:#c99a3733;--center-tint:#9b742018}
+body.mmp-quantum-terminal .mmp-hub-card[data-center-style="hunter"]{--center-accent:#ff6577;--center-glow:#ff3e6133;--center-tint:#a51f351c}
+body.mmp-quantum-terminal .mmp-hub-card[data-center-style="charts"]{--center-accent:#55c9ff;--center-glow:#168bc533;--center-tint:#176b951c}
+body.mmp-quantum-terminal .mmp-hub-card[data-center-style="flow"]{--center-accent:#42dfb0;--center-glow:#17b98b33;--center-tint:#117b641c}
+body.mmp-quantum-terminal .mmp-hub-card[data-center-style="ai"]{--center-accent:#b28cff;--center-glow:#8d5cff38;--center-tint:#633bb51f}
+body.mmp-quantum-terminal .mmp-hub-card[data-center-style="strategy"]{--center-accent:#f1a85f;--center-glow:#c8753033;--center-tint:#9a4e1c1c}
+body.mmp-quantum-terminal .mmp-hub-card[data-center-style="markets"]{--center-accent:#76d7e8;--center-glow:#26aabd33;--center-tint:#176b7a1c}
+body.mmp-quantum-terminal .mmp-hub-card[data-center-style="lab"]{--center-accent:#f0e28b;--center-glow:#d4c54a33;--center-tint:#8d81201c}
+body.mmp-quantum-terminal .mmp-hub-icon{color:var(--center-accent);text-shadow:0 0 16px var(--center-glow);font-size:25px}
+body.mmp-quantum-terminal .mmp-hub-number{color:var(--center-accent)}
+body.mmp-quantum-terminal #mmp-center-toolbar .mmp-center-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+body.mmp-quantum-terminal .mmp-center-currency{display:inline-flex;gap:3px;padding:3px;border:1px solid #c9a45b70;border-radius:11px;background:#111925}
+body.mmp-quantum-terminal .mmp-center-currency button{border:0;border-radius:8px;padding:7px 10px;background:transparent;color:#aeb8c6;font:700 10px Tahoma,Arial,sans-serif}
+body.mmp-quantum-terminal .mmp-center-currency button.active{background:linear-gradient(145deg,#f1d48f,#a77a38);color:#17130a}
+@media(max-width:640px){body.mmp-quantum-terminal #mmp-center-toolbar .mmp-center-actions{gap:6px}body.mmp-quantum-terminal .mmp-center-currency button{padding:7px 8px;font-size:9px}}
