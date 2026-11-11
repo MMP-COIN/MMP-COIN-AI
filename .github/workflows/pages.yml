@@ -1,4 +1,4 @@
-name: Deploy MMP COIN AI to GitHub Pages
+name: Retire duplicate project Pages deployment
 
 on:
   push:
@@ -7,40 +7,14 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: "pages"
-  cancel-in-progress: true
 
 jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  retired:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
     steps:
-      - name: Checkout
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - name: Configure GitHub Pages
-        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
-        with:
-          enablement: true
-      - name: Publish live web build marker
+      - name: Keep root-domain Pages as the only public site
         run: |
-          set -euo pipefail
-          BUILD_ID="${GITHUB_SHA}"
-          sed -i "s/__MMP_WEB_BUILD_ID__/${BUILD_ID}/g" www/index.html
-          printf '{"build":"%s","updatedAt":"%s"}\n' "$BUILD_ID" "$(date -u +%FT%TZ)" > www/version.json
-      - name: Upload site files
-        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
-        with:
-          path: ./www
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
+          echo "Project Pages deployment is intentionally disabled."
+          echo "Canonical public site: https://mmp-coin.github.io/"
+          echo "Canonical source: MMP-COIN/MMP-COIN-AI/www"
+          echo "The root mirror workflow in MMP-COIN/MMP-COIN.github.io publishes the live site."
