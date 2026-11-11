@@ -3334,7 +3334,7 @@ function normalizeCoinLoreAssets(payload){
  })).filter(item=>item.id&&item.symbol&&Number.isFinite(item.current_price)&&item.current_price>0);
 }
 
-let refreshInFlight=false;
+window.__mmpRefreshInFlight=false;
 let benchmarkQuoteInFlight=false,goldQuoteInFlight=false;
 async function refreshBenchmarkQuotes(){
  if(benchmarkQuoteInFlight||document.visibilityState==="hidden")return false;
@@ -3376,8 +3376,8 @@ async function refreshGoldQuote(){
  }finally{clearTimeout(timer);goldQuoteInFlight=false;}
 }
 async function refreshAll(){
- if(refreshInFlight)return false;
- refreshInFlight=true;
+ if(window.__mmpRefreshInFlight)return false;
+ window.__mmpRefreshInFlight=true;
  const fetchMarketBounded=async(url,options={},timeoutMs=10000)=>{
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeoutMs);
   try{return await fetch(url,{...options,signal:controller.signal});}
@@ -3601,7 +3601,7 @@ async function refreshAll(){
   $('updated').textContent='بروزرسانی شد: '+new Date().toLocaleTimeString('fa-IR');
   refreshSucceeded=true;
  }catch(e){coinGeckoConnectionStatus='down';renderCoinGeckoConnection();$('updated').textContent='خطا در دریافت داده';}
- finally{refreshInFlight=false;const button=$("market-refresh-btn");if(button){button.disabled=false;button.textContent="↻ بروزرسانی بازار";}const radarButton=$("radar-refresh-btn");if(radarButton){radarButton.disabled=false;radarButton.classList.remove("is-refreshing");radarButton.querySelector("span").textContent="بروزرسانی";}}
+ finally{window.__mmpRefreshInFlight=false;const button=$("market-refresh-btn");if(button){button.disabled=false;button.textContent="↻ بروزرسانی بازار";}const radarButton=$("radar-refresh-btn");if(radarButton){radarButton.disabled=false;radarButton.classList.remove("is-refreshing");radarButton.querySelector("span").textContent="بروزرسانی";}}
  return refreshSucceeded;
 }
 
