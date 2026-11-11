@@ -3542,6 +3542,7 @@ async function refreshAll(){
    coinGeckoConnectionStatus=marketMetadataSource==="CoinGecko"?"ok":"down";renderCoinGeckoConnection();
   data = await enrichWithBinance(data);
   cachedCoinsData = data;
+  mergeLiveSignalsIntoMainAssetCatalog();
   
   lastMarket.crypto = {};
   // CoinLore may use numeric IDs; identify the two benchmark assets by symbol as well.
