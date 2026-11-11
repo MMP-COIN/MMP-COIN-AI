@@ -4412,20 +4412,32 @@ async function getHunterExchangeMarkets(){
  if(hunterExchangeCache.sets&&Date.now()<hunterExchangeCache.expires)return hunterExchangeCache.sets;
  if(hunterExchangeCache.loading)return hunterExchangeCache.loading;
  hunterExchangeCache.loading=(async()=>{
-  const jobs=[
-   ["Binance",async()=>{const d=await hunterFetchJson("https://api.binance.com/api/v3/exchangeInfo");return new Set((d.symbols||[]).filter(x=>x.status==="TRADING"&&x.isSpotTradingAllowed!==false).map(x=>x.symbol));}],
-   ["Bybit",async()=>{const all=new Set();let cursor="",pages=0;do{const url="https://api.bybit.com/v5/market/instruments-info?category=spot&limit=1000"+(cursor?"&cursor="+encodeURIComponent(cursor):"");const d=await hunterFetchJson(url,12000);if(d.retCode!==0)throw new Error("Bybit "+d.retCode);(d.result?.list||[]).filter(x=>x.status==="Trading"&&x.quoteCoin==="USDT").forEach(x=>all.add(x.symbol));const next=String(d.result?.nextPageCursor||"");if(!next||next===cursor)break;cursor=next;pages++;}while(cursor&&pages<30);return all;}],
-   ["OKX",async()=>{const d=await hunterFetchJson("https://www.okx.com/api/v5/public/instruments?instType=SPOT");return new Set((d.data||[]).filter(x=>x.state==="live").map(x=>x.instId.replace("-","")));}],
-   ["Bitget",async()=>{const d=await hunterFetchJson("https://api.bitget.com/api/v2/spot/public/symbols");return new Set((d.data||[]).filter(x=>String(x.status).toLowerCase()==="online").map(x=>x.symbol));}],
-   ["Gate",async()=>{const d=await hunterFetchJson("https://api.gateio.ws/api/v4/spot/currency_pairs");return new Set((Array.isArray(d)?d:[]).filter(x=>x.quote==="USDT"&&x.trade_status==="tradable").map(x=>String(x.id).replace("_","")));}],
-   ["KuCoin",async()=>{const d=await hunterFetchJson("https://api.kucoin.com/api/v1/market/allTickers");return new Set((d.data?.ticker||[]).filter(x=>String(x.symbol).endsWith("-USDT")).map(x=>String(x.symbol).replace("-","")));}]
-  ];
-  const results=await Promise.all(jobs.map(async([name,fn])=>{try{return [name,await fn()];}catch(error){console.debug("Hunter listing check "+name,error?.message||error);return [name,null];}}));
-  const sets=new Map(results.filter(x=>x[1]));
+  // Read verified spot pairs from the same server-side universe used by Radar/Hunter.
+  // No browser requests are sent directly to exchange listing APIs.
+  const payload=await hunterFetchJson(AI_ANALYSIS_ENDPOINT+"/hunter-universe",20000);
+  const assets=Array.isArray(payload?.assets)?payload.assets:[];
+  if(!assets.length)throw new Error("فهرست سروری جفت‌ارزها خالی است");
+  const aliases=new Map([["binance","Binance"],["bybit","Bybit"],["okx","OKX"],["bitget","Bitget"],["gate","Gate"],["gate.io","Gate"],["kucoin","KuCoin"]]);
+  const sets=new Map();
+  for(const asset of assets){
+   const base=hunterSafeSymbol(asset.symbol);if(!base)continue;
+   for(const market of Array.isArray(asset.marketPairs)?asset.marketPairs:[]){
+    const exchange=aliases.get(String(market.exchange||"").trim().toLowerCase());
+    if(!exchange)continue;
+    const quote=String(market.quote||"").toUpperCase();
+    const rawPair=String(market.pair||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
+    const pair=rawPair.endsWith("USDT")?rawPair:(quote==="USDT"?base+"USDT":"");
+    if(!pair)continue;
+    if(!sets.has(exchange))sets.set(exchange,new Set());
+    sets.get(exchange).add(pair);
+   }
+  }
+  if(!sets.size)throw new Error("در فهرست سروری جفت‌ارز USDT تأییدشده‌ای پیدا نشد");
   hunterExchangeCache.sets=sets;hunterExchangeCache.expires=Date.now()+10*60*1000;return sets;
  })().finally(()=>{hunterExchangeCache.loading=null;});
  return hunterExchangeCache.loading;
 }
+
 function hunterTradeUrl(exchange,symbol){
  const pair=hunterSafeSymbol(symbol)+"USDT";if(!/^[A-Z0-9]+USDT$/.test(pair))return "";
  if(exchange==="Binance")return "https://www.binance.com/en/trade/"+hunterSafeSymbol(symbol)+"_USDT";
