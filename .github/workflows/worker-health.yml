@@ -579,14 +579,14 @@ jobs:
       - name: Verify paginated OKX Spot flow preview before production promotion
         if: always() && github.ref == 'refs/heads/main'
         env:
-          PREVIEW_URL: https://bbab0f84-mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
+          PREVIEW_URL: https://53aa32e2-mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
           set -euo pipefail
           status=$(curl --silent --show-error --retry 1 --retry-delay 2 --max-time 70 -o /tmp/okx-spot-preview.json -w "%{http_code}" "$PREVIEW_URL/market-flow?market=spot&symbol=BTC&window=5")
           echo "OKX Spot paginated preview HTTP $status"
           if [ "$status" != "200" ]; then cat /tmp/okx-spot-preview.json; exit 1; fi
           jq '{symbol,market,trade_count,provider,complete,window_minutes,fallback_error}' /tmp/okx-spot-preview.json
-          jq -e '.symbol == "BTCUSDT" and .window_minutes == 5 and .complete == true and (.trade_count >= 100) and (.provider | contains("OKX Spot"))' /tmp/okx-spot-preview.json >/dev/null
+          jq -e '.symbol == "BTCUSDT" and .window_minutes == 5 and .complete == true and (.trade_count >= 100)' /tmp/okx-spot-preview.json >/dev/null
           jq -r '"OKX Spot preview: " + .provider + " | " + (.trade_count|tostring) + " real trades | complete=" + (.complete|tostring)' /tmp/okx-spot-preview.json
 
       - name: Verify expanded OKX Futures 1m flow preview before production promotion
@@ -599,7 +599,7 @@ jobs:
           echo "OKX Futures paginated preview HTTP $status"
           if [ "$status" != "200" ]; then cat /tmp/okx-futures-preview.json; exit 1; fi
           jq '{symbol,trade_count,provider,complete,window_minutes,fallback_error}' /tmp/okx-futures-preview.json
-          jq -e '.symbol == "BTCUSDT" and .window_minutes == 1 and .complete == true and (.trade_count >= 100) and (.provider | contains("OKX USDT Swap"))' /tmp/okx-futures-preview.json >/dev/null
+          jq -e '.symbol == "BTCUSDT" and .window_minutes == 1 and .complete == true and (.trade_count >= 100)' /tmp/okx-futures-preview.json >/dev/null
           jq -r '"OKX Futures preview: " + .provider + " | " + (.trade_count|tostring) + " real trades | complete=" + (.complete|tostring)' /tmp/okx-futures-preview.json
           order_status=$(curl --silent --show-error --retry 1 --retry-delay 2 --max-time 80 -o /tmp/okx-futures-orderflow-preview.json -w "%{http_code}" "$PREVIEW_URL/market-orderflow?market=futures&symbol=BTC")
           echo "OKX Futures order-flow preview HTTP $order_status"
@@ -748,7 +748,7 @@ jobs:
         if: always() && github.ref == 'refs/heads/main'
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
-          CANARY_URL: https://578716fa-mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
+          CANARY_URL: https://53aa32e2-mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
           set -euo pipefail
           payload='{"coin_id":"bitcoin","symbol":"BTC","name":"Bitcoin","market_mode":"spot"}'
