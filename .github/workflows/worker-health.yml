@@ -607,6 +607,27 @@ jobs:
             echo "- Derivatives: endpoint responding with provider attribution"
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Validate daily Cloudflare AI budget guard
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+          const source = fs.readFileSync("cloudflare-worker/worker.js", "utf8");
+          const reserve = source.indexOf("async function reserveCloudflareAIDailyBudget");
+          const ai = source.indexOf('env.AI.run("@cf/openai/gpt-oss-120b"');
+          if (reserve < 0 || ai < 0) throw new Error("Daily budget guard or Cloudflare AI call is missing");
+          const guard = source.slice(reserve, ai);
+          for (const required of ["CF_AI_DAILY_MAX_CALLS??20", "if(!env.ADMIN_DB)", "ON CONFLICT(utc_day)", "WHERE mmp_ai_daily_budget.calls < ?", "RETURNING calls"]) {
+            if (!guard.includes(required)) throw new Error("Daily AI budget invariant missing: " + required);
+          }
+          const callContext = source.slice(source.lastIndexOf("async function runAIWithFallback", ai), ai);
+          if (!callContext.includes("if(!budget.allowed)") || !callContext.includes("reserveCloudflareAIDailyBudget(env)")) {
+            throw new Error("Cloudflare AI call is not protected by the daily reservation guard");
+          }
+          if (!source.includes("cloudflareBudget:error?.cloudflareBudget||null")) throw new Error("Local fallback does not retain budget status");
+          console.log("Atomic daily Cloudflare AI budget guard verified.");
+          NODE
+
       - name: Live AI analyzer end-to-end smoke test
         if: always() && github.ref == 'refs/heads/main'
         env:
