@@ -15,6 +15,26 @@ function extractAIJson(value){
  if(!parsed||typeof parsed!=="object"||Array.isArray(parsed))throw new Error("AI returned invalid JSON object");
  return candidate;
 }
+async function reserveCloudflareAIDailyBudget(env){
+ const maxCalls=Math.max(0,Math.floor(Number(env.CF_AI_DAILY_MAX_CALLS??20)));
+ const day=new Date().toISOString().slice(0,10);
+ const now=new Date().toISOString();
+ if(!env.ADMIN_DB)return {allowed:false,day,calls:null,max_calls:maxCalls,remaining:0,reason:"D1 daily budget store is not bound; Cloudflare AI blocked fail-closed"};
+ try{
+  const row=await env.ADMIN_DB.prepare(
+   "INSERT INTO mmp_ai_daily_budget (utc_day,calls,updated_at) VALUES (?,1,?) ON CONFLICT(utc_day) DO UPDATE SET calls=mmp_ai_daily_budget.calls+1,updated_at=excluded.updated_at WHERE mmp_ai_daily_budget.calls < ? RETURNING calls"
+  ).bind(day,now,maxCalls).first();
+  if(row&&Number(row.calls)<=maxCalls){
+   const calls=Number(row.calls);
+   return {allowed:true,day,calls,max_calls:maxCalls,remaining:Math.max(0,maxCalls-calls),reason:null};
+  }
+  const current=await env.ADMIN_DB.prepare("SELECT calls FROM mmp_ai_daily_budget WHERE utc_day = ?").bind(day).first();
+  const calls=Number(current?.calls)||0;
+  return {allowed:false,day,calls,max_calls:maxCalls,remaining:0,reason:"Daily Cloudflare AI call budget reached"};
+ }catch(error){
+  return {allowed:false,day,calls:null,max_calls:maxCalls,remaining:0,reason:"Daily budget storage error; Cloudflare AI blocked fail-closed: "+String(error?.message||error).slice(0,140)};
+ }
+}
 async function runAIWithFallback(env,prompt){
  const failures=[];
  if(env.GROQ_API_KEY){
@@ -39,10 +59,17 @@ async function runAIWithFallback(env,prompt){
   }
  }
  if(env.AI){
+  const budget=await reserveCloudflareAIDailyBudget(env);
+  if(!budget.allowed){
+   failures.push("Cloudflare AI skipped: "+budget.reason+" ("+budget.calls+"/"+budget.max_calls+" UTC daily calls)");
+   const error=new Error("Cloudflare AI daily budget unavailable or exhausted");
+   error.cloudflareBudget=budget;
+   throw error;
+  }
   try{
    const result=await env.AI.run("@cf/openai/gpt-oss-120b",{messages:[{role:"system",content:"Return only one valid JSON object. Do not use markdown fences."},{role:"user",content:prompt}],max_tokens:1600,temperature:0.2});
    const content=result?.choices?.[0]?.message?.content||result?.response||result?.output_text;
-   if(content)return {provider:"Cloudflare Workers AI",raw:content,fallbacks:failures};
+   if(content)return {provider:"Cloudflare Workers AI",raw:content,fallbacks:failures,cloudflareBudget:budget};
    failures.push("Cloudflare AI: empty response");
   }catch(error){failures.push("Cloudflare AI: "+String(error?.message||error).slice(0,180));}
  }
@@ -1730,7 +1757,7 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/futures-engine-heal
   stage="اجرای هوش مصنوعی";
   let aiResult,aiProvider;
   try{aiResult=await runAIWithFallback(env,prompt);aiProvider=aiResult.provider;}
-  catch(error){aiProvider="Local quantitative fallback";aiResult={provider:aiProvider,raw:JSON.stringify(buildLocalAnalysisFallback()),fallbacks:[String(error?.message||error).slice(0,700)]};}
+  catch(error){aiProvider="Local quantitative fallback";aiResult={provider:aiProvider,raw:JSON.stringify(buildLocalAnalysisFallback()),cloudflareBudget:error?.cloudflareBudget||null,fallbacks:[String(error?.message||error).slice(0,700)]};}
   stage="پردازش پاسخ هوش مصنوعی";
   let raw=aiResult.raw;
   if(typeof raw!=="string")raw=JSON.stringify(raw);
@@ -1743,7 +1770,7 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/futures-engine-heal
   analysis.confidence=Math.max(0,Math.min(100,Math.round(Number(analysis.confidence)||0)));
   analysis.market=analysis.market||{};analysis.market.price_usd=latest.price;
   analysis.indicators={...(analysis.indicators||{}),rsi:latest.rsi==null?null:Number(latest.rsi.toFixed(2)),macd_signal:latest.macd_signal,ema_trend:latest.ema_trend,atr_percent:latest.atr_percent==null?null:Number(latest.atr_percent.toFixed(2))};
-  analysis.market_timestamp=latest.candle_closed_at||latest.candle_time;analysis.market_data_fresh=marketDataFresh;analysis.timeframe_freshness=freshness;analysis.data_source=[...new Set(providers)].join(" + ")+ " · "+aiProvider;analysis.ai_provider=aiProvider;analysis.ai_provider_fallbacks=aiResult.fallbacks||[];
+  analysis.market_timestamp=latest.candle_closed_at||latest.candle_time;analysis.market_data_fresh=marketDataFresh;analysis.timeframe_freshness=freshness;analysis.data_source=[...new Set(providers)].join(" + ")+ " · "+aiProvider;analysis.ai_provider=aiProvider;analysis.ai_provider_fallbacks=aiResult.fallbacks||[];analysis.cf_ai_budget=aiResult.cloudflareBudget||null;
   analysis.recommendations=Array.isArray(analysis.recommendations)?analysis.recommendations.slice(0,6):[];
   analysis.scenarios=Array.isArray(analysis.scenarios)?analysis.scenarios.slice(0,3):[];
   analysis.reasons=Array.isArray(analysis.reasons)?analysis.reasons.slice(0,6):[];
