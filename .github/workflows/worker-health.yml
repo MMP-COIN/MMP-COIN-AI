@@ -229,7 +229,8 @@ jobs:
           if (html.includes("https://api.binance.com")) throw new Error("Quantum Lab still depends directly on Binance browser APIs");
           if (!html.includes('fetch(API+"/hunter-snapshot"') || !html.includes("function startLiveMonitor()") || !html.includes("setInterval(()=>{if(!document.hidden&&!state.busy)scan()},15000)")) throw new Error("Quantum Lab persistent automatic scan subscription is missing");
           if (!html.includes("flow?.complete===true") || !html.includes("depth?.confirmed===true")) throw new Error("Quantum Lab evidence quality gates are missing");
-          if (!html.includes("MMP QUANTUM SUPER ENGINE") || !html.includes("۱۲ قابلیت تخصصی ابرموتور") || html.includes("mmp-quantum-engine-horizontal-final") || html.includes("#quantum-engines>#engines>.engine-drawer{flex:0 0 340px")) throw new Error("Quantum Lab must render one full-width super-engine panel, not a narrow horizontal engine carousel");
+          const navIcons = [...html.matchAll(/class="nav-icon">([^<]+)/g)].map(x => x[1]);
+          if (!html.includes("هسته هوشمند واحد") || !html.includes("هسته مرکزی یکپارچه") || /<section[^>]*class=["\'][^"\']*engine-showcase/.test(html) || html.includes("engineCapabilities") || html.includes("renderEngines") || html.includes('id="engines"') || navIcons.length < 8 || new Set(navIcons).size !== navIcons.length) throw new Error("Quantum Lab must expose one unified core, no separate 12-engine showcase, and distinct icons for each menu");
           const ids = new Set([...html.matchAll(/\bid=["']([^"']+)["']/g)].map(x => x[1]));
           const brokenHashLinks = [...new Set([...html.matchAll(/href=["']#([^"']+)["']/g)].map(x => x[1]).filter(id => !ids.has(id)))];
           if (brokenHashLinks.length) throw new Error("Quantum Lab navigation links have missing targets: " + brokenHashLinks.join(", "));
