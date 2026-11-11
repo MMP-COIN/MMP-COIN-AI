@@ -1,0 +1,42 @@
+name: Validate MMP V4 rebuild
+on:
+  push:
+    branches: ["rebuild/**"]
+    paths:
+      - "www/v4/**"
+      - ".github/workflows/validate-v4-rebuild.yml"
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "www/v4/**"
+      - ".github/workflows/validate-v4-rebuild.yml"
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 20
+      - name: Check JavaScript syntax
+        run: node --check www/v4/app.js
+      - name: Validate rebuild structure and assets
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          html = Path("www/v4/index.html").read_text(encoding="utf-8")
+          css = Path("www/v4/app.css").read_text(encoding="utf-8")
+          js = Path("www/v4/app.js").read_text(encoding="utf-8")
+          for required in ["id=\"command\"", "id=\"radar\"", "id=\"hunter\"", "id=\"analyzer\"", "id=\"engines\"", "app.css", "app.js"]:
+              assert required in html, f"Missing required UI mount: {required}"
+          for required in ["QIE-4.0.0", "مرکز فرماندهی کوانتومی", "رادار", "شکارچی", "تحلیل‌گر", "موتورهای"]:
+              assert required in html, f"Missing required product section: {required}"
+          for required in ["hunter-combined-snapshot", "fast-radar-snapshot", "/health", "cache:\"no-store\""]:
+              assert required in js, f"Missing live integration: {required}"
+          assert "هیچ سیگنال ساختگی" in html, "No fabricated-signal disclosure"
+          assert len(css) > 8000, "Responsive terminal stylesheet unexpectedly small"
+          assert "Math.random" not in js and "fake" not in js.lower(), "Synthetic market data is not allowed"
+          print("V4 UI mounts, responsive assets, live endpoints, and no-fabricated-data guard validated.")
+          PY
