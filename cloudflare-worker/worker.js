@@ -99,11 +99,11 @@ function corsHeaders(request){
   headers["Access-Control-Allow-Methods"]="GET, POST, OPTIONS";
   headers["Access-Control-Allow-Headers"]="Content-Type";
   headers["Access-Control-Max-Age"]="86400";
-  headers["Access-Control-Expose-Headers"]="X-MMP-Cache, X-MMP-Data-Age, X-MMP-Data-Source, Warning";
+  headers["Access-Control-Expose-Headers"]="X-MMP-Cache, X-MMP-Data-Age, X-MMP-Data-Source, Cf-Cache-Status, Warning";
  }
  return headers;
 }
-const json=(obj,status=200,request=null,extraHeaders={})=>new Response(JSON.stringify(obj),{status,headers:{...corsHeaders(request),...extraHeaders,"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store","X-Content-Type-Options":"nosniff","Referrer-Policy":"no-referrer"}});
+const json=(obj,status=200,request=null,extraHeaders={})=>new Response(JSON.stringify(obj),{status,headers:{...corsHeaders(request),...extraHeaders,"Content-Type":extraHeaders["Content-Type"]||"application/json; charset=utf-8","Cache-Control":extraHeaders["Cache-Control"]||"no-store","X-Content-Type-Options":"nosniff","Referrer-Policy":"no-referrer"}});
 async function checkRateLimit(binding,request,scope){
  if(!binding)return "unavailable";
  const ip=request.headers.get("CF-Connecting-IP")||"unknown";
@@ -1280,7 +1280,7 @@ async function handle(request,env){
   const universeCacheKey=await marketFallbackKey("hunter-universe:v1");
   const cachedUniverse=await readMarketFallback(env,universeCacheKey);
   if(cachedUniverse?.payload&&cachedUniverse.ageMs<90000){
-   return json(cachedUniverse.payload,200,request,{"X-MMP-Cache":"HIT","X-MMP-Data-Age":String(Math.floor(cachedUniverse.ageMs))});
+   return json(cachedUniverse.payload,200,request,{"X-MMP-Cache":"HIT","X-MMP-Data-Age":String(Math.floor(cachedUniverse.ageMs)),"Cache-Control":"public, max-age=90"});
   }
   const timedJson=async(url,timeout=12000,cacheTtl=30,extraHeaders={})=>{
    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeout);
@@ -1393,7 +1393,7 @@ async function handle(request,env){
    try{await env.MARKET_CACHE_DB.prepare("INSERT INTO market_data_cache (cache_key,payload,cached_at) VALUES (?, ?, ?) ON CONFLICT(cache_key) DO UPDATE SET payload=excluded.payload,cached_at=excluded.cached_at").bind(universeCacheKey,JSON.stringify(universePayload),Date.now()).run();}
    catch(error){console.warn("Hunter universe shared cache write failed:",String(error?.message||error).slice(0,140));}
   }
-  return json(universePayload,200,request,{"X-MMP-Data-Source":"Binance, Bybit, OKX, Bitget, Gate, KuCoin, WhiteBIT, Nobitex, Wallex + "+metadataProvider,"X-MMP-Cache":"MISS"});
+  return json(universePayload,200,request,{"X-MMP-Data-Source":"Binance, Bybit, OKX, Bitget, Gate, KuCoin, WhiteBIT, Nobitex, Wallex + "+metadataProvider,"X-MMP-Cache":"MISS","Cache-Control":"public, max-age=90"});
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/support-check"){
   const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"support-check");
@@ -1564,6 +1564,7 @@ async function handle(request,env){
   ].filter(Boolean).join("|");
   const marketCacheKey=await marketFallbackKey(cacheIdentity);
   const staleMarketResponse=await readMarketFallback(env,marketCacheKey);
+  const responseCacheTtl=source.startsWith("coingecko")?60:source.includes("tether")||source.includes("wallex")?10:5;
   let lastError=null;
   for(const endpoint of candidates){
    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),9000);
@@ -1588,7 +1589,7 @@ async function handle(request,env){
      }
     }
     await writeMarketFallback(env,marketCacheKey,data,staleMarketResponse,3600000);
-    return json(data,200,request,{"X-MMP-Data-Source":source,"X-MMP-Cache":"fresh"});
+    return json(data,200,request,{"X-MMP-Data-Source":source,"X-MMP-Cache":"fresh","Cache-Control":"public, max-age="+responseCacheTtl});
    }catch(error){lastError=String(error?.message||"network error");}
    finally{clearTimeout(timer);}
   }
