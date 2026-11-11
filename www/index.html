@@ -2914,7 +2914,7 @@ async function refreshLiveQuotes(){
  try{
   const updated=await enrichWithBinance(cachedCoinsData);
   const now=Date.now();
-  const fresh=updated.filter(c=>Number(c.current_price)>0&&Number.isFinite(Date.parse(c.price_updated_at||""))&&now-Date.parse(c.price_updated_at)<=45000&&(["Binance Spot","Bitget Spot","OKX Spot","Bybit Spot"].includes(c.price_source)));
+  const fresh=updated.filter(c=>Number(c.current_price)>0&&Number.isFinite(Date.parse(c.price_updated_at||""))&&now-Date.parse(c.price_updated_at)<=45000&&(["Binance Spot","Gate.io Spot","KuCoin Spot","MEXC Spot","OKX Spot","Bitget Spot"].includes(c.price_source)));
   if(!fresh.length)return false;
   const byId=new Map(updated.map(c=>[String(c.id),c]));
   cachedCoinsData=cachedCoinsData.map(c=>byId.get(String(c.id))||c);
@@ -3164,20 +3164,31 @@ async function enrichWithBinance(coins){
    if(Array.isArray(d)&&d.length)return d;
    throw new Error("Binance Worker ticker proxy unavailable");
   }},
-  {name:"Bitget Spot",load:async()=>{
-   const d=await fetchJson(AI_ANALYSIS_ENDPOINT+"/market-proxy?source=bitget-tickers",6500);
-   if(d?.code!=="00000"||!Array.isArray(d.data)||!d.data.length)throw new Error("Invalid Bitget ticker response");
-   return d.data.map(t=>({symbol:t.symbol,lastPrice:t.lastPrice,priceChangePercent:Number(t.price24hPcnt)*100,closeTime:t.ts}));
+  {name:"Gate.io Spot",load:async()=>{
+   const d=await fetchJson(AI_ANALYSIS_ENDPOINT+"/market-proxy?source=gate-tickers",6500);
+   if(!Array.isArray(d)||!d.length)throw new Error("Invalid Gate ticker response");
+   return d.filter(t=>String(t.currency_pair||"").endsWith("_USDT")).map(t=>({symbol:String(t.currency_pair).replace("_",""),lastPrice:t.last,priceChangePercent:Number(t.change_percentage),closeTime:Number(t.update_time_ms)||Number(t.update_time)*1000||Date.now()}));
+  }},
+  {name:"KuCoin Spot",load:async()=>{
+   const d=await fetchJson(AI_ANALYSIS_ENDPOINT+"/market-proxy?source=kucoin-tickers",6500),rows=Array.isArray(d?.data?.ticker)?d.data.ticker:[];
+   if(d?.code!=="200000"||!rows.length)throw new Error("Invalid KuCoin ticker response");
+   return rows.filter(t=>String(t.symbol||"").endsWith("-USDT")).map(t=>({symbol:String(t.symbol).replace("-",""),lastPrice:t.last,priceChangePercent:Number(t.changeRate)*100,closeTime:Number(d.data.time)||Date.now()}));
+  }},
+  {name:"MEXC Spot",load:async()=>{
+   const d=await fetchJson(AI_ANALYSIS_ENDPOINT+"/market-proxy?source=mexc-tickers",6500);
+   if(!Array.isArray(d)||!d.length)throw new Error("Invalid MEXC ticker response");
+   return d;
   }},
   {name:"OKX Spot",load:async()=>{
    const d=await fetchJson(AI_ANALYSIS_ENDPOINT+"/market-proxy?source=okx-tickers",6500);
    if(d?.code!=="0"||!Array.isArray(d.data)||!d.data.length)throw new Error("Invalid OKX ticker response");
    return d.data.filter(t=>String(t.instId||"").endsWith("-USDT")).map(t=>({symbol:String(t.instId).replace("-",""),lastPrice:t.last,priceChangePercent:Number(t.open24h)>0?(Number(t.last)/Number(t.open24h)-1)*100:NaN,closeTime:t.ts}));
   }},
-  {name:"Bybit Spot",load:async()=>{
-   const d=await fetchJson(AI_ANALYSIS_ENDPOINT+"/market-proxy?source=bybit-tickers",6500);
-   if(d?.retCode!==0||!Array.isArray(d.result?.list)||!d.result.list.length)throw new Error("Invalid Bybit ticker response");
-   return d.result.list.map(t=>({symbol:t.symbol,lastPrice:t.lastPrice,priceChangePercent:Number(t.price24hPcnt)*100,closeTime:d.time||Date.now()}));
+  {name:"Bitget Spot",load:async()=>{
+   // Bitget allows browser CORS but rejects Cloudflare Worker egress; use its public browser-safe endpoint directly.
+   const d=await fetchJson("https://api.bitget.com/api/v3/market/tickers?category=SPOT",6500);
+   if(d?.code!=="00000"||!Array.isArray(d.data)||!d.data.length)throw new Error("Invalid Bitget ticker response");
+   return d.data.map(t=>({symbol:t.symbol,lastPrice:t.lastPrice,priceChangePercent:Number(t.price24hPcnt)*100,closeTime:t.ts}));
   }}
  ];
  let tickers=[],priceSource="",failures=[];
@@ -3213,7 +3224,6 @@ async function enrichWithBinance(coins){
   return {...c,price_source:c.price_source||"CoinGecko",price_updated_at:c.price_updated_at||c.last_updated||null};
  });
 }
-
 
 async function fetchTetherRate(){
  // Run the consolidated three-exchange monitor and the independent proxy fallback

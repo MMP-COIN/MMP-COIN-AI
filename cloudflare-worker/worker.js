@@ -749,12 +749,14 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
   const preferred=(Array.isArray(asset?.marketPairs)?asset.marketPairs.slice().sort((a,b)=>Number(b.volume||0)-Number(a.volume||0)):[]).map(x=>indices[String(x.exchange||"")]).filter(Number.isInteger),priority=[4,8,6,7,2,5,3,1,0],available=unique(preferred).sort((a,b)=>priority.indexOf(a)-priority.indexOf(b)),primary=preferred[0],primaryTrusted=[4,5,6,8,7].includes(primary);
   order=unique([...(primaryTrusted&&available.includes(primary)?[primary]:[]),...available]);
  }
- const fallbackPriority=marketType==="futures"?[4,6,5,3,2,1,0]:[4,5,8,6,2,3,1,7,0];
+ const fallbackPriority=marketType==="futures"?[4,2,1,5,6,3,0]:[4,3,1,0,2,8,5,6,7];
  const preferredOrder=unique(order);
- // Prefer venues with reliable server-side candle access. If the catalog only lists blocked browser-first venues (Bybit/OKX), do not let them consume both confirmation slots.
- const primaryOrder=preferredOrder.filter(index=>[4,5,6,8].includes(index)).slice(0,2);
- const fallbackPool=unique([...fallbackPriority.filter(index=>!primaryOrder.includes(index)),...preferredOrder.filter(index=>!primaryOrder.includes(index)),...sources.map((_,index)=>index)]).filter(index=>!primaryOrder.includes(index));
- const sourceLimit=Math.min(2,sources.length),orderedIndices=unique([...primaryOrder,...fallbackPool]),orderedSources=orderedIndices.map(index=>sources[index]).filter(Boolean).slice(0,sourceLimit),verified=[];
+ const primaryOrder=preferredOrder.slice(0,2);
+ const fallbackPool=unique([...fallbackPriority.filter(index=>!primaryOrder.includes(index)),...preferredOrder.slice(2),...sources.map((_,index)=>index)]).filter(index=>!primaryOrder.includes(index));
+ const symbolHash=String(symbol).split("").reduce((sum,char)=>sum+char.charCodeAt(0),0);
+ const rotation=fallbackPool.length?(symbolHash+Math.floor(Date.now()/60000))%fallbackPool.length:0;
+ const rotatedFallback=[...fallbackPool.slice(rotation),...fallbackPool.slice(0,rotation)];
+ const sourceLimit=Math.min(2,sources.length),orderedIndices=unique([...primaryOrder,...rotatedFallback]),orderedSources=orderedIndices.map(index=>sources[index]).filter(Boolean).slice(0,sourceLimit),verified=[];
  let selectedPair=null,bestObservedPair=null;
  const evaluatePairs=()=>{
   const pairs=[];
@@ -1585,6 +1587,9 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/market-proxy"){
    "bitget-tickers":["https://api.bitget.com/api/v3/market/tickers?category=SPOT"],
    "okx-tickers":["https://www.okx.com/api/v5/market/tickers?instType=SPOT","https://us.okx.com/api/v5/market/tickers?instType=SPOT"],
    "bybit-tickers":["https://api.bybit.com/v5/market/tickers?category=spot","https://api.bytick.com/v5/market/tickers?category=spot","https://api.bybit.eu/v5/market/tickers?category=spot"],
+   "gate-tickers":["https://api.gateio.ws/api/v4/spot/tickers"],
+   "kucoin-tickers":["https://api.kucoin.com/api/v1/market/allTickers"],
+   "mexc-tickers":["https://api.mexc.com/api/v3/ticker/24hr"],
    "coingecko-top":["https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page="+requestedTopPage+"&sparkline=false&price_change_percentage=1h%2C24h%2C7d"],
    "coinlore-top":["https://api.coinlore.net/api/tickers/?start="+requestedOffset+"&limit=100"],
    "nobitex-tether":["https://apiv2.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls","https://apiv2.nobitex.ir/market/stats?dstCurrency=rls","https://apiv2.nobitex.ir/v3/orderbook/USDTIRT","https://api.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls","https://api.nobitex.ir/v3/orderbook/USDTIRT"],

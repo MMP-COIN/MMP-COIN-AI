@@ -465,16 +465,19 @@ jobs:
           echo "Binance ticker proxy HTTP $binance_status"
           if [ "$binance_status" != "200" ]; then jq -r '.detail // .error // .' /tmp/binance.json; exit 1; fi
           jq -e 'type == "array" and any(.[]; .symbol == "BTCUSDT")' /tmp/binance.json >/dev/null
-          bitget_status=$(curl --silent --show-error --retry 2 --retry-delay 1 --max-time 20 -o /tmp/bitget-proxy.json -w "%{http_code}" "$WORKER_URL/market-proxy?source=bitget-tickers")
-          test "$bitget_status" = "200"
-          jq -e '.code == "00000" and (.data | type == "array" and length > 0)' /tmp/bitget-proxy.json >/dev/null
+          gate_status=$(curl --silent --show-error --retry 2 --retry-delay 1 --max-time 20 -o /tmp/gate-proxy.json -w "%{http_code}" "$WORKER_URL/market-proxy?source=gate-tickers")
+          test "$gate_status" = "200"
+          jq -e 'type == "array" and any(.[]; .currency_pair == "BTC_USDT")' /tmp/gate-proxy.json >/dev/null
+          kucoin_status=$(curl --silent --show-error --retry 2 --retry-delay 1 --max-time 20 -o /tmp/kucoin-proxy.json -w "%{http_code}" "$WORKER_URL/market-proxy?source=kucoin-tickers")
+          test "$kucoin_status" = "200"
+          jq -e '.code == "200000" and (.data.ticker | type == "array" and length > 0)' /tmp/kucoin-proxy.json >/dev/null
+          mexc_status=$(curl --silent --show-error --retry 2 --retry-delay 1 --max-time 20 -o /tmp/mexc-proxy.json -w "%{http_code}" "$WORKER_URL/market-proxy?source=mexc-tickers")
+          test "$mexc_status" = "200"
+          jq -e 'type == "array" and any(.[]; .symbol == "BTCUSDT")' /tmp/mexc-proxy.json >/dev/null
           okx_status=$(curl --silent --show-error --retry 2 --retry-delay 1 --max-time 20 -o /tmp/okx-proxy.json -w "%{http_code}" "$WORKER_URL/market-proxy?source=okx-tickers")
           test "$okx_status" = "200"
           jq -e '.code == "0" and (.data | type == "array" and length > 0)' /tmp/okx-proxy.json >/dev/null
-          bybit_status=$(curl --silent --show-error --retry 2 --retry-delay 1 --max-time 20 -o /tmp/bybit-proxy.json -w "%{http_code}" "$WORKER_URL/market-proxy?source=bybit-tickers")
-          test "$bybit_status" = "200"
-          jq -e '.retCode == 0 and (.result.list | type == "array" and length > 0)' /tmp/bybit-proxy.json >/dev/null
-          echo "- Server-side Binance, Bitget, OKX and Bybit ticker proxies: responding" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Server-side Binance, Gate, KuCoin, MEXC and OKX ticker proxies: responding" >> "$GITHUB_STEP_SUMMARY"
           coingecko_status=$(curl --silent --show-error --retry 1 --max-time 25 -o /tmp/coingecko.json -w "%{http_code}" "$WORKER_URL/market-proxy?source=coingecko-top")
           echo "CoinGecko market proxy HTTP $coingecko_status"
           if [ "$coingecko_status" = "200" ]; then
