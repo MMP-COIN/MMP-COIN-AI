@@ -814,6 +814,22 @@ async function loadFuturesMarketFlow(symbol,windowMinutes=5,signal=null){
  let trades=null,provider="",truncated=false,lastError="";
  const normalize=(rows,mapper,oldestOf)=>{const oldest=rows.reduce((v,x)=>Math.min(v,oldestOf(x)||Infinity),Infinity);truncated=Number.isFinite(oldest)&&oldest>cutoff+5000;return rows.map(mapper).filter(x=>x.time>=cutoff&&x.time<=now&&x.price>0&&x.size>0&&["Buy","Sell"].includes(x.side));};
  const betterFlow=(candidate,candidateTruncated)=>!trades?.length||(truncated&&!candidateTruncated)||(truncated===candidateTruncated&&candidate.length>trades.length);
+ if(!trades?.length||truncated||trades.length<8){
+  for(const host of ["https://www.okx.com"]){
+   try{
+    const d=await get(host+"/api/v5/market/trades?instId="+base+"-USDT-SWAP&limit=500");
+    if(String(d.code)!=="0")throw Error(d.msg||"OKX Swap trades unavailable");
+    const rows=d.data||[],oldest=rows.reduce((v,x)=>Math.min(v,Number(x.ts)||Infinity),Infinity);
+    const okxTruncated=Number.isFinite(oldest)&&oldest>cutoff+5000;
+    const okxTrades=rows.map(x=>({time:Number(x.ts),price:Number(x.px),size:Number(x.sz),side:String(x.side||"").toLowerCase()==="buy"?"Buy":"Sell"})).filter(x=>x.time>=cutoff&&x.time<=now&&x.price>0&&x.size>0);
+    if(!okxTrades.length)throw Error("OKX returned no recent Futures trades");
+    if(betterFlow(okxTrades,okxTruncated)){trades=okxTrades;truncated=okxTruncated;provider="OKX USDT Swap · recent trades";}
+    if(!truncated)break;
+   }catch(error){lastError="OKX recent: "+String(error?.message||error).slice(0,120);}
+  }
+ }
+
+ if(!trades?.length||truncated||trades.length<8){
  for(const host of ["https://api.bybit.eu","https://api.bytick.eu","https://api.bybit.com","https://api.bytick.com"]){
   try{
    const d=await get(host+"/v5/market/recent-trade?category=linear&symbol="+pair+"&limit=1000");
@@ -822,6 +838,7 @@ async function loadFuturesMarketFlow(symbol,windowMinutes=5,signal=null){
    if(!normalized.length)throw Error("Bybit Futures returned no recent trades");
    trades=normalized;provider="Bybit Linear · real trades";if(!truncated)break;
   }catch(error){lastError="Bybit: "+String(error?.message||error).slice(0,120);}
+ }
  }
  if(!trades?.length||truncated||trades.length<8){
   for(const host of ["https://api.bitget.com"]){
@@ -859,20 +876,6 @@ async function loadFuturesMarketFlow(symbol,windowMinutes=5,signal=null){
     if(betterFlow(binanceTrades,binanceTruncated)){trades=binanceTrades;truncated=binanceTruncated;provider="Binance USD-M Futures · aggregate trades";}
     if(!truncated)break;
    }catch(error){lastError="Binance: "+String(error?.message||error).slice(0,120);}
-  }
- }
- if(!trades?.length||truncated||trades.length<8){
-  for(const host of ["https://www.okx.com"]){
-   try{
-    const d=await get(host+"/api/v5/market/trades?instId="+base+"-USDT-SWAP&limit=500");
-    if(String(d.code)!=="0")throw Error(d.msg||"OKX Swap trades unavailable");
-    const rows=d.data||[],oldest=rows.reduce((v,x)=>Math.min(v,Number(x.ts)||Infinity),Infinity);
-    const okxTruncated=Number.isFinite(oldest)&&oldest>cutoff+5000;
-    const okxTrades=rows.map(x=>({time:Number(x.ts),price:Number(x.px),size:Number(x.sz),side:String(x.side||"").toLowerCase()==="buy"?"Buy":"Sell"})).filter(x=>x.time>=cutoff&&x.time<=now&&x.price>0&&x.size>0);
-    if(!okxTrades.length)throw Error("OKX returned no recent Futures trades");
-    if(betterFlow(okxTrades,okxTruncated)){trades=okxTrades;truncated=okxTruncated;provider="OKX USDT Swap · recent trades";}
-    if(!truncated)break;
-   }catch(error){lastError="OKX recent: "+String(error?.message||error).slice(0,120);}
   }
  }
  if(!trades?.length||truncated||trades.length<8){
@@ -1041,7 +1044,7 @@ async function scanHunterSymbols(symbols,marketType="spot",assetList=[],env=null
    if(marketType==="futures"&&engineActivity?.sentiment)engineActivity.sentiment.processed++;
    const [sentimentResult,flowResult,depthResult]=await Promise.allSettled([
     marketType==="futures"?loadHunterFundingSentiment(x.symbol,x.trend,preferred,flowController.signal):Promise.resolve({available:false,score:null,sourceCount:0,sources:[]}),
-    marketType==="futures"?loadFuturesMarketFlow(x.symbol,5,flowController.signal):loadMarketFlow(x.symbol,5,flowController.signal),
+    marketType==="futures"?loadFuturesMarketFlow(x.symbol,1,flowController.signal):loadMarketFlow(x.symbol,5,flowController.signal),
     loadHunterDepth(x.symbol,marketType,preferred,flowController.signal)
    ]);
    const sentiment=sentimentResult.status==="fulfilled"?sentimentResult.value:{available:false,score:null,sourceCount:0,sources:[]};
@@ -1053,7 +1056,7 @@ async function scanHunterSymbols(symbols,marketType="spot",assetList=[],env=null
     if(sentiment.available){const earlyQuantum=scoreQuantumOpportunity({...x,sentimentScore:sentiment.score,sentimentConfirmed:true,sentimentSource:sentiment.sources.join(" + ")});x.quantum=earlyQuantum;x.score=earlyQuantum.score;}
    }
    if(!f)f={buy5m:0,sell5m:0,net5m:0,trade_count:0,provider:null,complete:false,window_minutes:5};
-   if(f.complete!==true&&!flowController.signal.aborted){const shorter=marketType==="futures"?await loadFuturesMarketFlow(x.symbol,1,flowController.signal):await loadMarketFlow(x.symbol,1,flowController.signal);if(shorter.complete===true&&shorter.trade_count>=8)f=shorter;}
+   if(f.complete!==true&&!flowController.signal.aborted&&marketType!=="futures"){const shorter=await loadMarketFlow(x.symbol,1,flowController.signal);if(shorter.complete===true&&shorter.trade_count>=8)f=shorter;}
    const gross=f.buy5m+f.sell5m,imb=gross?f.net5m/gross:0,ok=x.trend==="bull"?imb>=.045:imb<=-.045;
    x.flow={buy5m:f.buy5m,sell5m:f.sell5m,net5m:f.net5m,windowMinutes:f.window_minutes||5,tradeCount:f.trade_count,provider:f.provider,complete:f.complete,coverageStart:f.coverage_start,imbalance:+imb.toFixed(4)};
    x.flowSignal=f.net5m>0?"inflow":"outflow";
