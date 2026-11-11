@@ -186,3 +186,30 @@ export function normalizeQuantumUniverse(items,marketType="spot"){
  }
  return [...unique.values()].sort((a,b)=>finite(b.total_volume)-finite(a.total_volume));
 }
+
+
+/**
+ * Pre-move pressure detector. This is an evidence score, not a price prediction.
+ * Inputs must be measured from fresh candles/trades/order-book snapshots.
+ */
+export function detectEarlyMovePressure(input={}){
+ const n=(v)=>Number.isFinite(Number(v))?Number(v):null;
+ const compression=n(input.rangeCompression),volume=n(input.volumeAcceleration);
+ const flow=n(input.flowImbalance),depth=n(input.depthImbalance),spread=n(input.spreadChangePct);
+ const fresh=input.dataFresh===true;
+ const parts={compression:compression===null?null:clamp((1.25-compression)*80),
+  volume:volume===null?null:clamp((volume-1)*35),
+  flow:flow===null?null:clamp(50+flow*250),
+  depth:depth===null?null:clamp(50+depth*180),
+  spread:spread===null?null:clamp(50+spread*12)};
+ const available=Object.values(parts).filter(v=>v!==null).length;
+ const weight={compression:.22,volume:.22,flow:.24,depth:.24,spread:.08};
+ const calc=(direction)=>{let sum=0,w=0;for(const [key,value] of Object.entries(parts)){if(value===null)continue;const aligned=key==="compression"||key==="volume"?value:(direction==="up"?value:100-value);sum+=aligned*weight[key];w+=weight[key];}return w?Math.round(sum/w):0;};
+ const up=calc("up"),down=calc("down");
+ const score=Math.max(up,down),direction=up>=down?"up":"down";
+ const evidence=available>=2&&fresh;
+ const state=!evidence?"insufficient_data":score>=78?"high_pressure":score>=62?"watch":"quiet";
+ return {version:"MMP-EARLY-PRESSURE-1.0",state,direction,up_score:up,down_score:down,score,available_inputs:available,
+  inputs:parts,pre_move_only:true,confidence_label:available>=4&&fresh?"multi-signal":"limited",
+  message:!evidence?"داده تازه و چند شاهد مستقل کافی نیست":direction==="up"?"فشار اولیه صعودی؛ هنوز شکست قیمت تأیید نشده":"فشار اولیه نزولی؛ هنوز شکست قیمت تأیید نشده"};
+}
