@@ -6,7 +6,7 @@
  const engines=[
   ["01","Market Intelligence","هوشمندی کلی بازار"],["02","Explosive Move Prediction","پیش‌بینی فشار حرکت"],["03","Early Opportunity Hunter","کشف زودهنگام فرصت"],["04","Smart Money Flow","جریان پول هوشمند"],["05","Liquidity Hunter","شکار نواحی نقدینگی"],["06","Multi-timeframe Alignment","هم‌جهتی تایم‌فریم‌ها"],["07","Volatility Intelligence","هوشمندی نوسان"],["08","Market Sentiment","احساسات بازار"],["09","Scenario Simulator","شبیه‌ساز سناریو"],["10","Adaptive Learning","یادگیری تطبیقی"],["11","Structure Intelligence","تحلیل ساختار قیمت"],["12","Risk Intelligence","ارزیابی ریسک"]
  ];
- $("engineGrid").innerHTML=engines.map(([n,name,fa])=>'<article class="engine-item"><span class="engine-number">'+n+'</span><span><b>'+name+'</b><small>'+fa+'</small></span></article>').join("");
+ $("engineGrid").innerHTML=engines.map(([n,name,fa])=>'<article class="engine-item"><span class="engine-number">'+n+'</span><span><b>'+name+'</b><small>'+fa+'</small><small class="engine-status">اتصال مستقل: تأیید نشده</small></span></article>').join("");
  async function get(url,timeout=9000){
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeout);
   try{const response=await fetch(url,{signal:controller.signal,cache:"no-store",headers:{Accept:"application/json"}});if(!response.ok)throw new Error("HTTP "+response.status);return await response.json();}
@@ -50,7 +50,7 @@
    const symbol=String(x.symbol||x.asset||x.pair||"نامشخص").replace(/[<>]/g,"");
    const score=Number(x.score??x.quantum?.score);
    const change=Number(x.change24h??x.price_change_percentage_24h);
-   const exchange=String(x.exchange||x.provider||x.source||"چندصرافی").replace(/[<>]/g,"");
+   const exchange=String(x.exchange||x.provider||x.source||"منبع نامشخص").replace(/[<>]/g,"");
    return '<div class="signal-row"><span><b>'+symbol+'</b><br><small>'+exchange+(Number.isFinite(change)?' · '+change.toFixed(2)+'%':'')+'</small></span><span class="signal-score">'+(Number.isFinite(score)?Math.round(score)+'/100':'داده دریافتی')+'</span><small>داده دریافتی</small></div>';
   }).join("");
  }
@@ -81,11 +81,15 @@
  async function loadHealth(){
   try{
    const d=await get(MAIN+"/connections-health");
-   const checks=Array.isArray(d.checks)?d.checks:[],up=checks.filter(x=>x.status==="ok"||x.status==="slow").length;
-   $("coreStatus").textContent=checks.length?up+" از "+checks.length+" اتصال سالم":"پاسخ ناقص";
+   const checks=Array.isArray(d.checks)?d.checks:[],up=checks.filter(x=>x.status==="ok"||x.status==="slow").length,total=checks.length;
+   $("coreStatus").textContent=total?up+" از "+total+" اتصال سالم":"پاسخ ناقص";
    $("coreUpdated").textContent=d.checked_at?new Date(d.checked_at).toLocaleTimeString("fa-IR"):"—";
-   const live=document.getElementById("serviceStatus");if(live)live.textContent=up?"سرویس‌ها بررسی شدند":"اختلال اتصال";
-  }catch(e){$("coreStatus").textContent="عدم دریافت پاسخ";$("coreUpdated").textContent="اتصال بررسی نشد";const live=document.getElementById("serviceStatus");if(live)live.textContent="عدم دریافت پاسخ";}
+   const live=$("serviceStatus");
+   if(live){live.textContent=total?up+"/"+total+" اتصال سالم":"پاسخ ناقص";live.classList.remove("pending","healthy","partial","down");live.classList.add(up===total&&total>0?"healthy":up>0?"partial":"down");}
+  }catch(e){
+   $("coreStatus").textContent="عدم دریافت پاسخ";$("coreUpdated").textContent="اتصال بررسی نشد";
+   const live=$("serviceStatus");if(live){live.textContent="عدم دریافت پاسخ";live.classList.remove("pending","healthy","partial");live.classList.add("down");}
+  }
  }
  async function refresh(which){
   if(which==="radar")return loadRadar();
