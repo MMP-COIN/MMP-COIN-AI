@@ -22,6 +22,34 @@ jobs:
           node-version: 20
       - name: Check JavaScript syntax
         run: node --check www/v4/app.js
+      - name: Smoke-test live market services and browser CORS
+        run: |
+          node --input-type=module <<'JS'
+          const checks = [
+            ["main health", "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/connections-health", d => Array.isArray(d.checks) && d.checks.length >= 10],
+            ["hunter snapshot", "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/hunter-combined-snapshot", d => !!d.spot && !!d.futures && Array.isArray(d.spot.signals) && Array.isArray(d.futures.signals)],
+            ["radar health", "https://mmp-coin-ai-radar.mehrdadmohammadi1988.workers.dev/health", d => d.worker === "online"],
+            ["radar snapshot", "https://mmp-coin-ai-radar.mehrdadmohammadi1988.workers.dev/fast-radar-snapshot", d => Array.isArray(d.signals)],
+            ["Binance ticker", "https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT", d => Number(d.price) > 0],
+          ];
+          for (const [name, url, valid] of checks) {
+            const response = await fetch(url, {headers: {accept: "application/json"}});
+            if (!response.ok) throw new Error(name + " returned HTTP " + response.status);
+            const data = await response.json();
+            if (!valid(data)) throw new Error(name + " returned an unexpected payload");
+            console.log("PASS", name);
+          }
+          const origin = "https://mmp-coin.github.io";
+          for (const url of [
+            "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/connections-health",
+            "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/hunter-combined-snapshot",
+          ]) {
+            const response = await fetch(url, {method: "OPTIONS", headers: {Origin: origin, "Access-Control-Request-Method": "GET"}});
+            if (response.headers.get("access-control-allow-origin") !== origin)
+              throw new Error("CORS origin rejected for " + new URL(url).pathname);
+            console.log("PASS CORS", new URL(url).pathname);
+          }
+          JS
       - name: Validate rebuild structure and assets
         run: |
           python3 - <<'PY'
