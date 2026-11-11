@@ -15,38 +15,43 @@
  function money(v){const n=Number(v);return Number.isFinite(n)&&n>0?n.toLocaleString("en-US",{maximumFractionDigits:n>100?2:4}):"—";}
  async function loadTicker(){
   const symbols=["BTCUSDT","ETHUSDT","BNBUSDT","SOLUSDT"];
+  const sources=["binance-tickers","okx-tickers","bybit-tickers","gate-tickers","kucoin-tickers","bitget-tickers","mexc-tickers"];
   const normalize=(source,data)=>{
-   if(source==="binance-tickers"||source==="gate-tickers"||source==="mexc-tickers")return Array.isArray(data)?data.map(x=>[x.symbol||x.currency_pair, x.lastPrice||x.last||x.close]):[];
-   if(source==="okx-tickers")return (data.data||[]).map(x=>[String(x.instId||"").replace("-",""),x.last]);
-   if(source==="bybit-tickers")return (data.result?.list||[]).map(x=>[x.symbol,x.lastPrice]);
-   if(source==="kucoin-tickers")return (data.data?.ticker||[]).map(x=>[String(x.symbol||"").replace("-",""),x.last]);
-   if(source==="bitget-tickers")return (data.data||[]).map(x=>[x.symbol,x.lastPr||x.last]);
-   return [];
+   let rows=[];
+   if(source==="binance-tickers"||source==="gate-tickers"||source==="mexc-tickers")rows=Array.isArray(data)?data.map(x=>[x.symbol||x.currency_pair,x.lastPrice||x.last||x.close]):[];
+   else if(source==="okx-tickers")rows=(data.data||[]).map(x=>[x.instId,x.last]);
+   else if(source==="bybit-tickers")rows=(data.result?.list||[]).map(x=>[x.symbol,x.lastPrice]);
+   else if(source==="kucoin-tickers")rows=(data.data?.ticker||[]).map(x=>[x.symbol,x.last]);
+   else if(source==="bitget-tickers")rows=(data.data||[]).map(x=>[x.symbol,x.lastPr||x.last]);
+   return rows.map(([symbol,price])=>[String(symbol||"").toUpperCase().split("-").join("").split("_").join("").split("/").join(""),Number(price)]);
   };
-  let prices=null,lastError=null;
-  for(const source of ["binance-tickers","okx-tickers","bybit-tickers","gate-tickers","kucoin-tickers","bitget-tickers","mexc-tickers"]){
+  const prices={},providers={},failures=[];
+  for(const source of sources){
+   const missing=symbols.filter(s=>!Number.isFinite(prices[s])||prices[s]<=0);
+   if(!missing.length)break;
    try{
     const data=await get(MAIN+"/market-proxy?source="+source);
-    const rows=normalize(source,data),map=Object.fromEntries(rows.map(([s,p])=>[String(s||"").toUpperCase(),Number(p)]));
-    if(symbols.every(s=>Number.isFinite(map[s])&&map[s]>0)){prices=map;break;}
-   }catch(e){lastError=e;}
+    for(const [symbol,price] of normalize(source,data)){
+     if(missing.includes(symbol)&&Number.isFinite(price)&&price>0){prices[symbol]=price;providers[symbol]=source.replace("-tickers","").toUpperCase();}
+    }
+   }catch(error){failures.push(source+": "+String(error?.message||error));}
   }
-  if(prices){
-   $("ticker").innerHTML=symbols.map(s=>'<div class="ticker-item"><small>'+s.replace("USDT"," / USDT")+'</small><b>'+money(prices[s])+'</b></div>').join("");
-  }else{
-   $("ticker").innerHTML=["BTC","ETH","BNB","SOL"].map(s=>'<div class="ticker-item"><small>'+s+' / USDT</small><b>داده در دسترس نیست</b></div>').join("");
-   console.warn("MMP ticker unavailable",lastError);
-  }
+  const available=symbols.filter(s=>Number.isFinite(prices[s])&&prices[s]>0);
+  $("ticker").innerHTML=symbols.map(s=>{
+   const name=s.replace("USDT"," / USDT");
+   return '<div class="ticker-item"><small>'+name+' · '+(providers[s]||"بدون منبع")+'</small><b>'+(prices[s]?money(prices[s]):"داده در دسترس نیست")+'</b></div>';
+  }).join("");
+  if(available.length!==symbols.length)console.warn("MMP ticker incomplete",{available,failures});
  }
  function empty(el,title,detail){el.innerHTML='<div class="empty-state"><b>'+title+'</b><small>'+detail+'</small></div>';}
  function renderSignals(el,signals){
-  if(!Array.isArray(signals)||!signals.length){empty(el,"در حال حاضر سیگنال تأییدشده‌ای وجود ندارد","رادار فقط فرصت‌های واقعی و دریافت‌شده از موتور را نشان می‌دهد.");return;}
+  if(!Array.isArray(signals)||!signals.length){empty(el,"در حال حاضر سیگنال داده دریافتی‌ای وجود ندارد","رادار فقط فرصت‌های واقعی و دریافت‌شده از موتور را نشان می‌دهد.");return;}
   el.innerHTML=signals.slice(0,30).map(x=>{
    const symbol=String(x.symbol||x.asset||x.pair||"نامشخص").replace(/[<>]/g,"");
    const score=Number(x.score??x.quantum?.score);
    const change=Number(x.change24h??x.price_change_percentage_24h);
    const exchange=String(x.exchange||x.provider||x.source||"چندصرافی").replace(/[<>]/g,"");
-   return '<div class="signal-row"><span><b>'+symbol+'</b><br><small>'+exchange+(Number.isFinite(change)?' · '+change.toFixed(2)+'%':'')+'</small></span><span class="signal-score">'+(Number.isFinite(score)?Math.round(score)+'/100':'تأییدشده')+'</span><small>تأییدشده</small></div>';
+   return '<div class="signal-row"><span><b>'+symbol+'</b><br><small>'+exchange+(Number.isFinite(change)?' · '+change.toFixed(2)+'%':'')+'</small></span><span class="signal-score">'+(Number.isFinite(score)?Math.round(score)+'/100':'داده دریافتی')+'</span><small>داده دریافتی</small></div>';
   }).join("");
  }
  async function loadRadar(){
