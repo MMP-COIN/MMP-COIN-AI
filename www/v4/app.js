@@ -29,7 +29,7 @@
    const score=Number(x.score??x.quantum?.score);
    const change=Number(x.change24h??x.price_change_percentage_24h);
    const exchange=String(x.exchange||x.provider||x.source||"چندصرافی").replace(/[<>]/g,"");
-   return '<div class="signal-row"><span><b>'+symbol+'</b><br><small>'+exchange+(Number.isFinite(change)?' · '+change.toFixed(2)+'%':'')+'</small></span><span class="signal-score">'+(Number.isFinite(score)?Math.round(score)+'/100':'تأییدشده')+'</span><small>LIVE</small></div>';
+   return '<div class="signal-row"><span><b>'+symbol+'</b><br><small>'+exchange+(Number.isFinite(change)?' · '+change.toFixed(2)+'%':'')+'</small></span><span class="signal-score">'+(Number.isFinite(score)?Math.round(score)+'/100':'تأییدشده')+'</span><small>تأییدشده</small></div>';
   }).join("");
  }
  async function loadRadar(){
