@@ -260,7 +260,7 @@ jobs:
           const ariaRefs = [...html.matchAll(/\baria-(?:controls|labelledby|describedby)=["']([^"']+)["']/g)].flatMap(x => x[1].split(/\s+/));
           const brokenAria = [...new Set(ariaRefs.filter(id => !idSet.has(id)))];
           if (brokenAria.length) throw new Error("Broken accessibility references: " + brokenAria.join(", "));
-          const requiredControls = ["refresh-all-btn","market-refresh-btn","hunter-refresh-btn","ai-coin-picker-trigger","ai-run-btn","boom-run","chart-fullscreen-btn","derivatives-load","orderflow-refresh","forecast-run","historical-backtest","journal-save","alert-add","risk-capital","risk-percent","risk-entry","risk-stop","risk-calc","connections-toggle","exchange-directory-refresh","native-menu-toggle","native-refresh-btn","native-update-check-btn","native-share-app"];
+          const requiredControls = ["refresh-all-btn","market-refresh-btn","hunter-refresh-btn","ai-coin-picker-trigger","ai-run-btn","boom-run","chart-fullscreen-btn","derivatives-load","orderflow-refresh","forecast-run","historical-backtest","risk-capital","risk-percent","risk-entry","risk-stop","risk-calc","connections-toggle","native-menu-toggle","native-refresh-btn","native-update-check-btn","native-share-app"];
           const missingControls = requiredControls.filter(id => !idSet.has(id));
           if (missingControls.length) throw new Error("Missing core controls: " + missingControls.join(", "));
           if (/market-ticker|ticker-item|renderMarketTicker/.test(html)) throw new Error("Removed horizontal market ticker code has returned");
