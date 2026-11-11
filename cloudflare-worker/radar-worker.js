@@ -406,7 +406,7 @@ export default {
       // Clear a previously persisted failure after the first successful cycle.
       try{
         const prior=await readRadarRecord(env,"radar:last-error","radar:last-error");
-        if(prior&&env.ADMIN_DB)await env.ADMIN_DB.prepare("DELETE FROM hunter_engine_state WHERE id = ?").bind("radar:last-error").run();
+        if(prior&&prior.status!=="none"&&env.ADMIN_DB)await writeRadarRecord(env,"radar:last-error",{status:"none",at:new Date().toISOString(),updated_at:new Date().toISOString(),message:null});
       }catch(error){console.warn("Radar recovered but could not clear old error record:",String(error?.message||error).slice(0,140));}
     }
     catch(error){
