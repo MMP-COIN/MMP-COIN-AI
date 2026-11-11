@@ -95,6 +95,8 @@ jobs:
           if (matureSummary.calibrationStatus !== "calibrated" || matureSummary.matured5m !== 40 || matureSummary.calibrationAdjustment !== 5) throw new Error("Bounded learning calibration did not activate at the minimum sample size");
           const workerSource = fs.readFileSync("cloudflare-worker/worker.js", "utf8");
           const htmlSource = fs.readFileSync("www/index.html", "utf8");
+          if (!workerSource.includes("function emaSeries(values,period)") || workerSource.includes("closes.slice(0,i+1)")) throw new Error("Multi-timeframe MACD must use linear-time EMA series, not quadratic recomputation");
+
           const radarSource = fs.readFileSync("cloudflare-worker/radar-worker.js", "utf8");
           const futuresSource = fs.readFileSync("cloudflare-worker/futures-worker.js", "utf8");
           const universeCronSource = fs.readFileSync("cloudflare-worker/hunter-cron-worker.js", "utf8");
