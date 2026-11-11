@@ -11,14 +11,16 @@ export function evaluateLearningMark(record,currentPrice,now=Date.now()){
  const elapsed=Math.max(0,now-Number(record.signal_at||now));
  let next=null;
  for(const minutes of HORIZONS){
-  const key="outcome_"+minutes+"m";
-  if((record[key]===null||record[key]===undefined)&&elapsed>=minutes*60000){
+  const key="outcome_"+minutes+"m",missedKey="missed_"+minutes+"m";
+  if((record[key]===null||record[key]===undefined)&&record[missedKey]!==true&&elapsed>=minutes*60000){
    if(!next)next={...record};
-   next[key]=Number(signed.toFixed(6));next[key+"_observed_at"]=now;next[key+"_lag_ms"]=elapsed-minutes*60000;
+   const lag=elapsed-minutes*60000;
+   if(lag>120000){next[missedKey]=true;next[missedKey+"_at"]=now;continue;}
+   next[key]=Number(signed.toFixed(6));next[key+"_observed_at"]=now;next[key+"_lag_ms"]=lag;
   }
  }
  if(!next)return record;
- if(next.outcome_60m!==null&&next.outcome_60m!==undefined)next.status="completed";
+ if((next.outcome_60m!==null&&next.outcome_60m!==undefined)||next.missed_60m===true)next.status="completed";
  return next;
 }
 function metric(records,key){const values=records.map(x=>x[key]).filter(x=>x!==null&&x!==undefined&&Number.isFinite(Number(x))).map(Number);return {samples:values.length,winRate:values.length?values.filter(x=>x>0).length/values.length:null,avgReturn:values.length?values.reduce((a,b)=>a+b,0)/values.length:null};}
@@ -27,6 +29,7 @@ export function summarizeLearningLedger(records=[],market="spot"){
  const adjustment=m5.samples>=30?clamp((m5.winRate-0.5)*10,-5,5):0;
  return {version:"MMP-SELF-LEARNING-1.0",market,totalSignals:selected.length,openSignals:selected.filter(x=>x.status==="open").length,
   matured5m:m5.samples,matured15m:m15.samples,matured60m:m60.samples,
+  missed5m:selected.filter(x=>x.missed_5m===true).length,missed15m:selected.filter(x=>x.missed_15m===true).length,missed60m:selected.filter(x=>x.missed_60m===true).length,
   winRate5m:m5.winRate===null?null:Number((m5.winRate*100).toFixed(2)),avgReturn5m:m5.avgReturn===null?null:Number(m5.avgReturn.toFixed(4)),
   winRate15m:m15.winRate===null?null:Number((m15.winRate*100).toFixed(2)),avgReturn15m:m15.avgReturn===null?null:Number(m15.avgReturn.toFixed(4)),
   winRate60m:m60.winRate===null?null:Number((m60.winRate*100).toFixed(2)),avgReturn60m:m60.avgReturn===null?null:Number(m60.avgReturn.toFixed(4)),
@@ -35,6 +38,21 @@ export function summarizeLearningLedger(records=[],market="spot"){
 export function updateLearningLedger(previous={},options={}){
  const now=Number(options.now)||Date.now(),market=String(options.market||"spot"),engine=String(options.engine||"hunter");
  let records=Array.isArray(previous.records)?previous.records.slice():[],changed=false;
+ const nowMs=now;
+ records=records.map(record=>{
+  if(record.market!==market||record.status!=="open")return record;
+  const elapsed=Math.max(0,nowMs-Number(record.signal_at||nowMs));
+  let next=null;
+  for(const minutes of HORIZONS){
+   const key="outcome_"+minutes+"m",missedKey="missed_"+minutes+"m";
+   if((record[key]===null||record[key]===undefined)&&record[missedKey]!==true&&elapsed>=minutes*60000+120000){
+    if(!next)next={...record};next[missedKey]=true;next[missedKey+"_at"]=nowMs;
+   }
+  }
+  if(next&&((next.outcome_60m!==null&&next.outcome_60m!==undefined)||next.missed_60m===true))next.status="completed";
+  if(next)changed=true;
+  return next||record;
+ });
  const observations=Array.isArray(options.observations)?options.observations:[];
  for(const observation of observations){
   const symbol=String(observation?.symbol||observation?.coin?.symbol||"").toUpperCase(),price=Number(observation?.price??observation?.currentPrice??observation?.coin?.current_price);
@@ -48,7 +66,7 @@ export function updateLearningLedger(previous={},options={}){
   if(signal?.quantum?.qualityGate!==true||signal?.flowConfirmed!==true||signal?.multiExchangeConfirmed!==true||signal?.depth?.confirmed!==true)continue;
   const candleTime=readTime(signal.candleTime??signal.candle_time,Math.floor(now/300000)*300000),id=[engine,market,symbol,candleTime].join(":");
   if(records.some(record=>record.id===id))continue;
-  records.push({id,engine,market,symbol,direction,entry_price:price,signal_at:candleTime,score:finite(signal.score),confidence:finite(signal.quantum?.confidence),
+  records.push({id,engine,market,symbol,direction,entry_price:price,signal_at:now,candle_time:candleTime,score:finite(signal.score),confidence:finite(signal.quantum?.confidence),
    engine_version:String(signal.quantum?.version||signal.quantum?.engine||"QIE"),
    evidence:{volumeRatio:finite(signal.volumeRatio),flowTrades:finite(signal.flow?.tradeCount),flowProvider:String(signal.flow?.provider||""),depthSource:String(signal.depth?.source||signal.depth?.provider||"")},
    outcome_5m:null,outcome_15m:null,outcome_60m:null,status:"open"});
