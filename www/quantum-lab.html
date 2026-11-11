@@ -516,7 +516,7 @@ async function refreshLocalTether(){
  try{const response=await fetch(API+"/local-market-watch?ts="+Date.now(),{cache:"no-store"});if(!response.ok)throw new Error("HTTP "+response.status);
  const data=await response.json(),valid=(data.sources||[]).filter(x=>x.fresh&&Number(x.price_toman)>0);if(!valid.length)throw new Error("هیچ منبع داخلی نرخ معتبر نداد");
  const current=Number(data.median_toman)||Number(valid[0].price_toman),previous=Number(localStorage.getItem("mmp_local_usdt_last_toman")||0);
- priceEl.textContent=Math.round(current).toLocaleString("fa-IR")+" تومان";sourcesEl.textContent=valid.length.toLocaleString("fa-IR")+" / ۲";
+ priceEl.textContent=Math.round(current).toLocaleString("fa-IR")+" تومان";sourcesEl.textContent=valid.length.toLocaleString("fa-IR")+" / ۳";
  if(previous>0){const pct=(current/previous-1)*100,serverPct=Number(data.server_change_pct);changeEl.textContent=(pct>0?"+":"")+pct.toFixed(2)+"٪";changeEl.style.color=pct>=0?"var(--green)":"var(--red)";
  if(data.server_alert){alertEl.textContent="⚠️ هشدار سروری تتر ایران: "+(serverPct>=0?"جهش ":"ریزش ")+Math.abs(serverPct).toFixed(2)+"٪ در پایش مستقل یک‌دقیقه‌ای؛ این هشدار حتی بدون باز بودن صفحه ثبت می‌شود.";alertEl.style.color="var(--red)";}
  else if(Math.abs(pct)>=2.5){alertEl.textContent="⚠️ شوک قیمت تتر ایران: "+(pct>0?"جهش ":"ریزش ")+Math.abs(pct).toFixed(2)+"٪ نسبت به نمونه قبلی · قبلی "+Math.round(previous).toLocaleString("fa-IR")+" · فعلی "+Math.round(current).toLocaleString("fa-IR")+" تومان";alertEl.style.color="var(--red)";}
