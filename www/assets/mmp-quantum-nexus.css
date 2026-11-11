@@ -354,3 +354,56 @@ body:not(.mmp-quantum-terminal) .summary>div{border-color:#4b6278!important;bord
  body:not(.mmp-quantum-terminal) .hero{border-radius:18px!important}
  body:not(.mmp-quantum-terminal) .panel{border-radius:15px!important}
 }
+
+
+/* Final first-fold geometry + native share-only treatment */
+body.mmp-quantum-terminal .wrap{padding-top:0!important}
+#mmp-home-hero{order:-1!important;height:166px!important;min-height:166px!important;max-height:166px!important;margin:4px 0 14px!important;padding:12px 22px!important;grid-template-columns:minmax(0,1fr) 180px!important;gap:12px!important;align-items:center!important}
+#mmp-home-hero .mmp-hero-title{font-size:clamp(23px,2.6vw,32px)!important;line-height:1.25!important;margin:4px 0!important}
+#mmp-home-hero .mmp-hero-copy>p{font-size:11px!important;line-height:1.6!important;max-width:680px!important}
+#mmp-home-hero .mmp-hero-actions{margin-top:7px!important;gap:7px!important}
+#mmp-home-hero .mmp-hero-emblem{min-height:126px!important}
+#mmp-home-hero .mmp-emblem-coin{width:98px!important;height:98px!important}
+#mmp-home-hero .mmp-emblem-ring{width:156px!important;height:100px!important}
+#mmp-home-hero .mmp-ring-two{width:146px!important;height:112px!important}
+#quantum-center-entry{order:1!important}
+#market-snapshot{order:2!important}
+.market-heatmap-entry{order:3!important}
+#opportunities{order:4!important}
+#market-hunter{order:5!important}
+#ai-section{order:6!important}
+#chart-section{order:7!important}
+#market-intelligence{order:8!important}
+#boom-hunter{order:9!important}
+#coins-section{order:10!important}
+#trading-tools{order:11!important}
+#exchange-connections{order:12!important}
+#market-hours{order:13!important}
+#app-download{order:14!important}
+#contact-us{order:15!important}
+#app-download button[onclick*="mmpShareDownloadLink"]{display:none!important}
+body.mmp-app-mode #mmp-home-hero{height:166px!important;min-height:166px!important;max-height:166px!important;grid-template-columns:minmax(0,1fr) 160px!important;padding:12px 18px!important;margin:4px 0 12px!important;gap:8px!important}
+body.mmp-app-mode #mmp-home-hero .mmp-hero-title{font-size:clamp(22px,2.8vw,30px)!important;line-height:1.25!important}
+body.mmp-app-mode #mmp-home-hero .mmp-hero-copy>p{font-size:10px!important;line-height:1.55!important}
+body.mmp-app-mode #mmp-home-hero .mmp-emblem-coin{width:94px!important;height:94px!important}
+body.mmp-app-mode #mmp-home-hero .mmp-hero-emblem{min-height:120px!important}
+body.mmp-app-mode #app-download{display:block!important;order:16!important;margin:0 0 12px!important;padding:12px!important;max-width:none!important;text-align:center!important}
+body.mmp-app-mode #app-download h2,
+body.mmp-app-mode #app-download p,
+body.mmp-app-mode #app-download .sub,
+body.mmp-app-mode #app-download a[href*="/releases/latest/download/app-release.apk"]{display:none!important}
+body.mmp-app-mode #app-download button[onclick*="mmpShareDownloadLink"]{display:inline-flex!important;min-width:0!important;margin:0!important}
+body.mmp-app-mode #contact-us{order:15!important}
+body.mmp-app-mode #contact-us .mmp-share-app-link{display:none!important}
+@media(max-width:680px){
+ #mmp-home-hero{height:174px!important;min-height:174px!important;max-height:174px!important;grid-template-columns:minmax(0,1fr) 88px!important;padding:10px 12px!important;margin-top:4px!important}
+ #mmp-home-hero .mmp-hero-title{font-size:clamp(18px,5.2vw,24px)!important;margin:4px 0!important}
+ #mmp-home-hero .mmp-hero-copy>p{font-size:9px!important;line-height:1.55!important}
+ #mmp-home-hero .mmp-hero-emblem{min-height:112px!important}
+ #mmp-home-hero .mmp-emblem-coin{width:72px!important;height:72px!important}
+ #mmp-home-hero .mmp-emblem-ring{width:112px!important;height:74px!important}
+ #mmp-home-hero .mmp-ring-two{width:106px!important;height:82px!important}
+ #mmp-home-hero .mmp-hero-index{display:none!important}
+ body.mmp-app-mode #mmp-home-hero{height:174px!important;min-height:174px!important;max-height:174px!important;grid-template-columns:minmax(0,1fr) 82px!important;padding:10px!important}
+ body.mmp-app-mode #mmp-home-hero .mmp-emblem-coin{width:68px!important;height:68px!important}
+}
