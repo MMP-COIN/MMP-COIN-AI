@@ -1149,6 +1149,9 @@ export async function runDigitalHunterMarketCycle(env,marketType="spot"){
  const stateId=marketType==="futures"?"digital-hunter-v2-futures":"digital-hunter-v2",stored=await env.ADMIN_DB.prepare("SELECT payload FROM hunter_engine_state WHERE id = ?").bind(stateId).first(),previous=stored?.payload?JSON.parse(stored.payload):{},now=Date.now();
  if(previous.lastRun&&now-Number(previous.lastRun)<45000&&previous.snapshot)return {...previous.snapshot,cycle_skipped:true};
  const batchLimit=marketType==="futures"?FUTURES_HUNTER_BATCH_SIZE:HUNTER_BATCH_SIZE;
+ const learningId="mmp-learning-ledger-v1-"+marketType;let priorLedger={};
+ try{const learningRow=await env.ADMIN_DB.prepare("SELECT payload FROM hunter_engine_state WHERE id = ?").bind(learningId).first();priorLedger=learningRow?.payload?JSON.parse(learningRow.payload):{};}catch{}
+ const dueLearningRecords=(priorLedger.records||[]).filter(record=>{if(record.market!==marketType||record.status!=="open")return false;const horizon=[5,15,60].find(minutes=>(record["outcome_"+minutes+"m"]===null||record["outcome_"+minutes+"m"]===undefined)&&record["missed_"+minutes+"m"]!==true);return !!horizon&&now>=Number(record.signal_at||now)+horizon*60000&&now<=Number(record.signal_at||now)+horizon*60000+120000;}).sort((a,b)=>Number(a.signal_at)-Number(b.signal_at)).slice(0,2);
  const cacheId=stateId+"-universe-cache",cachedRow=await env.ADMIN_DB.prepare("SELECT payload FROM hunter_engine_state WHERE id = ?").bind(cacheId).first(),cached=cachedRow?.payload?JSON.parse(cachedRow.payload):null;
  let assets=Array.isArray(previous.assets)?previous.assets:[],universeUpdatedAt=Number(previous.universeUpdatedAt)||0,universeSources=previous.universeSources||{},universeProvider=previous.universeProvider||"multi-exchange",adoptedUniverse=false;
  const cacheIsNewer=Number(cached?.universeUpdatedAt)>universeUpdatedAt;
@@ -1187,6 +1190,8 @@ export async function runDigitalHunterMarketCycle(env,marketType="spot"){
   batch.push(asset);selectedSymbols.add(symbol);
  }
  const result=await scanHunterSymbols(batch.map(x=>x.symbol),marketType,batch,env,{reviewAI:false});
+ const learningMarkResults=await Promise.allSettled(dueLearningRecords.map(async record=>{const asset=assets.find(x=>x.symbol===record.symbol)||null,market=await fetchHunterCandles(record.symbol,marketType,asset),closed=market.rows.slice(0,-1),last=closed.at(-1),price=Number(last?.[4]);if(!(price>0))throw new Error("No fresh closed candle for learning mark");return {symbol:record.symbol,price,currentPrice:price,checked_at:now,provider:market.provider};}));
+ const learningMarks=learningMarkResults.filter(x=>x.status==="fulfilled").map(x=>x.value);
  // Retry transient exchange/network failures sooner; quality rejects are not
  // permanent exclusions and are reconsidered after a short cooling period.
  for(const item of result.errors||[])failureCooldown[item.symbol]=now+90*1000;
@@ -1206,9 +1211,7 @@ export async function runDigitalHunterMarketCycle(env,marketType="spot"){
  const selected=[...fresh.filter(x=>x.trend==="bull").slice(0,6),...fresh.filter(x=>x.trend==="bear").slice(0,6)];
  let learningSummary={market:marketType,totalSignals:0,matured5m:0,calibrationStatus:"collecting",calibrationAdjustment:0,processed:0};
  try{
-  const learningId="mmp-learning-ledger-v1-"+marketType,learningRow=await env.ADMIN_DB.prepare("SELECT payload FROM hunter_engine_state WHERE id = ?").bind(learningId).first();
-  let priorLedger={};try{priorLedger=learningRow?.payload?JSON.parse(learningRow.payload):{};}catch{}
-  const ledger=updateLearningLedger(priorLedger,{observations:[...(result.signals||[]),...(result.preliminary_signals||[])],signals:selected,market:marketType,engine:"hunter",now});
+  const ledger=updateLearningLedger(priorLedger,{observations:[...(result.signals||[]),...(result.preliminary_signals||[]),...learningMarks],signals:selected,market:marketType,engine:"hunter",now});
   learningSummary=ledger.summary;
   if(ledger.changed)await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(learningId,JSON.stringify(ledger),new Date(now).toISOString()).run();
  }catch(error){learningSummary={...learningSummary,status:"unavailable",error:String(error?.message||error).slice(0,140)};}
