@@ -740,22 +740,24 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
  const sources=marketType==="futures"?futuresSources:spotSources,errors=[];
  const unique=values=>[...new Set(values.filter(Number.isInteger))];
  let order=[];
+ const reliableIndices=marketType==="futures"?[4,5,6]:[4,5,6,8];
  if(marketType==="futures"){
   const indexOf=name=>{const value=String(name||"").trim().toLowerCase();return value.startsWith("binance")?0:value.startsWith("bybit")?1:value.startsWith("okx")?2:value.startsWith("bitget")?3:value.startsWith("gate")?4:value.startsWith("mexc")?5:value.startsWith("kucoin")?6:null;};
-  const priority=[4,2,1,5,6,3,0],available=unique(String(asset?.hunterExchange||"").split(",").map(indexOf).filter(Number.isInteger)).sort((a,b)=>priority.indexOf(a)-priority.indexOf(b)),primary=indexOf(asset?.hunterPriceExchange),primaryTrusted=primary!==0;
+  const priority=[4,6,5,2,1,3,0],available=unique(String(asset?.hunterExchange||"").split(",").map(indexOf).filter(Number.isInteger)).sort((a,b)=>priority.indexOf(a)-priority.indexOf(b)),primary=indexOf(asset?.hunterPriceExchange),primaryTrusted=[4,5,6].includes(primary);
   order=unique([...(primaryTrusted&&available.includes(primary)?[primary]:[]),...available]);
  }else{
   const indices={Binance:0,Bybit:1,Bitget:2,OKX:3,Gate:4,"Gate.io":4,KuCoin:5,WhiteBIT:6,"Binance.US":7,BinanceUS:7,MEXC:8};
-  const preferred=(Array.isArray(asset?.marketPairs)?asset.marketPairs.slice().sort((a,b)=>Number(b.volume||0)-Number(a.volume||0)):[]).map(x=>indices[String(x.exchange||"")]).filter(Number.isInteger),priority=[4,8,6,7,2,5,3,1,0],available=unique(preferred).sort((a,b)=>priority.indexOf(a)-priority.indexOf(b)),primary=preferred[0],primaryTrusted=[4,5,6,8,7].includes(primary);
+  const preferred=(Array.isArray(asset?.marketPairs)?asset.marketPairs.slice().sort((a,b)=>Number(b.volume||0)-Number(a.volume||0)):[]).map(x=>indices[String(x.exchange||"")]).filter(Number.isInteger),priority=[4,5,8,6,2,3,1,7,0],available=unique(preferred).sort((a,b)=>priority.indexOf(a)-priority.indexOf(b)),primary=preferred[0],primaryTrusted=[4,5,6,8].includes(primary);
   order=unique([...(primaryTrusted&&available.includes(primary)?[primary]:[]),...available]);
  }
- const fallbackPriority=marketType==="futures"?[4,2,1,5,6,3,0]:[4,3,1,0,2,8,5,6,7];
- const preferredOrder=unique(order);
+ const fallbackPriority=marketType==="futures"?[4,6,5,2,1,3,0]:[4,5,8,6,2,3,1,7,0];
+ const preferredOrder=unique(order.filter(index=>reliableIndices.includes(index)));
  const primaryOrder=preferredOrder.slice(0,2);
  const fallbackPool=unique([...fallbackPriority.filter(index=>!primaryOrder.includes(index)),...preferredOrder.slice(2),...sources.map((_,index)=>index)]).filter(index=>!primaryOrder.includes(index));
  const symbolHash=String(symbol).split("").reduce((sum,char)=>sum+char.charCodeAt(0),0);
  const rotation=fallbackPool.length?(symbolHash+Math.floor(Date.now()/60000))%fallbackPool.length:0;
- const rotatedFallback=[...fallbackPool.slice(rotation),...fallbackPool.slice(0,rotation)];
+ const rotationTail=fallbackPool.slice(2),tailRotation=rotationTail.length?rotation%rotationTail.length:0;
+ const rotatedFallback=[...fallbackPool.slice(0,2),...rotationTail.slice(tailRotation),...rotationTail.slice(0,tailRotation)];
  const sourceLimit=Math.min(2,sources.length),orderedIndices=unique([...primaryOrder,...rotatedFallback]),orderedSources=orderedIndices.map(index=>sources[index]).filter(Boolean).slice(0,sourceLimit),verified=[];
  let selectedPair=null,bestObservedPair=null;
  const evaluatePairs=()=>{
