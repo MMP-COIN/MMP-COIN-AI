@@ -2771,11 +2771,11 @@ html body #ai-section .tf-card{min-width:0!important;max-width:100%!important;ov
   <div><small>آخرین سیگنال</small><b id="boom-last">—</b></div>
  </div>
  <div class="boom-chart-wrap"><div class="boom-chart-title">نمودار کندلی حرفه‌ای · حجم معاملات و نقاط چرخش</div><div id="boom-candles" class="boom-chart"><div class="ai-empty">هنوز داده‌ای دریافت نشده است.</div></div></div>
- <div class="boom-chart-wrap"><div class="boom-chart-title">جریان خرید و فروش تهاجمی · بر حسب USDT</div><div id="boom-flow-chart" class="boom-chart boom-flow-chart"><div class="ai-empty">پس از دریافت داده نمایش داده می‌شود.</div></div></div>
+ <div class="boom-chart-wrap"><div class="boom-chart-title">جریان معاملات تجمیعی ۵ دقیقه‌ای · بر حسب USDT</div><div id="boom-flow-chart" class="boom-chart boom-flow-chart"><div class="ai-empty">پس از دریافت داده نمایش داده می‌شود.</div></div></div>
  <div class="boom-flow-metrics" id="boom-flow-metrics">
-  <div><small>خرید تهاجمی · ۵ کندل اخیر</small><b id="boom-buy-flow">—</b></div>
-  <div><small>فروش تهاجمی · ۵ کندل اخیر</small><b id="boom-sell-flow">—</b></div>
-  <div><small>خالص جریان خرید / فروش</small><b id="boom-net-flow">—</b></div>
+  <div><small>جریان خرید · ۵ دقیقه اخیر</small><b id="boom-buy-flow">—</b></div>
+  <div><small>جریان فروش · ۵ دقیقه اخیر</small><b id="boom-sell-flow">—</b></div>
+  <div><small>خالص جریان معاملات · ۵ دقیقه</small><b id="boom-net-flow">—</b></div>
   <div><small>حجم آخرین کندل</small><b id="boom-volume-ratio">—</b></div>
  </div>
  <div class="boom-chart-wrap"><div class="boom-chart-title">نوسانگر مومنتوم MMP</div><div id="boom-oscillator" class="boom-chart boom-osc-chart"><div class="ai-empty">پس از دریافت داده نمایش داده می‌شود.</div></div></div>
@@ -5251,108 +5251,117 @@ setInterval(()=>mmpSendEvent("heartbeat"),1800000);
   return out+'</svg>';
  }
  let boomLiveSocket=null,boomLiveRows=null,boomLiveInterval=null,boomLivePair=null,boomLiveLastTick=0,boomLiveProvider="",boomFlowAvailable=false;
- function stopBoomLive(){if(boomLiveSocket){try{boomLiveSocket.onclose=null;boomLiveSocket.close();}catch(e){}boomLiveSocket=null;}}
- function renderBoomLiveUpdate(){
+let boomLivePollTimer=null,boomFlowPollTimer=null,boomLiveRequestController=null,boomFlowRequestController=null,boomFlowSummary=null;
+function stopBoomLive(){
+ if(boomLiveSocket){try{boomLiveSocket.onclose=null;boomLiveSocket.close();}catch(e){}boomLiveSocket=null;}
+ if(boomLivePollTimer){clearInterval(boomLivePollTimer);boomLivePollTimer=null;}
+ if(boomFlowPollTimer){clearInterval(boomFlowPollTimer);boomFlowPollTimer=null;}
+ if(boomLiveRequestController){try{boomLiveRequestController.abort();}catch(e){}boomLiveRequestController=null;}
+ if(boomFlowRequestController){try{boomFlowRequestController.abort();}catch(e){}boomFlowRequestController=null;}
+}
+function renderBoomLiveUpdate(){
   if(!boomLiveRows||boomLiveRows.length<25)return;
   const rows=boomLiveRows,closes=rows.map(r=>r[4]),base=ema(closes,34),deviation=closes.map((v,i)=>v-base[i]),osc=[];
   for(let i=0;i<rows.length;i++){const start=Math.max(0,i-19),sample=deviation.slice(start,i+1),mean=sample.reduce((a,b)=>a+b,0)/sample.length,variance=sample.reduce((a,b)=>a+(b-mean)*(b-mean),0)/sample.length,sd=Math.sqrt(variance)||1,momentum=i>=3?(closes[i]/closes[i-3]-1)*100:0;osc.push(Math.max(-2,Math.min(2,(deviation[i]/sd)*.72+momentum*1.8)));}
   const smooth=ema(osc,5),signals=rows.map((r,i)=>i>0&&smooth[i]>.75&&smooth[i-1]<=.75?"BUY":i>0&&smooth[i]<-.75&&smooth[i-1]>=-.75?"SELL":null);
-  const last=smooth[smooth.length-1],closed=rows.slice(-5),sum=k=>closed.reduce((a,r)=>a+(Number(r[k])||0),0),buy=sum(9),sell=sum(10),net=buy-sell,latest=rows[rows.length-1];
+  const last=smooth[smooth.length-1],latest=rows[rows.length-1],flow=boomFlowSummary,flowFresh=!!flow&&flow.available===true&&Date.now()-Number(flow.updatedAt||0)<120000;
+  const buy=flowFresh?Number(flow.buy_usdt)||0:0,sell=flowFresh?Number(flow.sell_usdt)||0:0,net=flowFresh?Number(flow.cvd_usdt)||buy-sell:0;
   $("boom-signal").textContent=last>.35?"فشار صعودی":last<-.35?"فشار نزولی":"خنثی";
   $("boom-signal").style.color=last>.35?"#35dfa9":last<-.35?"#ff8291":"#f1d596";
   $("boom-osc").textContent=last.toFixed(2);$("boom-price").textContent=fmt(latest[4])+" USDT";
-  $("boom-buy-flow").textContent=boomFlowAvailable&&boomLiveProvider!=="OKX"?money(buy)+" USDT":"تفکیک معتبر موجود نیست";$("boom-sell-flow").textContent=boomFlowAvailable&&boomLiveProvider!=="OKX"?money(sell)+" USDT":"تفکیک معتبر موجود نیست";
-  $("boom-net-flow").textContent=boomFlowAvailable&&boomLiveProvider!=="OKX"?(net>=0?"+":"−")+money(Math.abs(net))+" USDT":"—";
-  $("boom-net-flow").className=boomFlowAvailable&&boomLiveProvider!=="OKX"?(net>=0?"positive":"negative"):"";
+  $("boom-buy-flow").textContent=flowFresh?money(buy)+" USDT":"داده معتبر موجود نیست";
+  $("boom-sell-flow").textContent=flowFresh?money(sell)+" USDT":"داده معتبر موجود نیست";
+  $("boom-net-flow").textContent=flowFresh?(net>=0?"+":"−")+money(Math.abs(net))+" USDT":"—";
+  $("boom-net-flow").className=flowFresh?(net>=0?"positive":"negative"):"";
   $("boom-volume-ratio").textContent=money(latest[6])+" USDT · "+(Number(latest[11])||0).toFixed(1)+"×";
   $("boom-candles").innerHTML=drawCandles(rows.slice(-90),signals.slice(-90));
-  $("boom-flow-chart").innerHTML=boomFlowAvailable&&boomLiveProvider!=="OKX"?drawFlow(rows):'<div class="ai-empty">تفکیک خرید و فروش تهاجمی در منبع زنده فعلی ارائه نمی‌شود؛ برای جلوگیری از عددسازی نمایش داده نشده است.</div>';$("boom-oscillator").innerHTML=drawOsc(smooth.slice(-120),signals.slice(-120));
+  $("boom-flow-chart").innerHTML=flowFresh?'<div class="ai-empty">جریان معاملات ۵ دقیقه‌ای · منبع: '+String(flow.source||"Worker").replace(/[<>]/g,"")+' · '+Number(flow.trade_count||0).toLocaleString("fa-IR")+' معامله · '+(flow.complete===true?"پوشش کامل پنجره":"پوشش نمونه‌ای")+'</div>':'<div class="ai-empty">جریان خرید و فروش معتبر ۵ دقیقه‌ای در دسترس نیست؛ عددسازی انجام نمی‌شود.</div>';
+  $("boom-oscillator").innerHTML=drawOsc(smooth.slice(-120),signals.slice(-120));
   const stamp=new Date().toLocaleTimeString("fa-IR");
-  $("boom-status").textContent=boomLivePair+" · "+boomLiveInterval+" · کندل زنده · "+(boomLiveProvider||"WebSocket")+(boomLiveProvider==="OKX"?" · تفکیک جریان خرید/فروش در دسترس نیست":"")+" · "+stamp;
+  $("boom-status").textContent=boomLivePair+" · "+boomLiveInterval+" · کندل‌های Worker · "+(boomLiveProvider||"Worker")+(flowFresh?" · جریان معاملات ۵ دقیقه‌ای متصل":" · منتظر جریان معاملات")+" · "+stamp;
   syncBoomExpanded();
  }
- function startBoomLive(pair,interval){
+function startBoomLive(pair,interval){
   stopBoomLive();boomLivePair=pair;boomLiveInterval=interval;
-  const stream=pair.toLowerCase()+"@kline_"+interval;
-  const connectBinance=()=>{
-   let ws;try{ws=new WebSocket("wss://stream.binance.com:9443/ws/"+stream);}catch(e){connectOkx();return;}
-   boomLiveSocket=ws;let opened=false;boomLiveProvider="Binance";
-   ws.onopen=()=>{opened=true;};
-   ws.onmessage=event=>{
-    try{const msg=JSON.parse(event.data),k=msg.k;if(!k)return;
-     boomLiveLastTick=Date.now();const t=Number(k.t),row=[t,Number(k.o),Number(k.h),Number(k.l),Number(k.c),Number(k.v),Number(k.q),Number(k.n),Number(k.V),Number(k.Q),Math.max(0,Number(k.q)-Number(k.Q)),0];
-     if(!boomLiveRows)return;
-     const last=boomLiveRows[boomLiveRows.length-1];
-     if(last&&last[0]===t)boomLiveRows[boomLiveRows.length-1]=row;else boomLiveRows.push(row);
-     if(boomLiveRows.length>220)boomLiveRows.shift();
-     const prev=boomLiveRows.slice(-21,-1).map(x=>x[6]).filter(x=>x>0),avg=prev.length?prev.reduce((a,b)=>a+b,0)/prev.length:0;
-     row[11]=avg>0?row[6]/avg:0;renderBoomLiveUpdate();
-    }catch(e){console.debug("Boom live candle parse failed",e);}
-   };
-   ws.onerror=()=>{if(!opened)connectOkx();};
-   ws.onclose=()=>{if(boomLiveSocket===ws){boomLiveSocket=null;setTimeout(()=>{if(boomLivePair===pair)connectOkx();},2500);}};
+  const updateCandles=async()=>{
+   if(boomLivePair!==pair||document.hidden||boomLiveRequestController)return;
+   const controller=new AbortController();boomLiveRequestController=controller;
+   const timeout=setTimeout(()=>controller.abort(),18000);
+   try{
+    const response=await fetch(AI_ANALYSIS_ENDPOINT+"/market-candles?symbol="+encodeURIComponent(pair)+"&interval="+encodeURIComponent(interval)+"&market=spot",{cache:"no-store",signal:controller.signal,headers:{"Accept":"application/json"}});
+    if(!response.ok)throw new Error("HTTP "+response.status);
+    const payload=await response.json();
+    if(!Array.isArray(payload?.candles)||payload.candles.length<25)throw new Error(payload?.detail||payload?.error||"کندل بسته‌شده کافی نیست");
+    const rows=payload.candles.map(c=>{
+     const time=Number(c.time),open=Number(c.open),high=Number(c.high),low=Number(c.low),close=Number(c.close),volume=Number(c.volume)||0;
+     return [time<1e12?time*1000:time,open,high,low,close,volume,volume*close,0,null,null,null,0];
+    }).filter(r=>Number.isFinite(r[0])&&r.slice(1,5).every(Number.isFinite)&&r[1]>0&&r[2]>=Math.max(r[1],r[4])&&r[3]<=Math.min(r[1],r[4])&&r[3]>0&&r[4]>0);
+    if(rows.length<25)throw new Error("کمتر از ۲۵ کندل معتبر دریافت شد");
+    rows.forEach((row,i)=>{const previous=rows.slice(Math.max(0,i-20),i).map(x=>x[6]).filter(v=>v>0),avg=previous.length?previous.reduce((a,b)=>a+b,0)/previous.length:0;row[11]=avg>0?row[6]/avg:0;});
+    boomLiveRows=rows.slice(-220);boomLiveProvider=(payload.provider||"Worker")+(payload.data_stale?" · داده ذخیره‌شده":"");boomLiveLastTick=Date.now();renderBoomLiveUpdate();
+   }catch(error){
+    const status=$("boom-status");if(status)status.textContent="تازه‌سازی کندل ناموفق بود: "+String(error?.message||"خطای Worker").slice(0,140);
+   }finally{clearTimeout(timeout);if(boomLiveRequestController===controller)boomLiveRequestController=null;}
   };
-  const connectOkx=()=>{
-   if(boomLivePair!==pair)return;
-   const map={"1m":"1m","5m":"5m","15m":"15m","1h":"1H"};let ws;
-   try{ws=new WebSocket("wss://ws.okx.com:8443/ws/v5/business");}catch(e){return;}
-   boomLiveSocket=ws;boomLiveProvider="OKX";
-   ws.onopen=()=>ws.send(JSON.stringify({op:"subscribe",args:[{channel:"candle"+map[interval],instId:pair.replace("USDT","-USDT") }]}));
-   ws.onmessage=event=>{try{const msg=JSON.parse(event.data),c=msg.data?.[0];if(!c)return;
-    boomLiveLastTick=Date.now();const t=Number(c[0]),row=[t,Number(c[1]),Number(c[2]),Number(c[3]),Number(c[4]),Number(c[5]),Number(c[6]),0,0,0,0,0];
-    if(!boomLiveRows)return;const last=boomLiveRows[boomLiveRows.length-1];
-    if(last&&last[0]===t)boomLiveRows[boomLiveRows.length-1]=row;else boomLiveRows.push(row);
-    renderBoomLiveUpdate();
-   }catch(e){}};
-   ws.onerror=()=>{try{ws.close();}catch(e){}};
+  const updateFlow=async()=>{
+   if(boomLivePair!==pair||document.hidden||boomFlowRequestController)return;
+   const controller=new AbortController();boomFlowRequestController=controller;
+   const timeout=setTimeout(()=>controller.abort(),18000);
+   try{
+    const response=await fetch(AI_ANALYSIS_ENDPOINT+"/market-orderflow?symbol="+encodeURIComponent(pair)+"&market=spot",{cache:"no-store",signal:controller.signal,headers:{"Accept":"application/json"}});
+    if(!response.ok)throw new Error("HTTP "+response.status);
+    const payload=await response.json(),flow=payload?.flow||{};
+    boomFlowSummary={available:flow.available===true,buy_usdt:Number(flow.buy_usdt)||0,sell_usdt:Number(flow.sell_usdt)||0,cvd_usdt:Number(flow.cvd_usdt)||0,trade_count:Number(flow.trade_count)||0,complete:flow.complete===true,source:flow.source||"Worker",updatedAt:Date.now()};
+    boomFlowAvailable=boomFlowSummary.available;renderBoomLiveUpdate();
+   }catch(error){boomFlowSummary=null;boomFlowAvailable=false;renderBoomLiveUpdate();}
+   finally{clearTimeout(timeout);if(boomFlowRequestController===controller)boomFlowRequestController=null;}
   };
-  connectBinance();
+  updateFlow();
+  boomLivePollTimer=setInterval(updateCandles,25000);
+  boomFlowPollTimer=setInterval(updateFlow,45000);
  }
- async function run(){
+async function run(){
   const button=$("boom-run"),status=$("boom-status"),symbol=String($("boom-symbol").value||"BTC").trim().toUpperCase(),interval=$("boom-interval").value;
   if(!/^[A-Z0-9]{2,20}$/.test(symbol)){status.textContent="نماد ارز معتبر نیست.";status.className="boom-status error";return;}
-  button.disabled=true;status.className="boom-status busy";status.textContent="در حال دریافت کندل‌های واقعی و جریان خرید/فروش…";
+  button.disabled=true;status.className="boom-status busy";status.textContent="در حال دریافت کندل‌های بسته‌شده و جریان معاملات از Worker…";
   try{
-   const pair=symbol+"USDT";let rows=null,lastError=null,provider="";
-   const intervalMap={"1m":"1","5m":"5","15m":"15","1h":"60"};
-   const attempts=[
-    ["Binance Spot",async()=>{let e;for(const base of ["https://api.binance.com","https://data-api.binance.vision"]){try{const raw=await hunterFetchJson(base+"/api/v3/klines?symbol="+encodeURIComponent(pair)+"&interval="+encodeURIComponent(interval)+"&limit=180",12000);return raw.map(k=>[k[0],k[1],k[2],k[3],k[4],k[5],k[7],k[8],k[9],k[10]]);}catch(x){e=x;}}throw e||new Error("Binance unavailable");}],
-    ["OKX Spot",async()=>{const x=await hunterFetchJson("https://www.okx.com/api/v5/market/history-candles?instId="+encodeURIComponent(symbol+"-USDT")+"&bar="+encodeURIComponent(interval==="1h"?"1H":interval)+"&limit=180",12000);if(x.code!=="0")throw new Error("OKX "+x.code);return (x.data||[]).reverse().map(k=>[k[0],k[1],k[2],k[3],k[4],k[5],k[7]||k[6],0,null,null]);}],
-    ["Bybit Spot",async()=>{const x=await hunterFetchJson("https://api.bybit.com/v5/market/kline?category=spot&symbol="+encodeURIComponent(pair)+"&interval="+intervalMap[interval]+"&limit=180",12000);if(x.retCode!==0)throw new Error("Bybit "+x.retCode);return (x.result?.list||[]).reverse().map(k=>[k[0],k[1],k[2],k[3],k[4],k[5],k[6],0,null,null]);}]
-   ];
-   for(const [name,load] of attempts){try{
-    const payload=await load();if(!Array.isArray(payload)||payload.length<25)throw new Error("حداقل ۲۵ کندل تاریخی معتبر لازم است");
-    rows=payload.map(k=>{const close=Number(k[4]),baseVolume=Number(k[5])||0,quoteVolume=Number(k[6])||baseVolume*close,buyBase=k[8]===null?null:(Number(k[8])||0),buyQuote=k[9]===null?null:(Number(k[9])||0);return [Number(k[0]),Number(k[1]),Number(k[2]),Number(k[3]),close,baseVolume,quoteVolume,Number(k[7])||0,buyBase,buyQuote,buyQuote===null?null:Math.max(0,quoteVolume-buyQuote),0];});
-    provider=name;break;
-   }catch(error){lastError=error;}}
-   if(!rows)throw lastError||new Error("Binance، OKX و Bybit هیچ کندل معتبری ندادند");
-   if(rows.length<25||rows.some(r=>r.slice(0,11).some(v=>!Number.isFinite(v))||r[1]<=0||r[2]<r[3]||r[3]<=0||r[4]<=0))throw new Error("ساختار کندل‌های دریافتی معتبر نیست.");
-   rows.forEach((r,i)=>{
-    const previous=rows.slice(Math.max(0,i-20),i).map(x=>x[6]).filter(v=>v>0),avg=previous.length?previous.reduce((a,b)=>a+b,0)/previous.length:0;
-    r[11]=avg>0?r[6]/avg:0;
-   });
+   const pair=symbol+"USDT";
+   const response=await fetch(AI_ANALYSIS_ENDPOINT+"/market-candles?symbol="+encodeURIComponent(pair)+"&interval="+encodeURIComponent(interval)+"&market=spot",{cache:"no-store",headers:{"Accept":"application/json"}});
+   if(!response.ok)throw new Error("HTTP "+response.status);
+   const payload=await response.json();
+   if(!Array.isArray(payload?.candles)||payload.candles.length<25)throw new Error(payload?.detail||payload?.error||"حداقل ۲۵ کندل بسته‌شده معتبر لازم است");
+   let rows=payload.candles.map(c=>{
+    const time=Number(c.time),open=Number(c.open),high=Number(c.high),low=Number(c.low),close=Number(c.close),volume=Number(c.volume)||0;
+    return [time<1e12?time*1000:time,open,high,low,close,volume,volume*close,0,null,null,null,0];
+   }).filter(r=>Number.isFinite(r[0])&&r.slice(1,5).every(Number.isFinite)&&r[1]>0&&r[2]>=Math.max(r[1],r[4])&&r[3]<=Math.min(r[1],r[4])&&r[3]>0&&r[4]>0);
+   if(rows.length<25)throw new Error("ساختار کندل‌های دریافتی معتبر نیست.");
+   rows=rows.slice(-220);
+   rows.forEach((r,i)=>{const previous=rows.slice(Math.max(0,i-20),i).map(x=>x[6]).filter(v=>v>0),avg=previous.length?previous.reduce((a,b)=>a+b,0)/previous.length:0;r[11]=avg>0?r[6]/avg:0;});
    const closes=rows.map(r=>r[4]),base=ema(closes,34),deviation=closes.map((v,i)=>v-base[i]),osc=[];
-   for(let i=0;i<rows.length;i++){const start=Math.max(0,i-19),sample=deviation.slice(start,i+1),mean=sample.reduce((a,b)=>a+b,0)/sample.length,variance=sample.reduce((a,b)=>a+(b-mean)*(b-mean),0)/sample.length,sd=Math.sqrt(variance)||1;const momentum=i>=3?(closes[i]/closes[i-3]-1)*100:0;osc.push(Math.max(-2,Math.min(2,(deviation[i]/sd)*.72+momentum*1.8)));}
+   for(let i=0;i<rows.length;i++){const start=Math.max(0,i-19),sample=deviation.slice(start,i+1),mean=sample.reduce((a,b)=>a+b,0)/sample.length,variance=sample.reduce((a,b)=>a+(b-mean)*(b-mean),0)/sample.length,sd=Math.sqrt(variance)||1,momentum=i>=3?(closes[i]/closes[i-3]-1)*100:0;osc.push(Math.max(-2,Math.min(2,(deviation[i]/sd)*.72+momentum*1.8)));}
    const smooth=ema(osc,5),signals=rows.map((r,i)=>i>0&&smooth[i]>.75&&smooth[i-1]<=.75?"BUY":i>0&&smooth[i]<-.75&&smooth[i-1]>=-.75?"SELL":null);
-   const last=smooth[smooth.length-1],lastSignal=signals.map((v,i)=>v?{v,i}:null).filter(Boolean).slice(-1)[0],direction=last>.35?"فشار صعودی":last<-.35?"فشار نزولی":"خنثی";
-   const closed=rows.slice(-5),sum=key=>closed.reduce((a,r)=>a+(Number(r[key])||0),0),buy=sum(9),sell=sum(10),net=buy-sell,latest=rows[rows.length-1],flowRatio=Number(latest[11])||0;
+   const last=smooth[smooth.length-1],lastSignal=signals.map((v,i)=>v?{v,i}:null).filter(Boolean).slice(-1)[0],direction=last>.35?"فشار صعودی":last<-.35?"فشار نزولی":"خنثی",latest=rows[rows.length-1];
    $("boom-signal").textContent=direction;$("boom-signal").style.color=last>.35?"#35dfa9":last<-.35?"#ff8291":"#f1d596";
-   $("boom-osc").textContent=last.toFixed(2);$("boom-price").textContent=fmt(closes[closes.length-1])+" USDT";$("boom-last").textContent=lastSignal?lastSignal.v+" · "+new Date(rows[lastSignal.i][0]).toLocaleString("fa-IR"):"سیگنال تازه‌ای نیست";
-   boomFlowAvailable=provider==="Binance Spot";
-   $("boom-buy-flow").textContent=boomFlowAvailable?money(buy)+" USDT":"تفکیک معتبر موجود نیست";$("boom-buy-flow").className=boomFlowAvailable?"positive":"";
-   $("boom-sell-flow").textContent=boomFlowAvailable?money(sell)+" USDT":"تفکیک معتبر موجود نیست";$("boom-sell-flow").className=boomFlowAvailable?"negative":"";
-   $("boom-net-flow").textContent=boomFlowAvailable?(net>=0?"+":"−")+money(Math.abs(net))+" USDT":"—";$("boom-net-flow").className=boomFlowAvailable?(net>=0?"positive":"negative"):"";
-   $("boom-volume-ratio").textContent=money(latest[6])+" USDT · "+flowRatio.toFixed(1)+"×";
+   $("boom-osc").textContent=last.toFixed(2);$("boom-price").textContent=fmt(closes[closes.length-1])+" USDT";
+   $("boom-last").textContent=lastSignal?lastSignal.v+" · "+new Date(rows[lastSignal.i][0]).toLocaleString("fa-IR"):"سیگنال تازه‌ای نیست";
+   boomFlowAvailable=false;boomFlowSummary=null;
+   $("boom-buy-flow").textContent="در انتظار جریان سروری";$("boom-buy-flow").className="";
+   $("boom-sell-flow").textContent="در انتظار جریان سروری";$("boom-sell-flow").className="";
+   $("boom-net-flow").textContent="—";$("boom-net-flow").className="";
+   $("boom-volume-ratio").textContent=money(latest[6])+" USDT · "+(Number(latest[11])||0).toFixed(1)+"×";
    $("boom-candles").innerHTML=drawCandles(rows.slice(-90),signals.slice(-90));
-   $("boom-flow-chart").innerHTML=boomFlowAvailable?drawFlow(rows):'<div class="ai-empty">منبع کندلی فعلی تفکیک خرید و فروش تهاجمی را ارائه نمی‌کند؛ داده ساختگی نمایش داده نمی‌شود.</div>';
+   $("boom-flow-chart").innerHTML='<div class="ai-empty">جریان معاملات تجمیعی ۵ دقیقه‌ای پس از اتصال Worker نمایش داده می‌شود.</div>';
    $("boom-oscillator").innerHTML=drawOsc(smooth.slice(-120),signals.slice(-120));
-   const unusual=flowRatio>=2?" · حجم غیرعادی در آخرین کندل":"";
-   status.className="boom-status";status.textContent=pair+" · "+interval+" · "+rows.length+" کندل شامل کندل جاری · منبع: "+provider+" · سبز/قرمز: خرید/فروش تهاجمی · بروزرسانی "+new Date().toLocaleTimeString("fa-IR")+unusual;
-   boomLiveRows=rows;boomLiveLastTick=0;startBoomLive(pair,interval);boomLiveEnabled=true;if(!boomLiveTimer)boomLiveTimer=setInterval(()=>{if(boomLiveEnabled&&!document.hidden&&!button.disabled&&(!boomLiveLastTick||Date.now()-boomLiveLastTick>45000))run();},180000);
+   const provider=payload.provider||"Worker",fresh=payload.data_stale!==true;
+   status.className="boom-status";status.textContent=pair+" · "+interval+" · "+rows.length+" کندل بسته‌شده · منبع: "+provider+(fresh?" · داده تازه":" · آخرین داده ذخیره‌شده") ;
+   boomLiveRows=rows;boomLiveProvider=provider+(fresh?"":" · داده ذخیره‌شده");boomLiveLastTick=Date.now();
+   startBoomLive(pair,interval);boomLiveEnabled=true;
+   if(!boomLiveTimer)boomLiveTimer=setInterval(()=>{if(boomLiveEnabled&&!document.hidden&&!button.disabled&&(!boomLiveLastTick||Date.now()-boomLiveLastTick>90000))run();},180000);
    syncBoomExpanded();
   }catch(error){status.className="boom-status error";status.textContent="دریافت/تحلیل ناموفق: "+(error&&error.message?error.message:"خطای نامشخص");}
   finally{button.disabled=false;}
  }
+
  const btn=$("boom-run");if(btn)btn.addEventListener("click",run);
  const symbol=$("boom-symbol");if(symbol)symbol.addEventListener("keydown",e=>{if(e.key==="Enter")run();});
  const boomCoins=new Map(),boomMetadata=new Map();
