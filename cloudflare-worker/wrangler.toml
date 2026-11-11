@@ -34,6 +34,9 @@ binding = "MARKET_CACHE_DB"
 database_name = "mmp_market_data_fallback"
 database_id = "45b2a51c-49d1-4e21-b13c-86e9d8fffa6e"
 
+[cache]
+enabled = true
+
 [vars]
 # Conservative cap; Cloudflare AI calls stop after this many successful reservations per UTC day.
 CF_AI_DAILY_MAX_CALLS = "20"
