@@ -601,7 +601,7 @@ jobs:
           jq '{symbol,trade_count,provider,complete,window_minutes,fallback_error}' /tmp/okx-futures-preview.json
           jq -e '.symbol == "BTCUSDT" and .window_minutes == 1 and .complete == true and (.trade_count >= 100)' /tmp/okx-futures-preview.json >/dev/null
           jq -r '"OKX Futures preview: " + .provider + " | " + (.trade_count|tostring) + " real trades | complete=" + (.complete|tostring)' /tmp/okx-futures-preview.json
-          order_status=$(curl --silent --show-error --retry 1 --retry-delay 2 --max-time 80 -o /tmp/okx-futures-orderflow-preview.json -w "%{http_code}" "$PREVIEW_URL/market-orderflow?market=futures&symbol=BTC")
+          order_status=$(curl --silent --show-error --retry 1 --retry-delay 2 --max-time 80 -o /tmp/okx-futures-orderflow-preview.json -w "%{http_code}" "$PREVIEW_URL/market-orderflow?market=futures&symbol=BTC&window=1")
           echo "OKX Futures order-flow preview HTTP $order_status"
           if [ "$order_status" != "200" ]; then cat /tmp/okx-futures-orderflow-preview.json; exit 1; fi
           jq -e '.market == "futures" and .flow.window_minutes == 1 and .flow.complete == true and (.flow.trade_count >= 100)' /tmp/okx-futures-orderflow-preview.json >/dev/null
