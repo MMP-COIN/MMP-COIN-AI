@@ -1533,6 +1533,28 @@ async function handle(request,env){
    return json({error:"داده کندلی این ارز فعلاً در دسترس نیست.",detail:String(error?.message||"upstream error").slice(0,220),symbol,interval},502,request);
   }
  }
+
+ if(request.method==="GET"&&new URL(request.url).pathname==="/local-market-watch"){
+  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"local-market-watch"),request);if(limited)return limited;
+  const headers={"Accept":"application/json, text/plain, */*","User-Agent":"MMP-COIN-AI/1.0","Accept-Language":"en-US,en;q=0.9"};
+  const sources=[];
+  const read=async(url,source,normalize)=>{
+   try{const response=await fetchWithTimeout(url,{headers},6500);if(!response.ok)throw new Error("HTTP "+response.status);const data=await response.json();const value=normalize(data);if(!(Number(value)>0))throw new Error("invalid price");sources.push({exchange:source,price_irr:Number(value),price_toman:Number(value)/10,checked_at:new Date().toISOString(),fresh:true});}
+   catch(error){sources.push({exchange:source,price_irr:null,price_toman:null,fresh:false,error:String(error?.message||error).slice(0,100)});}
+  };
+  await Promise.all([
+   read("https://apiv2.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls","Nobitex",d=>d?.status==="ok"?(d.stats?.["usdt-rls"]?.latest??d.stats?.["usdt-irt"]?.latest):null),
+   read("https://api.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls","Nobitex backup",d=>d?.status==="ok"?(d.stats?.["usdt-rls"]?.latest??d.stats?.["usdt-irt"]?.latest):null)
+  ]);
+  const valid=sources.filter(x=>x.fresh&&Number.isFinite(x.price_toman));
+  const values=valid.map(x=>x.price_toman).sort((a,b)=>a-b);
+  const median=values.length?(values.length%2?values[(values.length-1)/2]:(values[values.length/2-1]+values[values.length/2])/2):null;
+  const deviation=median?Math.max(...values.map(x=>Math.abs(x-median)/median*100)):null;
+  return json({market:"USDT/IRR",unit:"Toman",sources,source_count:valid.length,median_toman:median,source_deviation_pct:deviation,
+   status:valid.length>=2?"multi_source":valid.length===1?"single_source":"offline",
+   warning:valid.length===1?"فقط یک منبع معتبر پاسخ داده؛ مقایسه چندصرافی در دسترس نیست.":valid.length===0?"هیچ منبع زنده معتبر پاسخ نداده است.":null,
+   checked_at:new Date().toISOString(),cache:"bypassed"},200,request,{"Cache-Control":"no-store","X-MMP-Data-Source":"Nobitex live"});
+ }
  if(request.method==="GET"&&new URL(request.url).pathname==="/market-proxy"){
   const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"market-proxy");
   const limited=rateLimitReply(limitResult,request);if(limited)return limited;
