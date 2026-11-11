@@ -36,7 +36,7 @@ function init(){
   document.body.append(appDock);
  }
  const jumpHost=$("#mmp-center-jumps",toolbar);
- function menuMarkup(){return (appMode?'<a href="#center-command" data-mmp-open-center="command"><i class="menu-icon">◈</i><span>فرماندهی بازار</span></a>':'<a href="/" data-mmp-home><i class="menu-icon">⌂</i><span>صفحه اصلی</span></a>')+'<div class="menu-section-label">هشت مرکز تخصصی MMP</div>'+Object.entries(CENTERS).filter(([id])=>id!=="support").map(([id,c],i)=>'<a href="'+(c.url||"#center-"+id)+'" data-mmp-open-center="'+id+'"><i class="menu-icon">'+c.icon+'</i><span>'+esc(c.title)+'</span></a>').join("")+(appMode?'<div class="menu-divider"></div><a href="#app-download" data-mmp-open-center="support"><i class="menu-icon">✉</i><span>اشتراک و ارتباط</span></a>':'')+'<div class="menu-divider"></div>';}
+ function menuMarkup(){return (appMode?"":'<a href="/" data-mmp-home><i class="menu-icon">⌂</i><span>صفحه اصلی</span></a>')+'<div class="menu-section-label">هشت مرکز تخصصی MMP</div>'+Object.entries(CENTERS).filter(([id])=>id!=="support").map(([id,c],i)=>'<a href="'+(c.url||"#center-"+id)+'" data-mmp-open-center="'+id+'"><i class="menu-icon">'+c.icon+'</i><span>'+esc(c.title)+'</span></a>').join("")+(appMode?'<div class="menu-divider"></div><a href="#app-download" data-mmp-open-center="support"><i class="menu-icon">✉</i><span>اشتراک و ارتباط</span></a>':'')+'<div class="menu-divider"></div>';}
  const menu=$("#dropdownMenu");if(menu)menu.innerHTML=menuMarkup();
  function show(view,updateHistory){
   const config=CENTERS[view];if(!config)view="home";
@@ -67,6 +67,7 @@ function init(){
    try{if(typeof window.refreshSiteData==="function")window.refreshSiteData();else if(typeof window.refreshLiveQuotes==="function")window.refreshLiveQuotes();}catch(error){console.warn("Market Command refresh failed:",error);}
   }
   document.dispatchEvent(new CustomEvent("mmp:center-change",{detail:{view}}));
+  if(view==="charts")requestAnimationFrame(()=>{if(typeof window.mmpLoadChart==="function")window.mmpLoadChart(true);});
  }
  document.addEventListener("click",e=>{
   const opener=e.target.closest("[data-mmp-open-center]");
@@ -78,8 +79,8 @@ function init(){
  if(appDock)appDock.addEventListener("click",e=>{const button=e.target.closest("[data-mmp-app-page]");if(button)show(button.dataset.mmpAppPage,true);});
  if(appMode){
   let touchStart=null;
-  document.addEventListener("touchstart",e=>{if(e.touches.length!==1)return;const target=e.target;if(target.closest("input,textarea,select,button,a,[contenteditable='true'],.mmp-app-page-dock,.mmp-symbol-menu,.mmp-coin-detail-backdrop"))return;const t=e.touches[0];touchStart={x:t.clientX,y:t.clientY};},{passive:true});
-  document.addEventListener("touchend",e=>{if(!touchStart||!e.changedTouches.length)return;const t=e.changedTouches[0],dx=t.clientX-touchStart.x,dy=t.clientY-touchStart.y;touchStart=null;if(Math.abs(dx)<65||Math.abs(dx)<Math.abs(dy)*1.25)return;const current=body.dataset.mmpView||"command";let index=APP_PAGE_IDS.indexOf(current);if(index<0)index=0;index=(index+(dx<0?1:APP_PAGE_IDS.length-1))%APP_PAGE_IDS.length;show(APP_PAGE_IDS[index],true);},{passive:true});
+  document.addEventListener("touchstart",e=>{if(e.touches.length!==1)return;const target=e.target;if(target.closest("input,textarea,select,[contenteditable='true'],.mmp-app-page-dock,.mmp-symbol-menu,.mmp-coin-detail-backdrop"))return;const t=e.touches[0];touchStart={x:t.clientX,y:t.clientY};},{passive:true});
+  document.addEventListener("touchend",e=>{if(!touchStart||!e.changedTouches.length)return;const t=e.changedTouches[0],dx=t.clientX-touchStart.x,dy=t.clientY-touchStart.y;touchStart=null;if(Math.abs(dx)<65||Math.abs(dx)<Math.abs(dy)*1.25)return;e.preventDefault();const current=body.dataset.mmpView||"command";let index=APP_PAGE_IDS.indexOf(current);if(index<0)index=0;index=(index+(dx>0?1:APP_PAGE_IDS.length-1))%APP_PAGE_IDS.length;show(APP_PAGE_IDS[index],true);},{passive:false});
  }
  window.addEventListener("popstate",()=>show(new URL(location.href).searchParams.get("center")||(appMode?"command":"home"),false));
  const initial=new URL(location.href).searchParams.get("center")||(appMode?"command":"home");show(initial,false);
