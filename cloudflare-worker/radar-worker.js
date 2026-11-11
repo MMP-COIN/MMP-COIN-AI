@@ -196,7 +196,7 @@ async function runRadar(env,scheduledTime=Date.now()){
   const [state,oldSnapshot]=await Promise.all([readRadarRecord(env,"radar:state","radar:state"),readRadarRecord(env,"radar:snapshot","radar:snapshot")]);
   const cacheTimestamp=Date.parse(state?.universe_cache_updated_at||state?.updated_at||"")||Number(state?.universe_cache_updated_at||state?.updated_at||0)||0;
   const cacheAge=Math.max(0,Date.now()-cacheTimestamp);
-  const cachedUniverse=Array.isArray(state?.universe_cache)&&state.universe_cache.length&&cacheAge<=6*60*60*1000?state.universe_cache:null;
+  const cachedUniverse=Array.isArray(state?.universe_cache)&&state.universe_cache.length&&cacheAge<=24*60*60*1000?state.universe_cache:null;
   let source=null,universeSource="live";
   try{
     const response=await getJson(MAIN_UNIVERSE,12000);
