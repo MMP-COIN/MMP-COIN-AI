@@ -697,6 +697,29 @@ async function loadMarketFlow(symbol,windowMinutes=5,signal=null){
   if(rows.length&&betterFlow(rows,whitebitTruncated)){trades=rows;truncated=whitebitTruncated;provider="WhiteBIT Spot · معاملات واقعی";}
  }catch(error){lastError="WhiteBIT: "+String(error?.message||error).slice(0,160);}
 }
+if(!trades?.length||truncated||trades.length<8){
+ try{
+  // OKX Spot history is cursor-paginated; walk back until the requested window is fully covered.
+  // This avoids treating a capped 500/1000-trade sample as a complete 5-minute flow window.
+  const instId=pair.replace(/USDT$/,"")+"-USDT",history=[],seen=new Set();let after="",historyTruncated=true;
+  for(let page=0;page<60;page++){
+   const query="https://www.okx.com/api/v5/market/history-trades?instId="+encodeURIComponent(instId)+"&limit=100"+(after?"&after="+encodeURIComponent(after):"");
+   const d=await get(query,4500);
+   if(String(d.code)!=="0")throw new Error(d.msg||"OKX Spot history trades unavailable");
+   const batch=Array.isArray(d.data)?d.data:[];
+   if(!batch.length){historyTruncated=false;break;}
+   for(const x of batch){const id=String(x.tradeId||x.ts);if(!seen.has(id)){seen.add(id);history.push(x);}}
+   const oldest=batch.reduce((v,x)=>Math.min(v,Number(x.ts)||Infinity),Infinity);
+   if(Number.isFinite(oldest)&&oldest<=cutoff+5000){historyTruncated=false;break;}
+   if(batch.length<100){historyTruncated=false;break;}
+   const nextAfter=String(batch[batch.length-1]?.tradeId||"");
+   if(!nextAfter||nextAfter===after)break;
+   after=nextAfter;
+  }
+  const rows=history.map(x=>({time:Number(x.ts),price:Number(x.px),size:Number(x.sz),side:String(x.side||"").toLowerCase()==="buy"?"Buy":"Sell"})).filter(x=>x.time>=cutoff&&x.time<=now&&x.price>0&&x.size>0);
+  if(rows.length&&betterFlow(rows,historyTruncated)){trades=rows;truncated=historyTruncated;provider="OKX Spot · paged real trades";}
+ }catch(error){lastError="OKX history: "+String(error?.message||error).slice(0,160);}
+}
 if(!trades?.length)throw new Error("داده معاملات از Bybit، Binance، OKX، Gate، MEXC، KuCoin و WhiteBIT دریافت نشد: "+lastError);
  const buckets=new Map();let buy5m=0,sell5m=0;
  for(const trade of trades){
