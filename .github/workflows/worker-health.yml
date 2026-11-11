@@ -95,6 +95,11 @@ jobs:
           if (matureSummary.calibrationStatus !== "calibrated" || matureSummary.matured5m !== 40 || matureSummary.calibrationAdjustment !== 5) throw new Error("Bounded learning calibration did not activate at the minimum sample size");
           const workerSource = fs.readFileSync("cloudflare-worker/worker.js", "utf8");
           const htmlSource = fs.readFileSync("www/index.html", "utf8");
+          const futuresUniverseStart = workerSource.indexOf("async function loadDigitalHunterFuturesUniverse");
+          const futuresUniverseEnd = workerSource.indexOf("async function loadDigitalHunterUniverse", futuresUniverseStart);
+          const futuresUniverseSource = workerSource.slice(futuresUniverseStart, futuresUniverseEnd);
+          if (futuresUniverseStart < 0 || !futuresUniverseSource.includes("MEXC USDT Futures") || !futuresUniverseSource.includes("contract.mexc.com/api/v1/contract/detail") || !futuresUniverseSource.includes("contract.mexc.com/api/v1/contract/ticker") || !futuresUniverseSource.includes('x.state===0&&x.quoteCoin==="USDT"&&x.settleCoin==="USDT"')) throw new Error("MEXC active USDT perpetual discovery is missing");
+          if (!workerSource.includes("cached_fallback:true") || !workerSource.includes("fresh:false")) throw new Error("Hunter universe refresh must expose stale cache fallback without relabelling it fresh");
           if (!workerSource.includes("function emaSeries(values,period)") || workerSource.includes("closes.slice(0,i+1)")) throw new Error("Multi-timeframe MACD must use linear-time EMA series, not quadratic recomputation");
           if (!workerSource.includes("const ASSET_SYMBOL_OVERRIDES=Object.freeze(")) throw new Error("AI analyzer must define safe asset-id to ticker overrides before request parsing");
           if (!workerSource.includes("async function monitorLocalTether(env)") || !workerSource.includes('monitor:"server-cron-1m"') || !workerSource.includes("await Promise.allSettled([cleanup,localTether])")) throw new Error("Iranian Tether shock monitoring must run independently on the server cron");
