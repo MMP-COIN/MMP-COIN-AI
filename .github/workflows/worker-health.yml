@@ -349,7 +349,7 @@ jobs:
         run: |
           set -euo pipefail
           curl --fail --silent --show-error --retry 2 --retry-delay 3 --max-time 20 "$RADAR_WORKER_URL/health" -o /tmp/radar-health.json
-          jq -e '.worker == "online" and .kv == true' /tmp/radar-health.json >/dev/null
+          jq -e '.worker == "online" and .d1_persistence == true and .kv_read_fallback == true' /tmp/radar-health.json >/dev/null
           ready=false
           for attempt in 1 2 3 4 5 6; do
             status=$(curl --silent --show-error --max-time 15 -o /tmp/radar-snapshot.json -w "%{http_code}" "$RADAR_WORKER_URL/fast-radar-snapshot" || true)
