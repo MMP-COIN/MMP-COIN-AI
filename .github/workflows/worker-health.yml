@@ -429,6 +429,23 @@ jobs:
           venues=$(jq -r '[.hunter_assets[].hunterExchange | split(", ")[]] | unique | join(", ")' /tmp/hunter-universe.json)
           echo "- Canonical catalog: $count assets; independent Hunter universe: $hunter_count instruments ($discovered outside metadata catalog) across $venues" >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Verify shared edge cache for Hunter universe
+        if: always() && github.ref == 'refs/heads/main'
+        env:
+          WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
+        run: |
+          set -euo pipefail
+          for attempt in 1 2; do
+            status=$(curl --silent --show-error --max-time 25 -D /tmp/hunter-cache-headers.txt -o /dev/null -w "%{http_code}" "$WORKER_URL/hunter-universe")
+            if [ "$status" != "200" ]; then cat /tmp/hunter-cache-headers.txt; exit 1; fi
+          done
+          if ! grep -qi '^cf-cache-status: HIT' /tmp/hunter-cache-headers.txt; then
+            cat /tmp/hunter-cache-headers.txt
+            echo "Hunter universe edge cache did not return HIT on repeated request." >&2
+            exit 1
+          fi
+          echo "- Hunter universe: shared Cloudflare edge cache HIT verified" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Check market data proxy
         if: always() && github.ref == 'refs/heads/main'
         env:
