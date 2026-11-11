@@ -752,7 +752,7 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
  }
  const fallbackPriority=marketType==="futures"?[4,5,6,2,1,3,0]:[4,8,5,6,2,3,1,7,0];
  const preferredOrder=unique(order.filter(index=>reliableIndices.includes(index)));
- const primaryOrder=preferredOrder.slice(0,1);
+ const primaryIndex=preferredOrder[0]??fallbackPriority[0],primaryOrder=[primaryIndex];
  const fallbackPool=unique([...fallbackPriority.filter(index=>!primaryOrder.includes(index)),...preferredOrder.slice(1),...sources.map((_,index)=>index)]).filter(index=>!primaryOrder.includes(index));
  const symbolHash=String(symbol).split("").reduce((sum,char)=>sum+char.charCodeAt(0),0);
  const rotation=fallbackPool.length?(symbolHash+Math.floor(Date.now()/60000))%fallbackPool.length:0;
