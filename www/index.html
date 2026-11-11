@@ -4398,54 +4398,6 @@ function connectHunterEarlyStream(){
 }
 
 async function runFastRadarScan(forceRefresh=false){
- if(fastRadarBusy||(!forceRefresh&&Date.now()-fastRadarLastRun<45000))return;
- if(forceRefresh){hunterUniverseCache.expires=0;hunterUniverseCache.coins=[];hunterExchangeCache.expires=0;hunterExchangeCache.sets=null;}
- fastRadarBusy=true;fastRadarLastRun=Date.now();
- const status=null,hunterStatus=$("hunter-feed-status"),hunterLast=$("hunter-last-scan");
- let completed=0,failed=0,cursor=0,universe=[];
- const scanned=new Map(),failedIds=new Set();
- if(hunterStatus)hunterStatus.textContent="در حال تازه‌سازی فهرست بازارهای اسپات…";
- if(hunterLast)hunterLast.textContent=new Date().toLocaleTimeString("fa-IR");
- try{universe=await fetchHunterUniverse();}catch(error){console.debug("Hunter universe unavailable:",error?.message||error);universe=[];}
- if(!universe.length){fastRadarLastMessage="دریافت فهرست بازارهای اسپات ناموفق بود؛ اتصال صرافی‌ها را بررسی کنید.";if(status)status.textContent=fastRadarLastMessage;if(hunterStatus)hunterStatus.textContent="فهرست بازارها دریافت نشد؛ پایش کندلی انجام نشد.";if(hunterLast)hunterLast.textContent="خطای دریافت داده";fastRadarBusy=false;return;}
- // همه نمادهای فهرست در هر نوبت بررسی می‌شوند؛ هشدارهای تازه و بازارهای پرحجم در اولویت صف هستند.
- const batchSize=universe.length,batch=[],selectedIds=new Set();
- [...hunterEarlyAlerts.values()].filter(x=>Date.now()-x.updatedAt<4*60*1000).sort((a,b)=>b.updatedAt-a.updatedAt).slice(0,12).forEach(alert=>{
-  const coin=hunterCoinIndex.get(alert.id);if(coin&&!selectedIds.has(coin.id)&&batch.length<Math.min(12,batchSize)){batch.push(coin);selectedIds.add(coin.id);}
- });
- const volumeRanked=universe.slice().sort((a,b)=>(Number(b.total_volume)||0)-(Number(a.total_volume)||0));
- volumeRanked.slice(0,Math.min(20,batchSize)).forEach(coin=>{if(!selectedIds.has(coin.id)&&batch.length<batchSize){batch.push(coin);selectedIds.add(coin.id);}});
- let offset=0;while(batch.length<batchSize&&offset<universe.length){const coin=universe[(fastRadarCursor+offset)%universe.length];offset++;if(!selectedIds.has(coin.id)){batch.push(coin);selectedIds.add(coin.id);}}
- fastRadarCursor=(fastRadarCursor+offset)%universe.length;
- const workers=Array.from({length:8},async()=>{
-  while(cursor<batch.length){
-   const coin=batch[cursor++];
-   try{const signal=await scanFastCoin(coin);scanned.set(coin.id,signal&&signal.trend!=="neutral"?signal:null);}
-   catch(error){failed++;failedIds.add(coin.id);if(failed<=3)console.debug("Fast radar skipped "+coin.symbol,error?.message||error);}
-   completed++;
-   if(completed%6===0||completed===batch.length){
-    const message="رصد زنده · "+completed.toLocaleString("fa-IR")+" از "+batch.length.toLocaleString("fa-IR")+" بازار این نوبت · نامزدهای تازه: "+[...scanned.values()].filter(Boolean).length.toLocaleString("fa-IR");
-    if(hunterStatus)hunterStatus.textContent=message;
-    if(status)status.textContent=message+(failed?" · خطاهای منبع: "+failed:"");
-   }
-  }
- });
- try{
-  await Promise.all(workers);
-  const previous=new Map(fastRadarSignals);
-  scanned.forEach((signal,id)=>{if(signal)fastRadarSignals.set(id,signal);else if(!failedIds.has(id))fastRadarSignals.delete(id);});
-  // فرصت‌های قدیمی بیش از ۸ دقیقه در فهرست فعال باقی نمی‌مانند.
-  for(const [id,signal] of fastRadarSignals){if(Date.now()-signal.updatedAt>8*60*1000)fastRadarSignals.delete(id);}
-  fastRadarLastMessage="این نوبت "+completed+" بازار از "+universe.length+" بازار اولویت‌دار بررسی شد · فرصت‌های فعال: "+fastRadarSignals.size+" · "+new Date().toLocaleTimeString("fa-IR");
-  if(status)status.textContent=fastRadarLastMessage+(failed?" · خطاهای دریافت: "+failed:"");
-  renderMarketHunter();connectHunterStreams();
-  if(!fastRadarSignals.size&&hunterStatus)hunterStatus.textContent="رصد این نوبت کامل شد؛ هنوز حرکت غیرعادی با شرایط سخت‌گیرانه تأیید نشده است.";
-  else if(hunterStatus)hunterStatus.textContent=fastRadarSignals.size.toLocaleString("fa-IR")+" شکار فعال · رصد چرخشی بازار ادامه دارد";
-  const displayed=[...fastRadarSignals.entries()].map(([id,signal])=>({coin:hunterCoinIndex.get(id),signal,id})).filter(x=>x.coin&&x.signal.score>=55).sort((a,b)=>b.signal.score-a.signal.score).slice(0,6);
-  displayed.filter(item=>{const old=previous.get(item.id);return !old||old.trend!==item.signal.trend;}).slice(0,3).forEach(item=>notifyHunterOpportunity(item.coin,item.signal));
- }catch(error){fastRadarLastMessage="این نوبت پایش کامل نشد؛ شکارهای قبلی معتبر تا پایان مهلت نمایش حفظ شدند.";if(status)status.textContent=fastRadarLastMessage;if(hunterStatus)hunterStatus.textContent="پایش این نوبت کامل نشد؛ رصد در نوبت بعدی ادامه می‌یابد.";console.warn("Fast radar:",error);}
- finally{fastRadarBusy=false;}
-}async function runFastRadarScan(forceRefresh=false){
  // Legacy browser scanner retired: Radar and Hunter results must come from their server Workers.
  const jobs=[loadUnifiedRadarSnapshot(),loadDigitalHunterSnapshot(!!forceRefresh)];
  const [radar,hunter]=await Promise.allSettled(jobs);
