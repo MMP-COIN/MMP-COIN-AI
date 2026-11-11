@@ -3596,12 +3596,33 @@ function renderHeroCards() {
 }
 
 
+function mergeLiveSignalsIntoMainAssetCatalog(){
+ if(!Array.isArray(cachedCoinsData))return;
+ const incoming=[];
+ try{if(typeof unifiedRadarSignals!=="undefined")for(const signal of unifiedRadarSignals.values())incoming.push(signal);}catch(e){}
+ for(const snapshot of [window.__mmpDigitalHunterSnapshot,window.__mmpDigitalHunterFuturesSnapshot]){
+  for(const signal of Array.isArray(snapshot?.signals)?snapshot.signals:[])incoming.push(signal);
+ }
+ const bySymbol=new Map(cachedCoinsData.map(coin=>[String(coin?.symbol||"").toUpperCase(),coin]));
+ for(const signal of incoming){
+  const symbol=String(signal?.symbol||signal?.coin?.symbol||"").toUpperCase();
+  if(!/^[A-Z0-9]{2,24}$/.test(symbol))continue;
+  const existing=bySymbol.get(symbol)||{},coin=signal.coin||{},price=Number(signal.price??coin.current_price??existing.current_price);
+  if(!(price>0))continue;
+  bySymbol.set(symbol,{...existing,...coin,id:existing.id||coin.id||("mmp-signal:"+symbol),symbol,name:coin.name||existing.name||symbol,
+   current_price:price,total_volume:Number(coin.total_volume??existing.total_volume)||0,
+   price_change_percentage_24h:Number(signal.change24h??signal.change5m??existing.price_change_percentage_24h)||0,
+   isMmpSignal:true,mmpSignalScore:Number(signal.score)||0,mmpSignalDirection:signal.trend||"neutral",
+   hasUsdtMarket:true,marketPairs:Array.isArray(coin.marketPairs)?coin.marketPairs:(existing.marketPairs||[])});
+ }
+ cachedCoinsData=[...bySymbol.values()];
+}
 function renderCoinsTables(data) {
  const rows=Array.isArray(data)?data:[];
  const grid=$("market-catalog-grid"),count=$("market-catalog-count"),result=$("market-catalog-result-count"),toggle=$("market-catalog-toggle");
  const query=String($("market-catalog-search")?.value||"").trim().toLowerCase();
  const filtered=rows.filter(c=>!query||String(c.name||"").toLowerCase().includes(query)||String(c.symbol||"").toLowerCase().includes(query));
- const ranked=[...filtered].sort((a,b)=>{const ar=Number(a.market_cap_rank)||Infinity,br=Number(b.market_cap_rank)||Infinity;if(ar!==br)return ar-br;return (Number(b.market_cap)||0)-(Number(a.market_cap)||0);});
+ const ranked=[...filtered].sort((a,b)=>{if(!!a.isMmpSignal!==!!b.isMmpSignal)return a.isMmpSignal?-1:1;const ar=Number(a.market_cap_rank)||Infinity,br=Number(b.market_cap_rank)||Infinity;if(ar!==br)return ar-br;return (Number(b.market_cap)||0)-(Number(a.market_cap)||0);});
  const expanded=!!(toggle&&toggle.getAttribute("aria-expanded")==="true"),showAll=!!query||expanded;
  if(count)count.textContent=rows.length.toLocaleString("fa-IR");
  if(result)result.textContent=query?filtered.length.toLocaleString("fa-IR")+" نتیجه از "+rows.length.toLocaleString("fa-IR")+" دارایی معتبر":rows.length.toLocaleString("fa-IR")+" دارایی معتبر شناسایی‌شده";
@@ -3964,7 +3985,7 @@ async function loadUnifiedRadarSnapshot(){
    const removed=snapshot.removed_signals&&typeof snapshot.removed_signals==="object"?snapshot.removed_signals:{};
    Object.keys(removed).forEach(id=>unifiedRadarSignals.delete(String(id)));
    for(const [id,signal] of unifiedRadarSignals){if(Date.now()-Number(signal.updatedAt||0)>5*60*1000)unifiedRadarSignals.delete(id);}
-   renderOpportunities();
+   mergeLiveSignalsIntoMainAssetCatalog();renderCoinsTables(cachedCoinsData);renderOpportunities();
   }
   const total=Number(snapshot.cycle_total||snapshot.universe_count)||0,done=Math.max(0,Number(snapshot.cycle_scanned_count??snapshot.next_cursor)||0);
   const percent=Math.max(0,Math.min(100,Number(snapshot.cycle_percent??(total?done/total*100:0))));
@@ -4766,7 +4787,7 @@ async function loadDigitalHunterSnapshot(force=false){
    document.dispatchEvent(new Event("mmp-hunter-snapshot-updated"));
    hunterSpotSnapshotLast=Date.now();
    if(typeof dualHunterState==="object")dualHunterState.lastScan=hunterSpotSnapshotLast;
-   renderMarketHunter();
+   mergeLiveSignalsIntoMainAssetCatalog();renderCoinsTables(cachedCoinsData);renderMarketHunter();
    return spot;
   }catch(error){
    if(status)status.textContent="دریافت Snapshot مشترک شکارچی Spot/Futures ناموفق بود: "+String(error?.message||error).slice(0,140);
