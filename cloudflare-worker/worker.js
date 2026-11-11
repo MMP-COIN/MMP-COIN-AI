@@ -400,6 +400,7 @@ function buildTradePlans(longMarket,action,mode,shortMarket=longMarket){
 }
 
 function validSymbol(s){return /^[A-Z0-9_]{2,30}$/.test(s||"")&&!s.startsWith("_")&&!s.endsWith("_")&&!s.includes("USDTUSDT")}
+const ASSET_SYMBOL_OVERRIDES=Object.freeze({bitcoin:"BTC",ethereum:"ETH",tether:"USDT","usd-coin":"USDC",binancecoin:"BNB",solana:"SOL",ripple:"XRP",dogecoin:"DOGE",cardano:"ADA","avalanche-2":"AVAX","the-open-network":"TON",tron:"TRX",litecoin:"LTC",polkadot:"DOT",chainlink:"LINK"});
 
 let exchangeCatalogCache=null,exchangeCatalogCacheAt=0;
 async function fetchWithTimeout(url,options={},timeoutMs=9000){
