@@ -52,6 +52,7 @@ jobs:
               assert f'id="{required}"' in html, f"Existing feature mount missing: {required}"
           source = js.read_text(encoding="utf-8")
           centers = re.findall(r'^\s+([a-z]+):\{title:', source, re.M)
-          assert len(centers) == 8, f"Expected eight centers, found {len(centers)}"
-          print("Homepage wiring, original M coin, IRT/USDT controls, feature mounts, and eight-center map validated.")
+          workspaces = [center for center in centers if center != "support"]
+          assert len(centers) == 9 and len(workspaces) == 8 and "support" in centers, f"Expected eight workspaces plus one support entry, found {centers}"
+          print("Homepage wiring, original M coin, IRT/USDT controls, feature mounts, and eight workspaces plus support entry validated.")
           PY
