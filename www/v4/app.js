@@ -208,7 +208,7 @@
  function analysisPrice(value){
   const n=Number(value);
   if(!Number.isFinite(n)||n<=0)return "—";
-  return selectedCurrency==="IRT"&&currentTetherPrice>0?Math.round(n*currentTetherPrice).toLocaleString("en-US")+" تومان":money(n)+" USDT";
+  return selectedCurrency==="IRT"?(currentTetherPrice>0?Math.round(n*currentTetherPrice).toLocaleString("en-US")+" تومان":"— تومان"):money(n)+" USDT";
  }
  function analysisLevel(value){
   if(value===null||value===undefined)return "—";
@@ -278,11 +278,13 @@
   }
  }
  $("runAnalysis").addEventListener("click",()=>analyzeMarket(true));
- async function refresh(which){
+ async function refresh(which,includeAnalysis=true){
   if(which==="radar")return loadRadar();
   if(which==="hunter")return loadHunter();
   if(which==="analyzer")return analyzeMarket(true);
-  return Promise.allSettled([loadTicker(),loadRadar(),loadHunter(),loadHealth(),analyzeMarket(true)]);
+  const tasks=[loadTicker(),loadRadar(),loadHunter(),loadHealth()];
+  if(includeAnalysis)tasks.push(analyzeMarket(true));
+  return Promise.allSettled(tasks);
  }
  document.querySelectorAll("[data-refresh]").forEach(b=>b.addEventListener("click",()=>refresh(b.dataset.refresh)));
  const currencyButtons=[$("btn-irt"),$("btn-usdt")];
@@ -303,6 +305,6 @@
  $("refreshAll").addEventListener("click",()=>refresh("all"));
  $("menuToggle").addEventListener("click",()=>document.querySelector(".desktop-nav").classList.toggle("open"));
  document.querySelectorAll(".desktop-nav a").forEach(a=>a.addEventListener("click",()=>document.querySelector(".desktop-nav").classList.remove("open")));
- refresh("all");
+ refresh("all",false);
  setInterval(()=>Promise.allSettled([loadTicker(),loadRadar(),loadHunter(),loadHealth()]),60000);
 })();
