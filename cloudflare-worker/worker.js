@@ -631,15 +631,15 @@ async function loadMarketFlow(symbol,windowMinutes=5,signal=null){
   }catch(error){lastError=String(error?.message||error).slice(0,160);}
  }
  if(!trades?.length||truncated||trades.length<8){
-  for(const host of ["https://api.binance.com"]){
+  for(const host of ["https://api.binance.com","https://api1.binance.com","https://api2.binance.com","https://api3.binance.com","https://data-api.binance.vision"]){
    try{
     const d=await get(host+"/api/v3/aggTrades?symbol="+pair+"&startTime="+cutoff+"&endTime="+now+"&limit=1000");
-    if(!Array.isArray(d))throw new Error("ساختار معاملات Binance نامعتبر است");
+    if(!Array.isArray(d)||!d.length)throw new Error("Binance Spot aggregate trades unavailable or empty");
     const oldest=d.reduce((value,x)=>Math.min(value,Number(x.T)||Infinity),Infinity);
     const binanceTruncated=Number.isFinite(oldest)&&oldest>cutoff+5000;
     const binanceTrades=d.map(x=>({time:Number(x.T),price:Number(x.p),size:Number(x.q),side:x.m?"Sell":"Buy"})).filter(x=>x.time>=cutoff&&x.time<=now&&x.price>0&&x.size>0);
     if(binanceTrades.length&&betterFlow(binanceTrades,binanceTruncated)){trades=binanceTrades;truncated=binanceTruncated;provider="Binance Spot · معاملات تجمیعی واقعی";}
-    break;
+    if(trades?.length&&!truncated)break;
    }catch(error){lastError=String(error?.message||error).slice(0,160);}
   }
  }
@@ -656,13 +656,21 @@ async function loadMarketFlow(symbol,windowMinutes=5,signal=null){
  }
  if(!trades?.length||truncated||trades.length<8){
   try{
-   const gatePair=pair.replace(/USDT$/,"")+"_USDT";
-   const d=await get("https://api.gateio.ws/api/v4/spot/trades?currency_pair="+encodeURIComponent(gatePair)+"&limit=1000");
-   if(!Array.isArray(d))throw new Error("Gate trades response invalid");
-   const raw=d,oldest=raw.reduce((v,x)=>Math.min(v,Number(x.create_time_ms)||Number(x.create_time)*1000||Infinity),Infinity);
-   const gateTruncated=Number.isFinite(oldest)&&oldest>cutoff+5000;
+   const gatePair=pair.replace(/USDT$/,"")+"_USDT",raw=[];
+   let gateWindowComplete=false;
+   // Gate supports time-window queries and page/limit pagination. Fetch bounded pages
+   // so a busy BTC/USDT window is not falsely reported complete after only 1,000 trades.
+   for(let page=1;page<=5;page++){
+    const query="https://api.gateio.ws/api/v4/spot/trades?currency_pair="+encodeURIComponent(gatePair)+"&from="+Math.floor(cutoff/1000)+"&to="+Math.ceil(now/1000)+"&limit=1000&page="+page;
+    const batch=await get(query,3000);
+    if(!Array.isArray(batch))throw new Error("Gate trades response invalid");
+    raw.push(...batch);
+    if(batch.length<1000){gateWindowComplete=true;break;}
+   }
+   const oldest=raw.reduce((v,x)=>Math.min(v,Number(x.create_time_ms)||Number(x.create_time)*1000||Infinity),Infinity);
+   const gateTruncated=!gateWindowComplete;
    const gateTrades=raw.map(x=>({time:Number(x.create_time_ms)||Number(x.create_time)*1000,price:Number(x.price),size:Number(x.amount),side:String(x.side||"").toLowerCase()==="buy"?"Buy":"Sell"})).filter(x=>x.time>=cutoff&&x.time<=now&&x.price>0&&x.size>0);
-   if(gateTrades.length&&betterFlow(gateTrades,gateTruncated)){trades=gateTrades;truncated=gateTruncated;provider="Gate Spot · معاملات واقعی";}
+   if(gateTrades.length&&betterFlow(gateTrades,gateTruncated)){trades=gateTrades;truncated=gateTruncated;provider="Gate Spot · paged real trades";}
   }catch(error){lastError=String(error?.message||error).slice(0,160);}
  }
  if(!trades?.length||truncated||trades.length<8){
