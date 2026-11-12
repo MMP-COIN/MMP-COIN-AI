@@ -144,6 +144,10 @@ jobs:
           if (!tetherWorkerSource.includes("async function monitorLocalTether(env)") || !tetherWorkerSource.includes('monitor:"dedicated-tether-cron-1m"') || !tetherWorkerSource.includes("Promise.all([")) throw new Error("Iranian Tether monitor must run in an isolated one-minute Worker");
           if (workerSource.includes("const localTether=monitorLocalTether(env)")) throw new Error("Hunter Worker must not consume the isolated Tether monitor subrequest budget");
           if (!workerSource.includes("data-api.binance.vision/api/v3/exchangeInfo") || !workerSource.includes("data-api.binance.vision/api/v3/ticker/24hr") || !workerSource.includes("api-gcp.binance.com/api/v3/ticker/24hr")) throw new Error("Hunter Spot universe must use official Binance market-data failover hosts");
+          const tetherRouteStart = workerSource.indexOf('pathname==="/local-market-watch"');
+          const tetherRouteEnd = workerSource.indexOf('pathname==="/market-proxy"', tetherRouteStart);
+          const tetherRoute = workerSource.slice(tetherRouteStart, tetherRouteEnd);
+          if (tetherRouteStart < 0 || tetherRoute.includes("fetchLocalTetherSnapshot") || !tetherRoute.includes("data_stale:dataStale") || !tetherRoute.includes("readLocalTetherState(env)")) throw new Error("Tether API must serve the dedicated D1 monitor snapshot and expose data freshness");
           if (!tetherWorkerSource.includes("publicapi.ramzinex.com/exchange/api/v1.0/exchange/pairs") || !tetherWorkerSource.includes('"Ramzinex"') || !tetherWorkerSource.includes("attempt<2") || !tetherWorkerSource.includes("Retry-After")) throw new Error("Iranian Tether monitor must include Ramzinex fallback and bounded retry/backoff for transient provider errors");
 
           const radarSource = fs.readFileSync("cloudflare-worker/radar-worker.js", "utf8");
