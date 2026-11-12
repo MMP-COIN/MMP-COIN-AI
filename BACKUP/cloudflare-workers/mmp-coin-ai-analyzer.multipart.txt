@@ -1,4 +1,4 @@
---da6c8550cd48c4dcb11e17df66fc493fab2033196888cf9e79b24a66e01d
+--2fd03f1a7529bd36c6ebfc930ceb3650f39924158f343ecf17daec7f1c9f
 Content-Disposition: form-data; name="market-data-core.js"; filename="market-data-core.js"
 Content-Type: application/javascript+module
 
@@ -39,7 +39,7 @@ export function assessMarketDataFreshness(timestamp,now=Date.now(),maxAgeMs=1800
  return {available:true,fresh:ageMs<=maxAgeMs,ageMs,reason:ageMs<=maxAgeMs?null:"stale_market_data"};
 }
 
---da6c8550cd48c4dcb11e17df66fc493fab2033196888cf9e79b24a66e01d
+--2fd03f1a7529bd36c6ebfc930ceb3650f39924158f343ecf17daec7f1c9f
 Content-Disposition: form-data; name="quantum-core.js"; filename="quantum-core.js"
 Content-Type: application/javascript+module
 
@@ -259,7 +259,7 @@ export function detectEarlyMovePressure(input={}){
   message:!fresh?"داده بازار تازه نیست":!directionalAvailable?"شاهد جهت‌دار از جریان معاملات یا عمق سفارش موجود نیست":edge<8?"شواهد صعودی و نزولی تفاوت معناداری ندارند":direction==="up"?"فشار اولیه صعودی؛ هنوز شکست قیمت تأیید نشده":"فشار اولیه نزولی؛ هنوز شکست قیمت تأیید نشده"};
 }
 
---da6c8550cd48c4dcb11e17df66fc493fab2033196888cf9e79b24a66e01d
+--2fd03f1a7529bd36c6ebfc930ceb3650f39924158f343ecf17daec7f1c9f
 Content-Disposition: form-data; name="worker.js"; filename="worker.js"
 Content-Type: application/javascript+module
 
@@ -2254,7 +2254,7 @@ export default {
   await Promise.allSettled([cleanup,localTether,universeRefresh]);
  }
 };
---da6c8550cd48c4dcb11e17df66fc493fab2033196888cf9e79b24a66e01d
+--2fd03f1a7529bd36c6ebfc930ceb3650f39924158f343ecf17daec7f1c9f
 Content-Disposition: form-data; name="decision-engine.js"; filename="decision-engine.js"
 Content-Type: application/javascript+module
 
@@ -2302,7 +2302,7 @@ export function decideQuantumSignal(input={}){
  };
 }
 
---da6c8550cd48c4dcb11e17df66fc493fab2033196888cf9e79b24a66e01d
+--2fd03f1a7529bd36c6ebfc930ceb3650f39924158f343ecf17daec7f1c9f
 Content-Disposition: form-data; name="learning-engine.js"; filename="learning-engine.js"
 Content-Type: application/javascript+module
 
@@ -2391,4 +2391,4 @@ export function applyLearningCalibration(signal,summary={}){
  return {...signal,quantum:{...signal.quantum,rawConfidence:finite(signal.quantum.confidence),confidence:Math.round(confidence),calibratedConfidence:Math.round(confidence),learningCalibration:{status:summary.calibrationStatus||"collecting",samples:Number(summary.matured5m)||0,adjustment:Number(adjustment.toFixed(2)),basis:"5m gross price return before fees/slippage; minimum 30 matured samples"}}};
 }
 
---da6c8550cd48c4dcb11e17df66fc493fab2033196888cf9e79b24a66e01d--
+--2fd03f1a7529bd36c6ebfc930ceb3650f39924158f343ecf17daec7f1c9f--
