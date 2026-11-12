@@ -202,10 +202,87 @@
    const live=$("serviceStatus");if(live){live.textContent="عدم دریافت پاسخ";live.classList.remove("pending","healthy","partial");live.classList.add("down");}
   }
  }
+ let analysisBusy=false,lastAnalysis=null;
+ const analysisCache=new Map();
+ const analysisCacheTtl=3*60*1000;
+ function analysisPrice(value){
+  const n=Number(value);
+  if(!Number.isFinite(n)||n<=0)return "—";
+  return selectedCurrency==="IRT"&&currentTetherPrice>0?Math.round(n*currentTetherPrice).toLocaleString("en-US")+" تومان":money(n)+" USDT";
+ }
+ function analysisLevel(value){
+  if(value===null||value===undefined)return "—";
+  if(typeof value==="object")return (value.low!=null?analysisPrice(value.low):"—")+" تا "+(value.high!=null?analysisPrice(value.high):"—");
+  return analysisPrice(value);
+ }
+ function renderAnalysis(payload){
+  const r=payload?.analysis||{},market=payload?.market||{},frames=market.timeframes||{};
+  lastAnalysis=payload;
+  const actions={BUY:"خرید",SELL:"فروش",WAIT:"فعلاً انتظار"};
+  $("analysisAction").textContent=actions[String(r.action||"WAIT").toUpperCase()]||"فعلاً انتظار";
+  $("analysisPrice").textContent=analysisPrice(r.market?.price_usd||frames["4h"]?.price);
+  $("analysisRisk").textContent=String(r.risk_level||"نامشخص");
+  const confidence=Math.max(0,Math.min(100,Number(r.confidence)||0));
+  $("analysisConfidence").textContent=confidence+"/100";
+  $("analysisConfidenceBar").style.width=confidence+"%";
+  const labels={"15m":"۱۵ دقیقه","1h":"۱ ساعت","4h":"۴ ساعت","1d":"روزانه"};
+  $("analysisTimeframes").innerHTML=Object.entries(labels).map(([tf,label])=>{
+   const f=frames[tf]||{},trend=f.ema_trend==="bullish"?"صعودی":f.ema_trend==="bearish"?"نزولی":"خنثی / نامشخص";
+   return '<div class="analysis-tf"><b>'+label+'</b><strong>'+trend+'</strong><small>RSI: '+escapeHTML(f.rsi??"—")+' · حجم: '+escapeHTML(f.volume_ratio??"—")+'<br>حمایت: '+analysisPrice(f.support)+'<br>مقاومت: '+analysisPrice(f.resistance)+'</small></div>';
+  }).join("");
+  const levels=r.levels||{},active=r.plan_status==="active_signal";
+  const levelRows=active?[
+   ["محدوده ورود",analysisLevel(levels.entry_zone)],["حد ضرر",analysisLevel(levels.stop_loss)],
+   ["هدف اول",analysisLevel(levels.tp1)],["هدف دوم",analysisLevel(levels.tp2)],["هدف سوم",analysisLevel(levels.tp3)],["نسبت سود به زیان",r.risk_reward??"—"]
+  ]:[["وضعیت ورود","ورود فوری تأیید نشده"],["شرط ورود",r.entry_trigger||"انتظار برای تأیید کندل بسته‌شده"],["مدیریت ریسک",r.position_risk||"بدون ورود"]];
+  const list=(items)=>Array.isArray(items)&&items.length?'<ul>'+items.map(x=>'<li>'+escapeHTML(x)+'</li>').join("")+'</ul>':"<p>اطلاعات تکمیلی ارائه نشده است.</p>";
+  const scenarios=Array.isArray(r.scenarios)?r.scenarios.map(x=>'<li><b>'+escapeHTML(x.name||"سناریو")+'</b> — '+escapeHTML(x.description||"")+'</li>').join(""):"";
+  $("analysisReport").innerHTML=
+   '<div class="analysis-report-head"><b>'+(active?"برنامهٔ مشروط محاسبه‌شده":"تحلیل محافظه‌کارانه؛ بدون ورود فوری")+'</b><small>منبع: '+escapeHTML(r.data_source||"موتور تحلیل")+'</small></div>'+
+   '<div class="analysis-levels">'+levelRows.map(x=>'<div><small>'+x[0]+'</small><b>'+escapeHTML(x[1])+'</b></div>').join("")+'</div>'+
+   '<h3>خلاصهٔ تحلیل</h3><p>'+escapeHTML(r.summary||"خلاصه‌ای ارائه نشده است.")+'</p>'+
+   '<h3>تحلیل فنی</h3><p>'+escapeHTML(r.technical_analysis||"—")+'</p>'+
+   '<h3>دلایل نتیجه</h3>'+list(r.reasons)+
+   '<h3>سناریوهای بازار</h3><ul>'+scenarios+'</ul>'+
+   '<h3>اقدام‌های قابل‌پیگیری</h3>'+list(r.recommendations)+
+   '<p class="analysis-footnote">شرط بی‌اعتبارشدن: '+escapeHTML(r.invalidation||"با تغییر ساختار بازار، تحلیل باید تکرار شود.")+'<br>آخرین کندل: '+escapeHTML(r.market_timestamp||"نامشخص")+' · '+(r.market_data_fresh===true?"تازگی داده تأیید شده":"تازگی داده نیازمند احتیاط")+'</p>';
+ }
+ async function analyzeMarket(force=true){
+  if(analysisBusy)return;
+  const symbol=String($("analysisSymbol").value||"").trim().toUpperCase().replace(/[^A-Z0-9_]/g,"");
+  const mode=$("analysisMarketMode").value;
+  if(!/^[A-Z0-9_]{2,20}$/.test(symbol)){$("analysisStatus").textContent="نماد واردشده معتبر نیست.";return;}
+  const key=symbol+"|"+mode,cached=analysisCache.get(key);
+  if(!force&&cached&&Date.now()-cached.time<analysisCacheTtl){renderAnalysis(cached.payload);$("analysisStatus").textContent="آخرین تحلیل معتبر ذخیره‌شده نمایش داده شد.";return;}
+  analysisBusy=true;
+  const button=$("runAnalysis"),refreshButton=$("analyzerRefresh");
+  button.disabled=true;button.textContent="در حال تحلیل…";refreshButton.disabled=true;
+  $("analysisStatus").textContent="در حال دریافت کندل‌های بسته‌شده و تحلیل چهار بازهٔ زمانی…";
+  try{
+   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),65000);
+   let response,data;
+   try{
+    response=await fetch(MAIN+"/analyze",{method:"POST",cache:"no-store",headers:{"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({symbol,name:symbol,market_mode:mode}),signal:controller.signal});
+    data=await response.json();
+   }finally{clearTimeout(timer);}
+   if(!response.ok)throw new Error((data?.error||"سرویس تحلیل پاسخ معتبر نداد")+(data?.stage?" · مرحله: "+data.stage:""));
+   if(!data?.analysis||!data?.market?.timeframes)throw new Error("ساختار پاسخ تحلیل ناقص است؛ گزارش قبلی حفظ شد.");
+   analysisCache.set(key,{payload:data,time:Date.now()});
+   renderAnalysis(data);
+   $("analysisStatus").textContent="تحلیل دریافت شد · منبع و زمان کندل در گزارش ثبت شده است.";
+  }catch(error){
+   $("analysisStatus").textContent=error.name==="AbortError"?"زمان پاسخ موتور تحلیل تمام شد؛ اتصال یا مسیر جایگزین را دوباره امتحان کن.":"تحلیل دریافت نشد: "+String(error.message||error);
+   if(!lastAnalysis)$("analysisReport").innerHTML='<div class="empty-state"><b>موتور تحلیل موقتاً در دسترس نیست</b><small>هیچ خروجی ساختگی جایگزین نشده است.</small></div>';
+  }finally{
+   analysisBusy=false;button.disabled=false;button.textContent="اجرای تحلیل واقعی";refreshButton.disabled=false;
+  }
+ }
+ $("runAnalysis").addEventListener("click",()=>analyzeMarket(true));
  async function refresh(which){
   if(which==="radar")return loadRadar();
   if(which==="hunter")return loadHunter();
-  return Promise.allSettled([loadTicker(),loadRadar(),loadHunter(),loadHealth()]);
+  if(which==="analyzer")return analyzeMarket(true);
+  return Promise.allSettled([loadTicker(),loadRadar(),loadHunter(),loadHealth(),analyzeMarket(true)]);
  }
  document.querySelectorAll("[data-refresh]").forEach(b=>b.addEventListener("click",()=>refresh(b.dataset.refresh)));
  const currencyButtons=[$("btn-irt"),$("btn-usdt")];
@@ -218,6 +295,7 @@
   });
   document.documentElement.dataset.currency=selectedCurrency;
   renderTicker();
+  if(lastAnalysis)renderAnalysis(lastAnalysis);
  }
  currencyButtons[0].addEventListener("click",()=>setCurrency("IRT"));
  currencyButtons[1].addEventListener("click",()=>setCurrency("USDT"));
