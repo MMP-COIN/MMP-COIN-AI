@@ -1,0 +1,13 @@
+--dc83abf57686a85cbefc3a0620dbf490ee5ae9547b81051b17b0e5f7b449
+Content-Disposition: form-data; name="cron-test.js"; filename="cron-test.js"
+Content-Type: application/javascript+module
+
+export default {
+  async scheduled(controller, env) {
+    const now = Date.now();
+    const payload = JSON.stringify({status:"ran",cron:controller.cron,scheduledTime:controller.scheduledTime,ranAt:new Date(now).toISOString()});
+    await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind("hunter-cron-test",payload,new Date(now).toISOString()).run();
+  },
+  async fetch() { return new Response("ok"); }
+};
+--dc83abf57686a85cbefc3a0620dbf490ee5ae9547b81051b17b0e5f7b449--
