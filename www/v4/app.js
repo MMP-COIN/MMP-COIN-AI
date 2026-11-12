@@ -3,10 +3,6 @@
  const MAIN="https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev";
  const RADAR="https://mmp-coin-ai-radar.mehrdadmohammadi1988.workers.dev";
  const $=id=>document.getElementById(id);
- const engines=[
-  ["01","Market Intelligence","هوشمندی کلی بازار"],["02","Explosive Move Prediction","پیش‌بینی فشار حرکت"],["03","Early Opportunity Hunter","کشف زودهنگام فرصت"],["04","Smart Money Flow","جریان پول هوشمند"],["05","Liquidity Hunter","شکار نواحی نقدینگی"],["06","Multi-timeframe Alignment","هم‌جهتی تایم‌فریم‌ها"],["07","Volatility Intelligence","هوشمندی نوسان"],["08","Market Sentiment","احساسات بازار"],["09","Scenario Simulator","شبیه‌ساز سناریو"],["10","Adaptive Learning","یادگیری تطبیقی"],["11","Structure Intelligence","تحلیل ساختار قیمت"],["12","Risk Intelligence","ارزیابی ریسک"]
- ];
- $("engineGrid").innerHTML=engines.map(([n,name,fa])=>'<article class="engine-item"><span class="engine-number">'+n+'</span><span><b>'+name+'</b><small>'+fa+'</small><small class="engine-status">اتصال مستقل: تأیید نشده</small></span></article>').join("");
  async function get(url,timeout=9000){
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeout);
   try{const response=await fetch(url,{signal:controller.signal,cache:"no-store",headers:{Accept:"application/json"}});if(!response.ok)throw new Error("HTTP "+response.status);return await response.json();}
@@ -90,11 +86,13 @@
    const d=await get(MAIN+"/connections-health");
    const checks=Array.isArray(d.checks)?d.checks:[],up=checks.filter(x=>x.status==="ok"||x.status==="slow").length,total=checks.length;
    $("coreStatus").textContent=total?up+" از "+total+" اتصال سالم":"پاسخ ناقص";
+   const engineStatus=$("engineStatus");if(engineStatus)engineStatus.textContent="وضعیت اتصال داده‌ها: "+(total?up+" از "+total+" اتصال سالم":"پاسخ ناقص");
    $("coreUpdated").textContent=d.checked_at?new Date(d.checked_at).toLocaleTimeString("fa-IR"):"—";
    const live=$("serviceStatus");
    if(live){live.textContent=total?up+"/"+total+" اتصال سالم":"پاسخ ناقص";live.classList.remove("pending","healthy","partial","down");live.classList.add(up===total&&total>0?"healthy":up>0?"partial":"down");}
   }catch(e){
    $("coreStatus").textContent="عدم دریافت پاسخ";$("coreUpdated").textContent="اتصال بررسی نشد";
+   const engineStatus=$("engineStatus");if(engineStatus)engineStatus.textContent="وضعیت اتصال داده‌ها: بررسی ناموفق";
    const live=$("serviceStatus");if(live){live.textContent="عدم دریافت پاسخ";live.classList.remove("pending","healthy","partial");live.classList.add("down");}
   }
  }
