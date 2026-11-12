@@ -22,9 +22,6 @@ function init(){
  const assign={"mmp-home-hero":"command","market-snapshot":"command","quantum-center-entry":"ai","opportunities":"hunter","market-hunter":"hunter","ai-section":"ai","boom-hunter":"hunter","chart-section":"charts","market-intelligence":"flow","coins-section":"markets","trading-tools":"strategy","exchange-connections":"markets","market-hours":"markets","app-download":"footer","contact-us":"footer"};
  allSections.forEach(el=>{if(el.id&&assign[el.id])el.dataset.mmpCenter=assign[el.id];});
  const heat=main.querySelector(".market-heatmap-entry");if(heat)heat.dataset.mmpCenter="markets";
- const hub=document.createElement("section");hub.id="mmp-terminal-hub";hub.className="mmp-terminal-hub";
- hub.innerHTML='<div class="mmp-hub-heading"><div><h2>هشت مرکز تخصصی MMP</h2><p>هر مرکز یک محیط کاری مستقل با ابزارها و داده‌های تخصصی خودش</p></div><span class="mmp-hub-heading-en">QUANTUM TRADING ECOSYSTEM</span></div><div class="mmp-hub-grid">'+Object.entries(CENTERS).filter(([id])=>id!=="support").map(([id,c],i)=>'<button type="button" class="mmp-hub-card" data-center-style="'+id+'" data-mmp-open-center="'+id+'"><span class="mmp-hub-card-top"><span class="mmp-hub-icon">'+c.icon+'</span><span class="mmp-hub-number">0'+(i+1)+'</span></span><strong>'+esc(c.title)+'</strong><small>'+esc(c.desc)+'</small><span class="mmp-hub-enter">ورود به مرکز <b>←</b></span></button>').join("")+'</div>';
- const snapshot=$("#market-snapshot");if(snapshot)snapshot.after(hub);else main.prepend(hub);
  const toolbar=document.createElement("section");toolbar.id="mmp-center-toolbar";toolbar.hidden=true;
  toolbar.innerHTML='<div class="mmp-center-title"><img src="assets/mmp-coin-mark.svg" alt=""><div><strong id="mmp-center-title-text"></strong><small id="mmp-center-title-en"></small></div></div><div class="mmp-center-actions"><div class="mmp-center-currency" role="group" aria-label="واحد نمایش قیمت"><button type="button" class="mmp-currency-irt active" data-mmp-currency="IRT" aria-pressed="true" onclick="setCurrency(\'IRT\')">تومان</button><button type="button" class="mmp-currency-usdt" data-mmp-currency="USDT" aria-pressed="false" onclick="setCurrency(\'USDT\')">تتر / USDT</button></div><div id="mmp-center-jumps"></div><button type="button" class="mmp-center-back" data-mmp-home>بازگشت به صفحه اصلی</button></div>';
  hub.after(toolbar);
@@ -46,12 +43,12 @@ function init(){
    const group=el.dataset.mmpCenter||"";
    // The global MMP hero and market snapshot belong only to the homepage.
    // The Quantum Command / Smart Core card belongs only to the AI center.
-   let visible=view==="home"?(group==="command"||group==="footer"):view==="support"?group==="footer":group===view;
+   let visible=view==="home"?true:view==="support"?group==="footer":group===view;
    if(el.id==="mmp-home-hero"||el.id==="market-snapshot")visible=view==="home"||view==="command";
    if(el.id==="quantum-center-entry")visible=view==="home"||view==="command"||view==="ai";
    el.hidden=!visible;
   });
-  hub.hidden=view!=="home";toolbar.hidden=view==="home";
+  toolbar.hidden=view==="home";
   if(view!=="home"){
    $("#mmp-center-title-text").textContent=config.title;
    $("#mmp-center-title-en").textContent=config.en;
