@@ -1663,7 +1663,8 @@ async function handle(request,env){
    const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"local-market-watch"),request);if(limited)return limited;
    const [sample,saved]=await Promise.all([fetchLocalTetherSnapshot(),readLocalTetherState(env)]);
    const alertAt=Date.parse(saved?.alert_at||""),serverAlert=!!(saved?.alert&&Number.isFinite(alertAt)&&Date.now()-alertAt<=120000);
-   return json({...sample,server_change_pct:Number.isFinite(Number(saved?.change_pct))?Number(saved.change_pct):null,server_alert:serverAlert,server_alert_at:saved?.alert_at||null,server_monitor:saved?.monitor||"warming_up"},200,request,{"Cache-Control":"no-store","X-MMP-Data-Source":"Nobitex + Wallex live"});
+   const lastKnownToman=Number(saved?.last_known_toman??saved?.median_toman)||null,lastKnownAt=saved?.last_known_checked_at||saved?.checked_at||null,lastKnownAge=lastKnownAt?Math.max(0,Date.now()-Date.parse(lastKnownAt)):null;
+   return json({...sample,last_known_toman:lastKnownToman,last_known_checked_at:lastKnownAt,last_known_age_ms:Number.isFinite(lastKnownAge)?lastKnownAge:null,server_change_pct:Number.isFinite(Number(saved?.change_pct))?Number(saved.change_pct):null,server_alert:serverAlert,server_alert_at:saved?.alert_at||null,server_monitor:saved?.monitor||"warming_up",server_monitor_updated_at:saved?.monitor_updated_at||null},200,request,{"Cache-Control":"no-store","X-MMP-Data-Source":"Nobitex + Wallex + Bitpin live"});
   }
 if(request.method==="GET"&&new URL(request.url).pathname==="/market-proxy"){
   const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"market-proxy");
@@ -1979,15 +1980,24 @@ async function readLocalTetherState(env){
 }
 async function monitorLocalTether(env){
  if(!env.ADMIN_DB)return;
- const sample=await fetchLocalTetherSnapshot(),previous=await readLocalTetherState(env),current=Number(sample.median_toman);
- if(!(current>0))return;
+ const sample=await fetchLocalTetherSnapshot(),previous=await readLocalTetherState(env),current=Number(sample.median_toman),now=new Date().toISOString();
+ const lastKnown=Number(previous?.last_known_toman??previous?.median_toman)||null;
+ const lastKnownAt=previous?.last_known_checked_at||previous?.checked_at||null;
+ const lastKnownAge=lastKnownAt?Math.max(0,Date.now()-Date.parse(lastKnownAt)):null;
+ if(!(current>0)){
+  // Keep the server heartbeat alive even when every local venue is blocked.
+  // Preserve the last known value separately; never present it as a fresh quote.
+  const payload={...sample,previous_toman:Number(previous?.median_toman)||null,last_known_toman:lastKnown,last_known_checked_at:lastKnownAt,last_known_age_ms:Number.isFinite(lastKnownAge)?lastKnownAge:null,change_pct:null,alert:false,alert_exchange:null,alert_at:previous?.alert_at||null,last_prices:{...(previous?.last_prices||{})},monitor:"server-cron-1m",monitor_updated_at:now};
+  await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind("local-tether-watch",JSON.stringify(payload),now).run();
+  return;
+ }
  const priorPrices={...(previous?.last_prices||{})},changes=[];
  for(const source of sample.sources.filter(x=>x.fresh&&Number(x.price_toman)>0)){
   const prior=Number(priorPrices[source.exchange]);if(prior>0)changes.push({exchange:source.exchange,previous:prior,current:Number(source.price_toman),pct:(Number(source.price_toman)/prior-1)*100});
   priorPrices[source.exchange]=Number(source.price_toman);
  }
- const shock=changes.find(x=>Math.abs(x.pct)>=2.5),change=shock?.pct??(changes[0]?.pct??null),now=new Date().toISOString();
- const payload={...sample,previous_toman:Number(previous?.median_toman)||null,change_pct:change,alert:!!shock,alert_exchange:shock?.exchange||null,alert_at:shock?now:(previous?.alert_at||null),last_prices:priorPrices,monitor:"server-cron-1m"};
+ const shock=changes.find(x=>Math.abs(x.pct)>=2.5),change=shock?.pct??(changes[0]?.pct??null);
+ const payload={...sample,previous_toman:Number(previous?.median_toman)||null,last_known_toman:current,last_known_checked_at:sample.checked_at,last_known_age_ms:0,change_pct:change,alert:!!shock,alert_exchange:shock?.exchange||null,alert_at:shock?now:(previous?.alert_at||null),last_prices:priorPrices,monitor:"server-cron-1m",monitor_updated_at:now};
  await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind("local-tether-watch",JSON.stringify(payload),now).run();
 }
 async function runDigitalHunterCron(event,env){
