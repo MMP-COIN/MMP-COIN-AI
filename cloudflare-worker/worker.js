@@ -1647,11 +1647,11 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/market-proxy"){
   if(source==="coinlore-top"&&(!Number.isSafeInteger(requestedOffset)||requestedOffset<0||requestedOffset%100!==0))return json({error:"Invalid CoinLore offset"},400,request);
   const urls={
    "binance-tickers":["https://api.binance.com/api/v3/ticker/24hr","https://api.binance.us/api/v3/ticker/24hr","https://api1.binance.com/api/v3/ticker/24hr","https://api2.binance.com/api/v3/ticker/24hr","https://api3.binance.com/api/v3/ticker/24hr","https://data-api.binance.vision/api/v3/ticker/24hr"],
-   "bitget-tickers":["https://api.bitget.com/api/v3/market/tickers?category=SPOT"],
+   "bitget-tickers":["https://api.bitget.com/api/v3/market/tickers?category=SPOT","https://api.bitget.com/api/v2/spot/market/tickers"],
    "okx-tickers":["https://www.okx.com/api/v5/market/tickers?instType=SPOT","https://us.okx.com/api/v5/market/tickers?instType=SPOT"],
    "bybit-tickers":["https://api.bybit.com/v5/market/tickers?category=spot","https://api.bytick.com/v5/market/tickers?category=spot","https://api.bybit.eu/v5/market/tickers?category=spot"],
-   "gate-tickers":["https://api.gateio.ws/api/v4/spot/tickers"],
-   "kucoin-tickers":["https://api.kucoin.com/api/v1/market/allTickers"],
+   "gate-tickers":["https://api.gateio.ws/api/v4/spot/tickers","https://api.gate.us/api/v4/spot/tickers"],
+   "kucoin-tickers":["https://api.kucoin.com/api/v1/market/allTickers","https://api.kucoin.tr/api/v1/market/allTickers"],
    "mexc-tickers":["https://api.mexc.com/api/v3/ticker/24hr"],
    "coingecko-top":["https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page="+requestedTopPage+"&sparkline=false&price_change_percentage=1h%2C24h%2C7d"],
    "coinlore-top":["https://api.coinlore.net/api/tickers/?start="+requestedOffset+"&limit=100"],
