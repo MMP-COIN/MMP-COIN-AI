@@ -48,7 +48,7 @@ function init(){
    // The Quantum Command / Smart Core card belongs only to the AI center.
    let visible=view==="home"?(group==="command"||group==="footer"):view==="support"?group==="footer":group===view;
    if(el.id==="mmp-home-hero"||el.id==="market-snapshot")visible=view==="home"||view==="command";
-   if(el.id==="quantum-center-entry")visible=view==="ai";
+   if(el.id==="quantum-center-entry")visible=view==="home"||view==="command"||view==="ai";
    el.hidden=!visible;
   });
   hub.hidden=view!=="home";toolbar.hidden=view==="home";
