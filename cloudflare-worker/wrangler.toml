@@ -2,6 +2,9 @@ name = "mmp-coin-ai-analyzer"
 main = "worker.js"
 compatibility_date = "2026-11-04"
 
+[triggers]
+crons = ["* * * * *"]
+
 [ai]
 binding = "AI"
 
@@ -40,3 +43,7 @@ enabled = true
 [vars]
 # Conservative cap; Cloudflare AI calls stop after this many successful reservations per UTC day.
 CF_AI_DAILY_MAX_CALLS = "20"
+
+[[services]]
+binding = "FUTURES_ENGINE"
+service = "mmp-coin-ai-futures"

@@ -1,0 +1,54 @@
+name: MMP COIN AI Infrastructure Preview Validation
+
+on:
+  push:
+    branches:
+      - "preview/redesign-2026-11-13"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout preview source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Validate Worker JavaScript syntax
+        run: |
+          set -euo pipefail
+          for file in cloudflare-worker/worker.js cloudflare-worker/quantum-core.js cloudflare-worker/market-data-core.js cloudflare-worker/learning-engine.js cloudflare-worker/decision-engine.js cloudflare-worker/futures-worker.js cloudflare-worker/radar-worker.js cloudflare-worker/hunter-cron-worker.js; do
+            node --check --input-type=module < "$file"
+          done
+
+      - name: Validate scheduler ownership and Cloudflare bindings
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+          const read = (p) => fs.readFileSync(p, "utf8");
+          const analyzer = read("cloudflare-worker/wrangler.toml");
+          const refresher = read("cloudflare-worker/hunter-cron-wrangler.toml");
+          const radar = read("cloudflare-worker/radar-wrangler.toml");
+          const futures = read("cloudflare-worker/futures-wrangler.toml");
+          const worker = read("cloudflare-worker/worker.js");
+          const cronWorker = read("cloudflare-worker/hunter-cron-worker.js");
+          const scheduled = worker.slice(worker.indexOf("export default {"));
+          const checks = [
+            [analyzer.includes('crons = ["* * * * *"]'), "Analyzer minute Cron is missing"],
+            [analyzer.includes('binding = "FUTURES_ENGINE"') && analyzer.includes('service = "mmp-coin-ai-futures"'), "Analyzer Futures service binding is missing"],
+            [refresher.includes('crons = ["*/15 * * * *"]'), "Universe refresher must run every 15 minutes"],
+            [refresher.includes('name = "PUBLIC_API_LIMITER"') && refresher.includes('binding = "MARKET_CACHE_DB"'), "Universe refresher is missing required limiter/cache bindings"],
+            [radar.includes('binding = "ADMIN_DB"') && radar.includes('binding = "RADAR_KV"'), "Radar D1/KV bindings are incomplete"],
+            [futures.includes('crons = ["* * * * *"]') && futures.includes('workers_dev = false'), "Futures private minute scheduler config is missing"],
+            [scheduled.includes("await runDigitalHunterCron(event,env,ctx)") && !scheduled.includes("refreshDigitalHunterUniverses(env)"), "Analyzer must own Spot scan only; universe refresh belongs to the dedicated Worker"],
+            [worker.includes('key:mode+ip+":"+scope'), "Preview rate-limit key isolation is missing"],
+            [worker.includes("heartbeats:{spot:{status:"), "Per-engine heartbeat timestamps are not exposed"],
+            [cronWorker.includes('role:"15-minute-universe-refresh"'), "Universe refresher role label is inconsistent"]
+          ];
+          const failed = checks.filter(([ok]) => !ok);
+          for (const [ok, message] of checks) console.log((ok ? "PASS " : "FAIL ") + message);
+          if (failed.length) process.exit(1);
+          NODE

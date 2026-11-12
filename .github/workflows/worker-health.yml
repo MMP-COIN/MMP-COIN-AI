@@ -123,7 +123,7 @@ jobs:
           if (hunterCandlesStart < 0 || hunterCandlesSource.includes("HTTP (400|403|429|451)") || !hunterCandlesSource.includes("HTTP 400|invalid candle payload")) throw new Error("Hunter candle fallback must try alternate hosts after transient 403/429/451 errors");
           if (!workerSource.includes("function emaSeries(values,period)") || workerSource.includes("closes.slice(0,i+1)")) throw new Error("Multi-timeframe MACD must use linear-time EMA series, not quadratic recomputation");
           if (!workerSource.includes("const ASSET_SYMBOL_OVERRIDES=Object.freeze(")) throw new Error("AI analyzer must define safe asset-id to ticker overrides before request parsing");
-          if (!workerSource.includes("async function monitorLocalTether(env)") || !workerSource.includes('monitor:"server-cron-1m"') || !workerSource.includes("await Promise.allSettled([cleanup,localTether,universeRefresh])")) throw new Error("Iranian Tether shock monitoring must run independently on the server cron");
+          if (!workerSource.includes("async function monitorLocalTether(env)") || !workerSource.includes('monitor:"server-cron-1m"') || !workerSource.includes("await Promise.allSettled([cleanup,localTether])")) throw new Error("Iranian Tether shock monitoring must run independently on the server cron");
 
           const radarSource = fs.readFileSync("cloudflare-worker/radar-worker.js", "utf8");
           const futuresSource = fs.readFileSync("cloudflare-worker/futures-worker.js", "utf8");
@@ -132,7 +132,7 @@ jobs:
           const cronEnd = workerSource.indexOf("export default {", cronStart);
           const cronSource = workerSource.slice(cronStart, cronEnd);
           if (!futuresSource.includes('async scheduled(event,env)') || !futuresSource.includes('runDigitalHunterMarketCycle(env,"futures")') || !futuresSource.includes("digital-hunter-futures-cron-heartbeat")) throw new Error("Futures must run on its own scheduled Worker");
-          if (!universeCronSource.includes("refreshDigitalHunterUniverses(env)") || !universeCronSource.includes("hourly-universe-refresh")) throw new Error("Hunter universe refresh must remain independent and low-frequency");
+          if (!universeCronSource.includes("refreshDigitalHunterUniverses(env)") || !universeCronSource.includes("15-minute-universe-refresh")) throw new Error("Hunter universe refresh must remain a dedicated 15-minute Worker");
           if (!cronSource.includes('runDigitalHunterMarketCycle(env,"spot")') || cronSource.includes("FUTURES_ENGINE.fetch")) throw new Error("Analyzer Cron must scan Spot only; Futures has its own scheduler");
           if (!workerSource.includes("digital-hunter-futures-cron-heartbeat") || !workerSource.includes("markets:{spot,futures}")) throw new Error("Hunter status endpoint must merge independent Spot/Futures heartbeats");
           if (!radarSource.includes("cacheAge<=24*60*60*1000") || !radarSource.includes("cached universe; live candles") || !radarSource.includes("radar:last-error")) throw new Error("Radar must keep a recent cached universe fallback and record failures");
@@ -334,11 +334,10 @@ jobs:
       - name: Check Futures service and live Quantum snapshots
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
-          FUTURES_URL: https://mmp-coin-ai-futures.mehrdadmohammadi1988.workers.dev
-        run: |
+                  run: |
           set -euo pipefail
-          curl --fail --silent --show-error --retry 2 --retry-delay 3 --max-time 20 "$FUTURES_URL/health" -o /tmp/futures-health.json
-          jq -e '.status == "online" and .market == "futures" and .d1 == true' /tmp/futures-health.json >/dev/null
+          curl --fail --silent --show-error --retry 2 --retry-delay 3 --max-time 20 "$WORKER_URL/futures-engine-health" -o /tmp/futures-health.json
+          jq -e '.status == "online" and .market == "futures" and .d1 == true and .service_binding == "connected"' /tmp/futures-health.json >/dev/null
           for endpoint in hunter-snapshot hunter-futures-snapshot; do
             output="/tmp/${endpoint}.json"
             status=$(curl --silent --show-error --max-time 20 -o "$output" -w "%{http_code}" "$WORKER_URL/$endpoint" || true)
@@ -742,7 +741,7 @@ jobs:
         if: always() && github.ref == 'refs/heads/main'
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
-          CANARY_URL: https://53aa32e2-mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
+          CANARY_URL: https://mmp-coin-ai-analyzer-preview.mehrdadmohammadi1988.workers.dev
         run: |
           set -euo pipefail
           payload='{"coin_id":"bitcoin","symbol":"BTC","name":"Bitcoin","market_mode":"spot"}'

@@ -108,7 +108,8 @@ const json=(obj,status=200,request=null,extraHeaders={})=>new Response(JSON.stri
 async function checkRateLimit(binding,request,scope){
  if(!binding)return "unavailable";
  const ip=request.headers.get("CF-Connecting-IP")||"unknown";
- try{const result=await binding.limit({key:ip+":"+scope});return result?.success?"ok":"limited";}
+ const mode=String(env.PREVIEW_MODE||"").toLowerCase()==="true"?"preview:":"";
+ try{const result=await binding.limit({key:mode+ip+":"+scope});return result?.success?"ok":"limited";}
  catch{return "unavailable";}
 }
 function rateLimitReply(result,request){
@@ -1306,7 +1307,7 @@ async function handle(request,env){
   const futures=futuresSaved?.market_data||{status:futuresSaved?.status||"warming_up",universe:0};
   const status=spotSaved?.status==="success"&&futuresSaved?.status==="success"?"success":spotSaved||futuresSaved?"partial":"warming_up";
   const updated_at=[spotRow?.updated_at,futuresRow?.updated_at].filter(Boolean).sort().at(-1)||null;
-  return json({status,engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,cron:spotSaved?.cron||futuresSaved?.cron||"* * * * *",startedAt:spotSaved?.startedAt||futuresSaved?.startedAt||null,finishedAt:spotSaved?.finishedAt||futuresSaved?.finishedAt||null,updated_at,markets:{spot,futures},universe_refresh:{status:universeSaved?.status||"warming_up",updated_at:universeRow?.updated_at||null,markets:universeSaved?.markets||{},errors:universeSaved?.errors||{}},errors:{...(spotSaved?.errors||{}),...(futuresSaved?.status==="error"?{futures:futuresSaved.error}:futuresSaved?.errors||{})}},200,request);
+  return json({status,engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,cron:spotSaved?.cron||futuresSaved?.cron||"* * * * *",startedAt:spotSaved?.startedAt||futuresSaved?.startedAt||null,finishedAt:spotSaved?.finishedAt||futuresSaved?.finishedAt||null,updated_at,heartbeats:{spot:{status:spotSaved?.status||"warming_up",updated_at:spotRow?.updated_at||null,started_at:spotSaved?.startedAt||null,finished_at:spotSaved?.finishedAt||null},futures:{status:futuresSaved?.status||"warming_up",updated_at:futuresRow?.updated_at||null,started_at:futuresSaved?.startedAt||null,finished_at:futuresSaved?.finishedAt||null},universe_refresh:{status:universeSaved?.status||"warming_up",updated_at:universeRow?.updated_at||null}},markets:{spot,futures},universe_refresh:{status:universeSaved?.status||"warming_up",updated_at:universeRow?.updated_at||null,markets:universeSaved?.markets||{},errors:universeSaved?.errors||{}},errors:{...(spotSaved?.errors||{}),...(futuresSaved?.status==="error"?{futures:futuresSaved.error}:futuresSaved?.errors||{})}},200,request);
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-futures-snapshot"){
   const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-futures-snapshot"),request);if(limited)return limited;if(!env.ADMIN_DB)return json({status:"offline",error:"ADMIN_DB binding missing"},503,request);
@@ -1973,19 +1974,17 @@ async function runDigitalHunterCron(event,env){
 export default {
  fetch:handle,
  async scheduled(event,env,ctx){
-  // The analyzer's minute Cron is the confirmed scheduler for both Hunter universes.
-  // Refresh the shared Spot/Futures universe every 15 minutes without relying on
-  // a separate Cron-only Worker whose schedule is not being invoked.
+  // Analyzer owns the minute Spot scan and local Tether monitor.
+  // The dedicated hunter-cron Worker owns the 15-minute Spot/Futures universe refresh.
+  // Keeping these schedules separate avoids duplicate upstream catalog requests and D1 writes.
   const cleanup=cleanupMarketFallbackCache(env);
   const localTether=monitorLocalTether(env).catch(error=>console.error("Local Tether server monitor failed:",error?.message||error));
-  const scheduledAt=Number(event?.scheduledTime)||Date.now(),minute=new Date(scheduledAt).getUTCMinutes();
-  const universeRefresh=minute%15===0?refreshDigitalHunterUniverses(env).catch(error=>console.error("Hunter universe refresh failed:",error?.message||error)):Promise.resolve();
   try{
    await runDigitalHunterCron(event,env,ctx);
   }catch(error){
    console.error("Digital Hunter scheduled cycle failed:",error?.message||error);
    throw error;
   }
-  await Promise.allSettled([cleanup,localTether,universeRefresh]);
+  await Promise.allSettled([cleanup,localTether]);
  }
 };

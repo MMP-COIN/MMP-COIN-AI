@@ -4,7 +4,7 @@ const json=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:
 export default {
  async fetch(request,env){
   const url=new URL(request.url);
-  if(url.pathname==="/health"&&request.method==="GET")return json({status:"online",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,role:"hourly-universe-refresh",d1:!!env.ADMIN_DB});
+  if(url.pathname==="/health"&&request.method==="GET")return json({status:"online",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,role:"15-minute-universe-refresh",d1:!!env.ADMIN_DB});
   if(url.pathname==="/status"&&request.method==="GET"){
    if(!env.ADMIN_DB)return json({status:"unavailable",error:"ADMIN_DB binding missing"},503);
    const row=await env.ADMIN_DB.prepare("SELECT payload,updated_at FROM hunter_engine_state WHERE id = ?").bind("digital-hunter-universe-refresh").first();

@@ -7,7 +7,7 @@ workers_dev = false
 binding = "AI"
 
 [triggers]
-crons = ["* * * * *"]
+crons = ["*/15 * * * *"]
 
 [[d1_databases]]
 binding = "ADMIN_DB"
@@ -16,3 +16,16 @@ database_id = "dfb3ee95-ef2f-4067-a973-31b8fb1ee62f"
 
 [placement]
 region = "aws:eu-central-1"
+
+[[ratelimits]]
+name = "PUBLIC_API_LIMITER"
+namespace_id = "2026110402"
+
+[ratelimits.simple]
+limit = 300
+period = 60
+
+[[d1_databases]]
+binding = "MARKET_CACHE_DB"
+database_name = "mmp_market_data_fallback"
+database_id = "45b2a51c-49d1-4e21-b13c-86e9d8fffa6e"
