@@ -1,7 +1,7 @@
 /* MMP compact priority navigation; preserves all module content and IDs. */
 (function(){
  'use strict';
- var order=['mmp-home-hero','market-snapshot','chart-section','quantum-center-entry','mmp-autonomous-health-center','opportunities','market-hunter','ai-section','market-intelligence','boom-hunter','coins-section','trading-tools','exchange-connections','market-hours','app-download','contact-us'];
+ var order=['mmp-home-hero','market-snapshot','chart-section','quantum-center-entry','mmp-autonomous-health-center','opportunities','market-hunter','ai-section','market-intelligence','boom-hunter','coins-section','trading-tools','exchange-connections','market-hours','app-download','contact-us','radar-signal-page'];
  var modules={
   'chart-section':{icon:'▥',links:[['مرکز فرماندهی','quantum-center-entry'],['رادار','opportunities'],['تحلیلگر','ai-section']]},
   'mmp-autonomous-health-center':{icon:'✚',links:[['وضعیت بازار','market-snapshot'],['مرکز فرماندهی','quantum-center-entry'],['اتصالات','exchange-connections']]},
@@ -10,7 +10,13 @@
   'ai-section':{icon:'✧',links:[['نمودار','chart-section'],['هوشمندی بازار','market-intelligence'],['ابزار معامله','trading-tools']]},
   'market-intelligence':{icon:'⌁',links:[['نمودار','chart-section'],['دارایی‌ها','coins-section'],['اتصالات','exchange-connections']]},
   'boom-hunter':{icon:'↗',links:[['شکارچی','market-hunter'],['رادار','opportunities'],['تحلیلگر','ai-section']]},
-  'trading-tools':{icon:'⚙',links:[['نمودار','chart-section'],['تحلیلگر','ai-section'],['بازار','market-snapshot']]}
+  'trading-tools':{icon:'⚙',links:[['نمودار','chart-section'],['تحلیلگر','ai-section'],['بازار','market-snapshot']]},
+  'quantum-center-entry':{icon:'✥',links:[['پایش و ترمیم','mmp-autonomous-health-center'],['رادار','opportunities'],['شکارچی','market-hunter']]},
+  'coins-section':{icon:'◈',links:[['نمودار','chart-section'],['هوشمندی بازار','market-intelligence'],['ابزار معامله','trading-tools']]},
+  'exchange-connections':{icon:'⇄',links:[['پایش سیستم','mmp-autonomous-health-center'],['دارایی‌ها','coins-section'],['بازار','market-snapshot']]},
+  'market-hours':{icon:'◷',links:[['بازار','market-snapshot'],['نمودار','chart-section'],['اتصالات','exchange-connections']]},
+  'app-download':{icon:'↓',links:[['ارتباط','contact-us'],['مرکز فرماندهی','quantum-center-entry']]},
+  'contact-us':{icon:'✉',links:[['دانلود اپ','app-download'],['مرکز فرماندهی','quantum-center-entry']]}
  };
  function build(){
   var main=document.getElementById('hero');
