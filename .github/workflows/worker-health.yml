@@ -45,7 +45,7 @@ jobs:
             "/fast-radar-snapshot",
             "/last-error",
             "let lastSafeRecoveryAt=0,lastRecoveryNote=\"\",isRunning=false",
-            "safe Hunter",
+            "چرخه‌های مجاز Hunter",
             "code"
           ]) {
             if (!html.includes(required)) throw new Error("MMP NEXUS monitor requirement missing: " + required);
