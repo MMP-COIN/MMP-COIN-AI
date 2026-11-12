@@ -15,3 +15,14 @@
 .unified-engine-copy p{color:var(--muted,#aab2c0);line-height:1.9;margin:0 0 10px}
 .unified-engine-copy small{color:#d7b66f;font-size:12px}
 @media(max-width:600px){.unified-engine{padding:20px;gap:16px;align-items:flex-start}.unified-engine-mark{width:72px;height:72px;flex-basis:72px}.unified-engine-mark span{font-size:34px}.unified-engine-copy b{font-size:16px}.unified-engine-copy p{font-size:13px}}
+
+/* Data integrity and advisory transparency */
+.ticker-integrity{flex-basis:100%;margin-top:12px;padding:9px 12px;border:1px solid rgba(233,184,93,.25);border-radius:9px;color:var(--gold);font-size:10px;line-height:1.8;background:rgba(233,184,93,.045)}
+.ticker-integrity.integrity-good{border-color:rgba(67,214,155,.3);color:var(--green);background:rgba(67,214,155,.045)}
+.ticker-integrity.integrity-warning{color:var(--gold)}
+.ticker-panel{flex-wrap:wrap}
+.advisory-policy{padding:18px 20px;margin:0 0 16px;border-color:rgba(233,184,93,.28);background:linear-gradient(110deg,rgba(233,184,93,.07),rgba(10,17,29,.9))}
+.advisory-policy b{color:var(--gold);font-size:13px}
+.advisory-policy p{color:var(--text);font-size:11px;line-height:2;margin:8px 0}
+.advisory-policy small{color:var(--muted);font-size:10px;line-height:1.8}
+@media(max-width:620px){.ticker-integrity{font-size:9px}.advisory-policy{padding:14px}.advisory-policy p{font-size:10px}}
