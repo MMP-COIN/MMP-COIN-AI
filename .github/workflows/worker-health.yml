@@ -808,3 +808,28 @@ jobs:
             echo "- Four timeframes: 15m, 1h, 4h, 1d"
             echo "- Structured analysis: valid"
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Validate independent MMP NEXUS diagnostic brain
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+          const html = fs.readFileSync("www/index.html", "utf8");
+          const worker = fs.readFileSync("cloudflare-worker/worker.js", "utf8");
+          const checks = [
+            ["NEXUS navigation", html.includes("MMP NEXUS · مغز پایش و ترمیم")],
+            ["NEXUS independent module", html.includes('id="mmp-autonomous-health-center"') && html.includes('data-quantum-module="autonomous-health"')],
+            ["AI diagnosis on detected anomalies", html.includes("const shouldRunAI=withAI||(hasAnomaly&&Date.now()-lastAIDiagnosisAt>=90*60*1000)")],
+            ["AI diagnosis cooldown", html.includes("lastAIDiagnosisAt=0") && html.includes("90*60*1000")],
+            ["safe Hunter recovery allowlist", html.includes('get("/hunter-run",45000)') && html.includes('get("/hunter-futures-run",45000)')],
+            ["independent recurring monitoring", html.includes('setInterval(()=>{if(!document.hidden)run(false,true)') && html.includes('},60000)')],
+            ["AI diagnostic endpoint", worker.includes('pathname==="/system-diagnose"') && worker.includes("runAIWithFallback(env,prompt)")],
+            ["no direct production code mutation", worker.includes("code_changes_executed:false")]
+          ];
+          for (const [name, ok] of checks) {
+            console.log((ok ? "PASS " : "FAIL ") + name);
+            if (!ok) process.exitCode = 1;
+          }
+          if (process.exitCode) throw new Error("NEXUS reliability invariants failed");
+          console.log("MMP NEXUS static integration checks passed.");
+          NODE
