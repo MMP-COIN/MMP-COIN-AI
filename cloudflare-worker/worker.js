@@ -1755,9 +1755,8 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/market-proxy"){
    if(rows.length){
     const data=rows.map(item=>({id:String(item.id),symbol:String(item.symbol||"").toLowerCase(),name:String(item.name||item.symbol||""),image:"",current_price:Number(item.price_usd)||0,market_cap:Number(item.market_cap_usd)||0,market_cap_rank:Number(item.rank)||null,fully_diluted_valuation:null,total_volume:Number(item.volume24)||0,high_24h:null,low_24h:null,price_change_24h:null,price_change_percentage_24h:Number(item.percent_change_24h)||0,market_cap_change_24h:null,market_cap_change_percentage_24h:null,circulating_supply:Number(item.csupply)||null,total_supply:Number(item.tsupply)||null,max_supply:Number(item.msupply)||null,ath:null,ath_change_percentage:null,ath_date:null,atl:null,atl_change_percentage:null,atl_date:null,roi:null,last_updated:new Date().toISOString()})).filter(item=>item.symbol&&item.current_price>0);
     if(data.length){
-     const fallback={data,_mmp_source:"CoinLore fallback",_mmp_page:requestedTopPage};
-     await writeMarketFallback(env,marketCacheKey,fallback,staleMarketResponse,3600000);
-     return json(fallback,200,request,{"X-MMP-Data-Source":"CoinLore fallback","X-MMP-Cache":"fresh","Cache-Control":"public, max-age=60"});
+     await writeMarketFallback(env,marketCacheKey,data,staleMarketResponse,3600000);
+     return json(data,200,request,{"X-MMP-Data-Source":"CoinLore fallback","X-MMP-Cache":"fresh","Cache-Control":"public, max-age=60"});
     }
    }
   }
