@@ -15,9 +15,9 @@ function makeChart() {
   const scale = {
     range: null, listener: null,
     fitContent() {},
-    setVisibleLogicalRange(range) { this.range = range; },
-    getVisibleLogicalRange() { return this.range; },
-    subscribeVisibleLogicalRangeChange(listener) { this.listener = listener; }
+    setVisibleRange(range) { this.range = range; },
+    getVisibleRange() { return { from: 1700000000, to: 1700006000 }; },
+    subscribeVisibleTimeRangeChange(listener) { this.listener = listener; }
   };
   return {
     _scale: scale,
@@ -69,9 +69,9 @@ vm.runInNewContext(source, context, { filename: "mmp-chart-pro.js" });
 assert.equal(window.mmpCreateNativeChart(), true);
 assert.ok(state.proSeries, "indicator series should initialize");
 assert.equal(typeof state.chart._scale.listener, "function", "main chart should publish visible range changes");
-state.chart._scale.listener({ from: 2, to: 24 });
-assert.deepEqual(state.rsiChart._scale.range, { from: 2, to: 24 }, "RSI chart should stay horizontally synchronized");
-assert.deepEqual(state.proMacd.chart._scale.range, { from: 2, to: 24 }, "MACD chart should stay horizontally synchronized");
+state.chart._scale.listener();
+assert.deepEqual(state.rsiChart._scale.range, { from: 1700000000, to: 1700006000 }, "RSI chart should stay synchronized by candle time");
+assert.deepEqual(state.proMacd.chart._scale.range, { from: 1700000000, to: 1700006000 }, "MACD chart should stay synchronized by candle time");
 
 const candles = Array.from({ length: 90 }, (_, i) => {
   const close = 100 + i * 0.15 + Math.sin(i / 4);
