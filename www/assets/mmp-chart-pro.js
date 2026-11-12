@@ -35,8 +35,8 @@ function ensureSeries(){
  const hist=mc.addHistogramSeries({priceLineVisible:false,lastValueVisible:false,priceScaleId:"",base:0});
  const ml=mc.addLineSeries(lineOpts("#67b7ff",2)),ms=mc.addLineSeries(lineOpts("#f2c66d",1));
  st.proMacd={chart:mc,hist,line:ml,signal:ms,el:macdEl};
- const syncRange=range=>{if(!range)return;try{st.rsiChart.timeScale().setVisibleLogicalRange(range);mc.timeScale().setVisibleLogicalRange(range);}catch(e){}};
- if(typeof c.timeScale().subscribeVisibleLogicalRangeChange==="function")c.timeScale().subscribeVisibleLogicalRangeChange(syncRange);
+ const syncRange=()=>{const range=c.timeScale().getVisibleRange();if(!range)return;try{st.rsiChart.timeScale().setVisibleRange(range);mc.timeScale().setVisibleRange(range);}catch(e){}};
+ if(typeof c.timeScale().subscribeVisibleTimeRangeChange==="function")c.timeScale().subscribeVisibleTimeRangeChange(syncRange);
  const resize=()=>{const w=macdEl.clientWidth||host.clientWidth||600;mc.applyOptions({width:w});};
  if(typeof ResizeObserver==="function"){st.proResize=new ResizeObserver(resize);st.proResize.observe(host);}
 }
