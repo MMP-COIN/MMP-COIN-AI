@@ -3108,8 +3108,8 @@ function initTradingView(){mmpLoadChart(true);if(mmpChartState.refreshTimer)clea
 function changeTradingViewSymbol(){mmpLoadChart(true);}
 function mmpSetChartInterval(value){if(!["1m","3m","5m","15m","1h","4h","1d"].includes(value))return;mmpChartState.interval=value;mmpLoadChart(true);}
 function mmpSetChartMarket(value){mmpChartState.market=value==="futures"?"futures":"spot";mmpLoadChart(true);}
-function mmpToggleChartEMA(){mmpChartState.showEMA=!mmpChartState.showEMA;document.getElementById("mmp-chart-ema-toggle")?.classList.toggle("active",mmpChartState.showEMA);const c=mmpChartState.cache.get([mmpChartSymbol(),mmpChartState.interval,mmpChartState.market].join(":"));if(c)mmpRenderChart(c.payload);}
-function mmpToggleChartVolume(){mmpChartState.showVolume=!mmpChartState.showVolume;document.getElementById("mmp-chart-volume-toggle")?.classList.toggle("active",mmpChartState.showVolume);const c=mmpChartState.cache.get([mmpChartSymbol(),mmpChartState.interval,mmpChartState.market].join(":"));if(c)mmpRenderChart(c.payload);}
+function mmpToggleChartEMA(){mmpChartState.showEMA=!mmpChartState.showEMA;const b=document.getElementById("mmp-chart-ema-toggle");if(b){b.classList.toggle("active",mmpChartState.showEMA);b.setAttribute("aria-pressed",String(mmpChartState.showEMA));}const c=mmpChartState.cache.get([mmpChartSymbol(),mmpChartState.interval,mmpChartState.market].join(":"));if(c)mmpRenderChart(c.payload);}
+function mmpToggleChartVolume(){mmpChartState.showVolume=!mmpChartState.showVolume;const b=document.getElementById("mmp-chart-volume-toggle");if(b){b.classList.toggle("active",mmpChartState.showVolume);b.setAttribute("aria-pressed",String(mmpChartState.showVolume));}const c=mmpChartState.cache.get([mmpChartSymbol(),mmpChartState.interval,mmpChartState.market].join(":"));if(c)mmpRenderChart(c.payload);}
 async function toggleChartFullscreen() {
   const chart = $('chart-container');
   const fallbackActive = chart.classList.contains('chart-fullscreen-fallback');
