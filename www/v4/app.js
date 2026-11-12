@@ -26,15 +26,22 @@
    return rows.map(([symbol,price])=>[String(symbol||"").toUpperCase().split("-").join("").split("_").join("").split("/").join(""),Number(price)]);
   };
   const prices={},providers={},failures=[];
-  for(const source of sources){
+  // Query the three primary venues concurrently, then use secondary venues only for missing symbols.
+  const batches=[sources.slice(0,3),sources.slice(3)];
+  for(const batch of batches){
    const missing=symbols.filter(s=>!Number.isFinite(prices[s])||prices[s]<=0);
    if(!missing.length)break;
-   try{
-    const data=await get(MAIN+"/market-proxy?source="+source);
+   const results=await Promise.allSettled(batch.map(async source=>({source,data:await get(MAIN+"/market-proxy?source="+source)})));
+   for(let i=0;i<results.length;i++){
+    const result=results[i];
+    if(result.status!=="fulfilled"){failures.push(batch[i]+": "+String(result.reason?.message||result.reason));continue;}
+    const {source,data}=result.value;
     for(const [symbol,price] of normalize(source,data)){
-     if(missing.includes(symbol)&&Number.isFinite(price)&&price>0){prices[symbol]=price;providers[symbol]=source.replace("-tickers","").toUpperCase();}
+     if(missing.includes(symbol)&&!Number.isFinite(prices[symbol])&&Number.isFinite(price)&&price>0){
+      prices[symbol]=price;providers[symbol]=source.replace("-tickers","").toUpperCase();
+     }
     }
-   }catch(error){failures.push(source+": "+String(error?.message||error));}
+   }
   }
   const available=symbols.filter(s=>Number.isFinite(prices[s])&&prices[s]>0);
   $("ticker").innerHTML=symbols.map(s=>{
