@@ -48,7 +48,9 @@ jobs:
             "RADAR_API+\"/last-error\"",
             "isRunning=false",
             "چرخه‌های مجاز Hunter",
-            "next_checks"
+            "next_checks",
+            "market-orderflow?market=futures&symbol=BTC",
+            "futuresOrderflow?.flow?.complete===true"
           ]) {
             if (!html.includes(required)) throw new Error("MMP NEXUS monitor requirement missing: " + required);
           }
