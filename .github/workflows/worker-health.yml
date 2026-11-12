@@ -115,7 +115,10 @@ jobs:
           const analyzerConfig = fs.readFileSync("cloudflare-worker/wrangler.toml", "utf8");
           const futuresConfig = fs.readFileSync("cloudflare-worker/futures-wrangler.toml", "utf8");
           if (!analyzerConfig.includes('binding = "FUTURES_ENGINE"') || !analyzerConfig.includes('service = "mmp-coin-ai-futures"')) throw new Error("Analyzer Futures service binding is missing from source config");
+          if (!analyzerConfig.includes('crons = ["* * * * *"]')) throw new Error("Analyzer minute Cron must drive the Spot Hunter and local Tether monitor");
           if (!futuresConfig.includes('name = "mmp-coin-ai-futures"') || !futuresConfig.includes('binding = "ADMIN_DB"') || !futuresConfig.includes('crons = ["* * * * *"]')) throw new Error("Dedicated Futures Worker deployment config or one-minute scheduler is missing");
+          const universeCronConfig = fs.readFileSync("cloudflare-worker/hunter-cron-wrangler.toml", "utf8");
+          if (!universeCronConfig.includes('crons = ["5 * * * *"]')) throw new Error("Independent universe refresh must remain hourly to conserve free Cron slots");
           if (!workerSource.includes('"/futures-engine-health"') || !workerSource.includes('env.FUTURES_ENGINE.fetch(new Request("https://futures-engine/health"))')) throw new Error("Analyzer internal Futures health route is missing");
           if (!workerSource.includes('X-MMP-Internal-Token') || !workerSource.includes('request.headers.get("X-MMP-Internal-Token")===env.FUTURES_ENGINE_TOKEN')) throw new Error("Internal Hunter universe refresh must authenticate without consuming the public limiter");
           if (!workerSource.includes('page<=20') || !workerSource.includes('from="+Math.floor(cutoff/1000)+"&to="+Math.ceil(now/1000)+"&limit=1000&page="+page') || !workerSource.includes('https://api3.binance.com')) throw new Error("Spot executed-flow pagination and alternate Binance hosts are missing");
