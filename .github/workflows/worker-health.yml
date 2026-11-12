@@ -129,6 +129,7 @@ jobs:
           if (!workerSource.includes("cached_fallback:true") || !workerSource.includes("fresh:false") || !workerSource.includes("universe_stale===true") || !workerSource.includes("universe_age_ms")) throw new Error("Hunter universe refresh must expose age-labeled stale cache fallback without relabelling it fresh");
           if (!workerSource.includes('normalizeQuantumUniverse(saved?.assets||[],"spot")') || !workerSource.includes("universe_updated_at:new Date(savedAt).toISOString()")) throw new Error("Hunter Spot must serve its last validated ADMIN_DB universe with the original timestamp when live providers fail");
           if (!workerSource.includes("fapi1.binance.com/fapi/v1/ticker/price") || !workerSource.includes("api.bytick.com/v5/market/tickers?category=linear") || !workerSource.includes("us.okx.com/api/v5/market/ticker?instId=BTC-USDT-SWAP")) throw new Error("Futures connection health must probe alternate regional endpoints");
+          if (!workerSource.includes("last_known_age_ms") || !workerSource.includes("monitor_updated_at:now")) throw new Error("Iranian Tether monitor must preserve last-known values separately and update its heartbeat during provider outages");
           if (!workerSource.includes("minute%15===0?refreshDigitalHunterUniverses(env)")) throw new Error("Shared Spot/Futures universe refresh must run on the proven analyzer minute Cron");
           if (!workerSource.includes("const dueLearningRecords=") || !workerSource.includes("fetchHunterCandles(record.symbol,marketType,asset)") || !workerSource.includes("...learningMarks")) throw new Error("Self-learning must capture fresh 5m/15m/60m outcome marks for open signals");
           const hunterCandlesStart = workerSource.indexOf('async function fetchHunterCandles(symbol,marketType="spot",asset=null){');
@@ -730,7 +731,7 @@ jobs:
           status=$(curl --silent --show-error --max-time 25 -o /tmp/local-watch.json -w "%{http_code}" "$WORKER_URL/local-market-watch")
           echo "Iranian USDT watch HTTP $status"
           if [ "$status" != "200" ]; then cat /tmp/local-watch.json; exit 1; fi
-          jq -e '.market == "USDT/IRR" and (.sources | length == 3) and (.status == "multi_source" or .status == "single_source" or .status == "offline") and (.server_alert | type == "boolean") and (.server_monitor == "server-cron-1m" or .server_monitor == "warming_up")' /tmp/local-watch.json >/dev/null
+          jq -e '.market == "USDT/IRR" and (.sources | length == 3) and (.status == "multi_source" or .status == "single_source" or .status == "offline") and (.server_alert | type == "boolean") and (.server_monitor == "server-cron-1m" or .server_monitor == "warming_up") and (.last_known_toman == null or (.last_known_toman | type == "number")) and (.last_known_age_ms == null or (.last_known_age_ms | type == "number"))' /tmp/local-watch.json >/dev/null
           jq -r '"Iranian USDT/Toman watch: " + .status + " | valid venues: " + (.source_count|tostring)' /tmp/local-watch.json
           jq -r '.sources[]? | "  " + .exchange + ": " + (if .fresh then "fresh" else "offline" end) + (if .error then " · " + .error else "" end)' /tmp/local-watch.json
           status=$(curl --silent --show-error --max-time 25 -o /tmp/early-pressure.json -w "%{http_code}" "$WORKER_URL/early-pressure?symbol=BTC")
