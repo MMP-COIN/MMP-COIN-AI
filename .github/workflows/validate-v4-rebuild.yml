@@ -97,7 +97,7 @@ jobs:
           for required in ["hunter-combined-snapshot", "fast-radar-snapshot", "/connections-health", "cache:\"no-store\"", "fetchTetherRate", "local-market-watch", "nobitex-tether", "wallex-markets", "mmp_tether_cache_v1", "Math.round(x.price*currentTetherPrice)", "— تومان"]:
               assert required in js, f"Missing live integration: {required}"
           assert "هیچ سیگنال ساختگی" in html, "No fabricated-signal disclosure"
-          for required in ["id=\\"analysisSymbol\\"", "id=\\"analysisMarketMode\\"", "id=\\"runAnalysis\\"", "id=\\"analysisReport\\""]:
+          for required in ['id="analysisSymbol"', 'id="analysisMarketMode"', 'id="runAnalysis"', 'id="analysisReport"']:
               assert required in html, f"Missing real analyzer control: {required}"
           for required in ["/analyze", "market_mode:mode", "analysisCacheTtl", "market.timeframes", "تحلیل دریافت نشد"]:
               assert required in js, f"Missing real analyzer integration: {required}"
