@@ -73,6 +73,11 @@ jobs:
           for required in ["hunter-combined-snapshot", "fast-radar-snapshot", "/connections-health", "cache:\"no-store\""]:
               assert required in js, f"Missing live integration: {required}"
           assert "هیچ سیگنال ساختگی" in html, "No fabricated-signal disclosure"
+          for required in ["tickerIntegrity", "advisoryPolicy", "هیچ نقطه ورود", "تصمیم نهایی همیشه با کاربر"]:
+              assert required in html, f"Missing trust policy: {required}"
+          for required in ["Promise.allSettled(sources.map", "spread>1.5", "integrity-warning", "parseTimestamp", "age>maxAgeMs", "داده اسکن قدیمی"]:
+              assert required in js, f"Missing integrity guard: {required}"
+          assert "Math.random" not in js and "fake" not in js.lower(), "Synthetic market data is not allowed"
           assert "مرکز فرماندهی کوانتومی" not in html and "engineGrid" not in html and "engineGrid" not in js, "Legacy title or visible 12-engine grid remains"
           assert len(css) > 8000, "Responsive terminal stylesheet unexpectedly small"
           assert "Math.random" not in js and "fake" not in js.lower(), "Synthetic market data is not allowed"
