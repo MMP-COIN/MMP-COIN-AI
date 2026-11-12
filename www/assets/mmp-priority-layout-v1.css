@@ -36,3 +36,82 @@
  #hero>.mmp-priority-module .card{padding:10px}
 }
 @media(prefers-reduced-motion:reduce){#hero>.mmp-priority-module button{transition:none}}
+
+
+/* MMP responsive fit-and-function pass — applies consistently to every homepage module. */
+#hero>.mmp-priority-module{
+  width:100%;max-width:100%;min-width:0;position:relative;isolation:isolate;
+  margin:0 0 10px!important;padding:12px!important;
+  border:1px solid #303747!important;border-radius:13px!important;
+  background:linear-gradient(145deg,#151a25f2,#0e121bf5)!important;
+  box-shadow:0 7px 20px #0003!important;
+}
+#hero>.mmp-priority-module,
+#hero>.mmp-priority-module *{box-sizing:border-box;min-width:0}
+#hero>.mmp-priority-module :is(h1,h2,h3,h4,p,label,small,strong,b,span,a,li){
+  max-width:100%;overflow-wrap:anywhere;word-break:normal;
+}
+#hero>.mmp-priority-module :is(h1,h2,h3,h4){line-height:1.55;margin-block:0 8px}
+#hero>.mmp-priority-module p{line-height:1.75;margin-block:5px 9px}
+#hero>.mmp-priority-module :is(.section-head,.chart-top-bar,.hunter-topline,.intel-suite-head,.mmp-ah-head){
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;row-gap:8px;
+}
+#hero>.mmp-priority-module :is(.section-head>*,.chart-top-bar>*,.hunter-topline>*,.intel-suite-head>*,.mmp-ah-head>*){min-width:0;max-width:100%}
+#hero>.mmp-priority-module :is(.grid,.connection-grid,.ai-grid,.ai-overview,.ai-levels,.market-grid,.tools-grid){
+  grid-template-columns:repeat(auto-fit,minmax(min(100%,155px),1fr));gap:8px;
+}
+#hero>.mmp-priority-module :is(.card,.ai-metric,.ai-level,.conn,.signal,.chart-box-wrapper,.collapsible-coins-container){
+  min-width:0;max-width:100%;padding:10px!important;border-radius:11px;margin:0 0 8px;
+}
+#hero>.mmp-priority-module :is(button,.btn,a.btn,.expand-coins-btn,.connection-more-btn){
+  box-sizing:border-box;max-width:100%;min-width:0;min-height:36px;
+  height:auto;white-space:normal;overflow-wrap:anywhere;word-break:normal;
+  line-height:1.5;padding:7px 10px;text-align:center;
+}
+#hero>.mmp-priority-module :is(.chart-actions,.ai-toolbar,.top-actions,.actions,.button-row,.toolbar-actions){
+  display:flex;flex-wrap:wrap;align-items:center;gap:7px;min-width:0;max-width:100%;
+}
+#hero>.mmp-priority-module :is(input,select,textarea){
+  box-sizing:border-box;max-width:100%;min-width:0;height:auto;min-height:36px;
+}
+#hero>.mmp-priority-module :is(input,select,textarea):not([type="checkbox"]):not([type="radio"]){width:auto}
+#hero>.mmp-priority-module :is(.table-wrap,.table-responsive,.connection-grid,.full-coins-list){
+  max-width:100%;min-width:0;overflow-x:auto;overscroll-behavior-inline:contain;
+}
+#hero>.mmp-priority-module table{width:100%;max-width:100%;border-collapse:collapse}
+#hero>.mmp-priority-module img,
+#hero>.mmp-priority-module svg,
+#hero>.mmp-priority-module canvas,
+#hero>.mmp-priority-module video,
+#hero>.mmp-priority-module iframe{max-width:100%}
+#hero>.mmp-priority-module :is(.stat-value,.ai-metric b,.ai-level b,.price,.number){
+  max-width:100%;overflow-wrap:anywhere;font-variant-numeric:tabular-nums;
+}
+#hero>.mmp-priority-module :is(.mmp-priority-menu,.mmp-priority-menu-links){max-width:min(260px,calc(100vw - 32px))}
+#hero>.mmp-priority-module .mmp-priority-menu-links{z-index:120}
+#hero>.mmp-priority-module :is(.dropdown-select-box,.signal,.ai-report,.report,.description){
+  max-width:100%;overflow-wrap:anywhere;white-space:normal;
+}
+#hero>.mmp-priority-module :is(.chart-box-wrapper,#chart-container){width:100%;max-width:100%;min-width:0}
+#hero>.mmp-priority-module #chart-container{height:clamp(300px,58vw,520px)}
+#hero>.mmp-priority-module :is(.connection-extra.show,.full-coins-list.show){min-width:0;max-width:100%}
+#hero>.mmp-priority-module .mmp-priority-toolbar{min-width:0;max-width:100%;flex-wrap:wrap}
+#hero>.mmp-priority-module :focus-visible{outline-offset:2px}
+@media(max-width:760px){
+  #hero>.mmp-priority-module{padding:10px!important;margin-bottom:8px!important;border-radius:11px!important}
+  #hero>.mmp-priority-module :is(.grid,.connection-grid,.ai-grid,.ai-overview,.ai-levels,.market-grid,.tools-grid){
+    grid-template-columns:repeat(auto-fit,minmax(min(100%,132px),1fr));gap:7px;
+  }
+  #hero>.mmp-priority-module :is(.section-head,.chart-top-bar,.hunter-topline,.intel-suite-head,.mmp-ah-head){align-items:flex-start}
+  #hero>.mmp-priority-module :is(button,.btn,a.btn){padding:7px 9px;font-size:12px}
+  #hero>.mmp-priority-module #chart-container{height:clamp(280px,88vw,430px)}
+}
+@media(max-width:380px){
+  #hero>.mmp-priority-module{padding:9px!important}
+  #hero>.mmp-priority-module :is(.grid,.connection-grid,.ai-grid,.ai-overview,.ai-levels,.market-grid,.tools-grid){
+    grid-template-columns:minmax(0,1fr);
+  }
+}
+@media(prefers-reduced-motion:reduce){
+  #hero>.mmp-priority-module *,#hero>.mmp-priority-module *:before,#hero>.mmp-priority-module *:after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}
+}
