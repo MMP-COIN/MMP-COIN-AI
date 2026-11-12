@@ -392,6 +392,10 @@ jobs:
           const missingControls = requiredControls.filter(id => !idSet.has(id));
           if (missingControls.length) throw new Error("Missing core controls: " + missingControls.join(", "));
           if (/market-ticker|ticker-item|renderMarketTicker/.test(html)) throw new Error("Removed horizontal market ticker code has returned");
+          const catalogStart = html.indexOf("let nextPage=2,finished=false,emptyBatches=0");
+          const catalogEnd = html.indexOf("if(extraCandidates.length)", catalogStart);
+          const catalogPager = catalogStart >= 0 && catalogEnd > catalogStart ? html.slice(catalogStart, catalogEnd) : "";
+          if (!catalogPager.includes("consecutiveFailedPages>=3") || !catalogPager.includes("attempt<2")) throw new Error("Dynamic market pagination must back off after repeated provider failures");
           if (!html.includes("probeDirectFallback(checks.get(\"binance spot\")") || !html.includes("probeDirectFallback(checks.get(\"nobitex\")") || !html.includes("probeDirectFallback(checks.get(\"kucoin spot\")")) throw new Error("Homepage must try independent browser fallback routes for down exchanges");
                     if (html.includes("checkNativeApkUpdate") || !html.includes("function checkNativeUpdate(manual){checkLivePageUpdate(!!manual);}")) throw new Error("Native app update must remain internal-only and must not require a new APK");
           if (!html.includes("params.set('mmp_live_refresh',String(Date.now()))") || !html.includes("mmp_native_version")) throw new Error("Native live-page cache refresh is missing");
