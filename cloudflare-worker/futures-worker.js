@@ -13,8 +13,10 @@ export default {
   }
   return json({error:"Not found"},404);
  },
- async scheduled(event,env){
+ async scheduled(event,env,ctx){
   if(!env.ADMIN_DB)throw new Error("ADMIN_DB binding missing");
+  const tetherMonitor=env.TETHER_MONITOR?.fetch?env.TETHER_MONITOR.fetch(new Request("https://tether-monitor.internal/run",{method:"POST",headers:{"Content-Type":"application/json"}})).then(async response=>{if(!response.ok)throw new Error("Tether monitor HTTP "+response.status);const result=await response.json();console.log("Tether monitor isolated run",JSON.stringify({status:result.status,source_count:result.source_count,checked_at:result.checked_at}));}).catch(error=>console.error("Futures Cron Tether monitor failed:",error?.message||error)):Promise.resolve();
+  if(ctx?.waitUntil)ctx.waitUntil(tetherMonitor);else await tetherMonitor;
   const id="digital-hunter-futures-cron-heartbeat",started=Date.now(),stamp=new Date(started).toISOString();
   const save=payload=>env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(id,JSON.stringify(payload),payload.updated_at||new Date().toISOString()).run();
   await save({status:"started",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,market:"futures",cron:event?.cron||"* * * * *",scheduledTime:event?.scheduledTime||null,updated_at:stamp});
