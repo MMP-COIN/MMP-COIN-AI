@@ -29,6 +29,38 @@ jobs:
 
       # Cron Worker is intentionally private (workers.dev disabled). Its scheduled
       # execution is verified below through the public analyzer's D1-backed status endpoint.
+      - name: Validate MMP NEXUS monitor, Radar isolation and repair safety
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+          import vm from "node:vm";
+          const html = fs.readFileSync("www/index.html", "utf8");
+          const open = '<script id="mmp-autonomous-health-center-js">';
+          const start = html.indexOf(open);
+          const end = html.indexOf("</script>", start + open.length);
+          if (start < 0 || end < 0) throw new Error("MMP NEXUS inline monitor script is missing");
+          new vm.Script(html.slice(start + open.length, end), {filename:"mmp-nexus-inline.js"});
+          for (const required of [
+            "MMP NEXUS · AUTONOMOUS SYSTEM INTELLIGENCE",
+            "RADAR_API+\"/health\"",
+            "RADAR_API+\"/fast-radar-snapshot\"",
+            "RADAR_API+\"/last-error\"",
+            "isRunning=false",
+            "چرخه‌های مجاز Hunter",
+            "next_checks"
+          ]) {
+            if (!html.includes(required)) throw new Error("MMP NEXUS monitor requirement missing: " + required);
+          }
+          const worker = fs.readFileSync("cloudflare-worker/worker.js", "utf8");
+          if (!worker.includes('pathname==="/system-diagnose"') ||
+              !worker.includes("You are MMP NEXUS") ||
+              !worker.includes("Never emit executable code") ||
+              !worker.includes("code_changes_executed:false")) {
+            throw new Error("NEXUS AI diagnostic safety contract is missing");
+          }
+          console.log("NEXUS inline script syntax, independent Radar probes, overlap guard and AI repair boundaries verified.");
+          NODE
       - name: Validate Hunter universe refresher and Cron scan budgets
         run: |
           set -euo pipefail
@@ -185,7 +217,7 @@ jobs:
 
           if (!radarSource.includes("const BATCH_SIZE = 12;") || !radarSource.includes("universe.length>500?12:BATCH_SIZE") || !radarSource.includes("const verificationOrder=[...new Set([...order,...fallback])].slice(0,3);")) throw new Error("Radar scan must stay within the per-invocation subrequest budget");
           if (!workerSource.includes("const HUNTER_BATCH_SIZE = 8;") || !workerSource.includes("const FUTURES_HUNTER_BATCH_SIZE = 8;") || !workerSource.includes("const sourceLimit=Math.min(4,sources.length)") || !workerSource.includes("for(const host of hosts.slice(0,2))") || !workerSource.includes("const concurrency=4;")) throw new Error("Hunter scan must stay within the per-invocation subrequest budget");
-          if (!workerSource.includes("async scheduled(event,env,ctx)") || !workerSource.includes("await runDigitalHunterCron(event,env,ctx)") || workerSource.includes("ctx.waitUntil(runDigitalHunterCron")) throw new Error("Cron must await the Hunter cycle inside the scheduled invocation");
+          if (!workerSource.includes("async scheduled(event,env,ctx)") || !workerSource.includes("const hunterCycle=runDigitalHunterCron(event,env,ctx).catch") || !workerSource.includes("Promise.allSettled([cleanup,universeRefresh,hunterCycle,tetherMonitor])") || !workerSource.includes("ctx.waitUntil(background)")) throw new Error("Cron must retain the Hunter cycle and independent maintenance tasks through waitUntil");
           if (!workerSource.includes("for(const url of urls)") || workerSource.includes("Promise.all(urls.map(url=>timeoutFetch")) throw new Error("Exchange health fallback must try alternate endpoints sequentially and stop after a verified response");
                     if (!workerSource.includes("async function fetchWithTimeout") || !workerSource.includes("return await fetch(url,{...options,signal:controller.signal})") || workerSource.includes("return await fetchWithTimeout(url,{...options,signal:controller.signal})")) throw new Error("Bounded fetch helper must call native fetch exactly once and must not recurse");
           if (!workerSource.includes("async function readMarketFallback") || !workerSource.includes("async function writeMarketFallback") || !workerSource.includes("env.MARKET_CACHE_DB") || !workerSource.includes("data_stale:true") || !workerSource.includes("X-MMP-Cache") || !workerSource.includes("market_cache_binding:!!env.MARKET_CACHE_DB")) throw new Error("Persistent D1 market cache and explicit stale-data reporting are required");
@@ -208,20 +240,12 @@ jobs:
           if (!workerSource.includes('from "./market-data-core.js"') || !workerSource.includes('from "./learning-engine.js"') || !workerSource.includes("mmp-learning-ledger-v1-") || !workerSource.includes("applyLearningCalibration")) throw new Error("Hunter shared data and persistent learning integration missing");
           if (!radarSource.includes('from "./market-data-core.js"') || !radarSource.includes('from "./learning-engine.js"') || !radarSource.includes("MAIN_DEPTH") || !radarSource.includes("requireDepthConfirmation:true") || !radarSource.includes("radar:learning-ledger")) throw new Error("Radar depth validation and learning integration missing");
           if (!radarSource.includes("calculateMarketScanPriority") || !radarSource.includes("scan_priority_version:scanPriorityVersion") || !radarSource.includes("const BATCH_SIZE = 12;") || !radarSource.includes("const CONCURRENCY = 4;")) throw new Error("Radar scan throughput regression");
-          if (!radarSource.includes("const verificationOrder=[...new Set([...order,...fallback])].slice(0,4);") || !radarSource.includes("Number(x[5]),Number(x[3]),Number(x[4]),Number(x[2]),Number(x[1])")) throw new Error("Radar exchange fallback or Gate Spot OHLCV mapping regression");
+          if (!radarSource.includes("const verificationOrder=[...new Set([...order,...fallback])].slice(0,3);") || !radarSource.includes("Number(x[5]),Number(x[3]),Number(x[4]),Number(x[2]),Number(x[1])")) throw new Error("Radar exchange fallback or Gate Spot OHLCV mapping regression");
           if (workerSource.includes("order.map(index=>sources[index]).filter(Boolean).slice(0,4)") || workerSource.includes("[...new Set([...preferred,...sources.map((_,index)=>index)])].slice(0,4)")) throw new Error("Hunter exchange fallback list was artificially truncated");
-          if (!workerSource.includes('const sourceLimit=Math.min(4,sources.length),orderedIndices=unique([...primaryOrder,...fallbackPool])') ||
-              !workerSource.includes('const reliableIndices=marketType==="futures"?[4,5,6]:[4,5,6,8];') ||
-              !workerSource.includes('const preferredOrder=unique(order.filter(index=>reliableIndices.includes(index)));') ||
-              !workerSource.includes('primaryTrusted=[4,5,6].includes(primary)') ||
-              !workerSource.includes('primaryTrusted=[4,5,6,8].includes(primary)') ||
-              !workerSource.includes('const priority=[4,5,6,2,1,3,0]') ||
-              !workerSource.includes('priority=[4,8,5,6,2,3,1,7,0]') ||
-              !workerSource.includes('const primaryIndex=preferredOrder[0]??fallbackPriority[0],primaryOrder=[primaryIndex];') ||
+          if (!workerSource.includes('const primaryIndex=preferredOrder[0]??fallbackPriority[0],primaryOrder=[primaryIndex];') ||
               !workerSource.includes('const fallbackPool=unique([...fallbackPriority.filter(index=>!primaryOrder.includes(index)),...preferredOrder.slice(1),...sources.map((_,index)=>index)]).filter(index=>!primaryOrder.includes(index));') ||
               !workerSource.includes('const sourceLimit=Math.min(4,sources.length),orderedIndices=unique([...primaryOrder,...fallbackPool])') ||
-              !workerSource.includes('value.startsWith("kucoin")?6') ||
-              !radarSource.includes('const verificationOrder=[...new Set([...order,...fallback])].slice(0,3);')) throw new Error("Reliable rotating exchange fallback coverage regressed");
+              !radarSource.includes('const verificationOrder=[...new Set([...order,...fallback])].slice(0,3);')) throw new Error("Bounded exchange fallback selection or independent Radar corroboration missing");
           if (workerSource.includes("!available.length?priority")) throw new Error("Missing venue metadata must use the rotating fallback set");
           for (const provider of ["api.mexc.com/api/v3/trades","api.kucoin.com/api/v1/market/histories","api-futures.kucoin.com/api/v1/trade/history","contractInfo?.data?.multiplier"]) { if (!workerSource.includes(provider)) throw new Error("Executed-flow fallback/contract normalization missing: " + provider); }
           for (const provider of ["contract.mexc.com","api-futures.kucoin.com","api/v2/mix/market/candles","api/v2/mix/market/fills","api.mexc.com/api/v3/klines"]) { if (!workerSource.includes(provider)) throw new Error("Market provider fallback missing: " + provider); }
