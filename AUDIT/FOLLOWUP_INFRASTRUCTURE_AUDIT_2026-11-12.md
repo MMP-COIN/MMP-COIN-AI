@@ -72,3 +72,14 @@ No production deployment is authorized by this follow-up. Runtime validation on 
 - Preview Rate Limit keys are prefixed with `preview:` to avoid sharing counters with production, even though the same Cloudflare namespace IDs are reused.
 - The account is on the Workers Free plan with a maximum of 5 Cron triggers. Production currently uses 3; preview can therefore run at most 2 additional Cron triggers concurrently. An attempt to add a third preview trigger was rejected with error 10072. Tests will be run sequentially, without upgrading the plan or disabling production schedules.
 - Cloudflare documents that Cron trigger changes can take up to 15 minutes to propagate. The preview Cron configuration is present, but no preview heartbeat has been observed yet; runtime success is not claimed until the isolated D1 state confirms it.
+
+
+## Update-checker remediation staged
+The canonical `www/index.html` now uses one version checker:
+- It polls the small `/version.json` document, not the full HTML page.
+- It compares the deployed `build` ID with the `mmp-web-build` meta value.
+- The native-app-specific and general HTML-hash loops were consolidated into the same checker; the native button calls that checker.
+- A single reload path adds a unique cache-bypass parameter and waits until the user is not entering data or running an AI analysis.
+- A session marker prevents repeated reload loops if a CDN edge continues serving an old HTML response.
+- App version remains unchanged; this is a web-content update mechanism, not an APK version bump.
+The preview validation workflow now compiles this script and checks that no full-HTML hash poll or second updater remains.

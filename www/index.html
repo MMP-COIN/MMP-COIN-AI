@@ -5076,44 +5076,13 @@ html.mmp-native-app header.top{display:none!important}
     var toast=document.createElement("div");toast.className="mmp-share-toast mmp-update-toast";toast.textContent=message;document.body.appendChild(toast);
     setTimeout(function(){if(toast.parentNode)toast.remove();},3200);
    }
-   function hashLiveHtml(value){
-    if(window.crypto&&crypto.subtle&&window.TextEncoder){return crypto.subtle.digest("SHA-256",new TextEncoder().encode(value)).then(function(buffer){return Array.from(new Uint8Array(buffer)).map(function(x){return x.toString(16).padStart(2,"0")}).join("");});}
-    var hash=2166136261;for(var i=0;i<value.length;i++){hash^=value.charCodeAt(i);hash=Math.imul(hash,16777619);}return Promise.resolve(String(hash>>>0));
+   function checkNativeUpdate(manual){
+    if(typeof window.mmpCheckForUpdates==="function")window.mmpCheckForUpdates(!!manual);
+    else if(manual)showNativeUpdateMessage("سامانه بررسی نسخه در حال آماده‌سازی است؛ چند لحظه دیگر تلاش کنید.");
    }
-   function checkLivePageUpdate(manual){
-    if(liveUpdateChecking||!window.Capacitor||!window.Capacitor.isNativePlatform||!window.Capacitor.isNativePlatform())return;
-    if(!manual&&Date.now()-lastLiveCheck<45000)return;
-    liveUpdateChecking=true;lastLiveCheck=Date.now();
-    var freshUrl=new URL(location.href);freshUrl.searchParams.set("mmp_live_check",String(Date.now()));freshUrl.hash="";
-    var controller=new AbortController(),timer=setTimeout(function(){controller.abort();},15000);
-    fetch(freshUrl.toString(),{method:"GET",cache:"no-store",credentials:"same-origin",signal:controller.signal,headers:{"Cache-Control":"no-cache","Pragma":"no-cache"}})
-     .then(function(response){if(!response.ok)throw new Error("HTTP "+response.status);return response.text();})
-     .then(hashLiveHtml)
-     .then(function(hash){
-      var baseKey="mmp-live-page-hash-v1",pendingKey="mmp-live-page-pending-v1";
-      var pending="";try{pending=localStorage.getItem(pendingKey)||"";}catch(e){}
-      if(pending&&pending===hash){try{localStorage.removeItem(pendingKey);localStorage.setItem(baseKey,hash);}catch(e){}showNativeUpdateMessage("اپلیکیشن به‌صورت خودکار به‌روزرسانی شد؛ تغییرات جدید فعال هستند.");return;}
-      var previous="";try{previous=localStorage.getItem(baseKey)||"";}catch(e){}
-      if(!previous){try{localStorage.setItem(baseKey,hash);}catch(e){}if(manual)showNativeUpdateMessage("محتوای اپ به‌روز است.");return;}
-      if(previous!==hash){
-       try{localStorage.setItem(pendingKey,hash);}catch(e){}
-       showNativeUpdateMessage("نسخه جدید دریافت شد؛ تغییرات در حال اعمال خودکار هستند…");
-       setTimeout(function(){var applyUrl=new URL(location.href);applyUrl.searchParams.set("mmp_live_refresh",String(Date.now()));applyUrl.searchParams.delete("mmp_live_check");location.replace(applyUrl.toString());},800);
-       return;
-      }
-      if(manual)showNativeUpdateMessage("تغییر جدیدی وجود ندارد؛ اپ به‌روز است.");
-     })
-     .catch(function(){if(manual)showNativeUpdateMessage("بررسی به‌روزرسانی زنده انجام نشد؛ اتصال اینترنت را بررسی کنید.");})
-     .finally(function(){clearTimeout(timer);liveUpdateChecking=false;liveUpdateInitialCheck=false;});
-   }
-   function checkNativeUpdate(manual){checkLivePageUpdate(!!manual);}
    // Contact and share actions live in the native app's Contact section; APK downloads stay website-only.
    var updateCheckButton=document.getElementById("native-update-check-btn");
    if(updateCheckButton)updateCheckButton.addEventListener("click",function(){checkNativeUpdate(true);});
-   document.addEventListener("visibilitychange",function(){if(document.visibilityState==="visible")checkNativeUpdate(false);});
-   window.addEventListener("focus",function(){checkNativeUpdate(false);});
-   setInterval(function(){if(document.visibilityState==="visible")checkLivePageUpdate(false);},5*60*1000);
-   checkNativeUpdate(false);
    document.querySelectorAll("#chart-section,#ai-section,#opportunities,#trading-tools,#coins-section").forEach(function(el){
     if(!el.querySelector(".native-section-label")){
      var label=document.createElement("div");label.className="native-section-label";
@@ -6158,22 +6127,20 @@ window.mmpShareDownloadLink = async function () {
 <!-- mmp-pages-redeploy-20261107-market-hunter -->
 <script id="mmp-web-auto-update">
 (function(){
+ "use strict";
  try{
   var native=!!(window.Capacitor&&(window.Capacitor.isNativePlatform?.()||window.Capacitor.getPlatform?.()==="android"))||location.protocol==="capacitor:";
-  /* The installed Android app loads this same live page; keep its WebView synchronized too. */
-  var HASH_KEY="mmp-web-page-hash-v1",PENDING_KEY="mmp-web-page-pending-v1";
-  var checking=false,lastCheck=0,reloadQueued=false,banner=null;
-  function digest(value){
-   if(window.crypto&&crypto.subtle&&window.TextEncoder)return crypto.subtle.digest("SHA-256",new TextEncoder().encode(value)).then(function(buf){return Array.from(new Uint8Array(buf)).map(function(x){return x.toString(16).padStart(2,"0")}).join("");});
-   var h=2166136261;for(var i=0;i<value.length;i++){h^=value.charCodeAt(i);h=Math.imul(h,16777619);}return Promise.resolve(String(h>>>0));
-  }
+  var BUILD_META=document.querySelector('meta[name="mmp-web-build"]');
+  var localBuild=String(BUILD_META?.content||"").trim();
+  var checking=false,lastCheck=0,reloadQueued=false,banner=null,retryTimer=null;
+  var ATTEMPT_KEY="mmp-version-reload-v2";
   function safeToReload(){
    var el=document.activeElement;
    if(el&&(el.isContentEditable||/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)))return false;
    if((typeof aiBusy!=="undefined"&&aiBusy)||(typeof liveAnalysisBusy!=="undefined"&&liveAnalysisBusy))return false;
    return true;
   }
-  function showNotice(message){
+  function showNotice(message,manual){
    if(!document.body)return;
    if(!banner){
     banner=document.createElement("div");
@@ -6181,39 +6148,80 @@ window.mmpShareDownloadLink = async function () {
     banner.style.cssText="position:fixed;z-index:99999;bottom:16px;left:12px;right:12px;max-width:520px;margin:auto;padding:12px 15px;border:1px solid #b99554;border-radius:13px;background:#111923;color:#f5dda2;box-shadow:0 8px 28px #0008;font:12px Tahoma,Arial,sans-serif;text-align:center;direction:rtl";
     document.body.appendChild(banner);
    }
-   banner.textContent=message;
+   banner.replaceChildren(document.createTextNode(message));
+   if(manual){
+    var button=document.createElement("button");
+    button.type="button";button.textContent="به‌روزرسانی اکنون";
+    button.style.cssText="margin-right:10px;padding:6px 10px;border:1px solid #b99554;border-radius:8px;background:#b99554;color:#111;font:inherit;font-weight:700";
+    button.addEventListener("click",function(){reloadNow(true);});
+    banner.appendChild(button);
+   }
   }
-  function applyUpdate(){
-   if(!reloadQueued||!safeToReload()||document.visibilityState==="hidden")return;
+  function reloadNow(force){
+   if(!reloadQueued&&!force)return;
+   if(!force&&(!safeToReload()||document.visibilityState==="hidden")){
+    if(!retryTimer)retryTimer=setTimeout(function(){retryTimer=null;applyUpdate();},12000);
+    return;
+   }
    reloadQueued=false;
-   var u=new URL(location.href);u.searchParams.set("mmp_site_refresh",String(Date.now()));
-   showNotice(native?"به‌روزرسانی جدید آماده شد؛ اپلیکیشن در حال تازه‌سازی امن است…":"به‌روزرسانی جدید آماده شد؛ سایت در حال تازه‌سازی امن است…");
-   setTimeout(function(){location.replace(u.toString());},900);
+   var next=new URL(location.href);
+   next.searchParams.set(native?"mmp_live_refresh":"mmp_site_refresh",String(Date.now()));
+   next.searchParams.set("mmp_update_reload",String(window.mmpPendingBuild||""));
+   next.searchParams.delete("mmp_site_update_check");
+   showNotice(native?"نسخه جدید آماده شد؛ اپلیکیشن در حال تازه‌سازی امن است…":"نسخه جدید آماده شد؛ سایت در حال تازه‌سازی امن است…");
+   setTimeout(function(){location.replace(next.toString());},650);
   }
-  function check(){
-   if(checking||Date.now()-lastCheck<60000)return;
+  function applyUpdate(){reloadNow(false);}
+  async function check(manual){
+   if(checking||(!manual&&Date.now()-lastCheck<30000))return;
    checking=true;lastCheck=Date.now();
-   var u=new URL(location.href);u.searchParams.set("mmp_site_update_check",String(Date.now()));u.hash="";
-   var controller=new AbortController(),timer=setTimeout(function(){controller.abort();},15000);
-   fetch(u.toString(),{method:"GET",cache:"no-store",credentials:"same-origin",signal:controller.signal,headers:{"Cache-Control":"no-cache","Pragma":"no-cache"}})
-    .then(function(r){if(!r.ok)throw new Error("HTTP "+r.status);return r.text();})
-    .then(digest)
-    .then(function(hash){
-     var pending="";try{pending=localStorage.getItem(PENDING_KEY)||"";}catch(e){}
-     if(pending&&pending===hash){try{localStorage.removeItem(PENDING_KEY);localStorage.setItem(HASH_KEY,hash);}catch(e){}return;}
-     var previous="";try{previous=localStorage.getItem(HASH_KEY)||"";}catch(e){}
-     if(!previous){try{localStorage.setItem(HASH_KEY,hash);}catch(e){}return;}
-     if(previous!==hash){try{localStorage.setItem(PENDING_KEY,hash);}catch(e){}reloadQueued=true;showNotice(native?"نسخه جدید MMP COIN AI آماده است؛ پس از پایان کار جاری، اپلیکیشن خودکار به‌روزرسانی می‌شود.":"نسخه جدید سایت آماده است؛ پس از پایان کار جاری، خودکار اعمال می‌شود.");applyUpdate();}
-    })
-    .catch(function(){})
-    .finally(function(){clearTimeout(timer);checking=false;});
+   var controller=new AbortController(),timer=setTimeout(function(){controller.abort();},9000);
+   try{
+    var origin=location.origin&&location.origin!=="null"&&!/^capacitor:/i.test(location.protocol)?location.origin:"https://mmp-coin.github.io";
+    var versionUrl=new URL("/version.json",origin);
+    versionUrl.searchParams.set("_",String(Date.now()));
+    var response=await fetch(versionUrl.toString(),{method:"GET",cache:"no-store",credentials:"omit",signal:controller.signal,headers:{"Cache-Control":"no-cache","Pragma":"no-cache"}});
+    if(!response.ok)throw new Error("version.json HTTP "+response.status);
+    var data=await response.json();
+    var remoteBuild=String(data.build||"").trim();
+    if(!remoteBuild||!localBuild||localBuild==="__MMP_WEB_BUILD_ID__")throw new Error("Build identifier unavailable");
+    if(remoteBuild===localBuild){
+     try{sessionStorage.removeItem(ATTEMPT_KEY);}catch(e){}
+     var current=new URL(location.href);
+     if(current.searchParams.has("mmp_update_reload")){
+      current.searchParams.delete("mmp_update_reload");
+      history.replaceState(null,"",current.pathname+(current.search?current.search:"")+current.hash);
+     }
+     if(manual)showNotice("سایت و اپلیکیشن به‌روز هستند.");
+     return;
+    }
+    window.mmpPendingBuild=remoteBuild;
+    var attempted="";
+    try{attempted=sessionStorage.getItem(ATTEMPT_KEY)||"";}catch(e){}
+    var params=new URLSearchParams(location.search);
+    if(attempted===remoteBuild||params.get("mmp_update_reload")===remoteBuild){
+     showNotice("نسخه جدید روی سرور آماده است؛ اگر صفحه تازه نشد، به‌روزرسانی را بزنید.",true);
+     return;
+    }
+    try{sessionStorage.setItem(ATTEMPT_KEY,remoteBuild);}catch(e){}
+    reloadQueued=true;
+    showNotice(native?"به‌روزرسانی جدید آماده است؛ پس از پایان تحلیل جاری، خودکار اعمال می‌شود.":"نسخه جدید سایت آماده است؛ پس از پایان کار جاری، خودکار اعمال می‌شود.");
+    applyUpdate();
+   }catch(error){
+    if(manual)showNotice("بررسی نسخه جدید انجام نشد؛ اتصال اینترنت را بررسی کنید.");
+   }finally{
+    clearTimeout(timer);checking=false;
+   }
   }
-  document.addEventListener("visibilitychange",function(){if(document.visibilityState==="visible"){if(reloadQueued)applyUpdate();else check();}});
-  window.addEventListener("focus",function(){if(reloadQueued)applyUpdate();else check();});
+  window.mmpCheckForUpdates=check;
+  document.addEventListener("visibilitychange",function(){
+   if(document.visibilityState==="visible"){if(reloadQueued)applyUpdate();else check(false);}
+  });
+  window.addEventListener("focus",function(){if(reloadQueued)applyUpdate();else check(false);});
   document.addEventListener("focusout",function(){if(reloadQueued)setTimeout(applyUpdate,250);});
-  setInterval(function(){if(document.visibilityState==="visible"){if(reloadQueued)applyUpdate();else check();}},2*60*1000);
-  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",check,{once:true});else check();
- }catch(e){}
+  setInterval(function(){if(document.visibilityState==="visible"){if(reloadQueued)applyUpdate();else check(false);}},3*60*1000);
+  setTimeout(function(){check(false);},15000);
+ }catch(error){console.warn("MMP version update checker:",error);}
 })();
 </script>
 

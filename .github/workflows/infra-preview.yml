@@ -30,6 +30,21 @@ jobs:
             node --check --input-type=module < "$file"
           done
 
+      - name: Validate lightweight version updater
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+          const html=fs.readFileSync("www/index.html","utf8");
+          const match=html.match(/<script id="mmp-web-auto-update">([\\s\\S]*?)<\\/script>/);
+          if(!match) throw new Error("version updater script missing");
+          new Function(match[1]);
+          if(!html.includes('meta name="mmp-web-build"')) throw new Error("web build meta missing");
+          if(!match[1].includes("/version.json")) throw new Error("updater must poll version.json");
+          if(match[1].includes("fetch(u.toString()") || match[1].includes("hashLiveHtml")) throw new Error("full HTML hash polling remains");
+          if(html.includes("checkLivePageUpdate")) throw new Error("duplicate native updater remains");
+          console.log("PASS one lightweight version.json updater; no full HTML polling");
+          NODE
+
       - name: Validate scheduler ownership and Cloudflare bindings
         run: |
           node --input-type=module <<'NODE'
