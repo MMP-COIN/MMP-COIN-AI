@@ -21,7 +21,7 @@ concurrency:
 
 jobs:
   smoke-test:
-    if: github.ref == 'refs/heads/main'
+    if: ${{ github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -776,3 +776,10 @@ jobs:
             echo "- Four timeframes: 15m, 1h, 4h, 1d"
             echo "- Structured analysis: valid"
           } >> "$GITHUB_STEP_SUMMARY"
+
+  preview-skip:
+    if: ${{ github.ref != 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Keep production Worker smoke tests off preview and PR refs
+        run: echo "Production Worker smoke tests are skipped outside main; isolated preview validation runs in infra-preview.yml."
