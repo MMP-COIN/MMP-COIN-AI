@@ -115,6 +115,7 @@ jobs:
           if (!analyzerConfig.includes('binding = "FUTURES_ENGINE"') || !analyzerConfig.includes('service = "mmp-coin-ai-futures"')) throw new Error("Analyzer Futures service binding is missing from source config");
           if (!futuresConfig.includes('name = "mmp-coin-ai-futures"') || !futuresConfig.includes('binding = "ADMIN_DB"') || !futuresConfig.includes('crons = ["* * * * *"]')) throw new Error("Dedicated Futures Worker deployment config or one-minute scheduler is missing");
           if (!workerSource.includes('"/futures-engine-health"') || !workerSource.includes('env.FUTURES_ENGINE.fetch(new Request("https://futures-engine/health"))')) throw new Error("Analyzer internal Futures health route is missing");
+          if (!workerSource.includes('X-MMP-Internal-Token') || !workerSource.includes('request.headers.get("X-MMP-Internal-Token")===env.FUTURES_ENGINE_TOKEN')) throw new Error("Internal Hunter universe refresh must authenticate without consuming the public limiter");
           if (!workerSource.includes('page<=5') || !workerSource.includes('from="+Math.floor(cutoff/1000)+"&to="+Math.ceil(now/1000)+"&limit=1000&page="+page') || !workerSource.includes('https://api3.binance.com')) throw new Error("Spot executed-flow pagination and alternate Binance hosts are missing");
           const futuresUniverseStart = workerSource.indexOf("async function loadDigitalHunterFuturesUniverse");
           const futuresUniverseEnd = workerSource.indexOf("async function loadDigitalHunterUniverse", futuresUniverseStart);
