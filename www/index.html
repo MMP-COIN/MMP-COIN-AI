@@ -2551,7 +2551,7 @@ html body #ai-section .tf-card{min-width:0!important;max-width:100%!important;ov
   <a href="#opportunities"><i class="menu-icon">⌖</i><span>رادار هوشمند بازار</span></a>
   <a href="#market-hunter"><i class="menu-icon">🎯</i><span>شکارچی کوانتومی بازار</span></a>
   <a href="#ai-section"><i class="menu-icon">✧</i><span>تحلیلگر هوشمند AI</span></a>
-  <a href="#mmp-autonomous-health-center"><i class="menu-icon">⛨</i><span>مرکز سلامت و خودترمیمی</span></a>
+  <a href="#mmp-autonomous-health-center"><i class="menu-icon">⛨</i><span>MMP NEXUS · مغز پایش و ترمیم</span></a>
   <a href="#boom-hunter"><i class="menu-icon">ϟ</i><span>آزمایشگاه Boom Hunter</span></a>
   <a href="#chart-section"><i class="menu-icon">▥</i><span>نمودار حرفه‌ای</span></a>
   <a href="#trading-tools"><i class="menu-icon">⌗</i><span>ابزارهای معامله</span></a>
@@ -2736,13 +2736,13 @@ html body #ai-section .tf-card{min-width:0!important;max-width:100%!important;ov
 <section class="card" id="mmp-autonomous-health-center" data-quantum-module="autonomous-health">
  <div class="mmp-ah-head">
   <div>
-   <div class="mmp-ah-kicker">MMP AUTONOMOUS INTELLIGENCE &amp; RECOVERY CENTER</div>
-   <h2>مرکز هوشمند سلامت و خودترمیمی MMP</h2>
-   <p class="mmp-ah-desc">پایش پیوسته منابع، Workerها، رادار، شکارچی و فعالیت موتورهای QIE؛ شناسایی کمبود شواهد و ارائه اقدام اصلاحی بر اساس داده واقعی.</p>
-   <span class="mmp-ah-tag" id="mmp-ah-mode">پایش زنده · تحلیل مبتنی بر شواهد</span>
+   <div class="mmp-ah-kicker">MMP NEXUS · AUTONOMOUS SYSTEM INTELLIGENCE</div>
+   <h2>MMP NEXUS | مغز مستقل پایش، تشخیص و ترمیم</h2>
+   <p class="mmp-ah-desc">مغز نظارتی مستقل برای پایش زنده منابع، Workerها، جریان معاملات، رادار، شکارچی و ۱۲ متخصص QIE؛ تشخیص علت خرابی، پیشنهاد ترمیم و ارتقا، اجرای فقط اقدامات امنِ مجاز و تأیید نتیجه با آزمون مجدد. خرابی سایر بخش‌ها نباید چرخه پایش NEXUS را متوقف کند.</p>
+   <span class="mmp-ah-tag" id="mmp-ah-mode">NEXUS مستقل · پایش مبتنی بر شواهد · خودترمیمی کنترل‌شده</span>
   </div>
   <div class="mmp-ah-actions">
-   <button class="primary" id="mmp-ah-run" type="button">اجرای پایش و تحلیل</button>
+   <button class="primary" id="mmp-ah-run" type="button">اجرای تحلیل عمیق NEXUS AI</button>
    <button id="mmp-ah-recheck" type="button">بازآزمایی اتصالات</button>
   </div>
  </div>
@@ -2758,7 +2758,7 @@ html body #ai-section .tf-card{min-width:0!important;max-width:100%!important;ov
   <div class="mmp-ah-box"><h3>تشخیص و پیشنهادهای هوشمند</h3><ul class="mmp-ah-advice" id="mmp-ah-advice"><li>پس از دریافت داده‌های زنده، موارد ناقص و اولویت اصلاح نمایش داده می‌شوند.</li></ul></div>
   <div class="mmp-ah-box"><h3>گزارش آخرین چرخه</h3><div class="mmp-ah-advice" id="mmp-ah-report">هنوز چرخه‌ای اجرا نشده است.</div></div>
  </div>
- <div class="mmp-ah-foot" id="mmp-ah-foot">پایش خودکار هر ۶۰ ثانیه انجام می‌شود. در این نسخه، ترمیم امن به معنی تکرار آزمون و استفاده از مسیرهای جایگزین موجود است؛ تغییر کد، تنظیمات Worker یا وزن موتور بدون نسخه پشتیبان و تست مستقل اجرا نمی‌شود.</div>
+ <div class="mmp-ah-foot" id="mmp-ah-foot">پایش مستقل هر ۶۰ ثانیه. تحلیل AI هنگام درخواست دستی یا مشاهده ناهنجاری، با محدودیت مصرف هوش مصنوعی اجرا می‌شود. ترمیم خودکار فعلی فقط شامل اقدامات allowlist مانند اجرای مجدد کنترل‌شده Hunter و آزمون دوباره است؛ تغییر کد، Secrets، تنظیمات زیرساخت یا وزن موتور بدون نسخه پشتیبان، تست و تأیید انسانی ممنوع است.</div>
 </section>
 <script id="mmp-autonomous-health-center-js">
 (function(){
@@ -2768,7 +2768,7 @@ html body #ai-section .tf-card{min-width:0!important;max-width:100%!important;ov
  root.dataset.initialized="1";
  const API="https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev";
  const RADAR_API="https://mmp-coin-ai-radar.mehrdadmohammadi1988.workers.dev";
- let lastSafeRecoveryAt=0,lastRecoveryNote="";
+ let lastSafeRecoveryAt=0,lastRecoveryNote="",lastAIDiagnosisAt=0,aiDiagnosticState="در انتظار تحلیل";
  const $=id=>document.getElementById(id);
  const engineNames={momentum:"مومنتوم",flow:"جریان معاملات",structure:"ساختار بازار",liquidity:"نقدشوندگی",multiTimeframe:"هم‌جهتی تایم‌فریم",regime:"رژیم بازار",volatility:"نوسان",sentiment:"احساسات بازار",smartMoney:"اسمارت‌مانی",scenario:"شبیه‌ساز سناریو",risk:"مدیریت ریسک",dataQuality:"کیفیت داده"};
  const stateLabel=s=>s==="ok"||s==="online"||s==="success"?"سالم":s==="slow"?"کند":s==="warming_up"?"در حال آماده‌سازی":s==="down"||s==="error"||s==="offline"?"خراب":"نامشخص";
@@ -2848,16 +2848,19 @@ html body #ai-section .tf-card{min-width:0!important;max-width:100%!important;ov
   if(!advice.length)advice.push("در این چرخه خطای بحرانی شناسایی نشد؛ سلامت را با چرخه بعدی و داده‌های تازه دوباره تأیید کن.");
   const errors=[...(spot?.last_errors||[]),...(futures?.last_errors||[])].slice(0,4);
   let aiProvider="تحلیل تله‌متری محلی";
-  if(withAI){
+  const hasAnomaly=services.some(x=>!["ok","slow"].includes(x.status))||inactive.length>0;
+  const shouldRunAI=withAI||(hasAnomaly&&Date.now()-lastAIDiagnosisAt>=90*60*1000);
+  if(shouldRunAI){
+   lastAIDiagnosisAt=Date.now();
    try{
     const diagnosis=await post("/system-diagnose",{diagnostics:{checked_at:new Date().toISOString(),worker:{status:health?.worker||"unknown",engine_version:health?.engine_version||spot?.engine_version||"",ai_binding:health?.ai_binding===true,futures_binding:health?.futures_engine_binding===true},services:services.concat(checks.map(x=>({name:x.name,status:x.status,detail:x.status==="down"?(x.error||"down"):(x.ping??"")+" ms"}))),engines:keys.map(k=>({name:engineNames[k],processed:active[k].processed,evidence:active[k].evidence})),recent_errors:errors}});
     if(diagnosis.status==="ok"){
-     aiProvider=diagnosis.provider||"AI";
+     aiProvider=diagnosis.provider||"AI";aiDiagnosticState="تحلیل انجام شد · "+(diagnosis.severity||"نامشخص")+" · "+aiProvider;
      if(diagnosis.summary)advice.unshift("تشخیص AI: "+diagnosis.summary);
      (diagnosis.issues||[]).forEach(x=>advice.push((x.severity==="critical"?"بحرانی: ":x.severity==="warning"?"هشدار: ":"")+x.component+" — "+x.evidence+"؛ اقدام: "+x.recommendation));
      (diagnosis.upgrade_recommendations||[]).forEach(x=>advice.push("پیشنهاد ارتقا ("+x.priority+"): "+x.module+" — "+x.reason));
     }else throw new Error("AI diagnostic returned no usable result");
-   }catch(error){advice.push("تحلیل مدل AI در دسترس نبود؛ گزارش فعلی بر اساس تله‌متری زنده و قواعد سلامت است: "+String(error.message||error).slice(0,150));}
+   }catch(error){aiDiagnosticState="هوش مصنوعی در دسترس نیست · "+String(error.message||error).slice(0,100);advice.push("تحلیل مدل AI در دسترس نبود؛ گزارش فعلی بر اساس تله‌متری زنده و قواعد سلامت است: "+String(error.message||error).slice(0,150));}
   }
   if(lastRecoveryNote){advice.unshift(lastRecoveryNote);lastRecoveryNote="";}
   if(allowRecovery&&Date.now()-lastSafeRecoveryAt>300000&&(!spotHealthy||!futuresHealthy)){
@@ -2872,10 +2875,10 @@ html body #ai-section .tf-card{min-width:0!important;max-width:100%!important;ov
    return;
   }
   $("mmp-ah-advice").innerHTML=advice.map(x=>"<li>"+esc(x)+"</li>").join("");
-  $("mmp-ah-report").innerHTML="<div>زمان پایش: "+esc(new Date().toLocaleString("fa-IR"))+"</div><div>Spot: "+esc(spot?.status||"بدون پاسخ")+" · Futures: "+esc(futures?.status||"بدون پاسخ")+"</div><div>منابع متصل: "+online+" از "+checks.length+"</div><div>متخصص‌های دارای شواهد: "+activeCount+" از "+keys.length+"</div>"+(errors.length?"<div style='color:#f0c15f;margin-top:7px'>خطاهای اخیر: "+errors.map(esc).join(" | ")+"</div>":"");
+  $("mmp-ah-report").innerHTML="<div>زمان پایش: "+esc(new Date().toLocaleString("fa-IR"))+"</div><div>مغز تشخیصی NEXUS: "+esc(aiDiagnosticState)+"</div><div>Spot: "+esc(spot?.status||"بدون پاسخ")+" · Futures: "+esc(futures?.status||"بدون پاسخ")+"</div><div>منابع متصل: "+online+" از "+checks.length+"</div><div>متخصص‌های دارای شواهد: "+activeCount+" از "+keys.length+"</div>"+(errors.length?"<div style='color:#f0c15f;margin-top:7px'>خطاهای اخیر: "+errors.map(esc).join(" | ")+"</div>":"");
   $("mmp-ah-mode").textContent=healthy===services.length&&online===checks.length?"پایش کامل شد · بدون خطای سرویس":"پایش کامل شد · نیازمند بررسی";
   $("mmp-ah-foot").textContent="آخرین بررسی: "+new Date().toLocaleTimeString("fa-IR")+" · پایش خودکار هر ۶۰ ثانیه؛ در خرابی Snapshotهای Spot/Futures، اجرای مجدد امن با فاصله حداقل ۵ دقیقه و سپس بازآزمایی انجام می‌شود. تغییر خودکار کد یا وزن موتور فعال نیست و نیازمند تأیید و تست مستقل است.";
-  button.disabled=false;retry.disabled=false;button.textContent="اجرای پایش و تحلیل AI";
+  button.disabled=false;retry.disabled=false;button.textContent="اجرای تحلیل عمیق NEXUS AI";
  }
  $("mmp-ah-run").addEventListener("click",()=>run(true,true));
  $("mmp-ah-recheck").addEventListener("click",()=>run(false,false));
