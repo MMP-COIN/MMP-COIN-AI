@@ -2528,7 +2528,7 @@ html body #ai-section .tf-card{min-width:0!important;max-width:100%!important;ov
 <link rel="stylesheet" href="assets/mmp-quantum-terminal-v1.css?v=11">
 <link rel="stylesheet" href="assets/mmp-real-depth-visuals.css?v=4"><link rel="stylesheet" href="assets/mmp-quantum-nexus.css?v=2"><script defer src="assets/mmp-quantum-terminal-v1.js?v=12"></script><script defer src="assets/mmp-chart-pro-upgrade.js?v=1"></script>
 <link rel="stylesheet" href="assets/mmp-priority-layout-v1.css?v=4">
-<link rel="stylesheet" href="assets/mmp-compact-redesign.css?v=2">
+<link rel="stylesheet" href="assets/mmp-compact-redesign.css?v=3">
 <style id="mmp-native-compact-app-menu-v1">
 html.mmp-native-app .native-app-menu{width:min(370px,calc(100vw - 22px));padding:11px;gap:7px;border-color:#8d754a;background:radial-gradient(ellipse at 90% 0,#25445a88,transparent 42%),linear-gradient(150deg,#14283bfc,#081321fc);border-radius:19px}
 html.mmp-native-app .native-menu-title{display:flex;flex-direction:column;gap:3px;padding:4px 5px 10px;border-bottom:1px solid #ffffff18;color:#f2d797;font-size:13px;font-weight:900}
@@ -2692,7 +2692,7 @@ html.mmp-native-app .native-menu-version{padding:5px 3px;color:#7893a7;text-alig
  </div>
  <div class="quantum-hero-art" aria-label="نشان سه‌بعدی کوانتومی MMP"><div class="quantum-art-grid"></div><div class="quantum-art-orbit orbit-one"></div><div class="quantum-art-orbit orbit-two"></div><div class="quantum-art-orbit orbit-three"></div><div class="quantum-art-core mmp-quantum-emblem"><img src="assets/mmp-coin-mark.svg?v=20261109-hero" alt="نشان اصلی سکه MMP"></div><i class="quantum-node node-one"></i><i class="quantum-node node-two"></i><i class="quantum-node node-three"></i><div class="quantum-art-caption">QUANTUM COMMAND<small>MMP MARKET INTELLIGENCE</small></div></div>
 
-<details class="quantum-engine-board" open aria-label="دوازده ماژول تخصصی هسته کوانتومی">
+<details class="quantum-engine-board" aria-label="دوازده ماژول تخصصی هسته کوانتومی">
  <summary>
   <div class="quantum-engine-board-head">
    <div><b>۱۲ ماژول تخصصی هسته کوانتومی</b><small>یک موتور مرکزی · ۱۲ لایه تحلیلی · وضعیت بر پایه شواهد داده‌ای</small></div>
@@ -2785,12 +2785,14 @@ html.mmp-native-app .native-menu-version{padding:5px 3px;color:#7893a7;text-alig
  </div>
  <div class="mmp-ah-grid">
   <details class="mmp-ah-box mmp-ah-accordion" id="mmp-ah-services-accordion"><summary><span>سلامت سرویس‌ها و جریان داده</span><span class="mmp-ah-chevron" aria-hidden="true">⌄</span></summary><div class="mmp-ah-accordion-content"><div id="mmp-ah-services"><div class="mmp-ah-row">در انتظار اولین پایش…</div></div></div></details>
-  <div class="mmp-ah-box"><h3>وضعیت واقعی متخصص‌های QIE</h3><div id="mmp-ah-engine-list"><div class="mmp-ah-row">در انتظار Snapshot زنده…</div></div></div>
+  <details class="mmp-ah-box mmp-ah-accordion mmp-ah-extra-accordion" id="mmp-ah-engines-accordion"><summary><span>وضعیت واقعی متخصص‌های QIE</span><span class="mmp-ah-chevron" aria-hidden="true">⌄</span></summary><div class="mmp-ah-accordion-content"><div id="mmp-ah-engine-list"><div class="mmp-ah-row">در انتظار Snapshot زنده…</div></div></div></details>
   <details class="mmp-ah-box mmp-ah-accordion" id="mmp-ah-advice-accordion"><summary><span>تشخیص و پیشنهادهای هوشمند</span><span class="mmp-ah-chevron" aria-hidden="true">⌄</span></summary><div class="mmp-ah-accordion-content"><ul class="mmp-ah-advice" id="mmp-ah-advice"><li>پس از دریافت داده‌های زنده، موارد ناقص و اولویت اصلاح نمایش داده می‌شوند.</li></ul></div></details>
-  <div class="mmp-ah-box"><h3>گزارش آخرین چرخه</h3><div class="mmp-ah-advice" id="mmp-ah-report">هنوز چرخه‌ای اجرا نشده است.</div></div>
+  <details class="mmp-ah-box mmp-ah-accordion mmp-ah-extra-accordion" id="mmp-ah-report-accordion"><summary><span>گزارش آخرین چرخه</span><span class="mmp-ah-chevron" aria-hidden="true">⌄</span></summary><div class="mmp-ah-accordion-content"><div class="mmp-ah-advice" id="mmp-ah-report">هنوز چرخه‌ای اجرا نشده است.</div></div></details>
  </div>
- <div class="mmp-ah-box"><h3>مغز مستقل سروری · پایش ۲۴/۷</h3><div class="mmp-ah-advice" id="mmp-ah-server">در انتظار نخستین چرخه زمان‌بندی‌شده NEXUS…</div></div>
- <div class="mmp-ah-box"><h3>دفتر اقدامات و نتیجه بازآزمایی</h3><div class="mmp-ah-advice" id="mmp-ah-action-log">هنوز اقدام اصلاحی ثبت نشده است.</div></div>
+ <div class="mmp-ah-grid mmp-ah-extra-panels">
+  <details class="mmp-ah-box mmp-ah-accordion mmp-ah-extra-accordion" id="mmp-ah-server-accordion"><summary><span>مغز مستقل سروری · پایش ۲۴/۷</span><span class="mmp-ah-chevron" aria-hidden="true">⌄</span></summary><div class="mmp-ah-accordion-content"><div class="mmp-ah-advice" id="mmp-ah-server">در انتظار نخستین چرخه زمان‌بندی‌شده NEXUS…</div></div></details>
+  <details class="mmp-ah-box mmp-ah-accordion mmp-ah-extra-accordion" id="mmp-ah-actions-accordion"><summary><span>دفتر اقدامات و نتیجه بازآزمایی</span><span class="mmp-ah-chevron" aria-hidden="true">⌄</span></summary><div class="mmp-ah-accordion-content"><div class="mmp-ah-advice" id="mmp-ah-action-log">هنوز اقدام اصلاحی ثبت نشده است.</div></div></details>
+ </div>
  <div class="mmp-ah-foot" id="mmp-ah-foot">مغز سروری NEXUS مستقل از باز بودن سایت، هر ۵ دقیقه با Cron اجرا می‌شود و گزارش را در D1 نگه می‌دارد؛ داشبورد مرورگر هر ۶۰ ثانیه گزارش سرور را تازه می‌کند. ترمیم خودکار فقط چرخه‌های مجاز Hunter را دوباره اجرا می‌کند؛ تغییر کد، Secret، تنظیمات Worker یا وزن مدل نیازمند PR نسخه‌دار و تست مستقل است.</div>
 </section>
 <script id="mmp-autonomous-health-center-js">
@@ -7582,6 +7584,52 @@ html body section#market-snapshot .mmp-card-track{height:2px!important;padding-t
 }
 @media(prefers-reduced-motion:reduce){#quantum-center-entry .quantum-engine-link:before,#quantum-center-entry .quantum-engine-link .engine-live-dot{animation:none!important}}
 </style>
+
+<style id="mmp-unified-compact-fix-20261112">
+#mmp-autonomous-health-center .mmp-ah-extra-panels{margin-top:10px}
+#mmp-autonomous-health-center details.mmp-ah-accordion{min-width:0;border:1px solid #405469;border-radius:12px;background:linear-gradient(145deg,#142638,#0b1724);box-shadow:inset 0 1px #ffffff0a}
+#mmp-autonomous-health-center details.mmp-ah-accordion>summary{min-height:44px;padding:10px 12px;color:#e8d39d}
+#mmp-autonomous-health-center details.mmp-ah-accordion[open]{border-color:#b18d50;box-shadow:0 8px 22px #0004,inset 0 1px #ffffff0a}
+#mmp-autonomous-health-center .mmp-ah-accordion-content{padding:0 12px 11px}
+html body #quantum-center-entry.quantum-command-hero{display:grid!important;grid-template-columns:minmax(0,1fr) 112px!important;align-items:center!important;gap:10px 14px!important;min-height:0!important;margin:10px 0 12px!important;padding:15px 17px!important;border-radius:17px!important;box-shadow:0 12px 30px #0006,inset 0 1px #ffffff12!important}
+html body #quantum-center-entry .quantum-hero-eyebrow{font-size:9px!important;letter-spacing:1px!important;margin:0 0 4px!important}
+html body #quantum-center-entry .hero-title{font-size:clamp(17px,2.1vw,23px)!important;line-height:1.45!important;margin:3px 0 5px!important}
+html body #quantum-center-entry .hero-title span+span{font-size:10px!important;line-height:1.6!important}
+html body #quantum-center-entry .quantum-hero-copy>p{font-size:10px!important;line-height:1.8!important;margin:4px 0 7px!important;max-width:720px}
+html body #quantum-center-entry .quantum-hero-tags,html body #quantum-center-entry .quantum-hero-foot{display:none!important}
+html body #quantum-center-entry .quantum-hero-art{width:112px!important;height:112px!important;min-height:112px!important;max-width:112px!important;margin:0!important}
+html body #quantum-center-entry .quantum-engine-board{grid-column:1/-1!important;margin-top:2px!important;padding:9px 11px!important}
+html body #quantum-center-entry .quantum-engine-board>summary{min-height:36px!important}
+html body #quantum-center-entry .quantum-engine-board-head b{font-size:11px!important}
+html body #quantum-center-entry .quantum-engine-board-head small{font-size:8px!important}
+@media(max-width:560px){html body #quantum-center-entry.quantum-command-hero{grid-template-columns:minmax(0,1fr) 78px!important;gap:7px 8px!important;padding:12px 11px!important}html body #quantum-center-entry .quantum-hero-art{width:78px!important;height:86px!important;min-height:86px!important;max-width:78px!important}html body #quantum-center-entry .quantum-hero-copy>p{font-size:9px!important;line-height:1.7!important}html body #quantum-center-entry .quantum-hero-actions{gap:5px!important;flex-wrap:wrap!important}html body #quantum-center-entry .quantum-enter-btn,html body #quantum-center-entry .quantum-run-compact{font-size:8px!important;padding:7px 8px!important}}
+@media(max-width:360px){html body #quantum-center-entry.quantum-command-hero{grid-template-columns:minmax(0,1fr) 64px!important}html body #quantum-center-entry .quantum-hero-art{width:64px!important;height:72px!important;min-height:72px!important;max-width:64px!important}}
+html body section#market-snapshot.mmp-market-snapshot{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:11px!important;margin:10px 0 17px!important;align-items:stretch!important}
+html body section#market-snapshot.mmp-market-snapshot>article.mmp-market-card{position:relative!important;isolation:isolate!important;display:flex!important;flex-direction:column!important;justify-content:flex-start!important;min-width:0!important;height:auto!important;min-height:148px!important;max-height:none!important;margin:0!important;padding:13px 13px 11px!important;overflow:hidden!important;border-radius:17px!important;border:1px solid var(--mmp-card-accent)!important;background:radial-gradient(ellipse at 88% 0,var(--mmp-card-glow),transparent 47%),linear-gradient(145deg,#26394b 0%,#142638 48%,#091522 100%)!important;box-shadow:0 13px 27px #0008,inset 0 1px #ffffff25,inset 0 -2px 0 #0008!important;transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease!important}
+html body #market-snapshot .mmp-btc-card{--mmp-card-accent:#f5b94e;--mmp-card-glow:#f5b94e38}
+html body #market-snapshot .mmp-eth-card{--mmp-card-accent:#a4a8ff;--mmp-card-glow:#9298ff38}
+html body #market-snapshot .mmp-usdt-card{--mmp-card-accent:#43d7a4;--mmp-card-glow:#43d7a438}
+html body #market-snapshot .mmp-gold-card{--mmp-card-accent:#f0d28b;--mmp-card-glow:#f0d28b38}
+html body section#market-snapshot.mmp-market-snapshot>article.mmp-market-card:before{content:""!important;position:absolute!important;z-index:-1!important;inset:0 auto 0 0!important;width:4px!important;background:linear-gradient(180deg,var(--mmp-card-accent),transparent)!important}
+html body section#market-snapshot.mmp-market-snapshot>article.mmp-market-card:after{content:""!important;position:absolute!important;z-index:-1!important;right:-34px!important;top:-45px!important;left:auto!important;bottom:auto!important;width:128px!important;height:128px!important;border:1px solid color-mix(in srgb,var(--mmp-card-accent) 50%,transparent)!important;border-radius:50%!important;box-shadow:0 0 0 11px #ffffff07,0 0 0 23px #ffffff04!important;pointer-events:none!important}
+html body #market-snapshot .mmp-card-top{position:relative!important;z-index:1!important;display:flex!important;align-items:center!important;gap:8px!important;min-height:34px!important;margin:0 0 9px!important}
+html body #market-snapshot .mmp-asset-icon{display:grid!important;place-items:center!important;width:36px!important;height:36px!important;min-width:36px!important;flex:0 0 36px!important;border:1px solid color-mix(in srgb,var(--mmp-card-accent) 70%,transparent)!important;border-radius:12px!important;background:linear-gradient(145deg,#3a5268,#102033)!important;color:var(--mmp-card-accent)!important;box-shadow:0 6px 13px #0008,inset 0 1px #ffffff3d!important;font-size:18px!important;font-weight:950!important}
+html body #market-snapshot .mmp-card-tag{color:#d0dce5!important;font-size:9px!important;font-weight:800!important;line-height:1.35!important}
+html body #market-snapshot .mmp-card-spark{margin-right:auto!important;color:var(--mmp-card-accent)!important;font-size:16px!important}
+html body #market-snapshot .stat-label{position:relative!important;z-index:1!important;color:#d8e3ea!important;font-size:10px!important;font-weight:800!important;line-height:1.4!important}
+html body #market-snapshot .stat-label b{color:#91aabd!important;font-size:9px!important}
+html body #market-snapshot .stat-value{position:relative!important;z-index:1!important;color:#fff!important;font-size:clamp(16px,1.8vw,22px)!important;font-weight:950!important;line-height:1.3!important;margin:5px 0 3px!important;text-shadow:0 2px 14px #000b!important;overflow-wrap:anywhere!important}
+html body #market-snapshot .sub{position:relative!important;z-index:1!important;color:#a9bdca!important;font-size:9px!important;line-height:1.45!important;margin:0!important;overflow-wrap:anywhere!important}
+html body #market-snapshot .mmp-card-track{position:relative!important;z-index:1!important;height:3px!important;margin-top:auto!important;padding-top:8px!important;background:transparent!important;overflow:hidden!important}
+html body #market-snapshot .mmp-card-track i{display:block!important;width:46%!important;height:3px!important;border-radius:9px!important;background:linear-gradient(90deg,var(--mmp-card-accent),#ffffffcc)!important;box-shadow:0 0 11px var(--mmp-card-glow)!important}
+html body section#market-snapshot.mmp-market-snapshot>article.mmp-market-card:hover{transform:translateY(-3px)!important;border-color:#fff!important;box-shadow:0 19px 35px #000a,0 0 22px var(--mmp-card-glow)!important}
+@media(max-width:900px){html body section#market-snapshot.mmp-market-snapshot{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important}html body section#market-snapshot.mmp-market-snapshot>article.mmp-market-card{min-height:136px!important}}
+@media(max-width:560px){html body section#market-snapshot.mmp-market-snapshot{gap:8px!important;margin:8px 0 13px!important}html body section#market-snapshot.mmp-market-snapshot>article.mmp-market-card{min-height:132px!important;padding:10px 9px 8px!important;border-radius:14px!important}html body #market-snapshot .mmp-card-top{min-height:29px!important;margin-bottom:6px!important}html body #market-snapshot .mmp-asset-icon{width:30px!important;height:30px!important;min-width:30px!important;flex-basis:30px!important;font-size:15px!important}html body #market-snapshot .stat-value{font-size:clamp(14px,3.7vw,17px)!important}html body #market-snapshot .sub{font-size:8px!important;line-height:1.35!important}}
+</style>
+<script id="mmp-nexus-exclusive-accordion-20261112">
+(function(){const root=document.getElementById("mmp-autonomous-health-center");if(!root||root.dataset.exclusiveAccordion==="1")return;root.dataset.exclusiveAccordion="1";root.addEventListener("toggle",function(event){const opened=event.target;if(opened instanceof HTMLDetailsElement&&opened.matches("details.mmp-ah-accordion")&&opened.open){root.querySelectorAll("details.mmp-ah-accordion[open]").forEach(item=>{if(item!==opened)item.open=false;});}},true);})();
+</script>
+
 <script src="assets/mmp-priority-layout-v1.js?v=4" defer></script>
 <script src="assets/mmp-compact-redesign.js?v=2" defer></script>
 </body>
