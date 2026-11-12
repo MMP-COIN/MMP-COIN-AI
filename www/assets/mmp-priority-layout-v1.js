@@ -2,6 +2,7 @@
 (function(){
  'use strict';
  var order=['mmp-home-hero','market-snapshot','chart-section','quantum-center-entry','mmp-autonomous-health-center','opportunities','market-hunter','ai-section','market-intelligence','boom-hunter','coins-section','trading-tools','exchange-connections','market-hours','app-download','contact-us','radar-signal-page'];
+ var flattenIds=['chart-section','mmp-autonomous-health-center','opportunities','market-hunter','ai-section','market-intelligence','boom-hunter','trading-tools'];
  var modules={
   'chart-section':{icon:'▥',links:[['مرکز فرماندهی','quantum-center-entry'],['رادار','opportunities'],['تحلیلگر','ai-section']]},
   'mmp-autonomous-health-center':{icon:'✚',links:[['وضعیت بازار','market-snapshot'],['مرکز فرماندهی','quantum-center-entry'],['اتصالات','exchange-connections']]},
@@ -26,7 +27,7 @@
   Object.keys(modules).forEach(function(id){
    var section=document.getElementById(id),cfg=modules[id];
    if(!section||section.dataset.mmpCompactReady==='1')return;
-   section.dataset.mmpCompactReady='1';section.classList.add('mmp-priority-module','mmp-priority-card-flattened');section.classList.remove('card');
+   section.dataset.mmpCompactReady='1';section.classList.add('mmp-priority-module');if(flattenIds.indexOf(id)!==-1){section.classList.add('mmp-priority-card-flattened');section.classList.remove('card');}
    var first=section.firstElementChild;
    var logo=section.querySelector('.mmp-module-logo');
    var toolbar=document.createElement('div');toolbar.className='mmp-priority-toolbar';
