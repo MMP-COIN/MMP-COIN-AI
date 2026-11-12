@@ -6153,13 +6153,13 @@ window.mmpShareDownloadLink = async function () {
     var button=document.createElement("button");
     button.type="button";button.textContent="به‌روزرسانی اکنون";
     button.style.cssText="margin-right:10px;padding:6px 10px;border:1px solid #b99554;border-radius:8px;background:#b99554;color:#111;font:inherit;font-weight:700";
-    button.addEventListener("click",function(){reloadNow(true);});
+    button.addEventListener("click",function(){reloadQueued=true;applyUpdate();});
     banner.appendChild(button);
    }
   }
-  function reloadNow(force){
-   if(!reloadQueued&&!force)return;
-   if(!force&&(!safeToReload()||document.visibilityState==="hidden")){
+  function reloadNow(){
+   if(!reloadQueued)return;
+   if(!safeToReload()||document.visibilityState==="hidden"){
     if(!retryTimer)retryTimer=setTimeout(function(){retryTimer=null;applyUpdate();},12000);
     return;
    }
