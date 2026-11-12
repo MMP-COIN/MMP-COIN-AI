@@ -2803,7 +2803,7 @@ html body #ai-section .tf-card{min-width:0!important;max-width:100%!important;ov
   const healthy=services.filter(x=>x.status==="ok"||x.status==="slow").length;
   $("mmp-ah-healthy").textContent=healthy+"/"+services.length;
   let serviceHtml=services.map(x=>row(x.name,x.status,x.detail)).join("");
-  if(checks.length)serviceHtml+=checks.map(x=>row(x.name,x.status,(x.ping??"—")+" ms")).join("");
+  if(checks.length)serviceHtml+=checks.map(x=>row(x.name,x.status,x.status==="down"?(x.error||"پاسخ ناموفق"):(x.ping??"—")+" ms")).join("");
   else serviceHtml+=row("بررسی منابع صرافی‌ها","down","پاسخ دریافت نشد");
   $("mmp-ah-services").innerHTML=serviceHtml;
   $("mmp-ah-engine-list").innerHTML=keys.map(k=>{
@@ -2814,7 +2814,7 @@ html body #ai-section .tf-card{min-width:0!important;max-width:100%!important;ov
   if(!health||health.worker!=="online")advice.push("Analyzer Worker پاسخ سالم نمی‌دهد؛ وضعیت سرویس و آخرین انتشار Worker بررسی شود.");
   if(health&&!health.ai_binding)advice.push("اتصال Workers AI در محیط اجرا موجود نیست؛ Binding و محدودیت بودجه روزانه بررسی شود.");
   if(health?.ai_binding)advice.push("AI Binding موجود است؛ این فقط سلامت اتصال را ثابت می‌کند، نه موفقیت فراخوانی مدل یا کیفیت خروجی.");
-  if(checks.some(x=>x.status==="down"))advice.push("حداقل یک منبع بازار قطع است؛ خطای HTTP و مسیر جایگزین همان صرافی بررسی و منبع سالم جایگزین شود.");
+  if(checks.some(x=>x.status==="down")){const down=checks.filter(x=>x.status==="down").slice(0,5).map(x=>x.name+" ("+(x.error||"down")+")");advice.push("منابع دارای خطا: "+down.join("، ")+". علت پاسخ ناموفق بررسی و فقط از مسیر جایگزین مجاز استفاده شود.");}
   if(spot?.status!=="online")advice.push("Snapshot شکارچی Spot آماده یا تازه نیست؛ چرخه زمان‌بندی، D1 و زمان آخرین به‌روزرسانی بررسی شود.");
   if(futures?.status!=="online")advice.push("Snapshot شکارچی Futures آماده نیست؛ Worker مستقل و اتصال سرویس Futures بررسی شود.");
   const inactive=keys.filter(k=>!Number(active[k]?.processed)||!Number(active[k]?.evidence));
