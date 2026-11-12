@@ -1,5 +1,5 @@
 export const QUANTUM_ENGINE_NAME = "MMP QUANTUM INTELLIGENCE ENGINE";
-export const QUANTUM_ENGINE_VERSION = "QIE-4.0.0";
+export const QUANTUM_ENGINE_VERSION = "QIE-5.0.0";
 
 /* Legacy weights retain their relative influence. New specialist engines join
    only when their underlying evidence is actually supplied and validated. */
