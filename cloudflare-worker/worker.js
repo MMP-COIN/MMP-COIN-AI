@@ -1164,22 +1164,24 @@ async function loadDigitalHunterUniverse(env,marketType){
  const response=await handle(new Request("https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/hunter-universe",{headers:{"Accept":"application/json","User-Agent":"MMP-Digital-Hunter/2.0","X-MMP-Internal-Token":env.FUTURES_ENGINE_TOKEN||""}}),env);
  if(!response.ok)throw Error("Universe HTTP "+response.status);
  const data=await response.json();
- return {assets:data.hunter_assets||[],sources:data.sources||{},metadata_provider:data.metadata_provider||"multi-exchange"};
+ return {assets:data.hunter_assets||[],sources:data.sources||data.live_source_status||{},metadata_provider:data.metadata_provider||"multi-exchange",stale:data.universe_stale===true||data.cached_fallback===true,universe_age_ms:Number(data.universe_age_ms),universe_updated_at:data.universe_updated_at||data.checked_at||null};
 }
 async function cacheDigitalHunterUniverse(env,marketType){
  const stateId=marketType==="futures"?"digital-hunter-v2-futures":"digital-hunter-v2",cacheId=stateId+"-universe-cache";
  const universe=await loadDigitalHunterUniverse(env,marketType),assets=normalizeQuantumUniverse(universe.assets||[],marketType).map(x=>({id:String(x.id||x.symbol),symbol:x.symbol,name:x.name||x.symbol,image:x.image||"",current_price:Number(x.current_price)||0,total_volume:Number(x.total_volume)||0,hunterExchange:x.hunterExchange||"",hunterPriceExchange:x.hunterPriceExchange||"",hunterChange24h:Number(x.hunterChange24h)||0,marketPairs:(x.marketPairs||[]).slice(0,4),hunterVenueVolume:x.hunterVenueVolume||{}}));
  if(!assets.length)throw Error("Universe refresh returned no valid "+marketType+" assets");
  assets.sort((a,b)=>calculateMarketScanPriority(b)-calculateMarketScanPriority(a)||Number(b.total_volume||0)-Number(a.total_volume||0));
- const updatedAt=Date.now(),payload={assets,universeUpdatedAt:updatedAt,universeSources:universe.sources||{},universeProvider:universe.metadata_provider||"multi-exchange",scanPriorityVersion:1};
+ const staleAge=Number(universe.universe_age_ms);
+ if(universe.stale&&(!Number.isFinite(staleAge)||staleAge<0))throw Error("Stale universe response has no trustworthy age; preserving the previous cache");
+ const updatedAt=universe.stale?Date.now()-staleAge:Date.now(),payload={assets,universeUpdatedAt:updatedAt,universeSources:universe.sources||{},universeProvider:universe.metadata_provider||"multi-exchange",scanPriorityVersion:1,universeStale:universe.stale===true};
  await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(cacheId,JSON.stringify(payload),new Date(updatedAt).toISOString()).run();
- return {market:marketType,universe_count:assets.length,provider:payload.universeProvider,updated_at:new Date(updatedAt).toISOString()};
+ return {market:marketType,universe_count:assets.length,provider:payload.universeProvider,updated_at:new Date(updatedAt).toISOString(),fresh:!universe.stale,cached_fallback:universe.stale===true,universe_age_ms:universe.stale?staleAge:0};
 }
 export async function refreshDigitalHunterUniverses(env){
  const results=await Promise.allSettled(["spot","futures"].map(market=>cacheDigitalHunterUniverse(env,market))),markets={},errors={};
  for(let i=0;i<results.length;i++){
   const market=i===0?"spot":"futures",stateId=market==="futures"?"digital-hunter-v2-futures":"digital-hunter-v2";
-  if(results[i].status==="fulfilled"){markets[market]=results[i].value;continue;}
+  if(results[i].status==="fulfilled"){markets[market]=results[i].value;if(results[i].value.fresh===false)errors[market]="Using last-known cached universe; upstream refresh is still degraded";continue;}
   const message=String(results[i].reason?.message||results[i].reason).slice(0,220);errors[market]=message;
   // Keep the last known universe usable, but never relabel stale cache as fresh.
   try{
@@ -1356,7 +1358,7 @@ async function handle(request,env){
   const universeCacheKey=await marketFallbackKey("hunter-universe:v1");
   const cachedUniverse=await readMarketFallback(env,universeCacheKey);
   if(cachedUniverse?.payload&&cachedUniverse.ageMs<90000){
-   return json(cachedUniverse.payload,200,request,{"X-MMP-Cache":"HIT","X-MMP-Data-Age":String(Math.floor(cachedUniverse.ageMs)),"Cache-Control":"no-store"});
+   return json({...cachedUniverse.payload,universe_stale:false,universe_age_ms:cachedUniverse.ageMs,universe_updated_at:cachedUniverse.payload.checked_at||null},200,request,{"X-MMP-Cache":"HIT","X-MMP-Data-Age":String(Math.floor(cachedUniverse.ageMs)),"Cache-Control":"no-store"});
   }
   const timedJson=async(url,timeout=12000,cacheTtl=30,extraHeaders={})=>{
    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeout);
@@ -1461,7 +1463,22 @@ async function handle(request,env){
   const hunterAssets=[...rankedAssets.filter(asset=>asset.hasUsdtMarket===true),...discoveredAssets].sort((a,b)=>Number(b.total_volume||0)-Number(a.total_volume||0));
   const radarAssets=[...rankedAssets,...discoveredAssets].sort((a,b)=>Number(b.total_volume||0)-Number(a.total_volume||0));
   if(!rankedAssets.length&&!hunterAssets.length&&!radarAssets.length){
-   if(cachedUniverse?.payload)return json(cachedUniverse.payload,200,request,{"X-MMP-Cache":"STALE","X-MMP-Data-Age":String(Math.floor(cachedUniverse.ageMs)),"Warning":'110 - "Response is stale"'});
+   if(cachedUniverse?.payload){
+    const stalePayload={...cachedUniverse.payload,cached_fallback:true,universe_stale:true,universe_age_ms:cachedUniverse.ageMs,universe_updated_at:cachedUniverse.payload.checked_at||null,live_source_status:sources};
+    return json(stalePayload,200,request,{"X-MMP-Cache":"STALE","X-MMP-Data-Age":String(Math.floor(cachedUniverse.ageMs)),"Cache-Control":"no-store","Warning":'110 - "Response is stale"'});
+   }
+   if(env.ADMIN_DB){
+    try{
+     const row=await env.ADMIN_DB.prepare("SELECT payload,updated_at FROM hunter_engine_state WHERE id = ?").bind("digital-hunter-v2-universe-cache").first();
+     const saved=row?.payload?JSON.parse(row.payload):null;
+     const savedAt=Number(saved?.universeUpdatedAt)||Date.parse(row?.updated_at||"")||0;
+     const staleAssets=normalizeQuantumUniverse(saved?.assets||[],"spot");
+     if(staleAssets.length&&savedAt>0){
+      const ageMs=Math.max(0,Date.now()-savedAt),stalePayload={checked_at:new Date(savedAt).toISOString(),universe_updated_at:new Date(savedAt).toISOString(),universe_age_ms:ageMs,universe_stale:true,cached_fallback:true,warning:"Live exchange catalog is unavailable; serving the last validated Spot universe.",count:staleAssets.length,hunter_count:staleAssets.length,radar_count:staleAssets.length,discovered_count:0,binance_spot_symbols:0,cmc_listings:0,universe_mode:"cached_fallback",metadata_provider:saved.universeProvider||"cached",assets:staleAssets,hunter_assets:staleAssets,radar_assets:staleAssets,sources:saved.universeSources||{},live_source_status:sources};
+      return json(stalePayload,200,request,{"X-MMP-Cache":"STALE","X-MMP-Data-Age":String(Math.floor(ageMs)),"Cache-Control":"no-store","Warning":'110 - "Response is stale"'});
+     }
+    }catch(error){console.warn("Hunter admin universe fallback failed:",String(error?.message||error).slice(0,140));}
+   }
    return json({error:"هیچ بازار معتبر و قابل‌تأییدی از صرافی‌ها دریافت نشد.",sources},502,request);
   }
   const universePayload={checked_at:new Date().toISOString(),count:rankedAssets.length,hunter_count:hunterAssets.length,radar_count:radarAssets.length,discovered_count:discoveredAssets.length,binance_spot_symbols:binanceSymbols.size,cmc_listings:cmcRows.length,universe_mode:"unified_catalog_plus_independent_exchange_discovery",metadata_provider:metadataProvider,assets:rankedAssets,hunter_assets:hunterAssets,radar_assets:radarAssets,sources};
