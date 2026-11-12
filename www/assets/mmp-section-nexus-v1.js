@@ -82,7 +82,7 @@
    var host=root.querySelector(".mmp-hero-actions")||root;
    if(!actions.parentElement)host.appendChild(actions);
    actions.classList.add("mmp-section-actions");
-   if(!host.querySelector(".mmp-section-health"))host.appendChild(el("span","mmp-section-health","بررسی رابط"));
+   
   }else if(config.id==="market-snapshot"){
    var floating=root.querySelector(":scope > .mmp-section-floating-tools");
    if(!floating){floating=el("div","mmp-section-floating-tools");floating.append(el("span","mmp-section-label","MARKET SNAPSHOT"));root.insertBefore(floating,root.firstChild);}
@@ -124,8 +124,7 @@
    var root=document.getElementById(config.id);
    if(!root){report.push({id:config.id,status:"missing",controls:0,broken:0,duplicates:0});return;}
    if(root.hidden||root.getAttribute("aria-hidden")==="true"){report.push({id:config.id,status:"internal",controls:0,broken:0,duplicates:0});return;}
-   var generated=root.querySelectorAll("[data-mmp-generated-id]").length;
-   var controls=root.querySelectorAll("button,input,select,textarea,details,a[href]").length-generated;
+   var controls=root.querySelectorAll("button,input,select,textarea,details,a[href]").length;
    var broken=Array.from(root.querySelectorAll("a[href^='#']")).filter(function(a){
     var href=a.getAttribute("href");return href&&href!=="#"&&!document.getElementById(href.slice(1));
    }).length;
