@@ -81,4 +81,5 @@
  .mmp-mobile-menu-panel .mmp-nav-groups{grid-template-columns:1fr}
 }
 @media(min-width:901px){.mmp-redesign-mobile-nav,.mmp-mobile-menu-overlay{display:none!important}}
+html.mmp-native-app .mmp-redesign-mobile-nav,html.mmp-native-app .mmp-mobile-menu-overlay{display:none!important}
 @media(prefers-reduced-motion:reduce){.mmp-nav-chevron,#market-snapshot .mmp-market-card{transition:none!important}}
