@@ -1,0 +1,39 @@
+name: Independent Reliability Brain checks
+on:
+  pull_request:
+    paths:
+      - "cloudflare-worker/reliability-worker.js"
+      - "cloudflare-worker/reliability-wrangler.toml"
+      - "cloudflare-worker/reliability-schema.sql"
+      - "www/reliability-center.html"
+      - "cloudflare-worker/RELIABILITY-BRAIN.md"
+  push:
+    branches: [main]
+    paths:
+      - "cloudflare-worker/reliability-worker.js"
+      - "cloudflare-worker/reliability-wrangler.toml"
+      - "cloudflare-worker/reliability-schema.sql"
+      - "www/reliability-center.html"
+      - "cloudflare-worker/RELIABILITY-BRAIN.md"
+jobs:
+  reliability:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+      - name: Syntax and safety invariants
+        run: |
+          node --check --input-type=module < cloudflare-worker/reliability-worker.js
+          node - <<'NODE'
+          const fs=require('fs');
+          const s=fs.readFileSync('cloudflare-worker/reliability-worker.js','utf8');
+          for(const x of ['RETRY_COOLDOWN_MS=300000','/hunter-run','/hunter-futures-run','automatic_code_deploy:false','automatic_config_mutation:false','automatic_weight_changes:false','/health','/snapshot','mmp_reliability_events']) if(!s.includes(x)) throw new Error('Missing reliability safety invariant: '+x);
+          if(s.includes('wrangler deploy')||s.includes('update_ref(')||s.includes('create_file(')) throw new Error('Reliability brain must not self-deploy or mutate source');
+          const cfg=fs.readFileSync('cloudflare-worker/reliability-wrangler.toml','utf8');
+          for(const b of ['ANALYZER','RADAR','FUTURES','TETHER','ADMIN_DB','AI']) if(!cfg.includes('binding = "'+b+'"')) throw new Error('Missing independent binding '+b);
+          const page=fs.readFileSync('www/reliability-center.html','utf8');
+          if(!page.includes('/snapshot')||!page.includes('مغز مستقل پایش')) throw new Error('Reliability dashboard wiring missing');
+          console.log('Independent reliability worker, bindings, UI and safety boundaries verified.');
+          NODE
