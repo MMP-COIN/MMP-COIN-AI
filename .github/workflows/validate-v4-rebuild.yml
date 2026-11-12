@@ -39,6 +39,30 @@ jobs:
             if (!valid(data)) throw new Error(name + " returned an unexpected payload");
             console.log("PASS", name);
           }
+          const tetherChecks = await Promise.allSettled([
+            fetch("https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/local-market-watch", {signal: AbortSignal.timeout(12000)}).then(r => r.ok ? r.json() : null),
+            fetch("https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-proxy?source=nobitex-tether", {signal: AbortSignal.timeout(12000)}).then(r => r.ok ? r.json() : null),
+            fetch("https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-proxy?source=wallex-markets", {signal: AbortSignal.timeout(12000)}).then(r => r.ok ? r.json() : null),
+          ]);
+          const local = tetherChecks[0].status === "fulfilled" ? tetherChecks[0].value : null;
+          const nobitex = tetherChecks[1].status === "fulfilled" ? tetherChecks[1].value : null;
+          const wallex = tetherChecks[2].status === "fulfilled" ? tetherChecks[2].value : null;
+          const localPrice = Number(local?.median_toman);
+          const localValid = Number.isFinite(localPrice) && localPrice >= 1000 && localPrice <= 100000000 &&
+            Array.isArray(local?.sources) && local.sources.some(x => x?.fresh === true && Number(x.price_toman) > 0);
+          const nobitexPrice = Number(nobitex?.stats?.["usdt-rls"]?.latest) / 10;
+          const nobitexValid = Number.isFinite(nobitexPrice) && nobitexPrice >= 1000 && nobitexPrice <= 100000000;
+          const marketsRaw = wallex?.result?.symbols || wallex?.result?.markets || {};
+          const markets = Array.isArray(marketsRaw) ? marketsRaw : Object.values(marketsRaw);
+          const tomanMarket = markets.find(m => String(m?.symbol || "").toUpperCase() === "USDTTMN");
+          const rialMarket = markets.find(m => String(m?.symbol || "").toUpperCase() === "USDTIRT");
+          const wallexToman = Number(tomanMarket?.stats?.lastPrice ?? tomanMarket?.lastPrice);
+          const wallexRial = Number(rialMarket?.stats?.lastPrice ?? rialMarket?.lastPrice);
+          const wallexPrice = wallexToman > 0 ? wallexToman : wallexRial / 10;
+          const wallexValid = Number.isFinite(wallexPrice) && wallexPrice >= 1000 && wallexPrice <= 100000000;
+          if (!localValid && !nobitexValid && !wallexValid)
+            throw new Error("No valid live Toman/USDT rate from local-market-watch, Nobitex or Wallex");
+          console.log("PASS Toman/USDT live rate source", {localValid, nobitexValid, wallexValid});
           const mainEndpoints = [
             "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/connections-health",
             "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/hunter-combined-snapshot",
@@ -70,7 +94,7 @@ jobs:
               assert required in html, f"Missing required UI mount: {required}"
           for required in ["QIE-4.0.0", "فرماندهی کوانتومی", "رادار هوشمند", "شکارچی کوانتومی", "تحلیل‌گر هوشمند", "موتور هوشمند یکپارچه"]:
               assert required in html, f"Missing required product section: {required}"
-          for required in ["hunter-combined-snapshot", "fast-radar-snapshot", "/connections-health", "cache:\"no-store\""]:
+          for required in ["hunter-combined-snapshot", "fast-radar-snapshot", "/connections-health", "cache:\"no-store\"", "fetchTetherRate", "local-market-watch", "nobitex-tether", "wallex-markets", "mmp_tether_cache_v1", "Math.round(x.price*currentTetherPrice)", "— تومان"]:
               assert required in js, f"Missing live integration: {required}"
           assert "هیچ سیگنال ساختگی" in html, "No fabricated-signal disclosure"
           for required in ["tickerIntegrity", "advisoryPolicy", "هیچ نقطه ورود", "تصمیم نهایی همیشه با کاربر"]:
@@ -110,6 +134,12 @@ jobs:
               assert.equal(await page.locator("#" + id).count(), 1, name + ": missing section #" + id);
             }
             assert.equal(await page.locator("#ticker .ticker-item").count(), 4, name + ": expected four ticker slots");
+            await page.locator("#btn-usdt").click();
+            assert.equal(await page.locator("#btn-usdt").getAttribute("aria-pressed"), "true", name + ": USDT selector must activate");
+            assert.equal(await page.locator("html").getAttribute("data-currency"), "USDT", name + ": USDT display mode must apply");
+            await page.locator("#btn-irt").click();
+            assert.equal(await page.locator("#btn-irt").getAttribute("aria-pressed"), "true", name + ": Toman selector must activate");
+            assert.equal(await page.locator("html").getAttribute("data-currency"), "IRT", name + ": Toman display mode must apply");
 
             if (mobile) {
               const nav = page.locator(".desktop-nav");
