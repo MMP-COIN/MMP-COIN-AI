@@ -88,6 +88,7 @@ function populateSymbols(){
 }
 function liveRefresh(){
  if(document.hidden||!$("chart-section"))return;
+ populateSymbols();
  const st=getChartState(),interval=st?.interval||"1h",delay=interval==="1m"||interval==="3m"?18000:45000;
  if(!state.lastRefresh||Date.now()-state.lastRefresh>=delay){state.lastRefresh=Date.now();window.mmpLoadChart?.(true);}
 }
