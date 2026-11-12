@@ -79,9 +79,9 @@
   }
   var actions=makeActions(root);
   if(config.id==="mmp-home-hero"){
-   var host=root.querySelector(".mmp-hero-actions")||root;
-   if(!actions.parentElement)host.appendChild(actions);
+   if(!actions.parentElement)root.appendChild(actions);
    actions.classList.add("mmp-section-actions");
+   if(!root.querySelector(".mmp-section-health"))root.appendChild(el("span","mmp-section-health","بررسی رابط"));
    
   }else if(config.id==="market-snapshot"){
    var floating=root.querySelector(":scope > .mmp-section-floating-tools");
