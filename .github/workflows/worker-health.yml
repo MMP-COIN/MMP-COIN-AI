@@ -267,7 +267,7 @@ jobs:
           if (!html.includes('fetch(API+"/hunter-snapshot"') || !html.includes("function startLiveMonitor()") || !html.includes("setInterval(()=>{if(!document.hidden&&!state.busy)scan()},15000)")) throw new Error("Quantum Lab persistent automatic scan subscription is missing");
           if (!html.includes("flow?.complete===true") || !html.includes("depth?.confirmed===true")) throw new Error("Quantum Lab evidence quality gates are missing");
           const navIcons = [...html.matchAll(/class="nav-icon">([^<]+)/g)].map(x => x[1]);
-          if (!html.includes("هسته هوشمند واحد") || !html.includes("هسته مرکزی یکپارچه") || /<section[^>]*class=["\'][^"\']*engine-showcase/.test(html) || html.includes("engineCapabilities") || html.includes("renderEngines") || html.includes('id="engines"') || navIcons.length < 8 || new Set(navIcons).size !== navIcons.length) throw new Error("Quantum Lab must expose one unified core, no separate 12-engine showcase, and distinct icons for each menu");
+          if (!html.includes("هسته هوشمند واحد") || !html.includes("هسته مرکزی یکپارچه") || /<section[^>]*class=["\'][^"\']*engine-showcase/.test(html) || html.includes("engineCapabilities") || html.includes("renderEngines") || html.includes('id="engines"') || navIcons.length < 8 || new Set(navIcons).size !== navIcons.length) throw new Error("Quantum Lab must expose one unified core; homepage module cards are navigation, not claims of 12 independent AI models; menu icons must be distinct");
           const ids = new Set([...html.matchAll(/\bid=["']([^"']+)["']/g)].map(x => x[1]));
           const brokenHashLinks = [...new Set([...html.matchAll(/href=["']#([^"']+)["']/g)].map(x => x[1]).filter(id => !ids.has(id)))];
           if (brokenHashLinks.length) throw new Error("Quantum Lab navigation links have missing targets: " + brokenHashLinks.join(", "));
@@ -282,6 +282,9 @@ jobs:
           const requiredEngineLabels = ["Market Intelligence","Explosive Move Prediction","Early Opportunity Hunter","Smart Money Flow","Liquidity Hunter","Multi-timeframe Alignment","Volatility Intelligence","Market Sentiment","Scenario Simulator","Adaptive Learning","Risk Management","Decision &amp; Quality Gate"];
           const missingEngineLabels = requiredEngineLabels.filter(label => !home.includes(label));
           if (missingEngineLabels.length) throw new Error("Homepage Quantum Command module labels missing: " + missingEngineLabels.join(", "));
+          const terminal = fs.readFileSync("www/assets/mmp-quantum-terminal-v1.js", "utf8");
+          if (!terminal.includes('if(el.id==="quantum-center-entry")visible=view==="home"||view==="command"||view==="ai";')) throw new Error("Quantum Command must remain visible on homepage, Market Command and AI center");
+          if (!home.includes('mmp-quantum-terminal-v1.js?v=9')) throw new Error("Homepage terminal bundle cache key was not bumped with the visibility fix");
 
 
           if (!html.includes('content="2.0.0"')) throw new Error("Quantum Lab must preserve the installed app version");
