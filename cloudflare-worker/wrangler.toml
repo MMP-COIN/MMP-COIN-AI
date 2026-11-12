@@ -40,3 +40,10 @@ enabled = true
 [vars]
 # Conservative cap; Cloudflare AI calls stop after this many successful reservations per UTC day.
 CF_AI_DAILY_MAX_CALLS = "20"
+
+# Internal-only connection to the independent Futures Hunter Worker.
+# The analyzer health route verifies this binding without relying on a public workers.dev URL.
+[[services]]
+binding = "FUTURES_ENGINE"
+service = "mmp-coin-ai-futures"
+environment = "production"
