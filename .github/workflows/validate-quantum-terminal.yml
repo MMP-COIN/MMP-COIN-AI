@@ -52,6 +52,6 @@ jobs:
               assert f'id="{required}"' in html, f"Existing feature mount missing: {required}"
           source = js.read_text(encoding="utf-8")
           centers = re.findall(r'^\s+([a-z]+):\{title:', source, re.M)
-          assert len(centers) == 8, f"Expected eight centers, found {len(centers)}"
+          assert len(centers) == 9, f"Expected nine centers, found {len(centers)}"
           print("Homepage wiring, original M coin, IRT/USDT controls, feature mounts, and eight-center map validated.")
           PY
