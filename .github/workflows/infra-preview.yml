@@ -35,7 +35,7 @@ jobs:
           node --input-type=module <<'NODE'
           import fs from "node:fs";
           const html=fs.readFileSync("www/index.html","utf8");
-          const match=html.match(/<script id="mmp-web-auto-update">([\\s\\S]*?)<\\/script>/);
+          const match=html.match(/<script id="mmp-web-auto-update">([\s\S]*?)<\/script>/);
           if(!match) throw new Error("version updater script missing");
           new Function(match[1]);
           if(!html.includes('meta name="mmp-web-build"')) throw new Error("web build meta missing");
