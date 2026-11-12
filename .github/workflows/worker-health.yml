@@ -112,6 +112,7 @@ jobs:
           const matureSummary = learning.summarizeLearningLedger(matureRecords,"spot");
           if (matureSummary.calibrationStatus !== "calibrated" || matureSummary.matured5m !== 40 || matureSummary.calibrationAdjustment !== 5) throw new Error("Bounded learning calibration did not activate at the minimum sample size");
           const workerSource = fs.readFileSync("cloudflare-worker/worker.js", "utf8");
+          if (!workerSource.includes('pathname==="/system-diagnose"') || !workerSource.includes("runAIWithFallback(env,prompt)") || !workerSource.includes("code_changes_executed:false")) throw new Error("Rate-limited AI system diagnostics endpoint or no-code-mutation guarantee is missing");
           const futuresSource = fs.readFileSync("cloudflare-worker/futures-worker.js", "utf8");
           const htmlSource = fs.readFileSync("www/index.html", "utf8");
           const analyzerConfig = fs.readFileSync("cloudflare-worker/wrangler.toml", "utf8");
