@@ -36,7 +36,7 @@ jobs:
           import fs from "node:fs";
           import vm from "node:vm";
           const html = fs.readFileSync("www/index.html", "utf8");
-          const match = html.match(/<script id="mmp-autonomous-health-center-js">([\\s\\S]*?)<\\/script>/);
+          const match = html.match(/<script id="mmp-autonomous-health-center-js">([\s\S]*?)<\/script>/);
           if (!match) throw new Error("MMP NEXUS monitor script is missing");
           new vm.Script(match[1], {filename:"mmp-nexus-inline.js"});
           for (const required of [
