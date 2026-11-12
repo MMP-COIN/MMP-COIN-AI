@@ -140,6 +140,7 @@ jobs:
           if (hunterCandlesStart < 0 || hunterCandlesSource.includes("HTTP (400|403|429|451)") || !hunterCandlesSource.includes("HTTP 400|invalid candle payload")) throw new Error("Hunter candle fallback must try alternate hosts after transient 403/429/451 errors");
           if (!workerSource.includes("function emaSeries(values,period)") || workerSource.includes("closes.slice(0,i+1)")) throw new Error("Multi-timeframe MACD must use linear-time EMA series, not quadratic recomputation");
           if (!workerSource.includes("const ASSET_SYMBOL_OVERRIDES=Object.freeze(")) throw new Error("AI analyzer must define safe asset-id to ticker overrides before request parsing");
+          if (!workerSource.includes('if(source==="coingecko-top"){') || !workerSource.includes('const baseOffset=(requestedTopPage-1)*250') || !workerSource.includes('offsets=[baseOffset,baseOffset+100,baseOffset+200]') || !workerSource.includes('"CoinLore fallback"')) throw new Error("CoinGecko deep pagination must have a 250-row CoinLore fallback that preserves array responses");
           const tetherWorkerSource = fs.readFileSync("cloudflare-worker/tether-monitor-worker.js", "utf8");
           const tetherWrangler = fs.readFileSync("cloudflare-worker/tether-monitor-wrangler.toml", "utf8");
           if (!tetherWrangler.includes('name = "mmp-coin-ai-tether-monitor"') || !tetherWrangler.includes('database_name = "mmp_coin_ai_private_admin"') || !tetherWrangler.includes('crons = ["* * * * *"]') || !tetherWrangler.includes("workers_dev = false")) throw new Error("Dedicated Tether Worker deployment configuration is incomplete");
@@ -566,15 +567,13 @@ jobs:
           echo "- Server-side Binance, Gate, KuCoin, MEXC and OKX ticker proxies: responding" >> "$GITHUB_STEP_SUMMARY"
           coingecko_status=$(curl --silent --show-error --retry 1 --max-time 25 -o /tmp/coingecko.json -w "%{http_code}" "$WORKER_URL/market-proxy?source=coingecko-top")
           echo "CoinGecko market proxy HTTP $coingecko_status"
-          if [ "$coingecko_status" = "200" ]; then
-            jq -e 'type == "array" and length > 0' /tmp/coingecko.json >/dev/null
-            echo "- CoinGecko market proxy: responding" >> "$GITHUB_STEP_SUMMARY"
-          else
-            detail=$(jq -r '.detail // .error // .' /tmp/coingecko.json)
-            if ! echo "$detail" | grep -q "429"; then echo "$detail"; exit 1; fi
-            echo "::warning::CoinGecko rate limited the shared Worker IP (HTTP 429); cached/alternate prices remain available."
-            echo "- CoinGecko market proxy: rate-limited (HTTP 429)" >> "$GITHUB_STEP_SUMMARY"
-          fi
+          if [ "$coingecko_status" != "200" ]; then jq -r '.detail // .error // .' /tmp/coingecko.json; exit 1; fi
+          jq -e 'type == "array" and length > 0' /tmp/coingecko.json >/dev/null
+          deep_status=$(curl --silent --show-error --retry 1 --max-time 30 -o /tmp/coingecko-deep.json -w "%{http_code}" "$WORKER_URL/market-proxy?source=coingecko-top&page=6")
+          echo "Deep market catalog page 6 HTTP $deep_status"
+          if [ "$deep_status" != "200" ]; then jq -r '.detail // .error // .' /tmp/coingecko-deep.json; exit 1; fi
+          jq -e 'type == "array" and length > 0 and all(.[]; (.current_price | tonumber) > 0)' /tmp/coingecko-deep.json >/dev/null
+          echo "- Market catalog deep pagination: live provider or CoinLore fallback returned structured assets" >> "$GITHUB_STEP_SUMMARY"
           {
             echo "- Binance ticker proxy: responding"
             echo "- Bitget direct API: checked separately with browser CORS"
