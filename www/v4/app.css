@@ -30,3 +30,27 @@
 
 /* Compact V4 currency selector */
 .currency-switch{display:inline-flex;align-items:center;gap:3px;padding:3px;border:1px solid rgba(201,164,95,.28);border-radius:10px;background:linear-gradient(145deg,#111923,#090e15);box-shadow:inset 0 1px 0 rgba(255,255,255,.035),0 5px 16px rgba(0,0,0,.2);flex:0 0 auto}.currency-option{appearance:none;border:1px solid transparent;background:transparent;color:#91a0b2;border-radius:7px;padding:6px 11px;min-width:48px;font:600 11px var(--font);line-height:1.2;transition:background .18s ease,color .18s ease,border-color .18s ease,box-shadow .18s ease}.currency-option:hover{color:#f2d28b}.currency-option.active{color:#241909;background:linear-gradient(135deg,#f0d18a,#bd8a3d);border-color:#f5d99d;box-shadow:0 2px 10px rgba(215,163,77,.22),inset 0 1px 0 rgba(255,255,255,.35)}.currency-option:focus-visible{outline:2px solid #f0d18a;outline-offset:2px}@media(max-width:850px){.topbar{gap:10px}.currency-option{padding:6px 9px;min-width:43px}}@media(max-width:620px){.topbar{gap:7px}.currency-switch{padding:2px;gap:2px}.currency-option{padding:6px 8px;min-width:39px;font-size:10px}.top-actions{gap:6px}.brand-copy small{display:none}.coin-mark{width:36px;height:36px}.coin-mark span{width:27px;height:27px;font-size:18px}}
+
+/* Real quantitative analyzer — migrated from the proven legacy Worker contract */
+.analysis-terminal{padding:clamp(13px,2vw,22px);border:1px solid rgba(211,174,100,.24);background:linear-gradient(145deg,rgba(16,26,39,.96),rgba(8,14,23,.98))}
+.analysis-controls{display:grid;grid-template-columns:minmax(0,1fr) minmax(170px,.65fr) auto;gap:10px;align-items:end}
+.analysis-controls label{display:grid;gap:6px;color:var(--muted);font-size:11px}
+.analysis-controls input,.analysis-controls select{width:100%;min-width:0;min-height:43px;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:#080f19;color:var(--text);font:inherit}
+.analysis-controls .primary-btn{border:0;cursor:pointer;min-height:43px}
+.analysis-controls button:disabled{opacity:.55;cursor:wait}
+.analysis-status{margin:12px 0;padding:9px 11px;border:1px solid var(--line);border-radius:9px;color:var(--muted);font-size:11px;line-height:1.8}
+.analysis-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.analysis-metrics>div,.analysis-levels>div{min-width:0;padding:10px;border:1px solid var(--line);border-radius:10px;background:#0a121d}
+.analysis-metrics small,.analysis-levels small{display:block;color:var(--muted);font-size:9px;margin-bottom:5px}
+.analysis-metrics b,.analysis-levels b{font-size:13px;overflow-wrap:anywhere}
+.analysis-confidence{height:6px;margin:10px 0 13px;border-radius:10px;background:#ffffff12;overflow:hidden}
+.analysis-confidence span{display:block;width:0;height:100%;border-radius:inherit;background:linear-gradient(90deg,#b68b43,#3ecb9b);transition:width .3s}
+.analysis-timeframes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:12px 0}
+.analysis-tf{min-width:0;padding:10px;border:1px solid var(--line);border-radius:10px;background:#0b1420}
+.analysis-tf>b,.analysis-tf>strong{display:block}.analysis-tf>b{font-size:11px;color:var(--gold)}.analysis-tf>strong{margin:5px 0;font-size:12px}.analysis-tf small{color:var(--muted);font-size:9px;line-height:1.8;overflow-wrap:anywhere}
+.analysis-report{padding:13px;border:1px solid var(--line);border-radius:11px;background:rgba(5,10,17,.55);font-size:11px;line-height:1.9;overflow-wrap:anywhere}
+.analysis-report h3{margin:13px 0 4px;color:var(--gold);font-size:12px}.analysis-report p{margin:4px 0;color:#c5d0dc}.analysis-report ul{margin:4px 0;padding-inline-start:20px;color:#c5d0dc}
+.analysis-report-head{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;color:var(--gold)}
+.analysis-report-head small,.analysis-footnote{color:var(--muted);font-size:9px}
+.analysis-levels{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:10px 0}
+@media(max-width:680px){.analysis-controls{grid-template-columns:1fr}.analysis-controls .primary-btn{width:100%}.analysis-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.analysis-timeframes{grid-template-columns:repeat(2,minmax(0,1fr))}.analysis-levels{grid-template-columns:repeat(2,minmax(0,1fr))}}
