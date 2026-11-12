@@ -275,7 +275,7 @@ jobs:
           const homeIds = new Set([...home.matchAll(/\bid=["']([^"']+)["']/g)].map(x => x[1]));
           const brokenHomeLinks = [...new Set([...home.matchAll(/href=["']#([^"']+)["']/g)].map(x => x[1]).filter(id => !homeIds.has(id)))];
           if (brokenHomeLinks.length) throw new Error("Homepage menu links have missing targets: " + brokenHomeLinks.join(", "));
-          const homeEngineCards = [...home.matchAll(/<a class="quantum-engine-link" href="\\/quantum-lab\\.html#([^"]+)"/g)];
+          const homeEngineCards = [...home.matchAll(/<a class="quantum-engine-link" href="\/quantum-lab\.html#([^"]+)"/g)];
           if (homeEngineCards.length !== 12) throw new Error("Homepage Quantum Command must render exactly 12 specialist module cards; found " + homeEngineCards.length);
           const missingEngineTargets = homeEngineCards.map(match => match[1]).filter(id => !ids.has(id));
           if (missingEngineTargets.length) throw new Error("Quantum Command cards point to missing Quantum Lab sections: " + missingEngineTargets.join(", "));
