@@ -45,3 +45,9 @@ html body section#market-snapshot.mmp-market-snapshot>article#mmp-gold-card{bord
  #market-snapshot .mmp-section-floating-tools .mmp-section-label{font-size:8px}
 }
 @media(prefers-reduced-motion:reduce){.mmp-section-actions nav a{transition:none!important}}
+
+/* Keep the original first-screen hero geometry unchanged. */
+#mmp-home-hero{position:relative}
+#mmp-home-hero>.mmp-section-actions{position:absolute;z-index:140;top:8px;inset-inline-start:8px}
+#mmp-home-hero>.mmp-section-actions>summary{padding:4px 7px;font-size:9px}
+@media(max-width:560px){#mmp-home-hero>.mmp-section-actions{top:5px;inset-inline-start:5px}}
