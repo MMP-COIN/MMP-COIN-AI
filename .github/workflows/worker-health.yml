@@ -29,6 +29,36 @@ jobs:
 
       # Cron Worker is intentionally private (workers.dev disabled). Its scheduled
       # execution is verified below through the public analyzer's D1-backed status endpoint.
+      - name: Validate MMP NEXUS autonomous monitor and repair boundaries
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+          import vm from "node:vm";
+          const html = fs.readFileSync("www/index.html", "utf8");
+          const match = html.match(/<script id="mmp-autonomous-health-center-js">([\\s\\S]*?)<\\/script>/);
+          if (!match) throw new Error("MMP NEXUS monitor script is missing");
+          new vm.Script(match[1], {filename:"mmp-nexus-inline.js"});
+          for (const required of [
+            "MMP NEXUS · AUTONOMOUS SYSTEM INTELLIGENCE",
+            "mmp-coin-ai-radar.mehrdadmohammadi1988.workers.dev",
+            "/fast-radar-snapshot",
+            "/last-error",
+            "let lastSafeRecoveryAt=0,lastRecoveryNote=\"\",isRunning=false",
+            "safe Hunter",
+            "code"
+          ]) {
+            if (!html.includes(required)) throw new Error("MMP NEXUS monitor requirement missing: " + required);
+          }
+          const worker = fs.readFileSync("cloudflare-worker/worker.js", "utf8");
+          if (!worker.includes('pathname==="/system-diagnose"') ||
+              !worker.includes("You are MMP NEXUS") ||
+              !worker.includes("Never emit executable code") ||
+              !worker.includes("code_changes_executed:false")) {
+            throw new Error("NEXUS AI diagnostic safety contract is missing");
+          }
+          console.log("NEXUS UI syntax, independent Radar probes, overlap guard and AI repair boundaries verified.");
+          NODE
       - name: Validate Hunter universe refresher and Cron scan budgets
         run: |
           set -euo pipefail
