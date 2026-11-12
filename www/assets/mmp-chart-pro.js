@@ -64,8 +64,9 @@ window.mmpToggleChartType=function(){state.chartType=state.chartType==="candles"
 const oldInit=window.initTradingView;
 window.initTradingView=function(){
  if(state.proInitStarted)return;
- const start=()=>{if(state.proInitStarted)return;state.proInitStarted=true;oldInit();if(state.refreshTimer)clearInterval(state.refreshTimer);state.refreshTimer=setInterval(()=>{const el=document.getElementById("chart-section");if(!document.hidden&&el&&el.getBoundingClientRect().top<window.innerHeight+600)mmpLoadChart(false);},30000);};
- const chartSection=document.getElementById("chart-section");
- if(chartSection&&typeof IntersectionObserver==="function"){state.proObserver=new IntersectionObserver(entries=>{if(entries.some(entry=>entry.isIntersecting)){state.proObserver.disconnect();start();}},{rootMargin:"500px 0px"});state.proObserver.observe(chartSection);}else start();
+ state.proInitStarted=true;
+ oldInit();
+ if(state.refreshTimer)clearInterval(state.refreshTimer);
+ state.refreshTimer=setInterval(()=>{const el=document.getElementById("chart-section");if(!document.hidden&&el&&el.getBoundingClientRect().top<window.innerHeight+600)mmpLoadChart(false);},30000);
 };
 })();
