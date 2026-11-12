@@ -182,7 +182,7 @@ jobs:
           if (!workerSource.includes("buildLocalAnalysisFallback") || !workerSource.includes("Local quantitative fallback") || !workerSource.includes('action:"WAIT"')) throw new Error("AI analysis must degrade safely when all providers are unavailable");
 
 
-          if (!radarSource.includes("const BATCH_SIZE = 12;") || !radarSource.includes("universe.length>500?12:BATCH_SIZE") || !radarSource.includes("const verificationOrder=[...new Set([...order,...fallback])].slice(0,4);")) throw new Error("Radar scan must stay within the per-invocation subrequest budget");
+          if (!radarSource.includes("const BATCH_SIZE = 12;") || !radarSource.includes("universe.length>500?12:BATCH_SIZE") || !radarSource.includes("const verificationOrder=[...new Set([...order,...fallback])].slice(0,3);")) throw new Error("Radar scan must stay within the per-invocation subrequest budget");
           if (!workerSource.includes("const HUNTER_BATCH_SIZE = 8;") || !workerSource.includes("const FUTURES_HUNTER_BATCH_SIZE = 8;") || !workerSource.includes("const sourceLimit=Math.min(4,sources.length)") || !workerSource.includes("for(const host of hosts.slice(0,2))") || !workerSource.includes("const concurrency=4;")) throw new Error("Hunter scan must stay within the per-invocation subrequest budget");
           if (!workerSource.includes("async scheduled(event,env,ctx)") || !workerSource.includes("await runDigitalHunterCron(event,env,ctx)") || workerSource.includes("ctx.waitUntil(runDigitalHunterCron")) throw new Error("Cron must await the Hunter cycle inside the scheduled invocation");
           if (!workerSource.includes("for(const url of urls)") || workerSource.includes("Promise.all(urls.map(url=>timeoutFetch")) throw new Error("Exchange health fallback must try alternate endpoints sequentially and stop after a verified response");
@@ -224,7 +224,7 @@ jobs:
           if (workerSource.includes("!available.length?priority")) throw new Error("Missing venue metadata must use the rotating fallback set");
           for (const provider of ["api.mexc.com/api/v3/trades","api.kucoin.com/api/v1/market/histories","api-futures.kucoin.com/api/v1/trade/history","contractInfo?.data?.multiplier"]) { if (!workerSource.includes(provider)) throw new Error("Executed-flow fallback/contract normalization missing: " + provider); }
           for (const provider of ["contract.mexc.com","api-futures.kucoin.com","api/v2/mix/market/candles","api/v2/mix/market/fills","api.mexc.com/api/v3/klines"]) { if (!workerSource.includes(provider)) throw new Error("Market provider fallback missing: " + provider); }
-          if (!radarSource.includes("https://api.mexc.com/api/v3/klines")) throw new Error("MEXC Spot radar fallback missing");
+          if (!radarSource.includes("https://api.mexc.com") || !radarSource.includes("/api/v3/klines?symbol=")) throw new Error("MEXC Spot radar fallback missing");
           const base = {trend:"bull",currentPrice:100,change1m:0.12,change3m:0.2,change5m:0.35,change15m:0.5,volumeRatio:1.3,breakout:true,structureAligned:true,trend15:true,overextended:false,dataAgeMs:20000,multiExchangeConfirmed:true,totalVolume24h:300000,rsi14:61,ema9:102,ema21:101,ema50:100,macdHistogram:0.2};
           const candidate = mod.scoreQuantumOpportunity({...base,flowConfirmed:false});
           if (!candidate.candidateGate || candidate.qualityGate) throw new Error("Preliminary candidate gate is incorrect");
