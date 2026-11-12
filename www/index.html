@@ -2895,6 +2895,7 @@ html body #ai-section .tf-card{min-width:0!important;max-width:100%!important;ov
   button.disabled=false;retry.disabled=false;
   if(button.textContent==="در حال پایش…"||button.textContent==="پایش و تحلیل AI…")button.textContent="اجرای پایش و تحلیل AI";
  }
+ }
  $("mmp-ah-run").addEventListener("click",()=>run(true,true));
  $("mmp-ah-recheck").addEventListener("click",()=>run(false,false));
  run(false,true).catch(e=>{$("mmp-ah-report").textContent="خطای پایش: "+String(e.message||e);$("mmp-ah-run").disabled=false;$("mmp-ah-recheck").disabled=false;});
