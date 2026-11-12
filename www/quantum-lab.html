@@ -178,18 +178,18 @@ header .actions #back{display:inline-flex;flex:0 0 auto;align-items:center;justi
 <section class="architecture-flow" aria-label="هسته تصمیم‌گیری واحد"><article class="architecture-step" style="grid-column:1/-1"><span>هسته مرکزی یکپارچه · QIE-4</span><b>یک مسیر واحد از داده تا تصمیم</b><p>دریافت داده زنده ← سنجش فشار صعودی و نزولی ← اعتبارسنجی چندبازه‌ای و کیفیت داده ← تصمیم نهایی و ثبت نتیجه</p><small>هیچ زیرقابلیتی به‌تنهایی سیگنال صادر نمی‌کند؛ خروجی فقط پس از عبور از کنترل کیفیت نمایش داده می‌شود.</small></article></section>
 <div class="section-title" id="quantum-subsystems"><h2>۱۲ زیرسیستم هسته مرکزی</h2><small>وضعیت فقط بر اساس شمارنده‌های واقعی Worker</small></div>
 <section class="subsystem-grid" id="subsystem-grid" aria-live="polite">
- <details class="subsystem" data-engine="momentum"><summary><b>۱. تحلیل مومنتوم</b><span id="engine-status-momentum">در انتظار داده زنده</span></summary><p>محاسبه تغییرات قیمت و شاخص‌های EMA، RSI و MACD روی کندل‌های معتبر.</p><small id="engine-count-momentum">هنوز گزارشی از Worker دریافت نشده است.</small></details>
- <details class="subsystem" data-engine="flow"><summary><b>۲. جریان معاملات</b><span id="engine-status-flow">در انتظار داده زنده</span></summary><p>بررسی معاملات واقعی خرید و فروش، تعداد معاملات و عدم‌تعادل جریان.</p><small id="engine-count-flow">هنوز گزارشی از Worker دریافت نشده است.</small></details>
- <details class="subsystem" data-engine="structure"><summary><b>۳. ساختار بازار</b><span id="engine-status-structure">در انتظار داده زنده</span></summary><p>بررسی شکست ساختار، سقف و کف‌های اخیر و هم‌جهتی حرکت.</p><small id="engine-count-structure">هنوز گزارشی از Worker دریافت نشده است.</small></details>
- <details class="subsystem" data-engine="liquidity"><summary><b>۴. نقدینگی</b><span id="engine-status-liquidity">در انتظار داده زنده</span></summary><p>ارزیابی حجم و شرایط نقدشوندگی؛ تأیید عمق دفتر سفارش در مرحله کنترل جداگانه.</p><small id="engine-count-liquidity">هنوز گزارشی از Worker دریافت نشده است.</small></details>
- <details class="subsystem" data-engine="multiTimeframe"><summary><b>۵. هم‌ترازی چندبازه‌ای</b><span id="engine-status-multiTimeframe">در انتظار داده زنده</span></summary><p>سنجش هماهنگی روند و کندل‌های بسته‌شده در بازه‌های زمانی مختلف.</p><small id="engine-count-multiTimeframe">هنوز گزارشی از Worker دریافت نشده است.</small></details>
- <details class="subsystem" data-engine="regime"><summary><b>۶. تشخیص رژیم بازار</b><span id="engine-status-regime">در انتظار داده زنده</span></summary><p>طبقه‌بندی وضعیت بازار و انتخاب وزن‌های تطبیقی هسته QIE.</p><small id="engine-count-regime">هنوز گزارشی از Worker دریافت نشده است.</small></details>
- <details class="subsystem" data-engine="volatility"><summary><b>۷. هوش نوسان</b><span id="engine-status-volatility">در انتظار داده زنده</span></summary><p>محاسبه ATR و دامنه نوسان برای سنجش شدت حرکت و ریسک.</p><small id="engine-count-volatility">هنوز گزارشی از Worker دریافت نشده است.</small></details>
- <details class="subsystem" data-engine="sentiment"><summary><b>۸. احساسات بازار</b><span id="engine-status-sentiment">در انتظار داده زنده</span></summary><p>بررسی نرخ فاندینگ و داده‌های احساسات مشتقه؛ در چرخه Spot ممکن است اجرا نشود.</p><small id="engine-count-sentiment">هنوز گزارشی از Worker دریافت نشده است.</small></details>
- <details class="subsystem" data-engine="smartMoney"><summary><b>۹. جریان پول هوشمند</b><span id="engine-status-smartMoney">در انتظار داده زنده</span></summary><p>برآورد فشار جریان و عدم‌تعادل عمق سفارش؛ این شاخص هویت نهنگ‌ها را اثبات نمی‌کند.</p><small id="engine-count-smartMoney">هنوز گزارشی از Worker دریافت نشده است.</small></details>
- <details class="subsystem" data-engine="scenario"><summary><b>۱۰. امتیازدهی سناریو</b><span id="engine-status-scenario">در انتظار داده زنده</span></summary><p>امتیازدهی قاعده‌محور به شکست، هم‌ترازی فنی، حجم و بیش‌کشیدگی؛ شبیه‌سازی مونت‌کارلو نیست.</p><small id="engine-count-scenario">هنوز گزارشی از Worker دریافت نشده است.</small></details>
- <details class="subsystem" data-engine="risk"><summary><b>۱۱. مدیریت ریسک</b><span id="engine-status-risk">در انتظار داده زنده</span></summary><p>محاسبه فاصله حدضرر مبتنی بر ATR و ارزیابی ریسک پیش از تأیید خروجی.</p><small id="engine-count-risk">هنوز گزارشی از Worker دریافت نشده است.</small></details>
- <details class="subsystem" data-engine="dataQuality"><summary><b>۱۲. کنترل کیفیت داده</b><span id="engine-status-dataQuality">در انتظار داده زنده</span></summary><p>کنترل تازگی کندل، هم‌ترازی منابع و جلوگیری از استفاده از داده ناقص یا کهنه.</p><small id="engine-count-dataQuality">هنوز گزارشی از Worker دریافت نشده است.</small></details>
+ <details class="subsystem" data-module="market"><summary><b>۱. هوش بازار</b><span id="module-status-market">در انتظار داده زنده</span></summary><p>ترکیب مومنتوم، ساختار قیمت و تشخیص رژیم بازار برای ساخت تصویر کلی بازار.</p><small id="module-count-market">هنوز گزارشی از Worker دریافت نشده است.</small></details>
+ <details class="subsystem" data-module="explosion"><summary><b>۲. پیش‌بینی حرکت انفجاری</b><span id="module-status-explosion">در انتظار داده زنده</span></summary><p>امتیاز فشار حرکت بر پایه افزایش حجم، عدم‌تعادل معاملات و تعداد معاملات واقعی؛ نه پیش‌گویی قطعی.</p><small id="module-count-explosion">هنوز گزارشی از Worker دریافت نشده است.</small></details>
+ <details class="subsystem" data-module="early"><summary><b>۳. شکار فرصت زودهنگام</b><span id="module-status-early">در انتظار داده زنده</span></summary><p>شناسایی فشار اولیه حرکت با شروط تکنیکال و کنترل تازگی داده.</p><small id="module-count-early">هنوز گزارشی از Worker دریافت نشده است.</small></details>
+ <details class="subsystem" data-module="smart"><summary><b>۴. جریان پول هوشمند</b><span id="module-status-smart">در انتظار داده زنده</span></summary><p>ترکیب جریان معاملات واقعی و عدم‌تعادل عمق سفارش؛ این شاخص هویت نهنگ‌ها را اثبات نمی‌کند.</p><small id="module-count-smart">هنوز گزارشی از Worker دریافت نشده است.</small></details>
+ <details class="subsystem" data-module="liquidity"><summary><b>۵. شکارچی نقدینگی</b><span id="module-status-liquidity">در انتظار داده زنده</span></summary><p>ارزیابی حجم و نقدشوندگی بازار، همراه با کنترل عمق دفتر سفارش.</p><small id="module-count-liquidity">هنوز گزارشی از Worker دریافت نشده است.</small></details>
+ <details class="subsystem" data-module="timeframe"><summary><b>۶. هم‌ترازی چندبازه‌ای</b><span id="module-status-timeframe">در انتظار داده زنده</span></summary><p>سنجش هماهنگی روند و کندل‌های بسته‌شده در بازه‌های زمانی مختلف.</p><small id="module-count-timeframe">هنوز گزارشی از Worker دریافت نشده است.</small></details>
+ <details class="subsystem" data-module="volatility"><summary><b>۷. هوش نوسان</b><span id="module-status-volatility">در انتظار داده زنده</span></summary><p>محاسبه ATR و دامنه نوسان برای سنجش شدت حرکت و ریسک.</p><small id="module-count-volatility">هنوز گزارشی از Worker دریافت نشده است.</small></details>
+ <details class="subsystem" data-module="sentiment"><summary><b>۸. احساسات بازار</b><span id="module-status-sentiment">در انتظار داده زنده</span></summary><p>بررسی نرخ فاندینگ و داده‌های احساسات مشتقه؛ وابسته به چرخه Futures و دسترسی منبع.</p><small id="module-count-sentiment">هنوز گزارشی از Worker دریافت نشده است.</small></details>
+ <details class="subsystem" data-module="scenario"><summary><b>۹. ارزیابی سناریو</b><span id="module-status-scenario">در انتظار داده زنده</span></summary><p>امتیازدهی قاعده‌محور به شکست، هم‌ترازی فنی، حجم و بیش‌کشیدگی؛ شبیه‌سازی مونت‌کارلو نیست.</p><small id="module-count-scenario">هنوز گزارشی از Worker دریافت نشده است.</small></details>
+ <details class="subsystem" data-module="learning"><summary><b>۱۰. یادگیری تطبیقی</b><span id="module-status-learning">در انتظار داده زنده</span></summary><p>ثبت سیگنال‌ها، سنجش بازده در افق‌های ۵، ۱۵ و ۶۰ دقیقه و کالیبراسیون پس از جمع شدن نمونه کافی.</p><small id="module-count-learning">هنوز گزارشی از Worker دریافت نشده است.</small></details>
+ <details class="subsystem" data-module="risk"><summary><b>۱۱. مدیریت ریسک</b><span id="module-status-risk">در انتظار داده زنده</span></summary><p>محاسبه فاصله حدضرر مبتنی بر ATR و ارزیابی ریسک پیش از تأیید خروجی.</p><small id="module-count-risk">هنوز گزارشی از Worker دریافت نشده است.</small></details>
+ <details class="subsystem" data-module="quality"><summary><b>۱۲. کنترل کیفیت داده</b><span id="module-status-quality">در انتظار داده زنده</span></summary><p>کنترل تازگی کندل، هم‌ترازی منابع و جلوگیری از استفاده از داده ناقص یا کهنه.</p><small id="module-count-quality">هنوز گزارشی از Worker دریافت نشده است.</small></details>
 </section>
 
 <div class="section-title" id="quantum-charts-section"><h2>داشبورد نموداری مرکز کوانتومی</h2><small>نمودارها فقط از نتایج واقعی ثبت‌شده ساخته می‌شوند</small></div><section class="quantum-charts" id="quantum-charts"><div class="chart-card"><div class="empty">پس از دریافت داده بازار، نمودارها به‌روزرسانی می‌شوند.</div></div></section>
@@ -313,17 +313,32 @@ async function scan(){
 }
 
 function renderEngineModules(){
- const names=["momentum","flow","structure","liquidity","multiTimeframe","regime","volatility","sentiment","smartMoney","scenario","risk","dataQuality"];
- for(const key of names){
-  const card=document.querySelector('.subsystem[data-engine="'+key+'"]'),status=$("engine-status-"+key),count=$("engine-count-"+key);
+ const modules=[
+  {id:"market",keys:["momentum","structure","regime"]},
+  {id:"explosion",keys:["explosion"]},
+  {id:"early",keys:["earlyOpportunity"]},
+  {id:"smart",keys:["flow","smartMoney"]},
+  {id:"liquidity",keys:["liquidity"]},
+  {id:"timeframe",keys:["multiTimeframe"]},
+  {id:"volatility",keys:["volatility"]},
+  {id:"sentiment",keys:["sentiment"]},
+  {id:"scenario",keys:["scenario"]},
+  {id:"learning",keys:["learning"]},
+  {id:"risk",keys:["risk"]},
+  {id:"quality",keys:["dataQuality"]}
+ ];
+ for(const module of modules){
+  const card=document.querySelector('.subsystem[data-module="'+module.id+'"]'),status=$("module-status-"+module.id),count=$("module-count-"+module.id);
   if(!card||!status||!count)continue;
-  const a=state.engineActivity?.[key];
-  if(!a||typeof a!=="object"){card.dataset.state="idle";status.textContent="بدون گزارش زنده";count.textContent="Worker هنوز شمارنده‌ای برای این زیرسیستم ارسال نکرده است.";continue;}
-  const processed=Math.max(0,Number(a.processed)||0),evidence=Math.max(0,Number(a.evidence)||0);
-  if(key==="learning"){
+  const parts=module.keys.map(key=>state.engineActivity?.[key]).filter(x=>x&&typeof x==="object");
+  if(!parts.length){card.dataset.state="idle";status.textContent="بدون گزارش زنده";count.textContent="Worker هنوز شمارنده‌ای برای این زیرسیستم ارسال نکرده است.";continue;}
+  const processed=parts.reduce((sum,x)=>sum+Math.max(0,Number(x.processed)||0),0);
+  const evidence=parts.reduce((sum,x)=>sum+Math.max(0,Number(x.evidence)||0),0);
+  if(module.id==="learning"){
+   const a=parts[0],matured=Math.max(0,Number(a.evidence)||0);
    status.textContent=a.calibrationStatus==="calibrated"?"کالیبره‌شده":processed>0?"در حال جمع‌آوری":"بدون نمونه";
    card.dataset.state=a.calibrationStatus==="calibrated"?"evidence":processed>0?"partial":"idle";
-   count.textContent="نمونه سیگنال: "+processed.toLocaleString("fa-IR")+" · نتایج ۵ دقیقه‌ای بالغ: "+evidence.toLocaleString("fa-IR");
+   count.textContent="نمونه سیگنال: "+processed.toLocaleString("fa-IR")+" · نتایج ۵ دقیقه‌ای بالغ: "+matured.toLocaleString("fa-IR")+" · حداقل کالیبراسیون: ۳۰ نمونه";
    continue;
   }
   card.dataset.state=evidence>0?"evidence":processed>0?"partial":"idle";
@@ -331,7 +346,6 @@ function renderEngineModules(){
   count.textContent="موارد پردازش‌شده: "+processed.toLocaleString("fa-IR")+" · شواهد ثبت‌شده: "+evidence.toLocaleString("fa-IR");
  }
 }
-
 function applyLiveSnapshot(snap){
  if(!snap||snap.status==="offline")throw new Error("موتور مرکزی در دسترس نیست");
  state.engineActivity=snap.engine_activity&&typeof snap.engine_activity==="object"?snap.engine_activity:{};
