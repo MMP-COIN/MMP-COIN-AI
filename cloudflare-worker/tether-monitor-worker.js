@@ -24,7 +24,7 @@ async function fetchJson(url,headers=HEADERS){
 }
 async function readSource(urls,exchange,normalize,headers=HEADERS){
  let value=null,lastError=null;
- for(const url of urls){
+ for(const url of (Array.isArray(urls)?urls:[urls])){
   try{
    const data=await fetchJson(url,headers),candidate=Number(normalize(data));
    if(candidate>0&&Number.isFinite(candidate)){value=candidate;break;}
