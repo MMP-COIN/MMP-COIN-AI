@@ -1,0 +1,18 @@
+name = "mmp-coin-nexus"
+main = "nexus-worker.js"
+compatibility_date = "2026-11-04"
+
+[ai]
+binding = "AI"
+
+[[d1_databases]]
+binding = "NEXUS_DB"
+database_name = "mmp-nexus-health"
+database_id = "fb4ce1e7-2e9b-40be-bb16-4d3acbf6fd42"
+
+[vars]
+ANALYZER_URL = "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev"
+RADAR_URL = "https://mmp-coin-ai-radar.mehrdadmohammadi1988.workers.dev"
+
+[triggers]
+crons = ["*/5 * * * *"]
