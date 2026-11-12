@@ -62,3 +62,13 @@ The preview branch stages:
 - Preview rate-limit key isolation.
 - A static preview validation workflow that does not deploy to production.
 No production deployment is authorized by this follow-up. Runtime validation on isolated preview databases and Workers is the next gate.
+
+
+## Preview infrastructure created (isolated)
+- Preview Admin D1: `mmp_coin_ai_preview_admin` — `396916eb-4b22-4f18-87d7-d8733b6a196a` (WEUR). Production schema copied only; no production rows copied.
+- Preview Market Cache D1: `mmp_market_data_preview` — `4d03a56f-05c4-4cbf-8568-6fd124747002` (WEUR). Schema copied only.
+- Preview Radar KV: `MMP-COIN-AI-Preview-Radar` — `9170b43c58d5476c96e64387b1c6ea34` (empty).
+- Deployed isolated preview Workers: `mmp-coin-ai-analyzer-preview`, `mmp-coin-ai-futures-preview`, `mmp-coin-ai-hunter-cron-preview`, `mmp-coin-ai-radar-preview`. They use preview D1/KV bindings; workers.dev and Preview URLs are disabled, so these are not public.
+- Preview Rate Limit keys are prefixed with `preview:` to avoid sharing counters with production, even though the same Cloudflare namespace IDs are reused.
+- The account is on the Workers Free plan with a maximum of 5 Cron triggers. Production currently uses 3; preview can therefore run at most 2 additional Cron triggers concurrently. An attempt to add a third preview trigger was rejected with error 10072. Tests will be run sequentially, without upgrading the plan or disabling production schedules.
+- Cloudflare documents that Cron trigger changes can take up to 15 minutes to propagate. The preview Cron configuration is present, but no preview heartbeat has been observed yet; runtime success is not claimed until the isolated D1 state confirms it.

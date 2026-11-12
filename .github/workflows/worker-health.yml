@@ -324,7 +324,7 @@ jobs:
         run: |
           set -euo pipefail
           curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-delay 10 --retry-max-time 100 --max-time 25 "$WORKER_URL/health" -o /tmp/health.json
-          jq -e '.worker == "online" and .ai_binding == true and .futures_engine_binding == true' /tmp/health.json >/dev/null
+          jq -e '.worker == "online" and .ai_binding == true and .futures_engine_binding == true and .market_cache_binding == true' /tmp/health.json >/dev/null
           {
             echo "## Worker health"
             echo "- Worker: online"
@@ -376,7 +376,7 @@ jobs:
           ready=false
           for attempt in 1 2 3 4 5 6; do
             status=$(curl --silent --show-error --max-time 15 -o /tmp/hunter-cron-status.json -w "%{http_code}" "$WORKER_URL/hunter-cron-status" || true)
-            if [ "$status" = "200" ] && jq -e '(.status == "success" or .status == "partial") and (.markets.spot.universe // 0) > 0 and (.markets.futures.universe // 0) > 0 and ((.markets.spot.scanned // 0) > 0 or (.markets.spot.universe_refreshed // false)) and ((.markets.futures.scanned // 0) > 0 or (.markets.futures.universe_refreshed // false)) and (.universe_refresh.status == "success" or .universe_refresh.status == "partial") and (.universe_refresh.markets.spot.universe_count // 0) > 0 and (.universe_refresh.markets.futures.universe_count // 0) > 0 and (.errors | length == 0)' /tmp/hunter-cron-status.json >/dev/null; then
+            if [ "$status" = "200" ] && jq -e '(.status == "success" or .status == "partial") and (.markets.spot.universe // 0) > 0 and (.markets.futures.universe // 0) > 0 and ((.markets.spot.scanned // 0) > 0 or (.markets.spot.universe_refreshed // false)) and ((.markets.futures.scanned // 0) > 0 or (.markets.futures.universe_refreshed // false)) and (.universe_refresh.status == "success" or .universe_refresh.status == "partial") and (.universe_refresh.markets.spot.universe_count // 0) > 0 and (.universe_refresh.markets.futures.universe_count // 0) > 0 and (.universe_refresh.markets.spot.fresh == true) and (.universe_refresh.errors.spot == null) and (.heartbeats.spot.updated_at != null) and (.heartbeats.futures.updated_at != null) and (.heartbeats.universe_refresh.updated_at != null) and (.errors | length == 0)' /tmp/hunter-cron-status.json >/dev/null; then
               ready=true
               break
             fi
@@ -387,6 +387,18 @@ jobs:
             echo "Scheduled Spot/Futures cycle is not fully healthy." >&2
             exit 1
           fi
+          now=$(date -u +%s)
+          for market in spot futures; do
+            stamp=$(jq -r ".heartbeats.${market}.updated_at // empty" /tmp/hunter-cron-status.json)
+            test -n "$stamp"
+            age=$((now - $(date -u -d "$stamp" +%s)))
+            echo "$market heartbeat age: ${age}s"
+            if [ "$age" -gt 120 ]; then echo "$market heartbeat is stale (${age}s)" >&2; exit 1; fi
+          done
+          universe_stamp=$(jq -r '.heartbeats.universe_refresh.updated_at // empty' /tmp/hunter-cron-status.json)
+          universe_age=$((now - $(date -u -d "$universe_stamp" +%s)))
+          echo "Universe refresh heartbeat age: ${universe_age}s"
+          if [ "$universe_age" -gt 1200 ]; then echo "Universe refresh heartbeat is stale (${universe_age}s)" >&2; exit 1; fi
           jq -r '"Scheduled Quantum cycle: Spot " + (.markets.spot.scanned|tostring) + "/" + (.markets.spot.universe|tostring) + " (failed " + (.markets.spot.failed|tostring) + ", rejected " + (.markets.spot.rejected|tostring) + ", refresh " + (.markets.spot.universe_refreshed|tostring) + "); Futures " + (.markets.futures.scanned|tostring) + "/" + (.markets.futures.universe|tostring) + " (failed " + (.markets.futures.failed|tostring) + ", rejected " + (.markets.futures.rejected|tostring) + ", refresh " + (.markets.futures.universe_refreshed|tostring) + "); status " + .status' /tmp/hunter-cron-status.json
           jq -r '"Universe refresh: " + .universe_refresh.status + " | Spot " + (.universe_refresh.markets.spot.universe_count|tostring) + " | Futures " + (.universe_refresh.markets.futures.universe_count|tostring)' /tmp/hunter-cron-status.json
           echo "- Scheduled Spot and Futures engines: both completed a live scan without cycle errors" >> "$GITHUB_STEP_SUMMARY"
@@ -402,7 +414,7 @@ jobs:
           ready=false
           for attempt in 1 2 3 4 5 6; do
             status=$(curl --silent --show-error --max-time 15 -o /tmp/radar-snapshot.json -w "%{http_code}" "$RADAR_WORKER_URL/fast-radar-snapshot" || true)
-            if [ "$status" = "200" ] && jq -e '.status == "online" and (.universe_count // 0) > 0 and (.scanned_count // 0) > 0' /tmp/radar-snapshot.json >/dev/null; then
+            if [ "$status" = "200" ] && jq -e '.status == "online" and (.universe_count // 0) > 0 and (.scanned_count // 0) > 0 and (.scanned_at // .checked_at // null) != null' /tmp/radar-snapshot.json >/dev/null; then
               ready=true
               break
             fi
@@ -413,6 +425,10 @@ jobs:
             echo "Independent radar has not completed a live scan." >&2
             exit 1
           fi
+          radar_stamp=$(jq -r '.scanned_at // .checked_at' /tmp/radar-snapshot.json)
+          radar_age=$(( $(date -u +%s) - $(date -u -d "$radar_stamp" +%s) ))
+          echo "Radar snapshot age: ${radar_age}s"
+          if [ "$radar_age" -gt 120 ]; then echo "Radar snapshot is stale (${radar_age}s)" >&2; exit 1; fi
           jq -r '"Independent radar: scanned " + (.scanned_count|tostring) + "/" + (.universe_count|tostring) + "; active signals " + ((.signals|length)|tostring)' /tmp/radar-snapshot.json
           echo "- Independent server-side radar: live scan and snapshot verified" >> "$GITHUB_STEP_SUMMARY"
 
@@ -741,7 +757,6 @@ jobs:
         if: always() && github.ref == 'refs/heads/main'
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
-          CANARY_URL: https://mmp-coin-ai-analyzer-preview.mehrdadmohammadi1988.workers.dev
         run: |
           set -euo pipefail
           payload='{"coin_id":"bitcoin","symbol":"BTC","name":"Bitcoin","market_mode":"spot"}'
@@ -752,21 +767,9 @@ jobs:
             exit 1
           fi
           jq -e '.analysis.action as $a | (["BUY","SELL","WAIT"] | index($a) != null) and (.market.timeframes | has("15m") and has("1h") and has("4h") and has("1d"))' /tmp/analysis.json >/dev/null
-          canary_health_status=$(curl --silent --show-error --max-time 30 -o /tmp/canary-health.json -w "%{http_code}" "$CANARY_URL/health" || true)
-          echo "Canary Worker health HTTP $canary_health_status"
-          if [ "$canary_health_status" != "200" ]; then cat /tmp/canary-health.json 2>/dev/null || true; exit 1; fi
-          canary_health=$(cat /tmp/canary-health.json)
-          echo "$canary_health" | jq -e '.worker == "online" and .ai_binding == true and .futures_engine_binding == true' >/dev/null
-          canary_status=$(curl --silent --show-error --max-time 110 -H "Content-Type: application/json" -X POST --data "$payload" -o /tmp/canary-analysis.json -w "%{http_code}" "$CANARY_URL/analyze")
-          echo "Canary AI analyzer HTTP $canary_status"
-          if [ "$canary_status" != "200" ]; then
-            jq -r '.stage // "unknown stage", .error // "unknown error"' /tmp/canary-analysis.json || cat /tmp/canary-analysis.json
-            exit 1
-          fi
-          jq -e '.analysis.action as $a | (["BUY","SELL","WAIT"] | index($a) != null) and (.market.timeframes | has("15m") and has("1h") and has("4h") and has("1d"))' /tmp/canary-analysis.json >/dev/null
-          jq -r '"Selected AI model: " + (.analysis.ai_provider // "not reported")' /tmp/canary-analysis.json
-          jq -r '.analysis.ai_provider_fallbacks[]? | "AI fallback reason: " + .' /tmp/canary-analysis.json
-          jq -r '"Canary model provider: " + (.analysis.data_source // "not reported")' /tmp/canary-analysis.json
+          jq -r '"Live AI provider: " + (.analysis.ai_provider // "not reported")' /tmp/analysis.json
+          jq -r '.analysis.ai_provider_fallbacks[]? | "AI fallback reason: " + .' /tmp/analysis.json
+          jq -r '"Live data source: " + (.analysis.data_source // "not reported")' /tmp/analysis.json
           {
             echo "- AI analyzer: HTTP 200"
             echo "- Four timeframes: 15m, 1h, 4h, 1d"
