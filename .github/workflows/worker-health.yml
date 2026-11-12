@@ -53,6 +53,7 @@ jobs:
           node --check --input-type=module < cloudflare-worker/learning-engine.js
           node --check --input-type=module < cloudflare-worker/decision-engine.js
           node --check --input-type=module < cloudflare-worker/futures-worker.js
+          node --check --input-type=module < cloudflare-worker/tether-monitor-worker.js
           node --input-type=module <<'NODE'
           import fs from "node:fs";
           const source = fs.readFileSync("cloudflare-worker/quantum-core.js", "utf8");
@@ -131,7 +132,7 @@ jobs:
           if (!workerSource.includes("fapi1.binance.com/fapi/v1/ticker/price") || !workerSource.includes("api.bytick.com/v5/market/tickers?category=linear") || !workerSource.includes("us.okx.com/api/v5/market/ticker?instId=BTC-USDT-SWAP")) throw new Error("Futures connection health must probe alternate regional endpoints");
           if (!workerSource.includes("last_known_age_ms") || !workerSource.includes("monitor_updated_at:now")) throw new Error("Iranian Tether monitor must preserve last-known values separately and update its heartbeat during provider outages");
           if (!workerSource.includes("minute%15===0?refreshDigitalHunterUniverses(env)")) throw new Error("Shared Spot/Futures universe refresh must run on the proven analyzer minute Cron");
-          if (!workerSource.includes("ctx.waitUntil(background)") || !workerSource.includes("Promise.allSettled([cleanup,localTether,universeRefresh,hunterCycle])")) throw new Error("Tether and cleanup monitors must survive a failed Hunter cycle");
+          if (!workerSource.includes("ctx.waitUntil(background)") || !workerSource.includes("Promise.allSettled([cleanup,universeRefresh,hunterCycle])")) throw new Error("Hunter cleanup and scans must survive independent monitor failures");
           if (!workerSource.includes("const dueLearningRecords=") || !workerSource.includes("fetchHunterCandles(record.symbol,marketType,asset)") || !workerSource.includes("...learningMarks")) throw new Error("Self-learning must capture fresh 5m/15m/60m outcome marks for open signals");
           const hunterCandlesStart = workerSource.indexOf('async function fetchHunterCandles(symbol,marketType="spot",asset=null){');
           const hunterCandlesEnd = workerSource.indexOf("async function analyzeDigitalHunterSymbol", hunterCandlesStart);
@@ -139,12 +140,11 @@ jobs:
           if (hunterCandlesStart < 0 || hunterCandlesSource.includes("HTTP (400|403|429|451)") || !hunterCandlesSource.includes("HTTP 400|invalid candle payload")) throw new Error("Hunter candle fallback must try alternate hosts after transient 403/429/451 errors");
           if (!workerSource.includes("function emaSeries(values,period)") || workerSource.includes("closes.slice(0,i+1)")) throw new Error("Multi-timeframe MACD must use linear-time EMA series, not quadratic recomputation");
           if (!workerSource.includes("const ASSET_SYMBOL_OVERRIDES=Object.freeze(")) throw new Error("AI analyzer must define safe asset-id to ticker overrides before request parsing");
-          if (!workerSource.includes("async function monitorLocalTether(env)") || !workerSource.includes('monitor:"server-cron-1m"') || !workerSource.includes("await Promise.allSettled([cleanup,localTether,universeRefresh])")) throw new Error("Iranian Tether shock monitoring must run independently on the server cron");
+          const tetherWorkerSource = fs.readFileSync("cloudflare-worker/tether-monitor-worker.js", "utf8");
+          if (!tetherWorkerSource.includes("async function monitorLocalTether(env)") || !tetherWorkerSource.includes('monitor:"dedicated-tether-cron-1m"') || !tetherWorkerSource.includes("Promise.all([")) throw new Error("Iranian Tether monitor must run in an isolated one-minute Worker");
+          if (workerSource.includes("const localTether=monitorLocalTether(env)")) throw new Error("Hunter Worker must not consume the isolated Tether monitor subrequest budget");
           if (!workerSource.includes("data-api.binance.vision/api/v3/exchangeInfo") || !workerSource.includes("data-api.binance.vision/api/v3/ticker/24hr") || !workerSource.includes("api-gcp.binance.com/api/v3/ticker/24hr")) throw new Error("Hunter Spot universe must use official Binance market-data failover hosts");
-          const tetherSourceStart = workerSource.indexOf("async function fetchLocalTetherSnapshot()");
-          const tetherSourceEnd = workerSource.indexOf("async function readLocalTetherState", tetherSourceStart);
-          const tetherSource = workerSource.slice(tetherSourceStart, tetherSourceEnd);
-          if (tetherSourceStart < 0 || !tetherSource.includes("publicapi.ramzinex.com/exchange/api/v1.0/exchange/pairs") || !tetherSource.includes('"Ramzinex"') || !tetherSource.includes("attempt<2") || !tetherSource.includes("Retry-After")) throw new Error("Iranian Tether monitor must include Ramzinex fallback and bounded retry/backoff for transient provider errors");
+          if (!tetherWorkerSource.includes("publicapi.ramzinex.com/exchange/api/v1.0/exchange/pairs") || !tetherWorkerSource.includes('"Ramzinex"') || !tetherWorkerSource.includes("attempt<2") || !tetherWorkerSource.includes("Retry-After")) throw new Error("Iranian Tether monitor must include Ramzinex fallback and bounded retry/backoff for transient provider errors");
 
           const radarSource = fs.readFileSync("cloudflare-worker/radar-worker.js", "utf8");
           const futuresSource = fs.readFileSync("cloudflare-worker/futures-worker.js", "utf8");
@@ -737,7 +737,7 @@ jobs:
           status=$(curl --silent --show-error --max-time 25 -o /tmp/local-watch.json -w "%{http_code}" "$WORKER_URL/local-market-watch")
           echo "Iranian USDT watch HTTP $status"
           if [ "$status" != "200" ]; then cat /tmp/local-watch.json; exit 1; fi
-          jq -e '.market == "USDT/IRR" and (.sources | length == 3) and (.status == "multi_source" or .status == "single_source" or .status == "offline") and (.server_alert | type == "boolean") and (.server_monitor == "server-cron-1m" or .server_monitor == "warming_up") and (.last_known_toman == null or (.last_known_toman | type == "number")) and (.last_known_age_ms == null or (.last_known_age_ms | type == "number"))' /tmp/local-watch.json >/dev/null
+          jq -e '.market == "USDT/IRR" and (.sources | length == 5) and (.status == "multi_source" or .status == "single_source" or .status == "offline") and (.server_alert | type == "boolean") and (.server_monitor == "dedicated-tether-cron-1m" or .server_monitor == "warming_up") and (.last_known_toman == null or (.last_known_toman | type == "number")) and (.last_known_age_ms == null or (.last_known_age_ms | type == "number"))' /tmp/local-watch.json >/dev/null
           jq -r '"Iranian USDT/Toman watch: " + .status + " | valid venues: " + (.source_count|tostring)' /tmp/local-watch.json
           jq -r '.sources[]? | "  " + .exchange + ": " + (if .fresh then "fresh" else "offline" end) + (if .error then " · " + .error else "" end)' /tmp/local-watch.json
           status=$(curl --silent --show-error --max-time 25 -o /tmp/early-pressure.json -w "%{http_code}" "$WORKER_URL/early-pressure?symbol=BTC")
