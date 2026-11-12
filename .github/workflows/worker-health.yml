@@ -112,6 +112,7 @@ jobs:
           const matureSummary = learning.summarizeLearningLedger(matureRecords,"spot");
           if (matureSummary.calibrationStatus !== "calibrated" || matureSummary.matured5m !== 40 || matureSummary.calibrationAdjustment !== 5) throw new Error("Bounded learning calibration did not activate at the minimum sample size");
           const workerSource = fs.readFileSync("cloudflare-worker/worker.js", "utf8");
+          const futuresSource = fs.readFileSync("cloudflare-worker/futures-worker.js", "utf8");
           const htmlSource = fs.readFileSync("www/index.html", "utf8");
           const analyzerConfig = fs.readFileSync("cloudflare-worker/wrangler.toml", "utf8");
           const futuresConfig = fs.readFileSync("cloudflare-worker/futures-wrangler.toml", "utf8");
@@ -161,7 +162,6 @@ jobs:
           if (!tetherWorkerSource.includes("publicapi.ramzinex.com/exchange/api/v1.0/exchange/pairs") || !tetherWorkerSource.includes('"Ramzinex"') || !tetherWorkerSource.includes("attempt<2") || !tetherWorkerSource.includes("Retry-After")) throw new Error("Iranian Tether monitor must include Ramzinex fallback and bounded retry/backoff for transient provider errors");
 
           const radarSource = fs.readFileSync("cloudflare-worker/radar-worker.js", "utf8");
-          const futuresSource = fs.readFileSync("cloudflare-worker/futures-worker.js", "utf8");
           const universeCronSource = fs.readFileSync("cloudflare-worker/hunter-cron-worker.js", "utf8");
           const cronStart = workerSource.indexOf("async function runDigitalHunterCron");
           const cronEnd = workerSource.indexOf("export default {", cronStart);
