@@ -160,6 +160,7 @@ jobs:
           const cronStart = workerSource.indexOf("async function runDigitalHunterCron");
           const cronEnd = workerSource.indexOf("export default {", cronStart);
           const cronSource = workerSource.slice(cronStart, cronEnd);
+          if (!futuresSource.includes('async scheduled(event,env,ctx)') || !futuresSource.includes('env.TETHER_MONITOR.fetch(new Request("https://tether-monitor.internal/run"') || !fs.readFileSync("cloudflare-worker/futures-wrangler.toml","utf8").includes('binding = "TETHER_MONITOR"')) throw new Error("Futures Cron must provide a redundant private trigger for the isolated Tether monitor");
           if (!futuresSource.includes('async scheduled(event,env)') || !futuresSource.includes('runDigitalHunterMarketCycle(env,"futures")') || !futuresSource.includes("digital-hunter-futures-cron-heartbeat")) throw new Error("Futures must run on its own scheduled Worker");
           if (!universeCronSource.includes("refreshDigitalHunterUniverses(env)") || !universeCronSource.includes("hourly-universe-refresh")) throw new Error("Hunter universe refresh must remain independent and low-frequency");
           if (!cronSource.includes('runDigitalHunterMarketCycle(env,"spot")') || cronSource.includes("FUTURES_ENGINE.fetch")) throw new Error("Analyzer Cron must scan Spot only; Futures has its own scheduler");
