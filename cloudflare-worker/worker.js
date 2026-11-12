@@ -1153,7 +1153,7 @@ async function loadDigitalHunterFuturesUniverse(){
 }
 async function loadDigitalHunterUniverse(env,marketType){
  if(marketType==="futures")return await loadDigitalHunterFuturesUniverse();
- const response=await handle(new Request("https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/hunter-universe",{headers:{"Accept":"application/json","User-Agent":"MMP-Digital-Hunter/2.0"}}),env);
+ const response=await handle(new Request("https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/hunter-universe",{headers:{"Accept":"application/json","User-Agent":"MMP-Digital-Hunter/2.0","X-MMP-Internal-Token":env.FUTURES_ENGINE_TOKEN||""}}),env);
  if(!response.ok)throw Error("Universe HTTP "+response.status);
  const data=await response.json();
  return {assets:data.hunter_assets||[],sources:data.sources||{},metadata_provider:data.metadata_provider||"multi-exchange"};
@@ -1337,8 +1337,13 @@ async function handle(request,env){
   const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-scan"),request);if(limited)return limited;const url=new URL(request.url),symbols=[...new Set((url.searchParams.get("symbols")||"").split(",").map(x=>x.toUpperCase().replace(/[^A-Z0-9]/g,"")).filter(x=>/^[A-Z0-9]{2,24}$/.test(x)))].slice(0,12);if(!symbols.length)return json({error:"حداقل یک نماد معتبر ارسال کنید."},400,request);const marketType=url.searchParams.get("market")==="futures"?"futures":"spot";try{return json({engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,...await scanHunterSymbols(symbols,marketType,[],env)},200,request);}catch(e){return json({error:String(e?.message||e).slice(0,220)},502,request);}
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-universe"){
-  const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-universe");
-  const limited=rateLimitReply(limitResult,request);if(limited)return limited;
+  // Scheduled engine refreshes authenticate internally with a Worker secret and do not
+  // consume the public IP rate-limit bucket. External requests remain rate-limited.
+  const internalAuthorized=!!env.FUTURES_ENGINE_TOKEN&&request.headers.get("X-MMP-Internal-Token")===env.FUTURES_ENGINE_TOKEN;
+  if(!internalAuthorized){
+   const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-universe");
+   const limited=rateLimitReply(limitResult,request);if(limited)return limited;
+  }
   // Share the expensive multi-exchange catalog across web and Android clients for 90 seconds.
   const universeCacheKey=await marketFallbackKey("hunter-universe:v1");
   const cachedUniverse=await readMarketFallback(env,universeCacheKey);
