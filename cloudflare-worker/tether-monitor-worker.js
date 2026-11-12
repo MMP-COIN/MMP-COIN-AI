@@ -115,7 +115,9 @@ async function readLocalTetherState(env){
  try{const row=await env.ADMIN_DB.prepare("SELECT payload FROM hunter_engine_state WHERE id = ?").bind("local-tether-watch").first();return row?.payload?JSON.parse(row.payload):null;}catch{return null;}
 }
 async function monitorLocalTether(env){
- const sample=await fetchLocalTetherSnapshot(),previous=await readLocalTetherState(env),current=Number(sample.median_toman),now=new Date().toISOString();
+ const previous=await readLocalTetherState(env),previousAt=Date.parse(previous?.monitor_updated_at||"");
+ if(previous&&Number.isFinite(previousAt)&&Date.now()-previousAt<45000)return {...previous,monitor_reused:true};
+ const sample=await fetchLocalTetherSnapshot(),current=Number(sample.median_toman),now=new Date().toISOString();
  const lastKnown=Number(previous?.last_known_toman??previous?.median_toman)||null;
  const lastKnownAt=previous?.last_known_checked_at||previous?.checked_at||null;
  const lastKnownAge=lastKnownAt?Math.max(0,Date.now()-Date.parse(lastKnownAt)):null;
