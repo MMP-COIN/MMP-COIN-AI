@@ -6619,7 +6619,7 @@ window.mmpShareDownloadLink = async function () {
   const signals=Array.isArray(snap.signals)?snap.signals:[];
   const total=Math.max(0,Number(snap.universe_count)||0),done=Math.max(0,Number(snap.scanned_count)||0);
   const stamp=Date.parse(snap.checked_at||snap.scanned_at||"");
-  const live=snap.status==="online"&&done>0&&Number.isFinite(stamp)&&Date.now()-stamp<120000;
+  const live=["online","partial"].includes(snap.status)&&done>0&&Number.isFinite(stamp)&&Date.now()-stamp<120000;
   const cyclePct=total?Math.max(0,Math.min(100,Math.round(done/total*100))):0;
   cards.forEach((card,i)=>{
    const row=card.querySelector(".engine-live-row"),track=card.querySelector(".engine-live-track span");
@@ -6627,8 +6627,8 @@ window.mmpShareDownloadLink = async function () {
    const [label,metric,fn]=defs[i]||defs[0];
    let value=0;try{value=fn(signals)}catch(e){}
    const active=live&&(i===0?signals.length>0:i===1?done>0:i===2?signals.length>0:i===3?signals.some(x=>x.flow?.complete===true):i===4?signals.some(x=>x.depth?.confirmed===true):i===5?signals.some(x=>x.trend5&&x.trend1):i===6?signals.some(x=>Number(x.atrPct)>0):i===7?signals.some(x=>x.trend):i===8?signals.some(x=>x.tradePlan):i===9?Number(window.__mmpQuantumLedgerCount||0)>0:i===10?signals.some(x=>Number(x.tradePlan?.riskPercent)>0):signals.some(x=>x.confirmed===true&&x.multiExchangeConfirmed===true&&x.quantum?.qualityGate===true));
-   card.classList.toggle("is-live",active);card.classList.toggle("is-stale",!live);
-   const stateText=!live?"مکث · داده کهنه":active?"در حال پایش":"داده ناکافی";
+   card.classList.toggle("is-live",active);card.classList.toggle("is-stale",!live);card.classList.toggle("is-connected",live);
+   const stateText=!live?"اتصال داده کهنه":active?"متصل · شواهد فعال":"متصل · منتظر شواهد";
    row.querySelector(".engine-live-state span").textContent=stateText;
    row.querySelector("b").textContent=value.toLocaleString("fa-IR")+" · "+metric;
    track.style.width=(active?Math.max(4,cyclePct):Math.min(100,cyclePct))+"%";
