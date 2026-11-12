@@ -2023,19 +2023,14 @@ async function runDigitalHunterCron(event,env){
 export default {
  fetch:handle,
  async scheduled(event,env,ctx){
-  // The analyzer's minute Cron is the confirmed scheduler for both Hunter universes.
-  // Refresh the shared Spot/Futures universe every 15 minutes without relying on
-  // a separate Cron-only Worker whose schedule is not being invoked.
-  const cleanup=cleanupMarketFallbackCache(env);
+  // Keep independent health/maintenance tasks alive even when a Hunter scan fails.
+  // Cloudflare waitUntil owns every background task until it settles.
+  const cleanup=cleanupMarketFallbackCache(env).catch(error=>console.error("Market fallback cleanup failed:",error?.message||error));
   const localTether=monitorLocalTether(env).catch(error=>console.error("Local Tether server monitor failed:",error?.message||error));
   const scheduledAt=Number(event?.scheduledTime)||Date.now(),minute=new Date(scheduledAt).getUTCMinutes();
   const universeRefresh=minute%15===0?refreshDigitalHunterUniverses(env).catch(error=>console.error("Hunter universe refresh failed:",error?.message||error)):Promise.resolve();
-  try{
-   await runDigitalHunterCron(event,env,ctx);
-  }catch(error){
-   console.error("Digital Hunter scheduled cycle failed:",error?.message||error);
-   throw error;
-  }
-  await Promise.allSettled([cleanup,localTether,universeRefresh]);
+  const hunterCycle=runDigitalHunterCron(event,env,ctx).catch(error=>console.error("Digital Hunter scheduled cycle failed:",error?.message||error));
+  const background=Promise.allSettled([cleanup,localTether,universeRefresh,hunterCycle]);
+  if(ctx?.waitUntil)ctx.waitUntil(background);else await background;
  }
 };
