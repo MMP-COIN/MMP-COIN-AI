@@ -131,6 +131,7 @@ jobs:
           if (!workerSource.includes("fapi1.binance.com/fapi/v1/ticker/price") || !workerSource.includes("api.bytick.com/v5/market/tickers?category=linear") || !workerSource.includes("us.okx.com/api/v5/market/ticker?instId=BTC-USDT-SWAP")) throw new Error("Futures connection health must probe alternate regional endpoints");
           if (!workerSource.includes("last_known_age_ms") || !workerSource.includes("monitor_updated_at:now")) throw new Error("Iranian Tether monitor must preserve last-known values separately and update its heartbeat during provider outages");
           if (!workerSource.includes("minute%15===0?refreshDigitalHunterUniverses(env)")) throw new Error("Shared Spot/Futures universe refresh must run on the proven analyzer minute Cron");
+          if (!workerSource.includes("ctx.waitUntil(background)") || !workerSource.includes("Promise.allSettled([cleanup,localTether,universeRefresh,hunterCycle])")) throw new Error("Tether and cleanup monitors must survive a failed Hunter cycle");
           if (!workerSource.includes("const dueLearningRecords=") || !workerSource.includes("fetchHunterCandles(record.symbol,marketType,asset)") || !workerSource.includes("...learningMarks")) throw new Error("Self-learning must capture fresh 5m/15m/60m outcome marks for open signals");
           const hunterCandlesStart = workerSource.indexOf('async function fetchHunterCandles(symbol,marketType="spot",asset=null){');
           const hunterCandlesEnd = workerSource.indexOf("async function analyzeDigitalHunterSymbol", hunterCandlesStart);
