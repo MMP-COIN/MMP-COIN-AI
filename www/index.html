@@ -2767,7 +2767,7 @@ html body #ai-section .tf-card{min-width:0!important;max-width:100%!important;ov
  root.dataset.initialized="1";
  const API="https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev";
  const $=id=>document.getElementById(id);
- const engineNames={momentum:"مومنتوم",flow:"جریان معاملات",structure:"ساختار بازار",liquidity:"نقدشوندگی",multiTimeframe:"هم‌جهتی تایم‌فریم",regime:"رژیم بازار",volatility:"نوسان",sentiment:"احساسات بازار",smartMoney:"اسمارت‌مانی",scenario:"شبیه‌ساز سناریو",risk:"مدیریت ریسک",dataQuality:"کیفیت داده",explosion:"حرکت انفجاری",earlyOpportunity:"فرصت زودهنگام",decision:"تصمیم‌گیر مرکزی",learning:"یادگیری تطبیقی"};
+ const engineNames={momentum:"مومنتوم",flow:"جریان معاملات",structure:"ساختار بازار",liquidity:"نقدشوندگی",multiTimeframe:"هم‌جهتی تایم‌فریم",regime:"رژیم بازار",volatility:"نوسان",sentiment:"احساسات بازار",smartMoney:"اسمارت‌مانی",scenario:"شبیه‌ساز سناریو",risk:"مدیریت ریسک",dataQuality:"کیفیت داده"};
  const stateLabel=s=>s==="ok"||s==="online"||s==="success"?"سالم":s==="slow"?"کند":s==="warming_up"?"در حال آماده‌سازی":s==="down"||s==="error"||s==="offline"?"خراب":"نامشخص";
  const dot=s=>s==="ok"||s==="online"||s==="success"?"ok":s==="slow"||s==="warming_up"?"warn":s==="down"||s==="error"||s==="offline"?"bad":"";
  const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -2795,8 +2795,9 @@ html body #ai-section .tf-card{min-width:0!important;max-width:100%!important;ov
   const checks=Array.isArray(connections?.checks)?connections.checks:[];
   const online=checks.filter(x=>x.status==="ok"||x.status==="slow").length;
   $("mmp-ah-sources").textContent=checks.length?online+"/"+checks.length:"—";
-  const active=spot?.engine_activity||futures?.engine_activity||{};
-  const keys=Object.keys(engineNames),activeCount=keys.filter(k=>Number(active[k]?.processed)>0&&Number(active[k]?.evidence)>0).length;
+  const spotActivity=spot?.engine_activity||{},futuresActivity=futures?.engine_activity||{},active={};
+  const keys=Object.keys(engineNames);keys.forEach(k=>{active[k]={processed:(Number(spotActivity[k]?.processed)||0)+(Number(futuresActivity[k]?.processed)||0),evidence:(Number(spotActivity[k]?.evidence)||0)+(Number(futuresActivity[k]?.evidence)||0)};});
+  const activeCount=keys.filter(k=>active[k].processed>0&&active[k].evidence>0).length;
   $("mmp-ah-engines").textContent=Object.keys(active).length?activeCount+"/"+keys.length:"—";
   $("mmp-ah-version").textContent=health?.engine_version||spot?.engine_version||"—";
   const healthy=services.filter(x=>x.status==="ok"||x.status==="slow").length;
