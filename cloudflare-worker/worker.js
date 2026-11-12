@@ -1846,6 +1846,32 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/futures-engine-heal
   if(!env.FUTURES_ENGINE)return json({service_binding:"missing",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION},503,request);
   try{const response=await env.FUTURES_ENGINE.fetch(new Request("https://futures-engine/health"));const payload=await response.json();return json({...payload,service_binding:"connected"},response.status,request);}catch(error){return json({service_binding:"error",detail:String(error?.message||error).slice(0,180)},502,request);}
  }
+
+ if(request.method==="POST"&&new URL(request.url).pathname==="/system-diagnose"){
+  const limited=rateLimitReply(await checkRateLimit(env.AI_ANALYSIS_LIMITER,request,"system-diagnose"),request);if(limited)return limited;
+  const contentType=request.headers.get("Content-Type")||"";
+  if(!contentType.toLowerCase().includes("application/json"))return json({error:"Content-Type must be application/json"},415,request);
+  let body;try{const raw=await request.text();if(new TextEncoder().encode(raw).length>12000)return json({error:"Diagnostic snapshot is too large"},413,request);body=JSON.parse(raw);}catch{return json({error:"Invalid diagnostic snapshot"},400,request);}
+  if(!body||typeof body!=="object"||Array.isArray(body)||!body.diagnostics||typeof body.diagnostics!=="object")return json({error:"A diagnostic snapshot is required"},400,request);
+  const input=body.diagnostics;
+  const cleanText=value=>String(value??"").replace(/[\u0000-\u001f]/g," ").slice(0,220);
+  const snapshot={
+   checked_at:cleanText(input.checked_at),
+   worker:{status:cleanText(input.worker?.status),engine_version:cleanText(input.worker?.engine_version),ai_binding:input.worker?.ai_binding===true,futures_binding:input.worker?.futures_binding===true},
+   services:(Array.isArray(input.services)?input.services:[]).slice(0,28).map(x=>({name:cleanText(x?.name),status:cleanText(x?.status),detail:cleanText(x?.detail)})),
+   engines:(Array.isArray(input.engines)?input.engines:[]).slice(0,12).map(x=>({name:cleanText(x?.name),processed:Math.max(0,Math.min(100000,Number(x?.processed)||0)),evidence:Math.max(0,Math.min(100000,Number(x?.evidence)||0))})),
+   recent_errors:(Array.isArray(input.recent_errors)?input.recent_errors:[]).slice(0,8).map(cleanText)
+  };
+  const prompt="You are the production reliability diagnostician for MMP COIN AI. Analyze only this sanitized live telemetry. Do not invent causes or claim repairs were executed. Distinguish observed facts from hypotheses. Prioritize data integrity, stale feeds, exchange access failures, Radar/Hunter execution, and QIE specialist evidence coverage. Recommend the smallest safe corrective action and state when a specialist needs more evidence rather than fabricated activation. Return ONLY JSON with this schema: {\\"severity\\":\\"healthy|warning|critical\\",\\"summary\\":string,\\"issues\\":[{\\"component\\":string,\\"severity\\":\\"info|warning|critical\\",\\"evidence\\":string,\\"recommendation\\":string,\\"safe_retry_possible\\":boolean}],\\"upgrade_recommendations\\":[{\\"module\\":string,\\"reason\\":string,\\"priority\\":\\"low|medium|high\\"}],\\"next_checks\\":[string]}. Keep each array to at most 6 items. Never output executable code, secrets, or instructions to bypass legal/geographic restrictions. Snapshot: "+JSON.stringify(snapshot);
+  try{
+   const ai=await runAIWithFallback(env,prompt),parsed=JSON.parse(extractAIJson(ai.raw));
+   const severity=["healthy","warning","critical"].includes(parsed.severity)?parsed.severity:"warning";
+   const issues=Array.isArray(parsed.issues)?parsed.issues.slice(0,6).map(x=>({component:cleanText(x.component),severity:["info","warning","critical"].includes(x.severity)?x.severity:"warning",evidence:cleanText(x.evidence),recommendation:cleanText(x.recommendation),safe_retry_possible:x.safe_retry_possible===true})):[];
+   const upgrades=Array.isArray(parsed.upgrade_recommendations)?parsed.upgrade_recommendations.slice(0,6).map(x=>({module:cleanText(x.module),reason:cleanText(x.reason),priority:["low","medium","high"].includes(x.priority)?x.priority:"medium"})):[];
+   const next=Array.isArray(parsed.next_checks)?parsed.next_checks.slice(0,6).map(cleanText):[];
+   return json({status:"ok",provider:ai.provider,severity,summary:cleanText(parsed.summary),issues,upgrade_recommendations:upgrades,next_checks:next,code_changes_executed:false,checked_at:new Date().toISOString()},200,request);
+  }catch(error){return json({status:"unavailable",error:"AI diagnostic provider unavailable",detail:String(error?.message||error).slice(0,240),code_changes_executed:false,checked_at:new Date().toISOString()},503,request);}
+ }
  if(request.method==="GET"&&new URL(request.url).pathname==="/health"){
   // Keep liveness checks deterministic and independent of upstream exchange/CDN availability.
   // Provider reachability is reported by /connections-health, not by this lightweight route.
