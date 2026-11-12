@@ -52,20 +52,28 @@ async function runCycle(env){
   const results=await Promise.all(urls.map((url,i)=>probe(url,i===1?20000:12000)));
   const data=results.map(x=>x.ok?x.data:null);
   const [health,connections,spot,futuresHealth,futures,radarHealth,radarSnapshot,radarError,spotFlow,futuresFlow]=data;
+  const connectionChecks=Array.isArray(connections?.checks)?connections.checks:[];
+  const connectionOk=connectionChecks.filter(x=>x.status==="ok"||x.status==="slow").length;
+  const connectionStatus=!connectionChecks.length?"unknown":connectionOk===connectionChecks.length?"ok":connectionOk>0?"slow":"down";
+  const qieNames=["momentum","flow","structure","liquidity","multiTimeframe","regime","volatility","sentiment","smartMoney","scenario","risk","dataQuality"];
+  const spotActivity=spot?.engine_activity||{},futuresActivity=futures?.engine_activity||{};
+  const qieEvidence=qieNames.map(name=>({name,processed:(Number(spotActivity[name]?.processed)||0)+(Number(futuresActivity[name]?.processed)||0),evidence:(Number(spotActivity[name]?.evidence)||0)+(Number(futuresActivity[name]?.evidence)||0)}));
+  const qieActive=qieEvidence.filter(x=>x.processed>0&&x.evidence>0).length;
   const radarAge=ageSeconds(radarSnapshot?.scanned_at);
   const radarFresh=radarHealth?.worker==="online"&&radarSnapshot?.status==="online"&&radarAge!==null&&radarAge<=180;
-  const spotHealthy=spot?.status==="online";
-  const futuresHealthy=futuresHealth?.status==="online"&&futuresHealth?.service_binding==="connected"&&futures?.status==="online";
+  const spotHealthy=["online","success"].includes(spot?.status);
+  const futuresHealthy=futuresHealth?.status==="online"&&futuresHealth?.service_binding==="connected"&&["online","success"].includes(futures?.status);
   const spotFlowOk=flowHealthy(spotFlow),futuresFlowOk=flowHealthy(futuresFlow);
   const services=[
     {name:"Analyzer Worker",status:health?.worker==="online"&&health?.ai_binding===true?"ok":"down",detail:"AI binding="+String(health?.ai_binding===true)+" · "+safe(health?.engine_version||"no version")},
-    {name:"Exchange connections",status:connections?.status==="ok"||Array.isArray(connections?.checks)?"ok":"unknown",detail:"checks="+(connections?.checks?.length??0)},
+    {name:"Exchange connections",status:connectionStatus,detail:connectionOk+"/"+connectionChecks.length+" healthy checks"},
     {name:"Spot Hunter",status:spotHealthy?"ok":"down",detail:"status="+safe(spot?.status||results[2].error||"no snapshot")},
     {name:"Futures Hunter",status:futuresHealthy?"ok":"down",detail:"engine="+safe(futuresHealth?.status||results[3].error||"no health")+" · snapshot="+safe(futures?.status||results[4].error||"no snapshot")},
     {name:"Radar Worker",status:radarHealth?.worker==="online"?"ok":"down",detail:safe(radarHealth?.engine_version||results[5].error||"no health")},
     {name:"Radar Snapshot",status:radarFresh?"ok":radarSnapshot?.status==="online"?"slow":"down",detail:radarAge===null?"timestamp missing":radarAge+"s old"},
     {name:"Spot executed-trade flow",status:spotFlowOk?"ok":"down",detail:safe(spotFlow?.flow?.source||results[8].error||"no provider")+" · trades="+Number(spotFlow?.flow?.trade_count||0)+" · complete="+String(spotFlow?.flow?.complete===true)},
-    {name:"Futures executed-trade flow",status:futuresFlowOk?"ok":"down",detail:safe(futuresFlow?.flow?.source||results[9].error||"no provider")+" · trades="+Number(futuresFlow?.flow?.trade_count||0)+" · complete="+String(futuresFlow?.flow?.complete===true)}
+    {name:"Futures executed-trade flow",status:futuresFlowOk?"ok":"down",detail:safe(futuresFlow?.flow?.source||results[9].error||"no provider")+" · trades="+Number(futuresFlow?.flow?.trade_count||0)+" · complete="+String(futuresFlow?.flow?.complete===true)},
+    {name:"QIE evidence coverage",status:qieActive===qieNames.length?"ok":qieActive>0?"slow":"down",detail:qieActive+"/"+qieNames.length+" specialists with processed evidence"}
   ];
   const issues=[];
   const issue=(component,severity,evidence,recommendation)=>issues.push({component,severity,evidence:safe(evidence),recommendation:safe(recommendation)});
@@ -76,8 +84,9 @@ async function runCycle(env){
   if(!radarFresh)issue("Radar","warning",radarAge===null?(results[6].error||"Radar snapshot timestamp missing"):"snapshot age "+radarAge+" seconds; last error="+safe(radarError?.message||radarError?.error||"none"),"Check Radar Worker, Cron execution, scanned_at freshness and last-error endpoint");
   if(!spotFlowOk)issue("Spot executed-trade flow","warning",results[8].error||("available="+String(spotFlow?.flow?.available)+" complete="+String(spotFlow?.flow?.complete)+" trades="+Number(spotFlow?.flow?.trade_count||0)),"Inspect provider pagination and fallback evidence; never label partial trades as complete");
   if(!futuresFlowOk)issue("Futures executed-trade flow","warning",results[9].error||("available="+String(futuresFlow?.flow?.available)+" complete="+String(futuresFlow?.flow?.complete)+" trades="+Number(futuresFlow?.flow?.trade_count||0)),"Inspect Futures provider pagination, exchange access and trade-window completeness");
-  const connectionRows=Array.isArray(connections?.checks)?connections.checks:[];
-  const blocked=connectionRows.filter(x=>/403|451/.test(JSON.stringify(x)));
+  if(qieActive<qieNames.length)issue("QIE specialist evidence","warning",qieEvidence.filter(x=>!(x.processed>0&&x.evidence>0)).map(x=>x.name).join(", ")+" lack processed evidence","Inspect the missing specialist input feeds and activate only after verified evidence exists");
+  if(connectionStatus==="down")issue("Exchange connections","critical","No exchange check is currently healthy","Check provider connectivity and supported alternate endpoints");
+  const blocked=connectionChecks.filter(x=>/403|451/.test(JSON.stringify(x)));
   if(blocked.length)issue("Exchange access","warning",blocked.slice(0,5).map(x=>safe(x.name||x.exchange)+" "+safe(x.status||x.error)).join(" · "),"Use only officially supported alternate providers; do not bypass geographic or legal restrictions");
   const snapshot={checked_at:new Date().toISOString(),services,issues,radar:{age_seconds:radarAge,last_error:safe(radarError?.message||radarError?.error||radarError?.status||"none")},spot_flow:{complete:spotFlowOk,trade_count:Number(spotFlow?.flow?.trade_count||0)},futures_flow:{complete:futuresFlowOk,trade_count:Number(futuresFlow?.flow?.trade_count||0)}};
   const actions=[];
@@ -98,7 +107,9 @@ async function runCycle(env){
   let summary=issues.length?issues.length+" issue(s) detected from live telemetry":"All monitored services passed the current health checks";
   let nextChecks=issues.map(x=>x.component+": "+x.recommendation).slice(0,6),provider="deterministic health rules";
   const lastAI=Number(await readState(env.NEXUS_DB,"last_ai_at")||0);
-  if(issues.length&&env.AI&&Date.now()-lastAI>=900000){
+  const utcDay=new Date().toISOString().slice(0,10);
+  const aiCalls=Number(await readState(env.NEXUS_DB,"ai_calls:"+utcDay)||0);
+  if(issues.length&&env.AI&&Date.now()-lastAI>=900000&&aiCalls<20){
     try{
       const prompt="You are MMP NEXUS, an independent reliability diagnostician. Use only these observed facts. Separate facts from hypotheses. Never bypass 403/451 restrictions. Only recommend bounded reversible actions already exposed; never claim source code or secrets were changed. Return JSON with severity, summary, issues, upgrade_recommendations, next_checks. Telemetry: "+JSON.stringify(snapshot)+" Actions: "+JSON.stringify(actions);
       const response=await env.AI.run("@cf/openai/gpt-oss-120b",{messages:[{role:"system",content:"Return one valid JSON object only. No markdown."},{role:"user",content:prompt}],max_tokens:1200,temperature:0.2});
@@ -111,6 +122,7 @@ async function runCycle(env){
         if(Array.isArray(parsed.next_checks))nextChecks=parsed.next_checks.slice(0,6).map(safe);
         provider="Cloudflare Workers AI";
         await writeState(env.NEXUS_DB,"last_ai_at",Date.now());
+        await writeState(env.NEXUS_DB,"ai_calls:"+utcDay,aiCalls+1);
       }
     }catch(error){actions.push({action:"ai_diagnosis",status:"fallback",detail:safe(error?.message||error)});}
   }
@@ -131,7 +143,10 @@ export default {
     const path=new URL(request.url).pathname;
     if(request.method!=="GET")return json({error:"Method not allowed"},405,request);
     try{
-      if(path==="/health")return json({status:"ok",worker:"online",monitor:"server-cron-5m",database:!!env.NEXUS_DB,ai_binding:!!env.AI,checked_at:new Date().toISOString()},200,request);
+      if(path==="/health"){
+        let database="unknown";try{await env.NEXUS_DB.prepare("SELECT 1 AS ok").first();database="ok";}catch{database="error";}
+        return json({status:"ok",worker:"online",monitor:"server-cron-5m",database,ai_binding:!!env.AI,checked_at:new Date().toISOString()},200,request);
+      }
       if(path==="/status")return json(await latestReport(env),200,request);
       if(path==="/history"){
         const result=await env.NEXUS_DB.prepare("SELECT id,checked_at,severity,summary,ai_provider,issues_json,actions_json FROM nexus_runs ORDER BY id DESC LIMIT 25").all();
