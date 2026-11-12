@@ -54,7 +54,7 @@ window.mmpRenderChart=function(payload){
  const rsiEl=document.getElementById("mmp-rsi-canvas");if(rsiEl)rsiEl.style.display=on.rsi?"block":"none";
  const metrics=document.getElementById("mmp-chart-metrics"),a=atr(rows),av=a.length?a[a.length-1].value:null,rl=rsiLast(rows),mf=mfiLast(rows),ob=obvLast(rows);
  if(metrics)metrics.innerHTML=[["RSI",rl===null?"—":rl.toFixed(1)],["ATR",av===null?"—":av.toPrecision(5)],["MFI",mf===null?"—":mf.toFixed(1)],["OBV",Number.isFinite(ob)?Math.round(ob).toLocaleString("en-US"):"—"]].map(x=>"<span>"+x[0]+" <b>"+x[1]+"</b></span>").join("");
- document.querySelectorAll("[data-mmp-indicator]").forEach(b=>b.classList.toggle("active",!!on[b.dataset.mmpIndicator]));
+ document.querySelectorAll("[data-mmp-indicator]").forEach(b=>{const active=!!on[b.dataset.mmpIndicator];b.classList.toggle("active",active);b.setAttribute("aria-pressed",String(active));});
  const typeBtn=document.getElementById("mmp-chart-type-toggle");if(typeBtn)typeBtn.textContent=st.chartType==="candles"?"کندلی":st.chartType==="heikin"?"هیکن‌آشی":"خطی";
 };
 window.mmpToggleChartIndicator=function(key){if(!(key in defaults))return;state.proIndicators[key]=!state.proIndicators[key];const c=state.cache.get([mmpChartSymbol(),state.interval,state.market].join(":"));if(c)window.mmpRenderChart(c.payload);else mmpLoadChart(false);};
