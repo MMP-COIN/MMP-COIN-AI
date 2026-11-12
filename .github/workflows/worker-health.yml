@@ -1,5 +1,5 @@
 name: MMP COIN AI Worker Health Check
-# Post-deploy verification for QIE-4.0.0 and integrated learning
+# Post-deploy verification for QIE-5.0.0 and integrated learning
 
 on:
   workflow_dispatch:
@@ -49,12 +49,13 @@ jobs:
           node --check --input-type=module < cloudflare-worker/quantum-core.js
           node --check --input-type=module < cloudflare-worker/market-data-core.js
           node --check --input-type=module < cloudflare-worker/learning-engine.js
+          node --check --input-type=module < cloudflare-worker/decision-engine.js
           node --check --input-type=module < cloudflare-worker/futures-worker.js
           node --input-type=module <<'NODE'
           import fs from "node:fs";
           const source = fs.readFileSync("cloudflare-worker/quantum-core.js", "utf8");
           const mod = await import("data:text/javascript;base64," + Buffer.from(source).toString("base64"));
-          if (mod.QUANTUM_ENGINE_VERSION !== "QIE-4.0.0" || typeof mod.calculateQuantumIndicators !== "function") throw new Error("QIE 4 technical-indicator engine is missing");
+          if (mod.QUANTUM_ENGINE_VERSION !== "QIE-5.0.0" || typeof mod.calculateQuantumIndicators !== "function") throw new Error("QIE 4 technical-indicator engine is missing");
           if (typeof mod.calculateMarketScanPriority !== "function") throw new Error("Shared market-mover priority engine is missing");
           const activeMover = mod.calculateMarketScanPriority({hunterChange24h:20,total_volume:35000000});
           const megaLiquid = mod.calculateMarketScanPriority({hunterChange24h:0,total_volume:2000000000});
@@ -74,10 +75,21 @@ jobs:
           const aligned = market.alignMarketCandles(cleanCandles,[[candleTime,100.1,102,99,101.1,10],[candleTime+60000,101.1,103,100,102.1,12]],{now:candleTime+180000,maxAgeMs:180000,maxDeviationPct:0.4});
           if (!aligned || aligned.index !== 1 || aligned.deviationPct > 0.4) throw new Error("Shared multi-exchange candle alignment failed");
           if (!market.assessMarketDataFreshness(candleTime+60000,candleTime+120000,180000).fresh || market.assessMarketDataFreshness(candleTime,candleTime+300000,180000).fresh) throw new Error("Shared market-data freshness gate failed");
+          const decisionSource = fs.readFileSync("cloudflare-worker/decision-engine.js", "utf8");
+          const decisionModule = await import("data:text/javascript;base64," + Buffer.from(decisionSource).toString("base64"));
+          const decisionQuantum = {qualityGate:true,confidence:72,dataAgeMs:25000,flowValidated:true,multiExchangeConfirmed:true,depthConfirmed:true};
+          const approvedDecision = decisionModule.decideQuantumSignal({quantum:decisionQuantum,trend:"bull",score:81,stopDistancePct:0.8,flowConfirmed:true,multiExchangeConfirmed:true,depthConfirmed:true,now:start});
+          if (approvedDecision.action !== "LONG" || approvedDecision.status !== "approved" || approvedDecision.reasons.length) throw new Error("Central QIE decision engine failed to approve a fully evidenced setup");
+          const withheldDecision = decisionModule.decideQuantumSignal({quantum:{...decisionQuantum,depthConfirmed:false},trend:"bull",score:81,stopDistancePct:0.8,flowConfirmed:true,multiExchangeConfirmed:true,depthConfirmed:false,now:start});
+          if (withheldDecision.action !== "WAIT" || !withheldDecision.reasons.includes("depth")) throw new Error("Central QIE decision engine must fail closed when depth evidence is missing");
+          const staleDecision = decisionModule.decideQuantumSignal({quantum:{...decisionQuantum,dataAgeMs:240000},trend:"bear",score:91,stopDistancePct:0.8,flowConfirmed:true,multiExchangeConfirmed:true,depthConfirmed:true,now:start});
+          if (staleDecision.action !== "WAIT" || !staleDecision.reasons.includes("freshData")) throw new Error("Central QIE decision engine must reject stale market data");
+          const workerDecisionSource = fs.readFileSync("cloudflare-worker/worker.js", "utf8");
+          if (!workerDecisionSource.includes('import { decideQuantumSignal } from "./decision-engine.js"') || !workerDecisionSource.includes('if(decision.action==="WAIT")return;')) throw new Error("Hunter final signals are not routed through the central fail-closed decision engine");
           const learningSource = fs.readFileSync("cloudflare-worker/learning-engine.js", "utf8");
           const learning = await import("data:text/javascript;base64," + Buffer.from(learningSource).toString("base64"));
           const start = 1700000000000;
-          const signal = {symbol:"BTC",trend:"bull",price:100,candleTime:start,score:75,flowConfirmed:true,multiExchangeConfirmed:true,depth:{confirmed:true},quantum:{qualityGate:true,confidence:70,version:"QIE-4.0.0"}};
+          const signal = {symbol:"BTC",trend:"bull",price:100,candleTime:start,score:75,flowConfirmed:true,multiExchangeConfirmed:true,depth:{confirmed:true},quantum:{qualityGate:true,confidence:70,version:"QIE-5.0.0"}};
           const ledgerA = learning.updateLearningLedger({}, {observations:[],signals:[signal],market:"spot",engine:"test",now:start});
           const ledgerB = learning.updateLearningLedger(ledgerA, {observations:[{symbol:"BTC",price:101}],signals:[],market:"spot",engine:"test",now:start+6*60000});
           if (ledgerB.records.length !== 1 || !(ledgerB.records[0].outcome_5m > 0) || ledgerB.summary.matured5m !== 1) throw new Error("Persistent signal outcome learning failed");
