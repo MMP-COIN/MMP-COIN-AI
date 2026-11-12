@@ -2856,6 +2856,8 @@ html body #ai-section .tf-card{min-width:0!important;max-width:100%!important;ov
   serverHtml+=row("آخرین چرخه سروری",serverState,serverAge===null?(serverNexus?.message||"هنوز اجرا نشده"):serverAge+" ثانیه قبل · "+(serverNexus.ai_provider||"قواعد سلامت"));
   (serverNexus?.services||[]).forEach(x=>serverHtml+=row(x.name,x.status,x.detail));
   (serverNexus?.issues||[]).forEach(x=>serverHtml+=row(x.component,x.severity==="critical"?"critical":"warning",x.evidence));
+  (serverNexus?.ai_issues||[]).forEach(x=>serverHtml+=row("تحلیل AI · "+x.component,x.severity==="critical"?"critical":"warning",x.recommendation||x.evidence));
+  (serverNexus?.upgrade_recommendations||[]).forEach(x=>serverHtml+=row("ارتقای پیشنهادی · "+x.module,x.priority==="high"?"warning":"slow",x.reason));
   (serverNexus?.actions||[]).forEach(x=>serverHtml+=row("ترمیم "+(x.target||x.action),x.status==="accepted"?"ok":"down",x.detail));
   (serverNexus?.next_checks||[]).slice(0,4).forEach(x=>serverHtml+='<div class="mmp-ah-row"><span>'+esc(x)+'</span></div>');
   if(!serverNexus)serverHtml+=row("ارتباط با مغز سروری","down","NEXUS Worker پاسخ نداد");
