@@ -66,13 +66,14 @@ jobs:
           html = Path("www/v4/index.html").read_text(encoding="utf-8")
           css = Path("www/v4/app.css").read_text(encoding="utf-8")
           js = Path("www/v4/app.js").read_text(encoding="utf-8")
-          for required in ["id=\"command\"", "id=\"radar\"", "id=\"hunter\"", "id=\"analyzer\"", "id=\"engines\"", "app.css", "app.js"]:
+          for required in ["id=\"command\"", "id=\"radar\"", "id=\"hunter\"", "id=\"analyzer\"", "id=\"engines\"", "id=\"engineCore\"", "app.css", "app.js"]:
               assert required in html, f"Missing required UI mount: {required}"
-          for required in ["QIE-4.0.0", "مرکز فرماندهی کوانتومی", "رادار", "شکارچی", "تحلیل‌گر", "حوزه"]:
+          for required in ["QIE-4.0.0", "فرماندهی کوانتومی", "رادار هوشمند", "شکارچی کوانتومی", "تحلیل‌گر هوشمند", "موتور هوشمند یکپارچه"]:
               assert required in html, f"Missing required product section: {required}"
           for required in ["hunter-combined-snapshot", "fast-radar-snapshot", "/connections-health", "cache:\"no-store\""]:
               assert required in js, f"Missing live integration: {required}"
           assert "هیچ سیگنال ساختگی" in html, "No fabricated-signal disclosure"
+          assert "مرکز فرماندهی کوانتومی" not in html and "engineGrid" not in html and "engineGrid" not in js, "Legacy title or visible 12-engine grid remains"
           assert len(css) > 8000, "Responsive terminal stylesheet unexpectedly small"
           assert "Math.random" not in js and "fake" not in js.lower(), "Synthetic market data is not allowed"
           print("V4 UI mounts, responsive assets, live endpoints, and no-fabricated-data guard validated.")
@@ -98,8 +99,8 @@ jobs:
             page.on("pageerror", error => failures.push(name + " page error: " + error.message));
             const response = await page.goto("http://127.0.0.1:4173/", {waitUntil: "networkidle", timeout: 30000});
             assert.equal(response.status(), 200, name + ": homepage must return HTTP 200");
-            await page.waitForSelector("#engineGrid .engine-item", {timeout: 10000});
-            assert.equal(await page.locator("#engineGrid .engine-item").count(), 12, name + ": expected 12 engine tiles");
+            await page.waitForSelector("#engineCore", {timeout: 10000});
+            assert.equal(await page.locator("#engineCore").count(), 1, name + ": expected one unified intelligence engine");
             for (const id of ["command", "radar", "hunter", "analyzer", "engines"]) {
               assert.equal(await page.locator("#" + id).count(), 1, name + ": missing section #" + id);
             }
