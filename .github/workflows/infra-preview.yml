@@ -5,6 +5,12 @@ on:
     branches:
       - "preview/redesign-2026-11-13"
   workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - "cloudflare-worker/**"
+      - ".github/workflows/worker-health.yml"
+      - ".github/workflows/infra-preview.yml"
 
 permissions:
   contents: read
