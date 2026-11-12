@@ -1,0 +1,20 @@
+name = "mmp-coin-ai-tether-monitor"
+main = "tether-monitor-worker.js"
+compatibility_date = "2026-11-04"
+workers_dev = false
+
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+invocation_logs = true
+
+[[d1_databases]]
+binding = "ADMIN_DB"
+database_name = "mmp_coin_ai_private_admin"
+database_id = "dfb3ee95-ef2f-4067-a973-31b8fb1ee62f"
+
+[triggers]
+crons = ["* * * * *"]
