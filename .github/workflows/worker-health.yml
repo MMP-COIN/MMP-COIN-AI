@@ -1,5 +1,5 @@
 name: MMP COIN AI Worker Health Check
-# Post-deploy verification for QIE-5.0.0 and integrated learning
+# Post-deploy verification for QIE-5.0.1 and integrated learning
 
 on:
   workflow_dispatch:
@@ -55,11 +55,15 @@ jobs:
           import fs from "node:fs";
           const source = fs.readFileSync("cloudflare-worker/quantum-core.js", "utf8");
           const mod = await import("data:text/javascript;base64," + Buffer.from(source).toString("base64"));
-          if (mod.QUANTUM_ENGINE_VERSION !== "QIE-5.0.0" || typeof mod.calculateQuantumIndicators !== "function") throw new Error("QIE 4 technical-indicator engine is missing");
+          if (mod.QUANTUM_ENGINE_VERSION !== "QIE-5.0.1" || typeof mod.calculateQuantumIndicators !== "function") throw new Error("QIE 4 technical-indicator engine is missing");
           if (typeof mod.calculateMarketScanPriority !== "function") throw new Error("Shared market-mover priority engine is missing");
           const activeMover = mod.calculateMarketScanPriority({hunterChange24h:20,total_volume:35000000});
           const megaLiquid = mod.calculateMarketScanPriority({hunterChange24h:0,total_volume:2000000000});
           if (!(activeMover > megaLiquid)) throw new Error("Active movers must be prioritized ahead of static high-volume assets");
+          const overlap = mod.scoreQuantumOpportunity({trend:"bull",currentPrice:100,dataAgeMs:1000,change1m:0.1,change3m:0.2,change5m:0.3,change15m:0.4,flowConfirmed:true,flowImbalance:0.1,ema9:102,ema21:101,ema50:100,macdHistogram:0.1,rsi14:60,volumeRatio:2,depthConfirmed:true,depthImbalance:0.1,explosionScore:95,smartMoneyScore:95,smartMoneyConfirmed:true,scenarioScore:95});
+          if (overlap.componentAvailability.volatility || overlap.componentAvailability.smartMoney || overlap.componentAvailability.scenario) throw new Error("Derived explosion/flow/scenario inputs must not be double-counted as independent score components");
+          const independent = mod.scoreQuantumOpportunity({trend:"bull",currentPrice:100,dataAgeMs:1000,change1m:0.1,change3m:0.2,change5m:0.3,change15m:0.4,flowConfirmed:true,flowImbalance:0.1,ema9:102,ema21:101,ema50:100,macdHistogram:0.1,rsi14:60,volumeRatio:2,depthConfirmed:true,depthImbalance:0.1,atrPct:0.5,smartMoneyScore:70,smartMoneyIndependent:true,scenarioScore:70,scenarioIndependent:true});
+          if (!independent.componentAvailability.volatility || !independent.componentAvailability.smartMoney || !independent.componentAvailability.scenario) throw new Error("Independent specialist evidence must remain scoreable");
           const bars = Array.from({length:100},(_,i)=>{const c=100+i*.12+Math.sin(i/4)*.3;return [1700000000000+i*60000,c-.04,c+.2,c-.2,c,1000+i*3];});
           const early = mod.detectEarlyMovePressure({rangeCompression:0.2,volumeAcceleration:3.0,flowImbalance:-0.9,dataFresh:true});
           if (early.state !== "high_pressure" || early.direction !== "down" || early.available_inputs !== 3) throw new Error("Early downside pressure detector failed");
@@ -89,7 +93,7 @@ jobs:
           const learningSource = fs.readFileSync("cloudflare-worker/learning-engine.js", "utf8");
           const learning = await import("data:text/javascript;base64," + Buffer.from(learningSource).toString("base64"));
           const start = 1700000000000;
-          const signal = {symbol:"BTC",trend:"bull",price:100,candleTime:start,score:75,flowConfirmed:true,multiExchangeConfirmed:true,depth:{confirmed:true},quantum:{qualityGate:true,confidence:70,version:"QIE-5.0.0"}};
+          const signal = {symbol:"BTC",trend:"bull",price:100,candleTime:start,score:75,flowConfirmed:true,multiExchangeConfirmed:true,depth:{confirmed:true},quantum:{qualityGate:true,confidence:70,version:"QIE-5.0.1"}};
           const ledgerA = learning.updateLearningLedger({}, {observations:[],signals:[signal],market:"spot",engine:"test",now:1700000000000});
           const ledgerB = learning.updateLearningLedger(ledgerA, {observations:[{symbol:"BTC",price:101}],signals:[],market:"spot",engine:"test",now:start+6*60000});
           if (ledgerB.records.length !== 1 || !(ledgerB.records[0].outcome_5m > 0) || ledgerB.summary.matured5m !== 1) throw new Error("Persistent signal outcome learning failed");
