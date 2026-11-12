@@ -12,14 +12,14 @@ async function aiReview(env,telemetry){if(!env.AI?.run)return null;const prompt=
 try{const out=await env.AI.run(MODEL,{messages:[{role:"system",content:"You are a cautious production SRE. Output valid JSON only."},{role:"user",content:prompt}],max_tokens:1800});const raw=typeof out==="string"?out:(typeof out?.response==="string"?out.response:JSON.stringify(out));const a=raw.indexOf("{"),b=raw.lastIndexOf("}");if(a<0||b<=a)return null;const x=JSON.parse(raw.slice(a,b+1));return {provider:MODEL,severity:["healthy","warning","critical"].includes(x.severity)?x.severity:"warning",summary:clean(x.summary,500),issues:Array.isArray(x.issues)?x.issues.slice(0,8).map(i=>({component:clean(i.component),severity:["info","warning","critical"].includes(i.severity)?i.severity:"warning",evidence:clean(i.evidence),recommendation:clean(i.recommendation)})):[],upgrade_recommendations:Array.isArray(x.upgrade_recommendations)?x.upgrade_recommendations.slice(0,8).map(i=>({module:clean(i.module),priority:["low","medium","high"].includes(i.priority)?i.priority:"medium",reason:clean(i.reason)})):[],next_checks:Array.isArray(x.next_checks)?x.next_checks.slice(0,8).map(v=>clean(v)):[]};}catch(e){return {provider:"deterministic-fallback",error:clean(e?.message||e)};}}
 function snapshotAge(data){const raw=data?.updated_at||data?.updatedAt||data?.scanned_at||data?.checked_at||data?.updated||data?.timestamp;const t=typeof raw==="number"?(raw<1e12?raw*1000:raw):Date.parse(raw||"");return Number.isFinite(t)&&t>0?Date.now()-t:Infinity;}
 async function runCycle(env){if(!env.ADMIN_DB)throw new Error("ADMIN_DB binding missing; persistence and safe-recovery lock are required");const previous=await readState(env);const started=Date.now();
-const [analyzerHealth,connections,spot,futures,radarHealth,radarSnapshot,tetherHealth]=await Promise.all([
-call(env.ANALYZER,"/health"),call(env.ANALYZER,"/connections-health"),call(env.ANALYZER,"/hunter-snapshot"),call(env.ANALYZER,"/hunter-futures-snapshot"),call(env.RADAR,"/health"),call(env.RADAR,"/fast-radar-snapshot"),call(env.TETHER,"/health")
+const [analyzerHealth,connections,spot,futures,futuresHealth,radarHealth,radarSnapshot,tetherHealth]=await Promise.all([
+call(env.ANALYZER,"/health"),call(env.ANALYZER,"/connections-health"),call(env.ANALYZER,"/hunter-snapshot"),call(env.ANALYZER,"/hunter-futures-snapshot"),call(env.FUTURES,"/health"),call(env.RADAR,"/health"),call(env.RADAR,"/fast-radar-snapshot"),call(env.TETHER,"/health")
 ]);
 const services=[
 {name:"Analyzer Worker",...analyzerHealth},{name:"Market data connections",status:connections.status,http_status:connections.http_status,latency_ms:connections.latency_ms,detail:connections.detail,data:connections.data},
 {name:"Spot Hunter",status:spot.status,http_status:spot.http_status,latency_ms:spot.latency_ms,detail:spot.detail,data:spot.data},
 {name:"Futures Hunter",status:futures.status,http_status:futures.http_status,latency_ms:futures.latency_ms,detail:futures.detail,data:futures.data},
-{name:"Quantum Radar",...radarHealth},{name:"Radar snapshot",status:radarSnapshot.status,http_status:radarSnapshot.http_status,latency_ms:radarSnapshot.latency_ms,detail:radarSnapshot.detail,data:radarSnapshot.data},
+{name:"Futures Worker",...futuresHealth},{name:"Quantum Radar",...radarHealth},{name:"Radar snapshot",status:radarSnapshot.status,http_status:radarSnapshot.http_status,latency_ms:radarSnapshot.latency_ms,detail:radarSnapshot.detail,data:radarSnapshot.data},
 {name:"Tether monitor",...tetherHealth}
 ];
 const issues=[],repairs=[];
@@ -37,6 +37,7 @@ safeRetry("futures","Futures Hunter",env.ANALYZER,"/hunter-futures-run",futures.
 const repairLog=[...lastRepairs.filter(x=>!repairs.some(y=>y.key===x.key)),...repairs].slice(-12);
 const telemetry={checked_at:nowIso(),duration_ms:Date.now()-started,services:services.map(({name,status,http_status,latency_ms,detail})=>({name,status,http_status,latency_ms,detail})),issues,repair_log:repairs};
 const ai=await aiReview(env,telemetry);
+for(const item of (ai?.issues||[])){if(!issues.some(x=>x.component===item.component&&x.evidence===item.evidence))issues.push({...item,source:"AI review"});}
 const severity=issues.some(x=>x.severity==="critical")?"critical":issues.length?"warning":"healthy";
 const result={status:"ok",checked_at:nowIso(),duration_ms:Date.now()-started,severity,services:telemetry.services,issues,ai_review:ai,repair_log:repairLog,latest_repairs:repairs,independence:"Dedicated Worker + independent Cron; market Workers are observed through read-only service bindings except bounded Hunter retry routes.",safety:{automatic_code_deploy:false,automatic_config_mutation:false,automatic_weight_changes:false,auto_retry_only:["Spot Hunter bounded scan retry","Futures Hunter bounded scan retry"],cooldown_ms:RETRY_COOLDOWN_MS},upgrade_recommendations:ai?.upgrade_recommendations||[],next_checks:ai?.next_checks||[]};
 await persist(env,result);return result;}
