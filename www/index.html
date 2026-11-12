@@ -6638,17 +6638,42 @@ window.mmpShareDownloadLink = async function () {
   const badge=document.querySelector("#quantum-center-entry .quantum-engine-board-head>span");
   if(badge)badge.textContent=live?"● LIVE · "+done.toLocaleString("fa-IR")+"/"+total.toLocaleString("fa-IR"):"◷ WAITING FOR SNAPSHOT";
  }
- async function refresh(){
+ let monitorBusy=false;
+ async function refresh(force=false){
+  if(monitorBusy)return;
+  monitorBusy=true;
   try{
-   const snap=window.__mmpDigitalHunterSnapshot;
-   if(!snap)throw new Error("منتظر Snapshot موتور مرکزی هستیم");
+   let snap=window.__mmpDigitalHunterSnapshot||null;
+   let stamp=Date.parse(snap?.checked_at||snap?.scanned_at||"");
+   // The command rail sits above the Hunter section. It must fetch its own first
+   // snapshot instead of waiting for a lower, lazy-loaded section to initialize.
+   if(force||!snap||!Number.isFinite(stamp)||Date.now()-stamp>45000){
+    let loaded=null;
+    try{if(typeof loadDigitalHunterSnapshot==="function")loaded=await loadDigitalHunterSnapshot(true);}catch(e){}
+    snap=window.__mmpDigitalHunterSnapshot||loaded||null;
+    if(!snap){
+     const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),14000);
+     try{
+      const response=await fetch(API+"/hunter-combined-snapshot",{cache:"no-store",signal:controller.signal,headers:{"Accept":"application/json"}});
+      if(!response.ok)throw new Error("Combined snapshot HTTP "+response.status);
+      const combined=await response.json();
+      if(!combined?.spot||!combined?.futures)throw new Error("Snapshot مشترک ناقص است");
+      window.__mmpDigitalHunterSnapshot=combined.spot;
+      window.__mmpDigitalHunterFuturesSnapshot=combined.futures;
+      window.__mmpQuantumHomeSnapshot=combined.spot;
+      document.dispatchEvent(new Event("mmp-hunter-snapshot-updated"));
+      snap=combined.spot;
+     }finally{clearTimeout(timer);}
+    }
+   }
+   if(!snap)throw new Error("Snapshot موتور مرکزی هنوز آماده نیست");
    window.__mmpQuantumHomeSnapshot=snap;paint(snap);
   }catch(e){
-   cards.forEach(card=>{card.classList.remove("is-live");card.classList.add("is-stale");const t=card.querySelector(".engine-live-state span");if(t)t.textContent="اتصال ناموفق"}); 
-   const badge=document.querySelector("#quantum-center-entry .quantum-engine-board-head>span");if(badge)badge.textContent="◷ CONNECTION WAIT";
-  }
+   cards.forEach(card=>{card.classList.remove("is-live");card.classList.add("is-stale");const t=card.querySelector(".engine-live-state span");if(t)t.textContent="داده زنده در دسترس نیست"});
+   const badge=document.querySelector("#quantum-center-entry .quantum-engine-board-head>span");if(badge)badge.textContent="◷ WAITING FOR MARKET DATA";
+  }finally{monitorBusy=false;}
  }
- let started=false;const start=()=>{started=true;refresh();if(window.__mmpHomeEngineTimer)clearInterval(window.__mmpHomeEngineTimer);window.__mmpHomeEngineTimer=setInterval(()=>{if(!document.hidden&&root.getBoundingClientRect().top<window.innerHeight+500)refresh();},180000);};
+ let started=false;const start=()=>{started=true;refresh(true);if(window.__mmpHomeEngineTimer)clearInterval(window.__mmpHomeEngineTimer);window.__mmpHomeEngineTimer=setInterval(()=>{if(!document.hidden&&root.getBoundingClientRect().top<window.innerHeight+500)refresh();},30000);};
  if(window.mmpWhenVisible)window.mmpWhenVisible("#quantum-center-entry",start,{rootMargin:"450px 0px"});else start();
  document.addEventListener("mmp-hunter-snapshot-updated",()=>{if(started)refresh()});
  document.addEventListener("visibilitychange",()=>{if(started&&!document.hidden)refresh()});
