@@ -135,7 +135,16 @@ async function monitorLocalTether(env){
  return payload;
 }
 export default {
- async fetch(){return new Response("Not found",{status:404,headers:{"Cache-Control":"no-store"}});},
+ async fetch(request,env){
+  const url=new URL(request.url);
+  if(url.pathname==="/run"&&request.method==="POST"){
+   if(!env.ADMIN_DB)return new Response(JSON.stringify({error:"ADMIN_DB binding missing"}),{status:503,headers:{"Content-Type":"application/json","Cache-Control":"no-store"}});
+   const payload=await monitorLocalTether(env);
+   return new Response(JSON.stringify({ok:true,...payload}),{status:200,headers:{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store","X-Content-Type-Options":"nosniff"}});
+  }
+  if(url.pathname==="/health"&&request.method==="GET")return new Response(JSON.stringify({status:"online",role:"internal-tether-monitor",admin_db:!!env.ADMIN_DB}),{headers:{"Content-Type":"application/json","Cache-Control":"no-store"}});
+  return new Response("Not found",{status:404,headers:{"Cache-Control":"no-store"}});
+ },
  async scheduled(event,env,ctx){
   const task=monitorLocalTether(env).catch(error=>console.error("Dedicated Tether monitor failed:",error?.message||error));
   if(ctx?.waitUntil)ctx.waitUntil(task);else await task;
