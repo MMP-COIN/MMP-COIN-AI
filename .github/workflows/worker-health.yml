@@ -401,6 +401,26 @@ jobs:
             echo "- AI binding: available"
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Smoke-test live MMP NEXUS AI diagnostic endpoint
+        if: github.event_name == 'push'
+        env:
+          WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
+        run: |
+          set -euo pipefail
+          payload="$(jq -cn --arg checked_at "$(date -u +%FT%TZ)" '{
+            diagnostics:{
+              checked_at:$checked_at,
+              worker:{status:"online",engine_version:"NEXUS-CI",ai_binding:true,futures_binding:true},
+              services:[{name:"Analyzer health",status:"ok",detail:"Live CI probe"}],
+              engines:[],
+              recent_errors:[]
+            }
+          }')"
+          status="$(curl --silent --show-error --retry 2 --retry-delay 2 --max-time 45 -H "Content-Type: application/json" -X POST --data "$payload" -o /tmp/nexus-diagnosis.json -w "%{http_code}" "$WORKER_URL/system-diagnose")"
+          echo "Live NEXUS diagnostic HTTP $status"
+          if [ "$status" != "200" ]; then jq -r '.detail // .error // .' /tmp/nexus-diagnosis.json || cat /tmp/nexus-diagnosis.json; exit 1; fi
+          jq -e '.status == "ok" and (.severity == "healthy" or .severity == "warning" or .severity == "critical") and (.provider | type == "string" and length > 0) and (.issues | type == "array") and (.next_checks | type == "array") and .code_changes_executed == false' /tmp/nexus-diagnosis.json >/dev/null
+          jq -r '"NEXUS AI provider: " + .provider + " | severity: " + .severity + " | issues: " + (.issues|length|tostring) + " | next checks: " + (.next_checks|length|tostring)' /tmp/nexus-diagnosis.json
       - name: Check Futures service binding and live Quantum snapshots
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
