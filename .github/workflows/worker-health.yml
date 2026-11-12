@@ -41,6 +41,32 @@ jobs:
           }
           console.log("Dedicated universe refresh worker verified.");
           NODE
+      - name: Test professional chart indicators and supported intervals
+        run: |
+          set -euo pipefail
+          node --check www/assets/mmp-chart-pro.js
+          node www/tests/mmp-chart-pro.test.cjs
+          node - <<'NODE'
+          const fs = require("node:fs");
+          const html = fs.readFileSync("www/index.html", "utf8");
+          const worker = fs.readFileSync("cloudflare-worker/worker.js", "utf8");
+          for (const required of [
+            'data-chart-tf="3m"',
+            'mmp-chart-bollinger-toggle',
+            'data-mmp-indicator="vwap"',
+            'data-mmp-indicator="supertrend"',
+            'data-mmp-indicator="ichimoku"',
+            'data-mmp-indicator="macd"',
+            'assets/mmp-chart-pro.js?v=20261112-pro-chart-2'
+          ]) {
+            if (!html.includes(required)) throw new Error("Chart UI feature missing: " + required);
+          }
+          if (!worker.includes('["1m","3m","5m","15m","1h","4h","1d"]')) {
+            throw new Error("3m chart interval is not supported by the candle API");
+          }
+          console.log("Chart UI and Worker interval contract verified.");
+          NODE
+
       - name: Validate Worker syntax and Quantum signal gates
         run: |
           set -euo pipefail
