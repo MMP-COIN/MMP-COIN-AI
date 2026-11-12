@@ -2776,7 +2776,7 @@ html body #ai-section .tf-card{min-width:0!important;max-width:100%!important;ov
  const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
  async function get(path,timeout=12000){
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeout);
-  try{const r=await fetch(API+path,{cache:"no-store",headers:{"Accept":"application/json"},signal:controller.signal});if(!r.ok)throw new Error("HTTP "+r.status);return await r.json();}
+  try{const target=/^https?:\/\//i.test(path)?path:API+path;const r=await fetch(target,{cache:"no-store",headers:{"Accept":"application/json"},signal:controller.signal});if(!r.ok)throw new Error("HTTP "+r.status);return await r.json();}
   finally{clearTimeout(timer);}
  }
  async function post(path,payload,timeout=26000){
