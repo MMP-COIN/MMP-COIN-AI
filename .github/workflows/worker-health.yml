@@ -37,7 +37,7 @@ jobs:
           node - <<'NODE'
           const fs = require("fs");
           const source = fs.readFileSync("cloudflare-worker/hunter-cron-worker.js", "utf8");
-          for (const required of ["refreshDigitalHunterUniverses", "digital-hunter-universe-refresh", "hourly-universe-refresh", "async scheduled(event,env)"]) {
+          for (const required of ["refreshDigitalHunterUniverses", "digital-hunter-universe-refresh", "15-minute-universe-refresh", "async scheduled(event,env)"]) {
             if (!source.includes(required)) throw new Error("Dedicated Hunter scheduler missing: " + required);
           }
           console.log("Dedicated universe refresh worker verified.");
@@ -313,7 +313,7 @@ jobs:
           if (missingControls.length) throw new Error("Missing core controls: " + missingControls.join(", "));
           if (/market-ticker|ticker-item|renderMarketTicker/.test(html)) throw new Error("Removed horizontal market ticker code has returned");
           if (!html.includes("probeDirectFallback(checks.get(\"binance spot\")") || !html.includes("probeDirectFallback(checks.get(\"nobitex\")") || !html.includes("probeDirectFallback(checks.get(\"kucoin spot\")")) throw new Error("Homepage must try independent browser fallback routes for down exchanges");
-                    if (html.includes("checkNativeApkUpdate") || !html.includes("function checkNativeUpdate(manual){checkLivePageUpdate(!!manual);}")) throw new Error("Native app update must remain internal-only and must not require a new APK");
+          if (html.includes("checkLivePageUpdate") || !html.includes("window.mmpCheckForUpdates=check") || !html.includes("/version.json")) throw new Error("Native app and web must use one lightweight version.json updater without APK rebuilds");
           if (!html.includes("params.set('mmp_live_refresh',String(Date.now()))") || !html.includes("mmp_native_version")) throw new Error("Native live-page cache refresh is missing");
           const version = html.match(/<meta name=["']mmp-app-version["'] content=["']([^"']+)["']/i);
           if (!version) throw new Error("Native app version metadata is missing");
@@ -335,7 +335,7 @@ jobs:
       - name: Check Futures service and live Quantum snapshots
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
-                  run: |
+        run: |
           set -euo pipefail
           curl --fail --silent --show-error --retry 2 --retry-delay 3 --max-time 20 "$WORKER_URL/futures-engine-health" -o /tmp/futures-health.json
           jq -e '.status == "online" and .market == "futures" and .d1 == true and .service_binding == "connected"' /tmp/futures-health.json >/dev/null
