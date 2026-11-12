@@ -764,8 +764,7 @@ jobs:
           jq -e '.analysis.action as $a | (["BUY","SELL","WAIT"] | index($a) != null) and (.market.timeframes | has("15m") and has("1h") and has("4h") and has("1d"))' /tmp/analysis.json >/dev/null
           echo "Preview Worker is intentionally private; production analyzer is the authoritative end-to-end target."
           jq -r '"Selected AI model: " + (.analysis.ai_provider // "not reported")' /tmp/analysis.json
-          jq -r '.analysis.ai_provider_fallbacks[]? | "AI fallback reason: " + .' /tmp/canary-analysis.json
-          jq -r '"Canary model provider: " + (.analysis.data_source // "not reported")' /tmp/canary-analysis.json
+          jq -r '.analysis.ai_provider_fallbacks[]? | "AI fallback reason: " + .' /tmp/analysis.json
           {
             echo "- AI analyzer: HTTP 200"
             echo "- Four timeframes: 15m, 1h, 4h, 1d"
