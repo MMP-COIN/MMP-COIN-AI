@@ -5076,27 +5076,7 @@ html.mmp-native-app .native-refresh-label{font:700 9px Tahoma,Arial,sans-serif!i
      .finally(function(){clearTimeout(timer);liveUpdateChecking=false;liveUpdateInitialCheck=false;});
    }
    function checkNativeUpdate(manual){checkLivePageUpdate(!!manual);}
-   // Bottom app actions: share and check/download the latest signed Android APK without changing the installed app version.
-   var nativeAppDownload=document.createElement("section");
-   nativeAppDownload.id="native-app-download";
-   nativeAppDownload.className="native-app-download card";
-   nativeAppDownload.innerHTML='<div class="section-kicker">MMP QUANTUM · ANDROID UPDATE</div><h2>اشتراک‌گذاری و به‌روزرسانی اپلیکیشن</h2><p>اپ را برای دوستانتان بفرستید یا محتوای اپ را به‌صورت داخلی به‌روزرسانی کنید؛ نیازی به دانلود APK یا نصب مجدد نیست.</p><div class="native-app-download-actions"><button type="button" id="native-bottom-share">↗ ارسال اپ برای دوستان</button><button type="button" id="native-bottom-update">⇧ بررسی به‌روزرسانی داخلی</button></div><small id="native-bottom-version">نسخه نصب‌شده · '+currentNativeVersion+'</small>';
-   var nativeAppDownloadStyle=document.createElement("style");
-   nativeAppDownloadStyle.textContent='html.mmp-native-app .native-app-download{display:block!important;max-width:760px;margin:18px auto 30px!important;padding:19px!important;text-align:center;border:1px solid #80683f;background:linear-gradient(135deg,#171b24,#10131a 62%,#211b12);border-radius:18px}html.mmp-native-app .native-app-download h2{margin:7px 0 8px;color:#f2d99b;font-size:16px}html.mmp-native-app .native-app-download p{margin:0 auto 13px;max-width:560px;color:#aeb7c2;font-size:11px;line-height:2}html.mmp-native-app .native-app-download-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}html.mmp-native-app .native-app-download-actions button{min-height:43px;padding:9px;border:1px solid #a8874c;border-radius:11px;background:linear-gradient(120deg,#26384a,#172331);color:#f3d99f;font:700 11px Tahoma,Arial,sans-serif}html.mmp-native-app .native-app-download-actions button:last-child{background:linear-gradient(145deg,#f1d48f,#a77a38);color:#15120b;border:0}html.mmp-native-app .native-app-download>small{display:block;margin-top:11px;color:#9ca8b6;font-size:10px}@media(max-width:430px){html.mmp-native-app .native-app-download-actions{grid-template-columns:1fr}}';
-   document.head.appendChild(nativeAppDownloadStyle);
-   var appContent=document.querySelector(".wrap");
-   if(appContent)appContent.appendChild(nativeAppDownload);
-   else document.body.appendChild(nativeAppDownload);
-   var bottomShare=document.getElementById("native-bottom-share");
-   if(bottomShare)bottomShare.addEventListener("click",async function(){
-    var shareUrl="https://mmp-coin.github.io/";var shareText="MMP QUANTUM — ترمینال هوشمند تحلیل بازار رمزارزها. برای مشاهده و نصب اپلیکیشن: "+shareUrl;
-    try{if(navigator.share){await navigator.share({title:"MMP QUANTUM",text:shareText,url:shareUrl});}
-    else if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(shareText);showNativeUpdateMessage("لینک اپ کپی شد؛ برای دوستانتان ارسال کنید.");}
-    else{window.prompt("لینک اپ را کپی کنید:",shareUrl);}}
-    catch(error){if(error&&error.name!=="AbortError")showNativeUpdateMessage("اشتراک‌گذاری انجام نشد؛ دوباره تلاش کنید.");}
-   });
-   var bottomUpdate=document.getElementById("native-bottom-update");
-   if(bottomUpdate)bottomUpdate.addEventListener("click",function(){checkNativeUpdate(true);});
+   // Contact and share actions live in the native app's Contact section; APK downloads stay website-only.
    var updateCheckButton=document.getElementById("native-update-check-btn");
    if(updateCheckButton)updateCheckButton.addEventListener("click",function(){checkNativeUpdate(true);});
    document.addEventListener("visibilitychange",function(){if(document.visibilityState==="visible")checkNativeUpdate(false);});
