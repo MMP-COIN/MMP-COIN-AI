@@ -19,42 +19,74 @@
    else if(source==="bybit-tickers")rows=(data.result?.list||[]).map(x=>[x.symbol,x.lastPrice]);
    else if(source==="kucoin-tickers")rows=(data.data?.ticker||[]).map(x=>[x.symbol,x.last]);
    else if(source==="bitget-tickers")rows=(data.data||[]).map(x=>[x.symbol,x.lastPr||x.last]);
-   return rows.map(([symbol,price])=>[String(symbol||"").toUpperCase().split("-").join("").split("_").join("").split("/").join(""),Number(price)]);
+   return rows.map(([symbol,price])=>[String(symbol||"").toUpperCase().replace(/[^A-Z0-9]/g,""),Number(price)]);
   };
-  const prices={},providers={},failures=[];
-  // Query the three primary venues concurrently, then use secondary venues only for missing symbols.
-  const batches=[sources.slice(0,3),sources.slice(3)];
-  for(const batch of batches){
-   const missing=symbols.filter(s=>!Number.isFinite(prices[s])||prices[s]<=0);
-   if(!missing.length)break;
-   const results=await Promise.allSettled(batch.map(async source=>({source,data:await get(MAIN+"/market-proxy?source="+source)})));
-   for(let i=0;i<results.length;i++){
-    const result=results[i];
-    if(result.status!=="fulfilled"){failures.push(batch[i]+": "+String(result.reason?.message||result.reason));continue;}
-    const {source,data}=result.value;
-    for(const [symbol,price] of normalize(source,data)){
-     if(missing.includes(symbol)&&!Number.isFinite(prices[symbol])&&Number.isFinite(price)&&price>0){
-      prices[symbol]=price;providers[symbol]=source.replace("-tickers","").toUpperCase();
-     }
-    }
+  const settled=await Promise.allSettled(sources.map(async source=>({source,data:await get(MAIN+"/market-proxy?source="+source)})));
+  const quotes=Object.fromEntries(symbols.map(s=>[s,[]]));
+  const failures=[];
+  for(let i=0;i<settled.length;i++){
+   const item=settled[i];
+   if(item.status!=="fulfilled"){failures.push(sources[i]);continue;}
+   const {source,data}=item.value;
+   for(const [symbol,price] of normalize(source,data)){
+    if(quotes[symbol]&&Number.isFinite(price)&&price>0)quotes[symbol].push({source:source.replace("-tickers","").toUpperCase(),price});
    }
   }
-  const available=symbols.filter(s=>Number.isFinite(prices[s])&&prices[s]>0);
-  $("ticker").innerHTML=symbols.map(s=>{
-   const name=s.replace("USDT"," / USDT");
-   return '<div class="ticker-item"><small>'+name+' · '+(providers[s]||"بدون منبع")+'</small><b>'+(prices[s]?money(prices[s]):"داده در دسترس نیست")+'</b></div>';
+  const rows=symbols.map(symbol=>{
+   const q=quotes[symbol].sort((a,b)=>a.price-b.price);
+   if(!q.length)return {symbol,state:"missing"};
+   const median=q.length%2?q[(q.length-1)/2].price:(q[q.length/2-1].price+q[q.length/2].price)/2;
+   const spread=median>0?(q[q.length-1].price-q[0].price)/median*100:Infinity;
+   if(q.length>=2&&spread>1.5)return {symbol,state:"conflict",count:q.length,spread};
+   const selected=q.length>=2?median:q[0].price;
+   return {symbol,state:q.length>=2?"corroborated":"single",price:selected,count:q.length,spread,sources:q.map(x=>x.source)};
+  });
+  $("ticker").innerHTML=rows.map(x=>{
+   const label=x.symbol.replace("USDT"," / USDT");
+   const value=x.state==="missing"?"داده در دسترس نیست":x.state==="conflict"?"اختلاف منابع — مخفی شد":money(x.price);
+   const provenance=x.state==="corroborated"?"تطبیق "+x.count+" منبع":x.state==="single"?"تک‌منبع؛ تأییدنشده":x.state==="conflict"?"اختلاف "+x.spread.toFixed(2)+"٪":"بدون منبع معتبر";
+   return '<div class="ticker-item"><small>'+label+' · '+provenance+'</small><b>'+value+'</b></div>';
   }).join("");
-  if(available.length!==symbols.length)console.warn("MMP ticker incomplete",{available,failures});
+  const verified=rows.filter(x=>x.state==="corroborated").length;
+  const single=rows.filter(x=>x.state==="single").length;
+  const conflicts=rows.filter(x=>x.state==="conflict").length;
+  const integrity=$("tickerIntegrity");
+  if(integrity){
+   integrity.textContent=verified===symbols.length
+    ?"اعتبارسنجی موفق: هر چهار دارایی با حداقل دو منبع مستقل تطبیق داده شدند."
+    :[verified+" دارایی با چند منبع تطبیق‌شده",single+" دارایی تک‌منبعی و تأییدنشده",conflicts+" دارایی دارای اختلاف منابع",failures.length+" منبع بی‌پاسخ"].join(" · ");
+   integrity.classList.toggle("integrity-good",verified===symbols.length);
+   integrity.classList.toggle("integrity-warning",verified!==symbols.length);
+  }
+  if(verified!==symbols.length)console.warn("MMP ticker integrity incomplete",{rows,failures});
  }
  function empty(el,title,detail){el.innerHTML='<div class="empty-state"><b>'+title+'</b><small>'+detail+'</small></div>';}
- function renderSignals(el,signals){
-  if(!Array.isArray(signals)||!signals.length){empty(el,"در حال حاضر سیگنال داده دریافتی‌ای وجود ندارد","رادار فقط فرصت‌های واقعی و دریافت‌شده از موتور را نشان می‌دهد.");return;}
-  el.innerHTML=signals.slice(0,30).map(x=>{
-   const symbol=String(x.symbol||x.asset||x.pair||"نامشخص").replace(/[<>]/g,"");
+ function parseTimestamp(value){
+  if(value===undefined||value===null||value==="")return NaN;
+  if(typeof value==="number")return value<1e12?value*1000:value;
+  const parsed=Date.parse(value);return Number.isFinite(parsed)?parsed:NaN;
+ }
+ function escapeHTML(value){
+  return String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+ }
+ function renderSignals(el,signals,scannedAt,maxAgeMs=15*60*1000){
+  const scanTime=parseTimestamp(scannedAt),now=Date.now(),age=now-scanTime;
+  if(!Number.isFinite(scanTime)||age< -2*60*1000||age>maxAgeMs){
+   empty(el,"سیگنال قابل‌تأیید در دسترس نیست",!Number.isFinite(scanTime)?"زمان اسکن معتبر ارائه نشده است.":"داده اسکن قدیمی یا دارای اختلاف ساعت است؛ برای جلوگیری از گمراهی پنهان شد.");
+   return;
+  }
+  if(!Array.isArray(signals)||!signals.length){empty(el,"در حال حاضر سیگنال معتبری دریافت نشده","هیچ سیگنال ساختگی یا داده بدون زمان معتبر نمایش داده نمی‌شود.");return;}
+  const valid=signals.filter(x=>{
+   const symbol=String(x.symbol||x.asset||x.pair||"").trim();
+   return /^[A-Za-z0-9._:/-]{2,32}$/.test(symbol);
+  });
+  if(!valid.length){empty(el,"سیگنال قابل‌تأیید وجود ندارد","ساختار داده دریافتی برای نمایش معتبر نیست.");return;}
+  el.innerHTML=valid.slice(0,30).map(x=>{
+   const symbol=escapeHTML(x.symbol||x.asset||x.pair);
    const score=Number(x.score??x.quantum?.score);
    const change=Number(x.change24h??x.price_change_percentage_24h);
-   const exchange=String(x.exchange||x.provider||x.source||"منبع نامشخص").replace(/[<>]/g,"");
-   return '<div class="signal-row"><span><b>'+symbol+'</b><br><small>'+exchange+(Number.isFinite(change)?' · '+change.toFixed(2)+'%':'')+'</small></span><span class="signal-score">'+(Number.isFinite(score)?Math.round(score)+'/100':'داده دریافتی')+'</span><small>داده دریافتی</small></div>';
+   const exchange=escapeHTML(x.exchange||x.provider||x.source||"منبع نامشخص");
+   return '<div class="signal-row"><span><b>'+symbol+'</b><br><small>'+exchange+(Number.isFinite(change)?' · '+change.toFixed(2)+'%':'')+'</small></span><span class="signal-score">'+(Number.isFinite(score)&&score>=0&&score<=100?Math.round(score)+"/100":"امتیاز تأییدنشده")+'</span><small>اسکن: '+new Date(scanTime).toLocaleTimeString("fa-IR")+'</small></div>';
   }).join("");
  }
  async function loadRadar(){
@@ -63,7 +95,7 @@
    const d=await get(RADAR+"/fast-radar-snapshot");
    const signals=d.signals||d.snapshot?.signals||[];
    $("radarMeta").textContent=(d.scanned_at||d.updated_at||"وضعیت: "+(d.status||"نامشخص"));
-   renderSignals(el,signals);
+   renderSignals(el,signals,d.scanned_at||d.updated_at||d.snapshot?.scanned_at,10*60*1000);
   }catch(e){$("radarMeta").textContent="اتصال ناموفق";el.innerHTML='<div class="signal-error">دریافت داده رادار ناموفق بود؛ لطفاً بعداً دوباره تلاش کنید.</div>';}
  }
  async function loadHunter(){
@@ -73,8 +105,8 @@
    const spot=d.spot?.snapshot||d.spot||{},futures=d.futures?.snapshot||d.futures||{};
    $("spotMeta").textContent=(spot.status||"نامشخص")+" · "+(spot.scanned_count??0)+" اسکن";
    $("futuresMeta").textContent=(futures.status||"نامشخص")+" · "+(futures.scanned_count??0)+" اسکن";
-   renderSignals($("spotList"),spot.signals||[]);
-   renderSignals($("futuresList"),futures.signals||[]);
+   renderSignals($("spotList"),spot.signals||[],spot.scanned_at||d.scanned_at,15*60*1000);
+   renderSignals($("futuresList"),futures.signals||[],futures.scanned_at||d.scanned_at,15*60*1000);
   }catch(e){
    $("spotMeta").textContent="اتصال ناموفق";$("futuresMeta").textContent="اتصال ناموفق";
    $("spotList").innerHTML='<div class="signal-error">سرویس Spot پاسخ نداد.</div>';
