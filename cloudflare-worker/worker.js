@@ -2026,11 +2026,12 @@ export default {
   // Keep independent health/maintenance tasks alive even when a Hunter scan fails.
   // Cloudflare waitUntil owns every background task until it settles.
   const cleanup=cleanupMarketFallbackCache(env).catch(error=>console.error("Market fallback cleanup failed:",error?.message||error));
-  const localTether=monitorLocalTether(env).catch(error=>console.error("Local Tether server monitor failed:",error?.message||error));
   const scheduledAt=Number(event?.scheduledTime)||Date.now(),minute=new Date(scheduledAt).getUTCMinutes();
   const universeRefresh=minute%15===0?refreshDigitalHunterUniverses(env).catch(error=>console.error("Hunter universe refresh failed:",error?.message||error)):Promise.resolve();
   const hunterCycle=runDigitalHunterCron(event,env,ctx).catch(error=>console.error("Digital Hunter scheduled cycle failed:",error?.message||error));
-  const background=Promise.allSettled([cleanup,localTether,universeRefresh,hunterCycle]);
+  // Iranian Tether monitoring runs in its own Worker and D1-backed schedule so
+  // its provider failovers cannot consume the Hunter's per-invocation subrequest budget.
+  const background=Promise.allSettled([cleanup,universeRefresh,hunterCycle]);
   if(ctx?.waitUntil)ctx.waitUntil(background);else await background;
  }
 };
