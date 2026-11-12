@@ -78,11 +78,11 @@ jobs:
           const decisionSource = fs.readFileSync("cloudflare-worker/decision-engine.js", "utf8");
           const decisionModule = await import("data:text/javascript;base64," + Buffer.from(decisionSource).toString("base64"));
           const decisionQuantum = {qualityGate:true,confidence:72,dataAgeMs:25000,flowValidated:true,multiExchangeConfirmed:true,depthConfirmed:true};
-          const approvedDecision = decisionModule.decideQuantumSignal({quantum:decisionQuantum,trend:"bull",score:81,stopDistancePct:0.8,flowConfirmed:true,multiExchangeConfirmed:true,depthConfirmed:true,now:start});
+          const approvedDecision = decisionModule.decideQuantumSignal({quantum:decisionQuantum,trend:"bull",score:81,stopDistancePct:0.8,flowConfirmed:true,multiExchangeConfirmed:true,depthConfirmed:true,now:1700000000000});
           if (approvedDecision.action !== "LONG" || approvedDecision.status !== "approved" || approvedDecision.reasons.length) throw new Error("Central QIE decision engine failed to approve a fully evidenced setup");
-          const withheldDecision = decisionModule.decideQuantumSignal({quantum:{...decisionQuantum,depthConfirmed:false},trend:"bull",score:81,stopDistancePct:0.8,flowConfirmed:true,multiExchangeConfirmed:true,depthConfirmed:false,now:start});
+          const withheldDecision = decisionModule.decideQuantumSignal({quantum:{...decisionQuantum,depthConfirmed:false},trend:"bull",score:81,stopDistancePct:0.8,flowConfirmed:true,multiExchangeConfirmed:true,depthConfirmed:false,now:1700000000000});
           if (withheldDecision.action !== "WAIT" || !withheldDecision.reasons.includes("depth")) throw new Error("Central QIE decision engine must fail closed when depth evidence is missing");
-          const staleDecision = decisionModule.decideQuantumSignal({quantum:{...decisionQuantum,dataAgeMs:240000},trend:"bear",score:91,stopDistancePct:0.8,flowConfirmed:true,multiExchangeConfirmed:true,depthConfirmed:true,now:start});
+          const staleDecision = decisionModule.decideQuantumSignal({quantum:{...decisionQuantum,dataAgeMs:240000},trend:"bear",score:91,stopDistancePct:0.8,flowConfirmed:true,multiExchangeConfirmed:true,depthConfirmed:true,now:1700000000000});
           if (staleDecision.action !== "WAIT" || !staleDecision.reasons.includes("freshData")) throw new Error("Central QIE decision engine must reject stale market data");
           const workerDecisionSource = fs.readFileSync("cloudflare-worker/worker.js", "utf8");
           if (!workerDecisionSource.includes('import { decideQuantumSignal } from "./decision-engine.js"') || !workerDecisionSource.includes('if(decision.action==="WAIT")return;')) throw new Error("Hunter final signals are not routed through the central fail-closed decision engine");
@@ -90,10 +90,10 @@ jobs:
           const learning = await import("data:text/javascript;base64," + Buffer.from(learningSource).toString("base64"));
           const start = 1700000000000;
           const signal = {symbol:"BTC",trend:"bull",price:100,candleTime:start,score:75,flowConfirmed:true,multiExchangeConfirmed:true,depth:{confirmed:true},quantum:{qualityGate:true,confidence:70,version:"QIE-5.0.0"}};
-          const ledgerA = learning.updateLearningLedger({}, {observations:[],signals:[signal],market:"spot",engine:"test",now:start});
+          const ledgerA = learning.updateLearningLedger({}, {observations:[],signals:[signal],market:"spot",engine:"test",now:1700000000000});
           const ledgerB = learning.updateLearningLedger(ledgerA, {observations:[{symbol:"BTC",price:101}],signals:[],market:"spot",engine:"test",now:start+6*60000});
           if (ledgerB.records.length !== 1 || !(ledgerB.records[0].outcome_5m > 0) || ledgerB.summary.matured5m !== 1) throw new Error("Persistent signal outcome learning failed");
-          const lateLedgerA = learning.updateLearningLedger({}, {observations:[],signals:[signal],market:"spot",engine:"late-test",now:start});
+          const lateLedgerA = learning.updateLearningLedger({}, {observations:[],signals:[signal],market:"spot",engine:"late-test",now:1700000000000});
           const lateLedgerB = learning.updateLearningLedger(lateLedgerA, {observations:[{symbol:"BTC",price:105}],signals:[],market:"spot",engine:"late-test",now:start+20*60000});
           if (lateLedgerB.records[0].outcome_5m !== null || lateLedgerB.records[0].outcome_15m !== null || lateLedgerB.records[0].missed_5m !== true || lateLedgerB.records[0].missed_15m !== true || lateLedgerB.summary.matured5m !== 0) throw new Error("Late learning marks must not contaminate earlier outcome horizons");
           const calibrated = learning.applyLearningCalibration(signal,ledgerB.summary);
