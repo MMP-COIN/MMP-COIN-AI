@@ -51,3 +51,5 @@ html body section#market-snapshot.mmp-market-snapshot>article#mmp-gold-card{bord
 #mmp-home-hero>.mmp-section-actions{position:absolute;z-index:140;top:8px;inset-inline-start:8px}
 #mmp-home-hero>.mmp-section-actions>summary{padding:4px 7px;font-size:9px}
 @media(max-width:560px){#mmp-home-hero>.mmp-section-actions{top:5px;inset-inline-start:5px}}
+
+#mmp-home-hero>.mmp-section-health{position:absolute;top:8px;inset-inline-end:8px;z-index:140}
