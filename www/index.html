@@ -2721,6 +2721,15 @@ html body #ai-section .tf-card{min-width:0!important;max-width:100%!important;ov
 #mmp-autonomous-health-center .mmp-ah-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 #mmp-autonomous-health-center .mmp-ah-box{border:1px solid #2d3b4c;border-radius:12px;background:#0d141e;padding:11px;min-width:0}
 #mmp-autonomous-health-center .mmp-ah-box h3{font-size:11px;color:#e7ce91;margin:0 0 9px}
+#mmp-autonomous-health-center .mmp-ah-accordion{padding:0;overflow:hidden}
+#mmp-autonomous-health-center .mmp-ah-accordion>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:48px;padding:12px 13px;cursor:pointer;list-style:none;color:#e7ce91;font-size:11px;font-weight:800;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+#mmp-autonomous-health-center .mmp-ah-accordion>summary::-webkit-details-marker{display:none}
+#mmp-autonomous-health-center .mmp-ah-accordion>summary:focus-visible{outline:2px solid #d8b46a;outline-offset:-3px;border-radius:10px}
+#mmp-autonomous-health-center .mmp-ah-chevron{color:#e4c477;font-size:18px;line-height:1;transition:transform .2s ease}
+#mmp-autonomous-health-center .mmp-ah-accordion[open]>summary .mmp-ah-chevron{transform:rotate(180deg)}
+#mmp-autonomous-health-center .mmp-ah-accordion-content{padding:0 13px 12px}
+#mmp-autonomous-health-center .mmp-ah-accordion-content .mmp-ah-advice{margin:0;padding-right:18px}
+@media(prefers-reduced-motion:reduce){#mmp-autonomous-health-center .mmp-ah-chevron{transition:none}}
 #mmp-autonomous-health-center .mmp-ah-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px solid #ffffff0c;font-size:10px}
 #mmp-autonomous-health-center .mmp-ah-row:last-child{border-bottom:0}
 #mmp-autonomous-health-center .mmp-ah-state{display:inline-flex;align-items:center;gap:5px;color:#9caaba;white-space:nowrap}
@@ -2754,9 +2763,9 @@ html body #ai-section .tf-card{min-width:0!important;max-width:100%!important;ov
   <div class="mmp-ah-metric"><small>نسخه موتور QIE</small><b id="mmp-ah-version">—</b></div>
  </div>
  <div class="mmp-ah-grid">
-  <div class="mmp-ah-box"><h3>سلامت سرویس‌ها و جریان داده</h3><div id="mmp-ah-services"><div class="mmp-ah-row">در انتظار اولین پایش…</div></div></div>
+  <details class="mmp-ah-box mmp-ah-accordion" id="mmp-ah-services-accordion"><summary><span>سلامت سرویس‌ها و جریان داده</span><span class="mmp-ah-chevron" aria-hidden="true">⌄</span></summary><div class="mmp-ah-accordion-content"><div id="mmp-ah-services"><div class="mmp-ah-row">در انتظار اولین پایش…</div></div></div></details>
   <div class="mmp-ah-box"><h3>وضعیت واقعی متخصص‌های QIE</h3><div id="mmp-ah-engine-list"><div class="mmp-ah-row">در انتظار Snapshot زنده…</div></div></div>
-  <div class="mmp-ah-box"><h3>تشخیص و پیشنهادهای هوشمند</h3><ul class="mmp-ah-advice" id="mmp-ah-advice"><li>پس از دریافت داده‌های زنده، موارد ناقص و اولویت اصلاح نمایش داده می‌شوند.</li></ul></div>
+  <details class="mmp-ah-box mmp-ah-accordion" id="mmp-ah-advice-accordion"><summary><span>تشخیص و پیشنهادهای هوشمند</span><span class="mmp-ah-chevron" aria-hidden="true">⌄</span></summary><div class="mmp-ah-accordion-content"><ul class="mmp-ah-advice" id="mmp-ah-advice"><li>پس از دریافت داده‌های زنده، موارد ناقص و اولویت اصلاح نمایش داده می‌شوند.</li></ul></div></details>
   <div class="mmp-ah-box"><h3>گزارش آخرین چرخه</h3><div class="mmp-ah-advice" id="mmp-ah-report">هنوز چرخه‌ای اجرا نشده است.</div></div>
  </div>
  <div class="mmp-ah-box"><h3>مغز مستقل سروری · پایش ۲۴/۷</h3><div class="mmp-ah-advice" id="mmp-ah-server">در انتظار نخستین چرخه زمان‌بندی‌شده NEXUS…</div></div>
