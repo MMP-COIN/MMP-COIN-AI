@@ -432,6 +432,7 @@ jobs:
           if [ "$status" != "200" ]; then jq -r '.detail // .error // .' /tmp/nexus-diagnosis.json || cat /tmp/nexus-diagnosis.json; exit 1; fi
           jq -e '.status == "ok" and (.severity == "healthy" or .severity == "warning" or .severity == "critical") and (.provider | type == "string" and length > 0) and (.issues | type == "array") and (.next_checks | type == "array") and .code_changes_executed == false' /tmp/nexus-diagnosis.json >/dev/null
           jq -r '"NEXUS AI provider: " + .provider + " | severity: " + .severity + " | issues: " + (.issues|length|tostring) + " | next checks: " + (.next_checks|length|tostring)' /tmp/nexus-diagnosis.json
+      # NEXUS workers.dev subdomain enabled; verify the independent server monitor after each push.
       - name: Check independent MMP NEXUS Cron Worker
         env:
           NEXUS_URL: https://mmp-coin-nexus.mehrdadmohammadi1988.workers.dev
