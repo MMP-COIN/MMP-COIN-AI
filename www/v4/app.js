@@ -134,6 +134,20 @@
   return Promise.allSettled([loadTicker(),loadRadar(),loadHunter(),loadHealth()]);
  }
  document.querySelectorAll("[data-refresh]").forEach(b=>b.addEventListener("click",()=>refresh(b.dataset.refresh)));
+ const currencyButtons=[$("btn-irt"),$("btn-usdt")];
+ let selectedCurrency="IRT";
+ function setCurrency(unit){
+  selectedCurrency=unit==="USDT"?"USDT":"IRT";
+  currencyButtons.forEach((button,index)=>{
+   const active=(index===0?selectedCurrency==="IRT":selectedCurrency==="USDT");
+   button.classList.toggle("active",active);
+   button.setAttribute("aria-pressed",String(active));
+  });
+  document.documentElement.dataset.currency=selectedCurrency;
+ }
+ currencyButtons[0].addEventListener("click",()=>setCurrency("IRT"));
+ currencyButtons[1].addEventListener("click",()=>setCurrency("USDT"));
+ setCurrency("IRT");
  $("refreshAll").addEventListener("click",()=>refresh("all"));
  $("menuToggle").addEventListener("click",()=>document.querySelector(".desktop-nav").classList.toggle("open"));
  document.querySelectorAll(".desktop-nav a").forEach(a=>a.addEventListener("click",()=>document.querySelector(".desktop-nav").classList.remove("open")));
