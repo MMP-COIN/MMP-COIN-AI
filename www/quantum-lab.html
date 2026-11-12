@@ -52,6 +52,20 @@ header{position:sticky;top:0;z-index:10;background:#090d14ed;border-bottom:1px s
 @media(max-width:980px){.architecture-flow{grid-template-columns:repeat(2,minmax(0,1fr))}.architecture-arrow{display:none}}
 @media(max-width:560px){.architecture-flow{grid-template-columns:1fr}.architecture-step>p{min-height:0}.architecture-step{padding:12px}}
 
+
+.subsystem-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:10px 0 18px}
+.subsystem{min-width:0;border:1px solid #354255;border-radius:12px;background:linear-gradient(145deg,#151e2b,#0c131d);overflow:hidden}
+.subsystem summary{cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px;color:#f5dda2;font-size:11px}
+.subsystem summary::-webkit-details-marker{display:none}
+.subsystem summary span{font-size:9px;font-weight:700;color:#9aa5b5;border:1px solid #536176;border-radius:7px;padding:4px 6px;white-space:nowrap}
+.subsystem[data-state="evidence"] summary span{color:#25d695;border-color:#25d69566}
+.subsystem[data-state="partial"] summary span{color:#f4c45e;border-color:#f4c45e66}
+.subsystem[data-state="idle"] summary span{color:#9aa5b5;border-color:#536176}
+.subsystem p{margin:0;padding:0 12px 8px;color:#aeb9c8;font-size:10px;line-height:1.9}
+.subsystem small{display:block;padding:8px 12px;border-top:1px solid #ffffff10;color:#8996a7;font-size:9px;line-height:1.8}
+@media(max-width:900px){.subsystem-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.subsystem-grid{grid-template-columns:1fr 1fr;gap:7px}.subsystem summary{align-items:flex-start;flex-direction:column;padding:10px}.subsystem summary span{font-size:8px}.subsystem p{font-size:9px;padding:0 10px 7px}.subsystem small{font-size:8px;padding:7px 10px}}
+
 /* Slim framed latest quantum output */
 .quantum-output-frame{position:relative;max-width:100%;margin:10px 0 18px;padding:12px 15px 10px;border:1px solid #9b7a45;border-radius:13px;background:linear-gradient(105deg,#171b22 0%,#101722 52%,#0c131d 100%);box-shadow:inset 0 1px #fff2,0 7px 22px #0003;overflow:hidden}.quantum-output-frame:before{content:"";position:absolute;inset:0 auto 0 0;width:3px;background:linear-gradient(180deg,#f5dda2,#9a7134,#f5dda2)}.qof-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-bottom:9px;border-bottom:1px solid #d9b66d25}.qof-head>div{display:flex;align-items:center;gap:10px;min-width:0}.qof-kicker{font-size:8px;letter-spacing:1.5px;color:#c9a45e;font-weight:900}.qof-head b{font-size:12px;color:#f5dda2}.qof-cycle{font-size:9px;color:#e8c777;border:1px solid #9b7a4566;border-radius:20px;padding:4px 9px;white-space:nowrap;background:#d9b66d0b}.qof-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;padding:10px 0 7px}.qof-metric{display:flex;align-items:center;justify-content:center;gap:9px;padding:2px 10px;border-left:1px solid #ffffff12}.qof-metric:last-child{border-left:0}.qof-metric small{font-size:10px;color:#aab5c4}.qof-metric b{font-size:17px;line-height:1;color:#f4d99c;font-variant-numeric:tabular-nums}.qof-note{margin:2px 0 0;padding-top:8px;border-top:1px solid #ffffff0d;color:#8996a7;font-size:9px;line-height:1.8}@media(max-width:560px){.quantum-output-frame{padding:10px 11px;margin:8px 0 14px}.qof-head{padding-bottom:8px}.qof-head>div{gap:7px}.qof-kicker{font-size:7px;letter-spacing:1px}.qof-head b{font-size:11px}.qof-metrics{padding:9px 0 7px}.qof-metric{flex-direction:column;gap:5px;padding:2px 4px}.qof-metric small{font-size:9px}.qof-metric b{font-size:16px}.qof-note{font-size:8px}}
 </style><style id="mmp-quantum-engine-detail-ui">
@@ -162,6 +176,21 @@ header .actions #back{display:inline-flex;flex:0 0 auto;align-items:center;justi
 <section class="quantum-output-frame" id="quantum-overview" aria-label="آخرین خروجی ثبت‌شده"><div class="qof-head"><div><span class="qof-kicker">QUANTUM INTELLIGENCE</span><b>آخرین خروجی ثبت‌شده</b></div><span class="qof-cycle" id="cycle-status">بدون چرخه</span></div><div class="qof-metrics"><div class="qof-metric"><small>ارز بررسی‌شده</small><b id="scanned">۰</b></div><div class="qof-metric"><small>فرصت‌های ۵۵+</small><b id="opps">۰</b></div><div class="qof-metric"><small>حداقل امتیاز</small><b>۵۵</b></div></div><p class="qof-note">این خروجی هنوز چرخهٔ اسکن معتبری ندارد؛ عدد صفر به معنی نبود فرصت در بازار نیست.</p><span id="universe" hidden>—</span><span id="health" hidden>—</span></section>
 <div class="section-title" id="quantum-architecture"><h2>هسته هوشمند واحد</h2><small>یک مسیر تصمیم‌گیری یکپارچه؛ بدون موتورهای مستقل</small></div>
 <section class="architecture-flow" aria-label="هسته تصمیم‌گیری واحد"><article class="architecture-step" style="grid-column:1/-1"><span>هسته مرکزی یکپارچه · QIE-4</span><b>یک مسیر واحد از داده تا تصمیم</b><p>دریافت داده زنده ← سنجش فشار صعودی و نزولی ← اعتبارسنجی چندبازه‌ای و کیفیت داده ← تصمیم نهایی و ثبت نتیجه</p><small>هیچ زیرقابلیتی به‌تنهایی سیگنال صادر نمی‌کند؛ خروجی فقط پس از عبور از کنترل کیفیت نمایش داده می‌شود.</small></article></section>
+<div class="section-title" id="quantum-subsystems"><h2>۱۲ زیرسیستم هسته مرکزی</h2><small>وضعیت فقط بر اساس شمارنده‌های واقعی Worker</small></div>
+<section class="subsystem-grid" id="subsystem-grid" aria-live="polite">
+ <details class="subsystem" data-engine="momentum"><summary><b>۱. تحلیل مومنتوم</b><span id="engine-status-momentum">در انتظار داده زنده</span></summary><p>محاسبه تغییرات قیمت و شاخص‌های EMA، RSI و MACD روی کندل‌های معتبر.</p><small id="engine-count-momentum">هنوز گزارشی از Worker دریافت نشده است.</small></details>
+ <details class="subsystem" data-engine="flow"><summary><b>۲. جریان معاملات</b><span id="engine-status-flow">در انتظار داده زنده</span></summary><p>بررسی معاملات واقعی خرید و فروش، تعداد معاملات و عدم‌تعادل جریان.</p><small id="engine-count-flow">هنوز گزارشی از Worker دریافت نشده است.</small></details>
+ <details class="subsystem" data-engine="structure"><summary><b>۳. ساختار بازار</b><span id="engine-status-structure">در انتظار داده زنده</span></summary><p>بررسی شکست ساختار، سقف و کف‌های اخیر و هم‌جهتی حرکت.</p><small id="engine-count-structure">هنوز گزارشی از Worker دریافت نشده است.</small></details>
+ <details class="subsystem" data-engine="liquidity"><summary><b>۴. نقدینگی</b><span id="engine-status-liquidity">در انتظار داده زنده</span></summary><p>ارزیابی حجم و شرایط نقدشوندگی؛ تأیید عمق دفتر سفارش در مرحله کنترل جداگانه.</p><small id="engine-count-liquidity">هنوز گزارشی از Worker دریافت نشده است.</small></details>
+ <details class="subsystem" data-engine="multiTimeframe"><summary><b>۵. هم‌ترازی چندبازه‌ای</b><span id="engine-status-multiTimeframe">در انتظار داده زنده</span></summary><p>سنجش هماهنگی روند و کندل‌های بسته‌شده در بازه‌های زمانی مختلف.</p><small id="engine-count-multiTimeframe">هنوز گزارشی از Worker دریافت نشده است.</small></details>
+ <details class="subsystem" data-engine="regime"><summary><b>۶. تشخیص رژیم بازار</b><span id="engine-status-regime">در انتظار داده زنده</span></summary><p>طبقه‌بندی وضعیت بازار و انتخاب وزن‌های تطبیقی هسته QIE.</p><small id="engine-count-regime">هنوز گزارشی از Worker دریافت نشده است.</small></details>
+ <details class="subsystem" data-engine="volatility"><summary><b>۷. هوش نوسان</b><span id="engine-status-volatility">در انتظار داده زنده</span></summary><p>محاسبه ATR و دامنه نوسان برای سنجش شدت حرکت و ریسک.</p><small id="engine-count-volatility">هنوز گزارشی از Worker دریافت نشده است.</small></details>
+ <details class="subsystem" data-engine="sentiment"><summary><b>۸. احساسات بازار</b><span id="engine-status-sentiment">در انتظار داده زنده</span></summary><p>بررسی نرخ فاندینگ و داده‌های احساسات مشتقه؛ در چرخه Spot ممکن است اجرا نشود.</p><small id="engine-count-sentiment">هنوز گزارشی از Worker دریافت نشده است.</small></details>
+ <details class="subsystem" data-engine="smartMoney"><summary><b>۹. جریان پول هوشمند</b><span id="engine-status-smartMoney">در انتظار داده زنده</span></summary><p>برآورد فشار جریان و عدم‌تعادل عمق سفارش؛ این شاخص هویت نهنگ‌ها را اثبات نمی‌کند.</p><small id="engine-count-smartMoney">هنوز گزارشی از Worker دریافت نشده است.</small></details>
+ <details class="subsystem" data-engine="scenario"><summary><b>۱۰. امتیازدهی سناریو</b><span id="engine-status-scenario">در انتظار داده زنده</span></summary><p>امتیازدهی قاعده‌محور به شکست، هم‌ترازی فنی، حجم و بیش‌کشیدگی؛ شبیه‌سازی مونت‌کارلو نیست.</p><small id="engine-count-scenario">هنوز گزارشی از Worker دریافت نشده است.</small></details>
+ <details class="subsystem" data-engine="risk"><summary><b>۱۱. مدیریت ریسک</b><span id="engine-status-risk">در انتظار داده زنده</span></summary><p>محاسبه فاصله حدضرر مبتنی بر ATR و ارزیابی ریسک پیش از تأیید خروجی.</p><small id="engine-count-risk">هنوز گزارشی از Worker دریافت نشده است.</small></details>
+ <details class="subsystem" data-engine="dataQuality"><summary><b>۱۲. کنترل کیفیت داده</b><span id="engine-status-dataQuality">در انتظار داده زنده</span></summary><p>کنترل تازگی کندل، هم‌ترازی منابع و جلوگیری از استفاده از داده ناقص یا کهنه.</p><small id="engine-count-dataQuality">هنوز گزارشی از Worker دریافت نشده است.</small></details>
+</section>
 
 <div class="section-title" id="quantum-charts-section"><h2>داشبورد نموداری مرکز کوانتومی</h2><small>نمودارها فقط از نتایج واقعی ثبت‌شده ساخته می‌شوند</small></div><section class="quantum-charts" id="quantum-charts"><div class="chart-card"><div class="empty">پس از دریافت داده بازار، نمودارها به‌روزرسانی می‌شوند.</div></div></section>
 <div class="section-title" id="quantum-assets"><h2>انتخاب ارز برای تحلیل کوانتومی</h2><small>۱۰ ارز پرمعامله اول · سایر ارزها در فهرست جمع‌شونده · USDT Spot</small></div>
@@ -282,8 +311,31 @@ async function scan(){
  }catch(e){setStatus("اتصال زنده برقرار نشد: "+e.message,"bad");log("خطای اتصال به اسکن مرکزی: "+e.message)}
  finally{state.busy=false;$("scan").disabled=false;$("scan").textContent="اتصال مجدد به اسکن زنده"}
 }
+
+function renderEngineModules(){
+ const names=["momentum","flow","structure","liquidity","multiTimeframe","regime","volatility","sentiment","smartMoney","scenario","risk","dataQuality"];
+ for(const key of names){
+  const card=document.querySelector('.subsystem[data-engine="'+key+'"]'),status=$("engine-status-"+key),count=$("engine-count-"+key);
+  if(!card||!status||!count)continue;
+  const a=state.engineActivity?.[key];
+  if(!a||typeof a!=="object"){card.dataset.state="idle";status.textContent="بدون گزارش زنده";count.textContent="Worker هنوز شمارنده‌ای برای این زیرسیستم ارسال نکرده است.";continue;}
+  const processed=Math.max(0,Number(a.processed)||0),evidence=Math.max(0,Number(a.evidence)||0);
+  if(key==="learning"){
+   status.textContent=a.calibrationStatus==="calibrated"?"کالیبره‌شده":processed>0?"در حال جمع‌آوری":"بدون نمونه";
+   card.dataset.state=a.calibrationStatus==="calibrated"?"evidence":processed>0?"partial":"idle";
+   count.textContent="نمونه سیگنال: "+processed.toLocaleString("fa-IR")+" · نتایج ۵ دقیقه‌ای بالغ: "+evidence.toLocaleString("fa-IR");
+   continue;
+  }
+  card.dataset.state=evidence>0?"evidence":processed>0?"partial":"idle";
+  status.textContent=evidence>0?"شاهد ثبت‌شده":processed>0?"اجرا؛ بدون شاهد":"هنوز اجرا نشده";
+  count.textContent="موارد پردازش‌شده: "+processed.toLocaleString("fa-IR")+" · شواهد ثبت‌شده: "+evidence.toLocaleString("fa-IR");
+ }
+}
+
 function applyLiveSnapshot(snap){
  if(!snap||snap.status==="offline")throw new Error("موتور مرکزی در دسترس نیست");
+ state.engineActivity=snap.engine_activity&&typeof snap.engine_activity==="object"?snap.engine_activity:{};
+ renderEngineModules();
  window.__mmpLastQuantumUpdate=Date.now();
  const signals=Array.isArray(snap.signals)?snap.signals:[];
  state.universe.length=Math.max(0,Number(snap.universe_count)||0);
