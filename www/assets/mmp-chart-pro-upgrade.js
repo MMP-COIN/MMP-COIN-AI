@@ -79,7 +79,7 @@ function wrapRenderer(){
  wrapped.__proWrapped=true;window.mmpRenderChart=wrapped;
 }
 function populateSymbols(){
- const select=$("tv-symbol");if(!select||select.dataset.proPopulated)return;
+ const select=$("tv-symbol");if(!select)return;
  const add=(symbol,name)=>{const value="BINANCE:"+symbol+"USDT";if([...select.options].some(o=>o.value===value))return;const o=document.createElement("option");o.value=value;o.textContent=name+" ("+symbol+")";select.appendChild(o);};
  try{if(typeof cachedCoinsData!=="undefined"&&Array.isArray(cachedCoinsData))cachedCoinsData.forEach(c=>{const symbol=String(c?.symbol||"").toUpperCase();if(/^[A-Z0-9]{2,20}$/.test(symbol))add(symbol,String(c?.name||symbol));});}catch(e){}
  const seed=["ETH","SOL","BNB","XRP","ADA","DOGE","TRX","LINK","AVAX","TON","DOT","LTC","BCH","NEAR","UNI","APT","ARB","OP","SUI","AAVE","ETC","FIL","ATOM","ICP","INJ","FET","RENDER","PEPE","SHIB"];
