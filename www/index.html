@@ -6663,6 +6663,15 @@ window.mmpShareDownloadLink = async function () {
       window.__mmpQuantumHomeSnapshot=combined.spot;
       document.dispatchEvent(new Event("mmp-hunter-snapshot-updated"));
       snap=combined.spot;
+     }catch(combinedError){
+      const fetchOne=async(path)=>{const response=await fetch(API+path,{cache:"no-store",headers:{"Accept":"application/json"},signal:controller.signal});if(!response.ok)throw new Error(path+" HTTP "+response.status);return response.json();};
+      const [spot,futures]=await Promise.all([fetchOne("/hunter-snapshot"),fetchOne("/hunter-futures-snapshot")]);
+      if(!spot||!futures)throw combinedError;
+      window.__mmpDigitalHunterSnapshot=spot;
+      window.__mmpDigitalHunterFuturesSnapshot=futures;
+      window.__mmpQuantumHomeSnapshot=spot;
+      document.dispatchEvent(new Event("mmp-hunter-snapshot-updated"));
+      snap=spot;
      }finally{clearTimeout(timer);}
     }
    }
