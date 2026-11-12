@@ -580,8 +580,8 @@ jobs:
           echo "CoinGecko market proxy HTTP $coingecko_status"
           if [ "$coingecko_status" != "200" ]; then jq -r '.detail // .error // .' /tmp/coingecko.json; exit 1; fi
           jq -e 'type == "array" and length > 0' /tmp/coingecko.json >/dev/null
-          deep_status=$(curl --silent --show-error --retry 1 --max-time 30 -o /tmp/coingecko-deep.json -w "%{http_code}" "$WORKER_URL/market-proxy?source=coingecko-top&page=6")
-          echo "Deep market catalog page 6 HTTP $deep_status"
+          deep_status=$(curl --silent --show-error --retry 1 --max-time 30 -o /tmp/coingecko-deep.json -w "%{http_code}" "$WORKER_URL/market-proxy?source=coingecko-top&page=13")
+          echo "Deep market catalog page 13 HTTP $deep_status"
           if [ "$deep_status" != "200" ]; then jq -r '.detail // .error // .' /tmp/coingecko-deep.json; exit 1; fi
           jq -e 'type == "array" and length > 0 and all(.[]; (.current_price | tonumber) > 0)' /tmp/coingecko-deep.json >/dev/null
           echo "- Market catalog deep pagination: live provider or CoinLore fallback returned structured assets" >> "$GITHUB_STEP_SUMMARY"
