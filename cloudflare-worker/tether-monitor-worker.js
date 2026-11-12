@@ -43,10 +43,13 @@ async function fetchLocalTetherSnapshot(){
    "https://apiv2.nobitex.ir/v3/orderbook/USDTIRT",
    "https://api.nobitex.ir/v3/orderbook/USDTIRT"
   ],"Nobitex",d=>{
-   const statsRate=Number(d?.stats?.["usdt-rls"]?.latest??d?.stats?.["usdt-irt"]?.latest);
-   if(d?.status==="ok"&&statsRate>0)return statsRate;
+   const rialRate=Number(d?.stats?.["usdt-rls"]?.latest);
+   if(d?.status==="ok"&&rialRate>0)return rialRate;
+   const tomanRate=Number(d?.stats?.["usdt-irt"]?.latest);
+   if(d?.status==="ok"&&tomanRate>0)return tomanRate*10;
    const bid=Number(d?.bids?.[0]?.[0]),ask=Number(d?.asks?.[0]?.[0]),last=Number(d?.lastTradePrice);
-   return last>0?last:bid>0&&ask>0?(bid+ask)/2:null;
+   const tomanPrice=last>0?last:bid>0&&ask>0?(bid+ask)/2:null;
+   return tomanPrice>0?tomanPrice*10:null;
   }),
   readSource([
    "https://api.wallex.ir/hector/web/v1/markets",
@@ -56,7 +59,7 @@ async function fetchLocalTetherSnapshot(){
    const toman=markets.find(m=>String(m?.symbol||"").toUpperCase()==="USDTTMN");
    const rial=markets.find(m=>String(m?.symbol||"").toUpperCase()==="USDTIRT");
    const tmn=Number(toman?.stats?.lastPrice??toman?.lastPrice),irr=Number(rial?.stats?.lastPrice??rial?.lastPrice);
-   if(tmn>0)return tmn*10;if(irr>0)return irr;
+   if(tmn>0)return tmn*10;if(irr>0)return irr*10;
    const book=d?.result?.USDTTMN||d?.result?.["USDTTMN"]||(Array.isArray(d?.result?.bid)&&Array.isArray(d?.result?.ask)?d.result:{});
    const bid=Number(book?.bid?.[0]?.price??book?.bid?.[0]?.[0]),ask=Number(book?.ask?.[0]?.price??book?.ask?.[0]?.[0]);
    return bid>0&&ask>0?(bid+ask)*5:null;
@@ -100,7 +103,7 @@ async function fetchLocalTetherSnapshot(){
    const last=Number(pair?.last??pair?.last_price??pair?.price??pair?.rate);
    const rawPrice=buy>0&&sell>0?(buy+sell)/2:last;
    const quote=code(pair?.quote_currency_symbol??pair?.quote_currency??pair?.quoteCurrency).toUpperCase();
-   return rawPrice>0?(["TMN","TOMAN"].includes(quote)?rawPrice*10:rawPrice):null;
+   return rawPrice>0?(["IRT","TMN","TOMAN"].includes(quote)?rawPrice*10:rawPrice):null;
   })
  ]);
  const valid=sources.filter(x=>x.fresh&&Number.isFinite(x.price_toman)),values=valid.map(x=>x.price_toman).sort((a,b)=>a-b);
