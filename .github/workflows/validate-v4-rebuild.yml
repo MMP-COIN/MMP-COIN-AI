@@ -113,7 +113,7 @@ jobs:
               assert(!(await nav.evaluate(el => el.classList.contains("open"))), "mobile menu must close after navigation");
             } else {
               await page.locator('.desktop-nav a[href="#radar"]').click();
-              assert((await page.locator("#radar").evaluate(el => Math.abs(el.getBoundingClientRect().top) < 180)), "desktop radar navigation must scroll to section");
+              await page.waitForFunction(() => Math.abs(document.querySelector("#radar").getBoundingClientRect().top) < 180, null, {timeout: 5000});
             }
 
             await page.locator('[data-refresh="radar"]').click();
