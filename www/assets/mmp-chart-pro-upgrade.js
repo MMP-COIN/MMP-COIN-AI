@@ -1,7 +1,8 @@
 /* MMP Chart Pro: expanded candle modes, technical overlays and faster live refresh. */
 (function(){
 "use strict";
-const $=id=>document.getElementById(id);\nconst getChartState=()=>typeof mmpChartState!=="undefined"?mmpChartState:null;
+const $=id=>document.getElementById(id);
+const getChartState=()=>typeof mmpChartState!=="undefined"?mmpChartState:null;
 const state={mode:"standard",enabled:new Set(["ema9","sma20","vwap"]),macdChart:null,macdHist:null,macdLine:null,macdSignal:null,extraSeries:{},timer:null};
 const css=`
 .mmp-chart-pro{display:grid;gap:9px;margin:10px 0 12px;padding:11px;border:1px solid #34475b;border-radius:13px;background:linear-gradient(145deg,#101b29,#0a121d)}
