@@ -74,7 +74,7 @@ button{cursor:pointer}
 #chart-container:-webkit-full-screen{width:100vw;height:100vh;min-height:100vh}
 #chart-container:-webkit-full-screen #tradingview_widget,#chart-container:-webkit-full-screen iframe{height:100vh!important}
 .chart-top-bar select{padding:8px 12px;background:var(--panel2);border:1px solid var(--line);color:var(--gold2);border-radius:10px;outline:none;max-width:250px}
-#chart-container{height:520px;width:100%;border-radius:12px;overflow:hidden;background:#0d1017;border:1px solid var(--line);position:relative}
+#chart-container{height:640px;width:100%;border-radius:12px;overflow:hidden;background:#0d1017;border:1px solid var(--line);position:relative}
 
 .market-table{width:100%;border-collapse:collapse;font-size:12px}
 .market-table th,.market-table td{padding:12px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
@@ -2791,9 +2791,21 @@ html body #ai-section .tf-card{min-width:0!important;max-width:100%!important;ov
   </div>
 </div>
 <div class="mmp-chart-toolbar" aria-label="تنظیمات نمودار">
- <div class="mmp-chart-timeframes" role="group" aria-label="بازه زمانی"><button type="button" data-chart-tf="1m" onclick="mmpSetChartInterval('1m')">۱د</button><button type="button" data-chart-tf="5m" onclick="mmpSetChartInterval('5m')">۵د</button><button type="button" data-chart-tf="15m" onclick="mmpSetChartInterval('15m')">۱۵د</button><button type="button" data-chart-tf="1h" class="active" onclick="mmpSetChartInterval('1h')">۱س</button><button type="button" data-chart-tf="4h" onclick="mmpSetChartInterval('4h')">۴س</button><button type="button" data-chart-tf="1d" onclick="mmpSetChartInterval('1d')">۱روز</button></div>
+ <div class="mmp-chart-timeframes" role="group" aria-label="بازه زمانی"><button type="button" data-chart-tf="1m" onclick="mmpSetChartInterval('1m')">۱د</button><button type="button" data-chart-tf="3m" onclick="mmpSetChartInterval('3m')">۳د</button><button type="button" data-chart-tf="5m" onclick="mmpSetChartInterval('5m')">۵د</button><button type="button" data-chart-tf="15m" onclick="mmpSetChartInterval('15m')">۱۵د</button><button type="button" data-chart-tf="1h" class="active" onclick="mmpSetChartInterval('1h')">۱س</button><button type="button" data-chart-tf="4h" onclick="mmpSetChartInterval('4h')">۴س</button><button type="button" data-chart-tf="1d" onclick="mmpSetChartInterval('1d')">۱روز</button></div>
  <label class="mmp-chart-market">بازار <select id="mmp-chart-market" onchange="mmpSetChartMarket(this.value)"><option value="spot">اسپات</option><option value="futures">فیوچرز</option></select></label>
- <button type="button" id="mmp-chart-ema-toggle" class="mmp-chart-toggle active" onclick="mmpToggleChartEMA()">EMA 20/50</button><button type="button" id="mmp-chart-volume-toggle" class="mmp-chart-toggle active" onclick="mmpToggleChartVolume()">حجم</button><button type="button" class="mmp-chart-refresh" onclick="mmpLoadChart(true)">↻ تازه‌سازی</button>
+ <button type="button" id="mmp-chart-ema-toggle" class="mmp-chart-toggle active" onclick="mmpToggleChartEMA()">EMA 20/50</button><button type="button" id="mmp-chart-volume-toggle" class="mmp-chart-toggle active" onclick="mmpToggleChartVolume()">حجم</button><button type="button" class="mmp-chart-toggle active" id="mmp-chart-type-toggle" onclick="mmpToggleChartType()">کندلی</button><button type="button" class="mmp-chart-refresh" onclick="mmpLoadChart(true)">↻ تازه‌سازی</button>
+</div>
+<div class="mmp-chart-indicators" aria-label="اندیکاتورهای نمودار">
+ <span>اندیکاتورها:</span>
+ <button type="button" class="mmp-chart-toggle active" data-mmp-indicator="sma" onclick="mmpToggleChartIndicator('sma')">SMA 20/50</button>
+ <button type="button" class="mmp-chart-toggle" data-mmp-indicator="bollinger" onclick="mmpToggleChartIndicator('bollinger')">Bollinger</button>
+ <button type="button" class="mmp-chart-toggle" data-mmp-indicator="vwap" onclick="mmpToggleChartIndicator('vwap')">VWAP</button>
+ <button type="button" class="mmp-chart-toggle" data-mmp-indicator="supertrend" onclick="mmpToggleChartIndicator('supertrend')">Supertrend</button>
+ <button type="button" class="mmp-chart-toggle" data-mmp-indicator="ichimoku" onclick="mmpToggleChartIndicator('ichimoku')">Tenkan/Kijun</button>
+ <button type="button" class="mmp-chart-toggle active" data-mmp-indicator="rsi" onclick="mmpToggleChartIndicator('rsi')">RSI 14</button>
+ <button type="button" class="mmp-chart-toggle" data-mmp-indicator="macd" onclick="mmpToggleChartIndicator('macd')">MACD</button>
+</div>
+<div id="mmp-chart-metrics" class="mmp-chart-metrics" aria-live="polite"></div>
 </div>
 <div id="mmp-chart-status" class="mmp-chart-status" role="status" aria-live="polite">در حال آماده‌سازی نمودار…</div>
 <div id="chart-container"><button class="chart-exit-fullscreen-btn" id="chart-exit-fullscreen-btn" type="button" aria-label="بازگشت از حالت تمام‌صفحه نمودار" onclick="toggleChartFullscreen()">↙ بازگشت به صفحه</button><div id="tradingview_widget" style="width:100%;height:100%;"></div></div>
@@ -4905,6 +4917,23 @@ setInterval(()=>{if(document.visibilityState!=="hidden")refreshGoldQuote();},300
 setInterval(()=>{if(document.visibilityState!=="hidden"&&document.getElementById("opportunities")?.getBoundingClientRect().top<window.innerHeight+650)loadUnifiedRadarSnapshot();},300000);
 
 </script>
+<script src="assets/mmp-chart-pro.js?v=1" defer></script>
+<style id="mmp-chart-pro-style">
+.mmp-chart-indicators{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:8px 0 4px;border-top:1px solid var(--line);margin-top:8px}
+.mmp-chart-indicators>span{font-size:10px;color:var(--muted);font-weight:800}
+.mmp-chart-indicators button{font-size:10px;padding:6px 9px}
+.mmp-chart-toggle{border:1px solid var(--line);background:var(--panel2);color:var(--muted);border-radius:8px;padding:7px 10px;font-size:11px;font-weight:800;cursor:pointer}
+.mmp-chart-toggle.active{color:#f5d98f;border-color:#b99450;background:#8d6d3024}
+#mmp-chart-metrics{display:flex;flex-wrap:wrap;gap:6px;margin:7px 0 10px}
+#mmp-chart-metrics span{padding:5px 8px;border:1px solid var(--line);border-radius:8px;background:#0c1420;font-size:10px;color:#b8c5d2}
+#mmp-chart-metrics b{color:#f1d18a;direction:ltr;display:inline-block;margin-right:4px}
+#mmp-macd-canvas{width:100%;height:118px;border-top:1px solid #ffffff12}
+#tradingview_widget{display:flex;flex-direction:column;min-height:0}
+#mmp-candle-canvas{flex:1 1 auto;min-height:300px}
+#mmp-rsi-canvas{flex:0 0 105px}
+@media(max-width:760px){.mmp-chart-indicators{gap:5px}.mmp-chart-indicators button{font-size:9px;padding:6px 7px}#chart-container{height:650px!important}#mmp-candle-canvas{min-height:330px}}
+</style>
+
 
 
 <style id="mmp-native-app-theme">
