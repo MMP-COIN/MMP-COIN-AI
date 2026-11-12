@@ -101,7 +101,7 @@ jobs:
               assert required in html, f"Missing real analyzer control: {required}"
           for required in ["/analyze", "market_mode:mode", "analysisCacheTtl", "market.timeframes", "تحلیل دریافت نشد"]:
               assert required in js, f"Missing real analyzer integration: {required}"
-          for required in ["tickerIntegrity", "analysisStatus", "هیچ سیگنال یا سطح معاملاتی از پیش ساخته‌شده‌ای", "analysis-report", "market_data_fresh"]:
+          for required in ["tickerIntegrity", "analysisStatus", "هیچ سیگنال یا سطح معاملاتی از پیش ساخته‌شده‌ای", "analysis-report", "analysis-confidence"]:
               assert required in html, f"Missing trust policy: {required}"
           for required in ["Promise.allSettled(sources.map", "spread>1.5", "integrity-warning", "parseTimestamp", "age>maxAgeMs", "داده اسکن قدیمی"]:
               assert required in js, f"Missing integrity guard: {required}"
