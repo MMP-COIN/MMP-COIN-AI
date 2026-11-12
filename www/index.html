@@ -2790,14 +2790,14 @@ html body #ai-section .tf-card{min-width:0!important;max-width:100%!important;ov
   button.disabled=true;retry.disabled=true;button.textContent=withAI?"پایش و تحلیل AI…":"در حال پایش…";
   $("mmp-ah-mode").textContent="در حال دریافت شواهد زنده";
   const jobs=await Promise.allSettled([
-   get("/health"),get("/connections-health",25000),get("/hunter-snapshot"),get("/futures-engine-health"),get("/hunter-futures-snapshot"),get(RADAR_API+"/health"),get(RADAR_API+"/fast-radar-snapshot"),
+   get("/health"),get("/connections-health",25000),get("/hunter-snapshot"),get("/futures-engine-health"),get("/hunter-futures-snapshot"),get(RADAR_API+"/health"),get(RADAR_API+"/fast-radar-snapshot"),get(RADAR_API+"/last-error"),
    withAI?get("/market-candles?symbol=BTC&interval=15m",25000):Promise.resolve(null),
    withAI?get("/market-orderflow?symbol=BTC",25000):Promise.resolve(null),
    withAI?get("/market-derivatives?symbol=BTC",25000):Promise.resolve(null),
    withAI?get("/market-proxy?source=coingecko-top&page=13",30000):Promise.resolve(null)
   ]);
   const take=i=>jobs[i].status==="fulfilled"?jobs[i].value:null;
-  const health=take(0),connections=take(1),spot=take(2),futuresEngine=take(3),futures=take(4),radarHealth=take(5),radarSnapshot=take(6),candles=take(7),orderflow=take(8),derivatives=take(9),catalog=take(10);
+  const health=take(0),connections=take(1),spot=take(2),futuresEngine=take(3),futures=take(4),radarHealth=take(5),radarSnapshot=take(6),radarError=take(7),candles=take(8),orderflow=take(9),derivatives=take(10),catalog=take(11);
   const services=[];
   services.push({name:"Analyzer Worker",status:health?.worker==="online"?"ok":"down",detail:health?.engine_version||"بدون نسخه"});
   services.push({name:"اتصال AI Binding",status:health?.ai_binding?"ok":"down",detail:health?.ai_binding?"Binding موجود؛ اجرای مدل جداگانه نیازمند تست است":"Binding موجود نیست"});
@@ -2806,8 +2806,9 @@ html body #ai-section .tf-card{min-width:0!important;max-width:100%!important;ov
   services.push({name:"Spot Hunter",status:spotHealthy?"ok":spot?.status||"down",detail:(spot?.scanned_count??0)+" نماد اسکن‌شده"});
   services.push({name:"Futures Hunter",status:futuresHealthy?"ok":futures?.status||"down",detail:(futures?.scanned_count??0)+" نماد اسکن‌شده"});
   services.push({name:"Radar Worker",status:radarHealth?.worker==="online"?"ok":"down",detail:radarHealth?.engine_version||"بدون پاسخ"});
-  const radarReady=["online","success","ok"].includes(radarSnapshot?.status);
-  services.push({name:"خروجی زنده رادار",status:radarReady?"ok":radarSnapshot?.status||"down",detail:(radarSnapshot?.signals?.length??0)+" سیگنال"});
+  const radarAge=radarSnapshot?.scanned_at?Math.max(0,Date.now()-Date.parse(radarSnapshot.scanned_at)):Infinity;
+  const radarReady=["online","success","ok"].includes(radarSnapshot?.status)&&radarAge<=180000&&radarError?.status!=="error";
+  services.push({name:"خروجی زنده رادار",status:radarReady?"ok":radarSnapshot?.status||"down",detail:(radarSnapshot?.signals?.length??0)+" سیگنال · "+(Number.isFinite(radarAge)?Math.round(radarAge/1000)+" ثانیه":"بدون زمان اسکن")} );
   if(withAI){
    services.push({name:"نمودار و کندل BTC",status:candles?.candles?.length>=30&&!!candles?.provider?"ok":"down",detail:candles?.provider||"داده کندل معتبر دریافت نشد"});
    services.push({name:"جریان معاملات BTC",status:orderflow?.flow?.available?"ok":"down",detail:orderflow?.flow?.trade_count??orderflow?.flow?.tradeCount??"بدون جریان معتبر"});
@@ -2840,7 +2841,7 @@ html body #ai-section .tf-card{min-width:0!important;max-width:100%!important;ov
   if(!spotHealthy)advice.push("Snapshot شکارچی Spot آماده یا تازه نیست؛ چرخه زمان‌بندی، D1 و زمان آخرین به‌روزرسانی بررسی شود.");
   if(!futuresHealthy)advice.push("Snapshot شکارچی Futures آماده نیست؛ Worker مستقل و اتصال سرویس Futures بررسی شود.");
   if(!radarHealth||radarHealth.worker!=="online")advice.push("Radar Worker پاسخ سالم نمی‌دهد؛ Cron یک‌دقیقه‌ای، D1 و آخرین خطای رادار بررسی شود.");
-  if(!radarReady)advice.push("Snapshot رادار آماده نیست یا تازه نشده؛ وضعیت آخرین اسکن و ذخیره‌سازی Radar بررسی شود.");
+  if(!radarReady)advice.push("Snapshot رادار آماده نیست، قدیمی‌تر از ۳ دقیقه است یا آخرین خطای رادار ثبت شده؛ وضعیت Cron یک‌دقیقه‌ای، D1 و خطای آخر بررسی شود: "+String(radarError?.message||"").slice(0,160));
   const inactive=keys.filter(k=>!Number(active[k]?.processed)||!Number(active[k]?.evidence));
   if(inactive.length)advice.push("متخصص‌های بدون شواهد کافی: "+inactive.map(k=>engineNames[k]).join("، ")+". ابتدا ورودی داده و اتصال آن‌ها تکمیل شود؛ فعال‌نمایی یا امتیازدهی ساختگی ممنوع.");
   if(spot?.learning?.status==="unavailable"||futures?.learning?.status==="unavailable")advice.push("دفتر یادگیری تطبیقی در دسترس نیست؛ ذخیره نتایج سیگنال و بلوغ نمونه‌های آموزشی بررسی شود.");
