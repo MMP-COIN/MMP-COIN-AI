@@ -67,12 +67,12 @@ jobs:
         run: |
           set -euo pipefail
           node --check cloudflare-worker/nexus-worker.js
-          grep -q 'crons = ["*/5 * * * *"]' cloudflare-worker/nexus-wrangler.toml
-          grep -q 'name = "mmp-coin-nexus"' cloudflare-worker/nexus-wrangler.toml
-          grep -q 'runCycle(env)' cloudflare-worker/nexus-worker.js
-          grep -q 'last_repair_at' cloudflare-worker/nexus-worker.js
-          grep -q 'ai_calls:' cloudflare-worker/nexus-worker.js
-          grep -q 'code_changes_executed:false' cloudflare-worker/nexus-worker.js
+          grep -Fq 'crons = ["*/5 * * * *"]' cloudflare-worker/nexus-wrangler.toml
+          grep -Fq 'name = "mmp-coin-nexus"' cloudflare-worker/nexus-wrangler.toml
+          grep -Fq 'runCycle(env)' cloudflare-worker/nexus-worker.js
+          grep -Fq 'last_repair_at' cloudflare-worker/nexus-worker.js
+          grep -Fq 'ai_calls:' cloudflare-worker/nexus-worker.js
+          grep -Fq 'code_changes_executed:false' cloudflare-worker/nexus-worker.js
           echo "Independent NEXUS Worker syntax, five-minute Cron, safe-repair cooldown and AI budget guard validated."
       - name: Validate Hunter universe refresher and Cron scan budgets
         run: |
