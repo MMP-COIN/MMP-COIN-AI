@@ -139,6 +139,10 @@ jobs:
           if (!workerSource.includes("function emaSeries(values,period)") || workerSource.includes("closes.slice(0,i+1)")) throw new Error("Multi-timeframe MACD must use linear-time EMA series, not quadratic recomputation");
           if (!workerSource.includes("const ASSET_SYMBOL_OVERRIDES=Object.freeze(")) throw new Error("AI analyzer must define safe asset-id to ticker overrides before request parsing");
           if (!workerSource.includes("async function monitorLocalTether(env)") || !workerSource.includes('monitor:"server-cron-1m"') || !workerSource.includes("await Promise.allSettled([cleanup,localTether,universeRefresh])")) throw new Error("Iranian Tether shock monitoring must run independently on the server cron");
+          const tetherSourceStart = workerSource.indexOf("async function fetchLocalTetherSnapshot()");
+          const tetherSourceEnd = workerSource.indexOf("async function readLocalTetherState", tetherSourceStart);
+          const tetherSource = workerSource.slice(tetherSourceStart, tetherSourceEnd);
+          if (tetherSourceStart < 0 || !tetherSource.includes("publicapi.ramzinex.com/exchange/api/v1.0/exchange/pairs") || !tetherSource.includes('"Ramzinex"') || !tetherSource.includes("attempt<2") || !tetherSource.includes("Retry-After")) throw new Error("Iranian Tether monitor must include Ramzinex fallback and bounded retry/backoff for transient provider errors");
 
           const radarSource = fs.readFileSync("cloudflare-worker/radar-worker.js", "utf8");
           const futuresSource = fs.readFileSync("cloudflare-worker/futures-worker.js", "utf8");
