@@ -2526,7 +2526,7 @@ html body #ai-section .tf-card{min-width:0!important;max-width:100%!important;ov
 .dropdown-menu .menu-group>summary:focus-visible{outline:2px solid var(--gold);outline-offset:-3px;border-radius:8px}
 </style>
 <link rel="stylesheet" href="assets/mmp-quantum-terminal-v1.css?v=11">
-<link rel="stylesheet" href="assets/mmp-real-depth-visuals.css?v=4"><link rel="stylesheet" href="assets/mmp-quantum-nexus.css?v=2"><script defer src="assets/mmp-quantum-terminal-v1.js?v=9"></script>
+<link rel="stylesheet" href="assets/mmp-real-depth-visuals.css?v=4"><link rel="stylesheet" href="assets/mmp-quantum-nexus.css?v=2"><script defer src="assets/mmp-quantum-terminal-v1.js?v=9"></script><script defer src="assets/mmp-chart-pro-upgrade.js?v=1"></script>
 </head>
 <body class="mmp-quantum-terminal" data-mmp-view="home">
 <script>try{if(new URLSearchParams(location.search).has("mmp_native_version"))document.body.classList.add("mmp-app-mode");}catch(e){}</script>
@@ -2815,7 +2815,7 @@ html body #ai-section .tf-card{min-width:0!important;max-width:100%!important;ov
   </div>
 </div>
 <div class="mmp-chart-toolbar" aria-label="تنظیمات نمودار">
- <div class="mmp-chart-timeframes" role="group" aria-label="بازه زمانی"><button type="button" data-chart-tf="1m" onclick="mmpSetChartInterval('1m')">۱د</button><button type="button" data-chart-tf="5m" onclick="mmpSetChartInterval('5m')">۵د</button><button type="button" data-chart-tf="15m" onclick="mmpSetChartInterval('15m')">۱۵د</button><button type="button" data-chart-tf="1h" class="active" onclick="mmpSetChartInterval('1h')">۱س</button><button type="button" data-chart-tf="4h" onclick="mmpSetChartInterval('4h')">۴س</button><button type="button" data-chart-tf="1d" onclick="mmpSetChartInterval('1d')">۱روز</button></div>
+ <div class="mmp-chart-timeframes" role="group" aria-label="بازه زمانی"><button type="button" data-chart-tf="1m" onclick="mmpSetChartInterval('1m')">۱د</button><button type="button" data-chart-tf="3m" onclick="mmpSetChartInterval('3m')">۳د</button><button type="button" data-chart-tf="5m" onclick="mmpSetChartInterval('5m')">۵د</button><button type="button" data-chart-tf="15m" onclick="mmpSetChartInterval('15m')">۱۵د</button><button type="button" data-chart-tf="1h" class="active" onclick="mmpSetChartInterval('1h')">۱س</button><button type="button" data-chart-tf="4h" onclick="mmpSetChartInterval('4h')">۴س</button><button type="button" data-chart-tf="1d" onclick="mmpSetChartInterval('1d')">۱روز</button></div>
  <label class="mmp-chart-market">بازار <select id="mmp-chart-market" onchange="mmpSetChartMarket(this.value)"><option value="spot">اسپات</option><option value="futures">فیوچرز</option></select></label>
  <button type="button" id="mmp-chart-ema-toggle" class="mmp-chart-toggle active" onclick="mmpToggleChartEMA()">EMA 20/50</button><button type="button" id="mmp-chart-bollinger-toggle" class="mmp-chart-toggle" onclick="mmpToggleChartBollinger()">Bollinger 20/2</button><button type="button" id="mmp-chart-volume-toggle" class="mmp-chart-toggle active" onclick="mmpToggleChartVolume()">حجم</button><button type="button" class="mmp-chart-refresh" onclick="mmpLoadChart(true)">↻ تازه‌سازی</button>
 </div>
@@ -3119,7 +3119,7 @@ function mmpRenderChart(payload){
 }
 function initTradingView(){mmpLoadChart(true);if(mmpChartState.refreshTimer)clearInterval(mmpChartState.refreshTimer);mmpChartState.refreshTimer=setInterval(()=>{if(!document.hidden&&document.getElementById("chart-section")?.getBoundingClientRect().top<window.innerHeight+600)mmpLoadChart(false);},60000);}
 function changeTradingViewSymbol(){mmpLoadChart(true);}
-function mmpSetChartInterval(value){if(!["1m","5m","15m","1h","4h","1d"].includes(value))return;mmpChartState.interval=value;mmpLoadChart(true);}
+function mmpSetChartInterval(value){if(!["1m","3m","5m","15m","1h","4h","1d"].includes(value))return;mmpChartState.interval=value;mmpLoadChart(true);}
 function mmpSetChartMarket(value){mmpChartState.market=value==="futures"?"futures":"spot";mmpLoadChart(true);}
 function mmpToggleChartEMA(){mmpChartState.showEMA=!mmpChartState.showEMA;document.getElementById("mmp-chart-ema-toggle")?.classList.toggle("active",mmpChartState.showEMA);const c=mmpChartState.cache.get([mmpChartSymbol(),mmpChartState.interval,mmpChartState.market].join(":"));if(c)mmpRenderChart(c.payload);}
 function mmpToggleChartBollinger(){mmpChartState.showBollinger=!mmpChartState.showBollinger;document.getElementById("mmp-chart-bollinger-toggle")?.classList.toggle("active",mmpChartState.showBollinger);const c=mmpChartState.cache.get([mmpChartSymbol(),mmpChartState.interval,mmpChartState.market].join(":"));if(c)mmpRenderChart(c.payload);}
