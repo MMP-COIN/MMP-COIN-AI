@@ -60,55 +60,27 @@ async function writeRadarRecord(env,id,payload){
 }
 async function loadProvider(symbol,exchange) {
   const pair=symbol+"USDT";
-  if(exchange==="Binance"){
-    let lastError;
-    for(const host of ["https://api.binance.com"]){
-      try{const rows=normalizeRows(await getJson(host+"/api/v3/klines?symbol="+pair+"&interval=1m&limit=80"));if(rows.length>=25)return {rows,provider:"Binance Spot"};throw new Error("کمبود کندل");}
-      catch(error){lastError=error;}
+  const tryHosts=async(label,hosts,build,extract)=>{
+    let lastError=null;
+    for(const host of hosts){
+      try{
+        const payload=await getJson(build(host)),raw=extract(payload);
+        if(!Array.isArray(raw))throw new Error(label+" returned invalid candle payload");
+        const rows=normalizeRows(raw);
+        if(rows.length>=55)return {rows,provider:label};
+        throw new Error(label+" candle history insufficient ("+rows.length+")");
+      }catch(error){lastError=error;}
     }
-    throw lastError||new Error("Binance unavailable");
-  }
-  if(exchange==="Bybit"){
-    const d=await getJson("https://api.bybit.com/v5/market/kline?category=spot&symbol="+pair+"&interval=1&limit=80");
-    if(String(d.retCode)!=="0")throw new Error(d.retMsg||"Bybit unavailable");
-    const rows=normalizeRows(d.result?.list);if(rows.length<55)throw new Error("Bybit candle history insufficient");return {rows,provider:"Bybit Spot"};
-  }
-  if(exchange==="OKX"){
-    const d=await getJson("https://www.okx.com/api/v5/market/candles?instId="+symbol+"-USDT&bar=1m&limit=80");
-    if(String(d.code)!=="0")throw new Error(d.msg||"OKX unavailable");
-    const rows=normalizeRows(d.data);if(rows.length<55)throw new Error("OKX candle history insufficient");return {rows,provider:"OKX Spot"};
-  }
-  if(exchange==="Bitget"){
-    const d=await getJson("https://api.bitget.com/api/v3/market/candles?category=SPOT&symbol="+pair+"&interval=1m&limit=80");
-    if(!["00000","0"].includes(String(d.code)))throw new Error(d.msg||"Bitget unavailable");
-    const rows=normalizeRows(d.data);if(rows.length<55)throw new Error("Bitget candle history insufficient");return {rows,provider:"Bitget Spot"};
-  }
-  if(exchange==="Gate"){
-    const d=await getJson("https://api.gateio.ws/api/v4/spot/candlesticks?currency_pair="+symbol+"_USDT&interval=1m&limit=80");
-    const raw=Array.isArray(d)?d:[];
-    // Gate Spot rows are [timestamp, volume, close, high, low, open].
-    const rows=raw.map(x=>[Number(x[0])*1000,Number(x[5]),Number(x[3]),Number(x[4]),Number(x[2]),Number(x[1])])
-      .filter(x=>x.every(Number.isFinite)&&x[1]>0&&x[2]>=x[3]&&x[3]>0&&x[4]>0&&x[5]>=0)
-      .sort((a,b)=>a[0]-b[0]);
-    if(rows.length<55)throw new Error("Gate candle history insufficient");return {rows,provider:"Gate Spot"};
-  }
-  if(exchange==="MEXC"){
-    const d=await getJson("https://api.mexc.com/api/v3/klines?symbol="+pair+"&interval=1m&limit=80");
-    const rows=normalizeRows(d);if(rows.length<55)throw new Error("MEXC Spot candle history insufficient");return {rows,provider:"MEXC Spot"};
-  }
-  if(exchange==="KuCoin"){
-    const d=await getJson("https://api.kucoin.com/api/v1/market/candles?type=1min&symbol="+symbol+"-USDT");
-    if(String(d.code)!=="200000")throw new Error("KuCoin unavailable");
-    const rows=normalizeRows(Array.isArray(d.data)?d.data.map(x=>[Number(x[0])*1000,x[1],x[3],x[4],x[2],x[6]||x[5]]):[]);
-    if(rows.length<55)throw new Error("KuCoin candle history insufficient");return {rows,provider:"KuCoin Spot"};
-  }
-  if(exchange==="WhiteBIT"){
-    const d=await getJson("https://whitebit.com/api/v1/public/kline?market="+symbol+"_USDT&interval=1m&limit=80");
-    if(d?.success!==true)throw new Error(typeof d?.message==="string"?d.message:JSON.stringify(d?.message??d).slice(0,140));
-    const raw=Array.isArray(d.result)?d.result:Array.isArray(d.result?.kline)?d.result.kline:[];
-    const rows=normalizeRows(raw.map(x=>Array.isArray(x)?[Number(x[0])*1000,x[1],x[3],x[4],x[2],x[5]]:[Number(x.time)*1000,x.open,x.highest,x.lowest,x.close,x.volume]));
-    if(rows.length<55)throw new Error("WhiteBIT candle history insufficient");return {rows,provider:"WhiteBIT Spot"};
-  }
+    throw lastError||new Error(label+" unavailable");
+  };
+  if(exchange==="Binance")return tryHosts("Binance Spot",["https://data-api.binance.vision","https://api.binance.com","https://api-gcp.binance.com","https://api1.binance.com","https://api2.binance.com"],host=>host+"/api/v3/klines?symbol="+pair+"&interval=1m&limit=80",d=>Array.isArray(d)?d:null);
+  if(exchange==="Bybit")return tryHosts("Bybit Spot",["https://api.bybit.com","https://api.bytick.com","https://api.bybit.eu"],host=>host+"/v5/market/kline?category=spot&symbol="+pair+"&interval=1&limit=80",d=>String(d.retCode)==="0"?d.result?.list:null);
+  if(exchange==="OKX")return tryHosts("OKX Spot",["https://www.okx.com","https://us.okx.com"],host=>host+"/api/v5/market/candles?instId="+symbol+"-USDT&bar=1m&limit=80",d=>String(d.code)==="0"?d.data:null);
+  if(exchange==="Bitget")return tryHosts("Bitget Spot",["https://api.bitget.com"],host=>host+"/api/v3/market/candles?category=SPOT&symbol="+pair+"&interval=1m&limit=80",d=>["00000","0"].includes(String(d.code))?d.data:null);
+  if(exchange==="Gate")return tryHosts("Gate Spot",["https://api.gateio.ws","https://api.gate.us"],host=>host+"/api/v4/spot/candlesticks?currency_pair="+symbol+"_USDT&interval=1m&limit=80",d=>Array.isArray(d)?d.map(x=>[Number(x[0])*1000,Number(x[5]),Number(x[3]),Number(x[4]),Number(x[2]),Number(x[1])]):null);
+  if(exchange==="MEXC")return tryHosts("MEXC Spot",["https://api.mexc.com"],host=>host+"/api/v3/klines?symbol="+pair+"&interval=1m&limit=80",d=>Array.isArray(d)?d:null);
+  if(exchange==="KuCoin")return tryHosts("KuCoin Spot",["https://api.kucoin.com","https://api.kucoin.tr"],host=>host+"/api/v1/market/candles?type=1min&symbol="+symbol+"-USDT",d=>String(d.code)==="200000"&&Array.isArray(d.data)?d.data.map(x=>[Number(x[0])*1000,x[1],x[3],x[4],x[2],x[6]||x[5]]):null);
+  if(exchange==="WhiteBIT")return tryHosts("WhiteBIT Spot",["https://whitebit.com","https://whitebit.eu"],host=>host+"/api/v1/public/kline?market="+symbol+"_USDT&interval=1m&limit=80",d=>d?.success===true?(Array.isArray(d.result)?d.result:Array.isArray(d.result?.kline)?d.result.kline:[]).map(x=>Array.isArray(x)?[Number(x[0])*1000,x[1],x[3],x[4],x[2],x[5]]:[Number(x.time)*1000,x.open,x.highest,x.lowest,x.close,x.volume]):null);
   throw new Error("Unsupported venue");
 }
 async function scanCoin(coin){
@@ -119,7 +91,7 @@ async function scanCoin(coin){
     :Object.entries(coin.hunterVenueVolume||{}).filter(([name])=>SUPPORTED.has(name)).map(([exchange,volume])=>({exchange,volume,quote:"USDT"}));
   if(!listed.length)return null;
   const order=[...new Map(listed.sort((a,b)=>Number(b.volume)-Number(a.volume)).map(x=>[x.exchange,x])).values()].map(x=>x.exchange);
-  const fallback=["Gate","WhiteBIT","KuCoin","MEXC","OKX","Bitget","Bybit","Binance"].filter(name=>!order.includes(name));
+  const fallback=["Gate","WhiteBIT","MEXC","OKX","KuCoin","Bitget","Bybit","Binance"].filter(name=>!order.includes(name));
   const verificationOrder=[...new Set([...order,...fallback])].slice(0,3);
   let market=null,corroboration=null,errors=[];
   for(const venue of verificationOrder){if(corroboration)break;try{const candidate=await loadProvider(symbol,venue);if(!market)market=candidate;else corroboration=candidate;}catch(error){errors.push(venue+": "+String(error?.message||error).slice(0,80));}}
