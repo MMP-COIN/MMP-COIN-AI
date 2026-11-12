@@ -1,5 +1,5 @@
 export const QUANTUM_ENGINE_NAME = "MMP QUANTUM INTELLIGENCE ENGINE";
-export const QUANTUM_ENGINE_VERSION = "QIE-5.0.0";
+export const QUANTUM_ENGINE_VERSION = "QIE-5.0.1";
 
 /* Legacy weights retain their relative influence. New specialist engines join
    only when their underlying evidence is actually supplied and validated. */
@@ -92,21 +92,20 @@ export function scoreQuantumOpportunity(input={}){
  const dataQualityAvailable=ageAvailable&&priceAvailable;
  const dataQuality=dataQualityAvailable?(age<=180000?100:age<=240000?80:0):0;
 
- const volatilityAvailable=has(input,"explosionScore")||has(input,"compressionScore")||has(input,"atrPct")||has(input,"atrPercent")||has(input,"volatilityRatio");
+ const volatilityAvailable=has(input,"compressionScore")||has(input,"atrPct")||has(input,"atrPercent")||has(input,"volatilityRatio");
  let volatility=0;
- if(has(input,"explosionScore"))volatility=clamp(input.explosionScore);
- else if(has(input,"compressionScore"))volatility=clamp(55+finite(input.compressionScore)*35);
+ if(has(input,"compressionScore"))volatility=clamp(55+finite(input.compressionScore)*35);
  else if(has(input,"volatilityRatio")){const ratio=Math.max(0,finite(input.volatilityRatio));volatility=clamp(78-Math.abs(ratio-1.15)*38);}
  else if(has(input,"atrPct")){const atr=Math.max(0,finite(input.atrPct));volatility=clamp(88-Math.max(0,atr-0.45)*24-Math.max(0,0.18-atr)*65);}
  else if(has(input,"atrPercent")){const atr=Math.max(0,finite(input.atrPercent));volatility=clamp(88-Math.max(0,atr-0.45)*24-Math.max(0,0.18-atr)*65);}
 
  const sentimentAvailable=has(input,"sentimentScore")&&(input.sentimentConfirmed===true||!!input.sentimentSource);
  const sentiment=sentimentAvailable?clamp(input.sentimentScore):0;
- const smartMoneyAvailable=has(input,"smartMoneyScore")||input.smartMoneyConfirmed===true;
- const smartMoney=has(input,"smartMoneyScore")?clamp(input.smartMoneyScore):(input.smartMoneyConfirmed===true&&flowAvailable&&direction?clamp(50+flowImbalance*direction*180):0);
- const scenarioAvailable=has(input,"scenarioScore")||has(input,"riskRewardRatio");
+ const smartMoneyAvailable=has(input,"smartMoneyScore")&&input.smartMoneyIndependent===true;
+ const smartMoney=smartMoneyAvailable?clamp(input.smartMoneyScore):0;
+ const scenarioAvailable=has(input,"riskRewardRatio")||(has(input,"scenarioScore")&&input.scenarioIndependent===true);
  const riskReward=Math.max(0,finite(input.riskRewardRatio));
- const scenario=has(input,"scenarioScore")?clamp(input.scenarioScore):(scenarioAvailable?clamp(48+(riskReward-1)*24):0);
+ const scenario=has(input,"scenarioScore")&&input.scenarioIndependent===true?clamp(input.scenarioScore):(scenarioAvailable?clamp(48+(riskReward-1)*24):0);
  const riskAvailable=has(input,"riskScore")||has(input,"stopDistancePct")||has(input,"riskPercent");
  const stopDistance=Math.max(0,finite(input.stopDistancePct??input.riskPercent));
  const risk=has(input,"riskScore")?clamp(input.riskScore):(riskAvailable?clamp(100-Math.max(0,stopDistance-1.25)*24-Math.max(0,0.25-stopDistance)*70):0);
