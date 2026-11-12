@@ -19,7 +19,11 @@ export default {
   const save=payload=>env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(id,JSON.stringify(payload),payload.updated_at||new Date().toISOString()).run();
   await save({status:"started",cron,scheduledTime:event?.scheduledTime||null,startedAt:new Date(started).toISOString(),updated_at:new Date(started).toISOString()});
   try{
-   const result=await refreshDigitalHunterUniverses(env),finished=Date.now();
+   // This scheduled-only worker invokes the analyzer's internal route in-process.
+   // Supply a local success limiter for that trusted internal call; public analyzer
+   // requests still use the real Cloudflare rate-limit binding and remain protected.
+   const refreshEnv=Object.assign(Object.create(env),{PUBLIC_API_LIMITER:{limit:async()=>({success:true})}});
+   const result=await refreshDigitalHunterUniverses(refreshEnv),finished=Date.now();
    await save({status:result.status,cron,scheduledTime:event?.scheduledTime||null,startedAt:new Date(started).toISOString(),finishedAt:new Date(finished).toISOString(),updated_at:new Date(finished).toISOString(),markets:result.markets,errors:result.errors});
    console.log("Hunter universe refresh",JSON.stringify({status:result.status,updated_at:result.updated_at,markets:result.markets,errors:result.errors,cron}));
    if(result.status==="error")throw new Error("Hunter universe refresh failed: "+JSON.stringify(result.errors));
