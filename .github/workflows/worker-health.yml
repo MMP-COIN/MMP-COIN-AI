@@ -122,7 +122,9 @@ jobs:
           if (!universeCronConfig.includes('crons = ["5 * * * *"]')) throw new Error("Independent universe refresh must remain hourly to conserve free Cron slots");
           if (!workerSource.includes('"/futures-engine-health"') || !workerSource.includes('env.FUTURES_ENGINE.fetch(new Request("https://futures-engine/health"))')) throw new Error("Analyzer internal Futures health route is missing");
           if (!workerSource.includes('X-MMP-Internal-Token') || !workerSource.includes('request.headers.get("X-MMP-Internal-Token")===env.FUTURES_ENGINE_TOKEN')) throw new Error("Internal Hunter universe refresh must authenticate without consuming the public limiter");
-          if (!workerSource.includes('page<=20') || !workerSource.includes('from="+Math.floor(cutoff/1000)+"&to="+Math.ceil(now/1000)+"&limit=1000&page="+page') || !workerSource.includes('https://api3.binance.com')) throw new Error("Spot executed-flow pagination and alternate Binance hosts are missing");
+          if (!workerSource.includes('page<=8') || !workerSource.includes('from="+Math.floor(cutoff/1000)+"&to="+Math.ceil(now/1000)+"&limit=1000&page="+page') || !workerSource.includes('https://api3.binance.com')) throw new Error("Spot executed-flow pagination and alternate Binance hosts are missing");
+          if (!workerSource.includes("const maxRequests=18") || !workerSource.includes("request_budget:maxRequests") || !workerSource.includes('provider:"unavailable",exchange:"",complete:false')) throw new Error("Spot flow must enforce a safe subrequest budget and return an explicit incomplete result rather than crashing the Worker");
+          if (!workerSource.includes("for(let page=0;page<10;page++)")) throw new Error("OKX historical trade pagination must be bounded to protect the Worker subrequest quota");
           const futuresUniverseStart = workerSource.indexOf("async function loadDigitalHunterFuturesUniverse");
           const futuresUniverseEnd = workerSource.indexOf("async function loadDigitalHunterUniverse", futuresUniverseStart);
           const futuresUniverseSource = workerSource.slice(futuresUniverseStart, futuresUniverseEnd);
