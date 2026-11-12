@@ -2789,10 +2789,14 @@ html body #ai-section .tf-card{min-width:0!important;max-width:100%!important;ov
   button.disabled=true;retry.disabled=true;button.textContent=withAI?"پایش و تحلیل AI…":"در حال پایش…";
   $("mmp-ah-mode").textContent="در حال دریافت شواهد زنده";
   const jobs=await Promise.allSettled([
-   get("/health"),get("/connections-health",25000),get("/hunter-snapshot"),get("/futures-engine-health"),get("/hunter-futures-snapshot")
+   get("/health"),get("/connections-health",25000),get("/hunter-snapshot"),get("/futures-engine-health"),get("/hunter-futures-snapshot"),
+   withAI?get("/market-candles?symbol=BTC&interval=15m",25000):Promise.resolve(null),
+   withAI?get("/market-orderflow?symbol=BTC",25000):Promise.resolve(null),
+   withAI?get("/market-derivatives?symbol=BTC",25000):Promise.resolve(null),
+   withAI?get("/market-proxy?source=coingecko-top&page=13",30000):Promise.resolve(null)
   ]);
   const take=i=>jobs[i].status==="fulfilled"?jobs[i].value:null;
-  const health=take(0),connections=take(1),spot=take(2),futuresEngine=take(3),futures=take(4);
+  const health=take(0),connections=take(1),spot=take(2),futuresEngine=take(3),futures=take(4),candles=take(5),orderflow=take(6),derivatives=take(7),catalog=take(8);
   const services=[];
   services.push({name:"Analyzer Worker",status:health?.worker==="online"?"ok":"down",detail:health?.engine_version||"بدون نسخه"});
   services.push({name:"اتصال AI Binding",status:health?.ai_binding?"ok":"down",detail:health?.ai_binding?"Binding موجود؛ اجرای مدل جداگانه نیازمند تست است":"Binding موجود نیست"});
@@ -2800,6 +2804,12 @@ html body #ai-section .tf-card{min-width:0!important;max-width:100%!important;ov
   const spotHealthy=["online","success"].includes(spot?.status),futuresHealthy=["online","success"].includes(futures?.status);
   services.push({name:"Spot Hunter",status:spotHealthy?"ok":spot?.status||"down",detail:(spot?.scanned_count??0)+" نماد اسکن‌شده"});
   services.push({name:"Futures Hunter",status:futuresHealthy?"ok":futures?.status||"down",detail:(futures?.scanned_count??0)+" نماد اسکن‌شده"});
+  if(withAI){
+   services.push({name:"نمودار و کندل BTC",status:candles?.candles?.length>=30&&!!candles?.provider?"ok":"down",detail:candles?.provider||"داده کندل معتبر دریافت نشد"});
+   services.push({name:"جریان معاملات BTC",status:orderflow?.flow?.available?"ok":"down",detail:orderflow?.flow?.trade_count??orderflow?.flow?.tradeCount??"بدون جریان معتبر"});
+   services.push({name:"داده مشتقات BTC",status:derivatives?.source?"ok":"down",detail:derivatives?.source||"منبع مشتقات نامشخص"});
+   services.push({name:"کاتالوگ عمیق بازار",status:Array.isArray(catalog)&&catalog.length>0?"ok":"down",detail:Array.isArray(catalog)?catalog.length+" دارایی":"صفحه ۱۳ پاسخ معتبر نداد"});
+  }
   const checks=Array.isArray(connections?.checks)?connections.checks:[];
   const online=checks.filter(x=>x.status==="ok"||x.status==="slow").length;
   $("mmp-ah-sources").textContent=checks.length?online+"/"+checks.length:"—";
