@@ -118,7 +118,7 @@ jobs:
           if (!futuresConfig.includes('name = "mmp-coin-ai-futures"') || !futuresConfig.includes('binding = "ADMIN_DB"') || !futuresConfig.includes('crons = ["* * * * *"]')) throw new Error("Dedicated Futures Worker deployment config or one-minute scheduler is missing");
           if (!workerSource.includes('"/futures-engine-health"') || !workerSource.includes('env.FUTURES_ENGINE.fetch(new Request("https://futures-engine/health"))')) throw new Error("Analyzer internal Futures health route is missing");
           if (!workerSource.includes('X-MMP-Internal-Token') || !workerSource.includes('request.headers.get("X-MMP-Internal-Token")===env.FUTURES_ENGINE_TOKEN')) throw new Error("Internal Hunter universe refresh must authenticate without consuming the public limiter");
-          if (!workerSource.includes('page<=5') || !workerSource.includes('from="+Math.floor(cutoff/1000)+"&to="+Math.ceil(now/1000)+"&limit=1000&page="+page') || !workerSource.includes('https://api3.binance.com')) throw new Error("Spot executed-flow pagination and alternate Binance hosts are missing");
+          if (!workerSource.includes('page<=20') || !workerSource.includes('from="+Math.floor(cutoff/1000)+"&to="+Math.ceil(now/1000)+"&limit=1000&page="+page') || !workerSource.includes('https://api3.binance.com')) throw new Error("Spot executed-flow pagination and alternate Binance hosts are missing");
           const futuresUniverseStart = workerSource.indexOf("async function loadDigitalHunterFuturesUniverse");
           const futuresUniverseEnd = workerSource.indexOf("async function loadDigitalHunterUniverse", futuresUniverseStart);
           const futuresUniverseSource = workerSource.slice(futuresUniverseStart, futuresUniverseEnd);
@@ -752,7 +752,6 @@ jobs:
         if: always() && github.ref == 'refs/heads/main'
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
-          CANARY_URL: https://53aa32e2-mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
           set -euo pipefail
           payload='{"coin_id":"bitcoin","symbol":"BTC","name":"Bitcoin","market_mode":"spot"}'
@@ -763,19 +762,8 @@ jobs:
             exit 1
           fi
           jq -e '.analysis.action as $a | (["BUY","SELL","WAIT"] | index($a) != null) and (.market.timeframes | has("15m") and has("1h") and has("4h") and has("1d"))' /tmp/analysis.json >/dev/null
-          canary_health_status=$(curl --silent --show-error --max-time 30 -o /tmp/canary-health.json -w "%{http_code}" "$CANARY_URL/health" || true)
-          echo "Canary Worker health HTTP $canary_health_status"
-          if [ "$canary_health_status" != "200" ]; then cat /tmp/canary-health.json 2>/dev/null || true; exit 1; fi
-          canary_health=$(cat /tmp/canary-health.json)
-          echo "$canary_health" | jq -e '.worker == "online" and .ai_binding == true and .futures_engine_binding == true' >/dev/null
-          canary_status=$(curl --silent --show-error --max-time 110 -H "Content-Type: application/json" -X POST --data "$payload" -o /tmp/canary-analysis.json -w "%{http_code}" "$CANARY_URL/analyze")
-          echo "Canary AI analyzer HTTP $canary_status"
-          if [ "$canary_status" != "200" ]; then
-            jq -r '.stage // "unknown stage", .error // "unknown error"' /tmp/canary-analysis.json || cat /tmp/canary-analysis.json
-            exit 1
-          fi
-          jq -e '.analysis.action as $a | (["BUY","SELL","WAIT"] | index($a) != null) and (.market.timeframes | has("15m") and has("1h") and has("4h") and has("1d"))' /tmp/canary-analysis.json >/dev/null
-          jq -r '"Selected AI model: " + (.analysis.ai_provider // "not reported")' /tmp/canary-analysis.json
+          echo "Preview Worker is intentionally private; production analyzer is the authoritative end-to-end target."
+          jq -r '"Selected AI model: " + (.analysis.ai_provider // "not reported")' /tmp/analysis.json
           jq -r '.analysis.ai_provider_fallbacks[]? | "AI fallback reason: " + .' /tmp/canary-analysis.json
           jq -r '"Canary model provider: " + (.analysis.data_source // "not reported")' /tmp/canary-analysis.json
           {
