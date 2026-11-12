@@ -122,7 +122,7 @@ async function monitorLocalTether(env){
  const lastKnownAt=previous?.last_known_checked_at||previous?.checked_at||null;
  const lastKnownAge=lastKnownAt?Math.max(0,Date.now()-Date.parse(lastKnownAt)):null;
  if(!(current>0)){
-  const payload={...sample,previous_toman:Number(previous?.median_toman)||null,last_known_toman:lastKnown,last_known_checked_at:lastKnownAt,last_known_age_ms:Number.isFinite(lastKnownAge)?lastKnownAge:null,change_pct:null,alert:false,alert_exchange:null,alert_at:previous?.alert_at||null,last_prices:{...(previous?.last_prices||{})},monitor:"dedicated-tether-cron-1m",monitor_updated_at:now};
+  const payload={...sample,previous_toman:Number(previous?.median_toman)||null,last_known_toman:lastKnown,last_known_checked_at:lastKnownAt,last_known_age_ms:Number.isFinite(lastKnownAge)?lastKnownAge:null,change_pct:null,alert:false,alert_exchange:null,alert_at:previous?.alert_at||null,last_prices:{...(previous?.last_prices||{})},monitor:"dedicated-tether-service-1m",monitor_updated_at:now};
   await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind("local-tether-watch",JSON.stringify(payload),now).run();
   return payload;
  }
@@ -132,7 +132,7 @@ async function monitorLocalTether(env){
   priorPrices[source.exchange]=Number(source.price_toman);
  }
  const shock=changes.find(x=>Math.abs(x.pct)>=2.5),change=shock?.pct??(changes[0]?.pct??null);
- const payload={...sample,previous_toman:Number(previous?.median_toman)||null,last_known_toman:current,last_known_checked_at:sample.checked_at,last_known_age_ms:0,change_pct:change,alert:!!shock,alert_exchange:shock?.exchange||null,alert_at:shock?now:(previous?.alert_at||null),last_prices:priorPrices,monitor:"dedicated-tether-cron-1m",monitor_updated_at:now};
+ const payload={...sample,previous_toman:Number(previous?.median_toman)||null,last_known_toman:current,last_known_checked_at:sample.checked_at,last_known_age_ms:0,change_pct:change,alert:!!shock,alert_exchange:shock?.exchange||null,alert_at:shock?now:(previous?.alert_at||null),last_prices:priorPrices,monitor:"dedicated-tether-service-1m",monitor_updated_at:now};
  await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind("local-tether-watch",JSON.stringify(payload),now).run();
  return payload;
 }
