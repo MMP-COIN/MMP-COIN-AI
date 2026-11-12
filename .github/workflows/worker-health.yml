@@ -297,6 +297,8 @@ jobs:
           const terminal = fs.readFileSync("www/assets/mmp-quantum-terminal-v1.js", "utf8");
           if (!terminal.includes('if(el.id==="quantum-center-entry")visible=view==="home"||view==="command"||view==="ai";')) throw new Error("Quantum Command must remain visible on homepage, Market Command and AI center");
           if (!home.includes('mmp-quantum-terminal-v1.js?v=9')) throw new Error("Homepage terminal bundle cache key was not bumped with the visibility fix");
+          const homeEngineMonitor = home.slice(home.indexOf('<script id="mmp-home-engine-live-monitor">'), home.indexOf('</script>', home.indexOf('<script id="mmp-home-engine-live-monitor">')));
+          if (!homeEngineMonitor.includes('refresh(true)') || !homeEngineMonitor.includes('loadDigitalHunterSnapshot(true)') || !homeEngineMonitor.includes('/hunter-combined-snapshot') || !homeEngineMonitor.includes('/hunter-futures-snapshot') || !homeEngineMonitor.includes('},30000)')) throw new Error("Quantum Command must bootstrap its own Spot/Futures snapshot with independent fallback and 30s freshness checks");
 
 
           if (!html.includes('content="2.0.0"')) throw new Error("Quantum Lab must preserve the installed app version");
