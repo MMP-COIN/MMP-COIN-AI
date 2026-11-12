@@ -63,6 +63,17 @@ jobs:
           }
           console.log("NEXUS inline script syntax, independent Radar probes, overlap guard and AI repair boundaries verified.");
           NODE
+      - name: Validate independent server-side MMP NEXUS Worker
+        run: |
+          set -euo pipefail
+          node --check cloudflare-worker/nexus-worker.js
+          grep -q 'crons = ["*/5 * * * *"]' cloudflare-worker/nexus-wrangler.toml
+          grep -q 'name = "mmp-coin-nexus"' cloudflare-worker/nexus-wrangler.toml
+          grep -q 'runCycle(env)' cloudflare-worker/nexus-worker.js
+          grep -q 'last_repair_at' cloudflare-worker/nexus-worker.js
+          grep -q 'ai_calls:' cloudflare-worker/nexus-worker.js
+          grep -q 'code_changes_executed:false' cloudflare-worker/nexus-worker.js
+          echo "Independent NEXUS Worker syntax, five-minute Cron, safe-repair cooldown and AI budget guard validated."
       - name: Validate Hunter universe refresher and Cron scan budgets
         run: |
           set -euo pipefail
@@ -421,6 +432,19 @@ jobs:
           if [ "$status" != "200" ]; then jq -r '.detail // .error // .' /tmp/nexus-diagnosis.json || cat /tmp/nexus-diagnosis.json; exit 1; fi
           jq -e '.status == "ok" and (.severity == "healthy" or .severity == "warning" or .severity == "critical") and (.provider | type == "string" and length > 0) and (.issues | type == "array") and (.next_checks | type == "array") and .code_changes_executed == false' /tmp/nexus-diagnosis.json >/dev/null
           jq -r '"NEXUS AI provider: " + .provider + " | severity: " + .severity + " | issues: " + (.issues|length|tostring) + " | next checks: " + (.next_checks|length|tostring)' /tmp/nexus-diagnosis.json
+      - name: Check independent MMP NEXUS Cron Worker
+        env:
+          NEXUS_URL: https://mmp-coin-nexus.mehrdadmohammadi1988.workers.dev
+        run: |
+          set -euo pipefail
+          status="$(curl --silent --show-error --retry 3 --retry-all-errors --retry-delay 2 --max-time 20 -o /tmp/nexus-health.json -w "%{http_code}" "$NEXUS_URL/health")"
+          echo "Independent NEXUS health HTTP $status"
+          test "$status" = "200"
+          jq -e '.worker == "online" and .database == "ok" and .ai_binding == true and .monitor == "server-cron-5m"' /tmp/nexus-health.json >/dev/null
+          status="$(curl --silent --show-error --retry 2 --retry-delay 2 --max-time 20 -o /tmp/nexus-status.json -w "%{http_code}" "$NEXUS_URL/status")"
+          echo "Independent NEXUS report HTTP $status"
+          test "$status" = "200"
+          jq -e '.status == "ok" or .status == "warming_up"' /tmp/nexus-status.json >/dev/null
       - name: Check Futures service binding and live Quantum snapshots
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
