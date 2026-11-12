@@ -1356,7 +1356,7 @@ async function handle(request,env){
   const universeCacheKey=await marketFallbackKey("hunter-universe:v1");
   const cachedUniverse=await readMarketFallback(env,universeCacheKey);
   if(cachedUniverse?.payload&&cachedUniverse.ageMs<90000){
-   return json(cachedUniverse.payload,200,request,{"X-MMP-Cache":"HIT","X-MMP-Data-Age":String(Math.floor(cachedUniverse.ageMs)),"Cache-Control":"public, max-age=90"});
+   return json(cachedUniverse.payload,200,request,{"X-MMP-Cache":"HIT","X-MMP-Data-Age":String(Math.floor(cachedUniverse.ageMs)),"Cache-Control":"no-store"});
   }
   const timedJson=async(url,timeout=12000,cacheTtl=30,extraHeaders={})=>{
    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeout);
@@ -1469,7 +1469,7 @@ async function handle(request,env){
    try{await env.MARKET_CACHE_DB.prepare("INSERT INTO market_data_cache (cache_key,payload,cached_at) VALUES (?, ?, ?) ON CONFLICT(cache_key) DO UPDATE SET payload=excluded.payload,cached_at=excluded.cached_at").bind(universeCacheKey,JSON.stringify(universePayload),Date.now()).run();}
    catch(error){console.warn("Hunter universe shared cache write failed:",String(error?.message||error).slice(0,140));}
   }
-  return json(universePayload,200,request,{"X-MMP-Data-Source":"Binance, Bybit, OKX, Bitget, Gate, KuCoin, WhiteBIT, Nobitex, Wallex + "+metadataProvider,"X-MMP-Cache":"MISS","Cache-Control":"public, max-age=90"});
+  return json(universePayload,200,request,{"X-MMP-Data-Source":"Binance, Bybit, OKX, Bitget, Gate, KuCoin, WhiteBIT, Nobitex, Wallex + "+metadataProvider,"X-MMP-Cache":"MISS","Cache-Control":"no-store"});
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/support-check"){
   const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"support-check");
