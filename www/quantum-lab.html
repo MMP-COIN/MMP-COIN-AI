@@ -566,17 +566,47 @@ if(engineLaunchParams.get("run-engines")==="1")setTimeout(()=>{engineLaunchParam
 $("asset-search").addEventListener("input",()=>{clearTimeout(searchTimer);searchTimer=setTimeout(renderAssetSearch,120)});$("asset-search-clear").addEventListener("click",()=>{state.independentStop=true;$("asset-search").value="";state.assetLimit=10;renderAssetSearch();$("asset-search").focus()});$("asset-search-stop").addEventListener("click",()=>{state.independentStop=true});$("asset-search-results").addEventListener("click",e=>{const retry=e.target.closest("[data-catalog-retry]");if(retry){loadIndependentCatalog();return;}const b=e.target.closest("[data-independent-analyze]");if(b)analyzeIndependent(b.dataset.independentAnalyze)});$("early-check").addEventListener("click",checkEarlyPressure);$("scan").addEventListener("click",scan);$("back").addEventListener("click",()=>{const q=new URLSearchParams(location.search),v=q.get("mmp_native_version");location.href=v?"/?mmp_native_version="+encodeURIComponent(v)+"&center=command":"/";});$("filter").addEventListener("input",renderRows);$("direction").addEventListener("change",renderRows);$("sort").addEventListener("change",renderRows);$("rows").addEventListener("click",e=>{const b=e.target.closest("[data-detail]");if(b)showDetail(b.dataset.detail)});$("record").addEventListener("click",record);$("history").addEventListener("click",updateLedger);$("export").addEventListener("click",exportCSV);
 async function refreshLocalTether(){
  const stateEl=$("local-watch-state"),priceEl=$("local-usdt-price"),changeEl=$("local-usdt-change"),sourcesEl=$("local-usdt-sources"),alertEl=$("local-usdt-alert");
- try{const response=await fetch(API+"/local-market-watch?ts="+Date.now(),{cache:"no-store"});if(!response.ok)throw new Error("HTTP "+response.status);
- const data=await response.json(),valid=(data.sources||[]).filter(x=>x.fresh&&Number(x.price_toman)>0);if(!valid.length)throw new Error("هیچ منبع داخلی نرخ معتبر نداد");
- const current=Number(data.median_toman)||Number(valid[0].price_toman),previous=Number(localStorage.getItem("mmp_local_usdt_last_toman")||0);
- priceEl.textContent=Math.round(current).toLocaleString("fa-IR")+" تومان";sourcesEl.textContent=valid.length.toLocaleString("fa-IR")+" / ۳";
- if(previous>0){const pct=(current/previous-1)*100,serverPct=Number(data.server_change_pct);changeEl.textContent=(pct>0?"+":"")+pct.toFixed(2)+"٪";changeEl.style.color=pct>=0?"var(--green)":"var(--red)";
- if(data.server_alert){alertEl.textContent="⚠️ هشدار سروری تتر ایران: "+(serverPct>=0?"جهش ":"ریزش ")+Math.abs(serverPct).toFixed(2)+"٪ در پایش مستقل یک‌دقیقه‌ای؛ این هشدار حتی بدون باز بودن صفحه ثبت می‌شود.";alertEl.style.color="var(--red)";}
- else if(Math.abs(pct)>=2.5){alertEl.textContent="⚠️ شوک قیمت تتر ایران: "+(pct>0?"جهش ":"ریزش ")+Math.abs(pct).toFixed(2)+"٪ نسبت به نمونه قبلی · قبلی "+Math.round(previous).toLocaleString("fa-IR")+" · فعلی "+Math.round(current).toLocaleString("fa-IR")+" تومان";alertEl.style.color="var(--red)";}
- else{alertEl.textContent="آخرین تغییر: "+(pct>0?"+":"")+pct.toFixed(2)+"٪ · زیر آستانه هشدار شوک.";alertEl.style.color="var(--muted)";}
- }else{changeEl.textContent="در حال ساخت مبنا";alertEl.textContent="نمونه مبنا ثبت شد؛ پایش تغییرات سریع آغاز شد.";}
- localStorage.setItem("mmp_local_usdt_last_toman",String(current));stateEl.textContent=(data.status==="multi_source"?"اتصال چندمنبعی":data.status==="single_source"?"اتصال تک‌منبعی":"بدون منبع معتبر")+" · پایش سروری هر دقیقه · "+new Date(data.checked_at).toLocaleTimeString("fa-IR");
- }catch(error){stateEl.textContent="اتصال نرخ داخلی ناموفق";alertEl.textContent="نرخ زنده تتر ایران دریافت نشد: "+error.message;alertEl.style.color="var(--yellow)";}
+ const fmt=value=>Math.round(Number(value)).toLocaleString("fa-IR");
+ const ageLabel=ms=>{if(!Number.isFinite(Number(ms))||Number(ms)<0)return "سن نامشخص";const minutes=Math.floor(Number(ms)/60000);return minutes<1?"کمتر از یک دقیقه":minutes<60?minutes+" دقیقه":Math.floor(minutes/60)+" ساعت";};
+ try{
+  const response=await fetch(API+"/local-market-watch?ts="+Date.now(),{cache:"no-store"});
+  if(!response.ok)throw new Error("HTTP "+response.status);
+  const data=await response.json(),allSources=Array.isArray(data.sources)?data.sources:[],valid=allSources.filter(x=>x.fresh&&Number(x.price_toman)>0),sourceTotal=allSources.length||5,isFresh=data.fresh!==false&&data.data_stale!==true;
+  sourcesEl.textContent=(isFresh?valid.length:0).toLocaleString("fa-IR")+" / "+sourceTotal.toLocaleString("fa-IR");
+  if(isFresh&&valid.length){
+   const current=Number(data.median_toman)||Number(valid[0].price_toman),previous=Number(localStorage.getItem("mmp_local_usdt_last_toman")||0);
+   priceEl.textContent=fmt(current)+" تومان";priceEl.style.color="var(--green)";
+   if(previous>0){
+    const pct=(current/previous-1)*100,serverPct=Number(data.server_change_pct);
+    changeEl.textContent=(pct>0?"+":"")+pct.toFixed(2)+"٪";changeEl.style.color=pct>=0?"var(--green)":"var(--red)";
+    if(data.server_alert){alertEl.textContent="⚠️ هشدار سروری تتر ایران: "+(serverPct>=0?"جهش ":"ریزش ")+Math.abs(serverPct).toFixed(2)+"٪ در پایش مستقل یک‌دقیقه‌ای؛ این هشدار حتی بدون باز بودن صفحه ثبت می‌شود.";alertEl.style.color="var(--red)";}
+    else if(Math.abs(pct)>=2.5){alertEl.textContent="⚠️ شوک قیمت تتر ایران: "+(pct>0?"جهش ":"ریزش ")+Math.abs(pct).toFixed(2)+"٪ نسبت به نمونه قبلی · قبلی "+fmt(previous)+" · فعلی "+fmt(current)+" تومان";alertEl.style.color="var(--red)";}
+    else{alertEl.textContent="منابع زنده: "+valid.map(x=>x.exchange).join("، ")+" · تغییر "+(pct>0?"+":"")+pct.toFixed(2)+"٪ · زیر آستانه هشدار شوک.";alertEl.style.color="var(--muted)";}
+   }else{changeEl.textContent="در حال ساخت مبنا";alertEl.textContent="نمونه زنده مبنا ثبت شد؛ پایش تغییرات سریع آغاز شد.";alertEl.style.color="var(--muted)";}
+   localStorage.setItem("mmp_local_usdt_last_toman",String(current));
+   const monitorAt=data.server_monitor_updated_at||data.checked_at;
+   stateEl.textContent=(data.status==="multi_source"?"اتصال چندمنبعی":data.status==="single_source"?"اتصال تک‌منبعی":"بدون منبع معتبر")+" · "+valid.length+"/"+sourceTotal+" منبع زنده · "+(monitorAt?new Date(monitorAt).toLocaleTimeString("fa-IR"):"پایش در انتظار");
+   return;
+  }
+  const lastKnown=Number(data.last_known_toman)||Number(data.median_toman)||0,lastKnownAge=Number(data.last_known_age_ms??data.data_age_ms);
+  if(lastKnown>0){
+   priceEl.textContent="≈ "+fmt(lastKnown)+" تومان";priceEl.style.color="var(--yellow)";
+   changeEl.textContent="—";changeEl.style.color="var(--muted)";
+   const checkedAt=data.last_known_checked_at||data.checked_at;
+   stateEl.textContent="نرخ زنده در دسترس نیست · آخرین نرخ معتبر · "+ageLabel(lastKnownAge);
+   alertEl.textContent="⚠️ این عدد نرخ زنده نیست؛ آخرین نرخ معتبر ثبت‌شده در "+(checkedAt?new Date(checkedAt).toLocaleString("fa-IR"):"زمان نامشخص")+" است. منابع زنده: ۰/"+sourceTotal;
+   alertEl.style.color="var(--yellow)";
+   return;
+  }
+  priceEl.textContent="—";changeEl.textContent="—";changeEl.style.color="var(--muted)";
+  stateEl.textContent="هیچ نرخ زنده یا ذخیره‌شده‌ای در دسترس نیست";
+  alertEl.textContent="⚠️ دریافت نرخ تتر ایران ناموفق است؛ هیچ قیمت قدیمی به‌عنوان نرخ زنده نمایش داده نمی‌شود.";
+  alertEl.style.color="var(--yellow)";
+ }catch(error){
+  stateEl.textContent="اتصال پایش تتر ناموفق";
+  alertEl.textContent="نرخ زنده تتر ایران دریافت نشد: "+error.message;
+  alertEl.style.color="var(--yellow)";
+ }
 }
 renderLedger();renderQuantumCharts();loadIndependentCatalog();startLiveMonitor();if(state.ledger.length)log("حافظه محلی شامل "+state.ledger.length+" پیش‌بینی قبلی است.");refreshLocalTether();setInterval(refreshLocalTether,60000);
 })();
