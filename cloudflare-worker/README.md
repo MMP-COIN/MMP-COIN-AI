@@ -16,6 +16,10 @@ This folder contains the secure backend for the market-analysis section on GitHu
 - `learning-engine.js` records qualified signal outcomes at 5m/15m/60m horizons. Confidence calibration activates only after at least 30 matured 5m outcomes, uses gross price return before fees/slippage, and is capped at ±5 points; it never overrides signal quality gates.
 - Never shows a fabricated fallback signal when data or AI is unavailable.
 
+## AI system diagnostics
+- `POST /system-diagnose` accepts a bounded, sanitized health snapshot and returns an AI-generated severity summary, observed issues, upgrade recommendations, and next checks.
+- The route uses the existing rate limiter and configured AI provider fallback chain. It does not execute code changes or mutate Worker configuration; recovery actions remain limited to safe retries and existing provider failover.
+
 ## Deploy (Cloudflare account required)
 1. Sign in to Cloudflare and open **Workers & Pages**.
 2. Create a Worker named `mmp-coin-ai-analyzer`.
