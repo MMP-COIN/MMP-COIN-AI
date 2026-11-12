@@ -2758,8 +2758,9 @@ html body #ai-section .tf-card{min-width:0!important;max-width:100%!important;ov
   <div class="mmp-ah-box"><h3>تشخیص و پیشنهادهای هوشمند</h3><ul class="mmp-ah-advice" id="mmp-ah-advice"><li>پس از دریافت داده‌های زنده، موارد ناقص و اولویت اصلاح نمایش داده می‌شوند.</li></ul></div>
   <div class="mmp-ah-box"><h3>گزارش آخرین چرخه</h3><div class="mmp-ah-advice" id="mmp-ah-report">هنوز چرخه‌ای اجرا نشده است.</div></div>
  </div>
+ <div class="mmp-ah-box"><h3>مغز مستقل سروری · پایش ۲۴/۷</h3><div class="mmp-ah-advice" id="mmp-ah-server">در انتظار نخستین چرخه زمان‌بندی‌شده NEXUS…</div></div>
  <div class="mmp-ah-box"><h3>دفتر اقدامات و نتیجه بازآزمایی</h3><div class="mmp-ah-advice" id="mmp-ah-action-log">هنوز اقدام اصلاحی ثبت نشده است.</div></div>
- <div class="mmp-ah-foot" id="mmp-ah-foot">NEXUS مستقل از چرخه‌های بازار اجرا می‌شود؛ پایش خودکار هر ۶۰ ثانیه. فقط عملیات امن و محدود مانند اجرای مجدد چرخه Hunter مجاز است. تغییر کد، Secret، تنظیمات Worker یا وزن مدل خودکار انجام نمی‌شود و به تغییر نسخه‌دار، بازبینی و تست نیاز دارد.</div>
+ <div class="mmp-ah-foot" id="mmp-ah-foot">مغز سروری NEXUS مستقل از باز بودن سایت، هر ۵ دقیقه با Cron اجرا می‌شود و گزارش را در D1 نگه می‌دارد؛ داشبورد مرورگر هر ۶۰ ثانیه گزارش سرور را تازه می‌کند. ترمیم خودکار فقط چرخه‌های مجاز Hunter را دوباره اجرا می‌کند؛ تغییر کد، Secret، تنظیمات Worker یا وزن مدل نیازمند PR نسخه‌دار و تست مستقل است.</div>
 </section>
 <script id="mmp-autonomous-health-center-js">
 (function(){
@@ -2769,6 +2770,7 @@ html body #ai-section .tf-card{min-width:0!important;max-width:100%!important;ov
  root.dataset.initialized="1";
  const API="https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev";
  const RADAR_API="https://mmp-coin-ai-radar.mehrdadmohammadi1988.workers.dev";
+ const NEXUS_API="https://mmp-coin-nexus.mehrdadmohammadi1988.workers.dev";
  let lastSafeRecoveryAt=0,lastRecoveryNote="",isRunning=false;
  const actionHistory=[];
  const recordAction=message=>{
@@ -2779,8 +2781,8 @@ html body #ai-section .tf-card{min-width:0!important;max-width:100%!important;ov
  };
  const $=id=>document.getElementById(id);
  const engineNames={momentum:"مومنتوم",flow:"جریان معاملات",structure:"ساختار بازار",liquidity:"نقدشوندگی",multiTimeframe:"هم‌جهتی تایم‌فریم",regime:"رژیم بازار",volatility:"نوسان",sentiment:"احساسات بازار",smartMoney:"اسمارت‌مانی",scenario:"شبیه‌ساز سناریو",risk:"مدیریت ریسک",dataQuality:"کیفیت داده"};
- const stateLabel=s=>s==="ok"||s==="online"||s==="success"?"سالم":s==="slow"?"کند":s==="warming_up"?"در حال آماده‌سازی":s==="down"||s==="error"||s==="offline"?"خراب":"نامشخص";
- const dot=s=>s==="ok"||s==="online"||s==="success"?"ok":s==="slow"||s==="warming_up"?"warn":s==="down"||s==="error"||s==="offline"?"bad":"";
+ const stateLabel=s=>s==="ok"||s==="online"||s==="success"||s==="healthy"?"سالم":s==="warning"?"هشدار":s==="critical"?"بحرانی":s==="slow"?"کند":s==="warming_up"?"در حال آماده‌سازی":s==="down"||s==="error"||s==="offline"?"خراب":"نامشخص";
+ const dot=s=>s==="ok"||s==="online"||s==="success"||s==="healthy"?"ok":s==="slow"||s==="warning"||s==="warming_up"?"warn":s==="down"||s==="error"||s==="offline"||s==="critical"?"bad":"";
  const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
  async function get(path,timeout=12000){
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeout);
@@ -2806,10 +2808,11 @@ html body #ai-section .tf-card{min-width:0!important;max-width:100%!important;ov
    withAI?get("/market-orderflow?symbol=BTC",25000):Promise.resolve(null),
    withAI?get("/market-orderflow?market=futures&symbol=BTC",25000):Promise.resolve(null),
    withAI?get("/market-derivatives?symbol=BTC",25000):Promise.resolve(null),
-   withAI?get("/market-proxy?source=coingecko-top&page=13",30000):Promise.resolve(null)
+   withAI?get("/market-proxy?source=coingecko-top&page=13",30000):Promise.resolve(null),
+   get(NEXUS_API+"/status",10000)
   ]);
   const take=i=>jobs[i].status==="fulfilled"?jobs[i].value:null;
-  const health=take(0),connections=take(1),spot=take(2),futuresEngine=take(3),futures=take(4),radarHealth=take(5),radarSnapshot=take(6),radarError=take(7),candles=take(8),orderflow=take(9),futuresOrderflow=take(10),derivatives=take(11),catalog=take(12);
+  const health=take(0),connections=take(1),spot=take(2),futuresEngine=take(3),futures=take(4),radarHealth=take(5),radarSnapshot=take(6),radarError=take(7),candles=take(8),orderflow=take(9),futuresOrderflow=take(10),derivatives=take(11),catalog=take(12),serverNexus=take(13);
   const services=[];
   services.push({name:"Analyzer Worker",status:health?.worker==="online"?"ok":"down",detail:health?.engine_version||"بدون نسخه"});
   services.push({name:"اتصال AI Binding",status:health?.ai_binding?"ok":"down",detail:health?.ai_binding?"Binding موجود؛ اجرای مدل جداگانه نیازمند تست است":"Binding موجود نیست"});
@@ -2846,6 +2849,16 @@ html body #ai-section .tf-card{min-width:0!important;max-width:100%!important;ov
   if(checks.length)serviceHtml+=checks.map(x=>row(x.name,x.status,x.status==="down"?(x.error||"پاسخ ناموفق"):(x.ping??"—")+" ms")).join("");
   else serviceHtml+=row("بررسی منابع صرافی‌ها","down","پاسخ دریافت نشد");
   $("mmp-ah-services").innerHTML=serviceHtml;
+  const serverAge=serverNexus?.checked_at?Math.max(0,Math.round((Date.now()-Date.parse(serverNexus.checked_at))/1000)):null;
+  const serverState=serverNexus?.status==="ok"?(serverNexus.severity||"healthy"):serverNexus?.status==="warming_up"?"warming_up":"down";
+  let serverHtml=row("NEXUS Cron Worker",serverState,serverNexus?.monitor||"server-cron-5m");
+  serverHtml+=row("آخرین چرخه سروری",serverState,serverAge===null?(serverNexus?.message||"هنوز اجرا نشده"):serverAge+" ثانیه قبل · "+(serverNexus.ai_provider||"قواعد سلامت"));
+  (serverNexus?.services||[]).forEach(x=>serverHtml+=row(x.name,x.status,x.detail));
+  (serverNexus?.issues||[]).forEach(x=>serverHtml+=row(x.component,x.severity==="critical"?"critical":"warning",x.evidence));
+  (serverNexus?.actions||[]).forEach(x=>serverHtml+=row("ترمیم "+(x.target||x.action),x.status==="accepted"?"ok":"down",x.detail));
+  (serverNexus?.next_checks||[]).slice(0,4).forEach(x=>serverHtml+='<div class="mmp-ah-row"><span>'+esc(x)+'</span></div>');
+  if(!serverNexus)serverHtml+=row("ارتباط با مغز سروری","down","NEXUS Worker پاسخ نداد");
+  $("mmp-ah-server").innerHTML=serverHtml;
   $("mmp-ah-engine-list").innerHTML=keys.map(k=>{
    const item=active[k]||{},n=Number(item.processed)||0,e=Number(item.evidence)||0,status=n>0&&e>0?"ok":n>0?"slow":"warming_up";
    return row(engineNames[k],status,"پردازش "+n+" · شواهد "+e);
