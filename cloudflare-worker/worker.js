@@ -612,7 +612,16 @@ async function marketFlowJson(url,timeoutMs=4500,parentSignal=null){
  finally{clearTimeout(timer);parentSignal?.removeEventListener("abort",abortParent);}
 }
 async function loadMarketFlow(symbol,windowMinutes=5,signal=null){
- const get=(url,timeoutMs=4500)=>marketFlowJson(url,timeoutMs,signal);
+ // Cloudflare Free Workers have a finite per-invocation subrequest budget.
+ // Bound provider fallbacks so an incomplete flow returns a truthful partial
+ // result instead of exhausting the Worker and failing the entire Radar call.
+ let requestsUsed=0;
+ const maxRequests=18;
+ const get=(url,timeoutMs=4500)=>{
+  if(requestsUsed>=maxRequests)throw new Error("Market flow request budget reached; returning explicitly incomplete flow");
+  requestsUsed++;
+  return marketFlowJson(url,timeoutMs,signal);
+ };
  const pair=String(symbol||"").toUpperCase().replace(/USDT$/,"")+"USDT";
  if(!/^[A-Z0-9]{2,24}USDT$/.test(pair))throw new Error("نماد نامعتبر است.");
  const minutes=Math.max(1,Math.min(15,Number(windowMinutes)||5)),now=Date.now(),cutoff=now-minutes*60000;
@@ -661,7 +670,7 @@ async function loadMarketFlow(symbol,windowMinutes=5,signal=null){
    // Gate's time-window endpoint is paginated. Continue until the oldest returned
    // trade reaches the requested window start, a short page proves exhaustion,
    // or the provider stops advancing. Never mark a capped sample as complete.
-   for(let page=1;page<=20;page++){
+   for(let page=1;page<=8;page++){
     const query="https://api.gateio.ws/api/v4/spot/trades?currency_pair="+encodeURIComponent(gatePair)+"&from="+Math.floor(cutoff/1000)+"&to="+Math.ceil(now/1000)+"&limit=1000&page="+page;
     const batch=await get(query,4500);
     if(!Array.isArray(batch))throw new Error("Gate trades response invalid");
@@ -719,7 +728,7 @@ if(!trades?.length||truncated||trades.length<8){
   // OKX Spot history is cursor-paginated; walk back until the requested window is fully covered.
   // This avoids treating a capped 500/1000-trade sample as a complete 5-minute flow window.
   const instId=pair.replace(/USDT$/,"")+"-USDT",history=[],seen=new Set();let after="",historyTruncated=true;
-  for(let page=0;page<35;page++){
+  for(let page=0;page<10;page++){
    const query="https://www.okx.com/api/v5/market/history-trades?instId="+encodeURIComponent(instId)+"&limit=100"+(after?"&after="+encodeURIComponent(after):"");
    const d=await get(query,4500);
    if(String(d.code)!=="0")throw new Error(d.msg||"OKX Spot history trades unavailable");
@@ -737,7 +746,7 @@ if(!trades?.length||truncated||trades.length<8){
   if(rows.length&&betterFlow(rows,historyTruncated)){trades=rows;truncated=historyTruncated;provider="OKX Spot · paged real trades";}
  }catch(error){lastError="OKX history: "+String(error?.message||error).slice(0,160);}
 }
-if(!trades?.length)throw new Error("داده معاملات از Bybit، Binance، OKX، Gate، MEXC، KuCoin و WhiteBIT دریافت نشد: "+lastError);
+if(!trades?.length)return {symbol:pair,window_minutes:minutes,buy5m:0,sell5m:0,net5m:0,trade_count:0,provider:"unavailable",exchange:"",complete:false,coverage_start:null,window_start:cutoff,window_end:now,updated_at:now,rows:[],error:lastError||"No trade provider returned usable data",request_count:requestsUsed,request_budget:maxRequests};
  const buckets=new Map();let buy5m=0,sell5m=0;
  for(const trade of trades){
   const quote=trade.price*trade.size;if(!Number.isFinite(quote)||quote<=0)continue;
@@ -748,7 +757,7 @@ if(!trades?.length)throw new Error("داده معاملات از Bybit، Binance
  }
  const rows=[...buckets.values()].sort((a,b)=>a.time-b.time).map(x=>[x.time,x.buy,x.sell,x.buy-x.sell]);
  const oldestTrade=trades.reduce((v,x)=>Math.min(v,x.time),Infinity);
- return {symbol:pair,window_minutes:minutes,buy5m,sell5m,net5m:buy5m-sell5m,trade_count:trades.length,provider,exchange:provider.startsWith("Bybit")?"Bybit":provider.startsWith("Binance")?"Binance":provider.startsWith("OKX")?"OKX":provider.startsWith("MEXC")?"MEXC":provider.startsWith("WhiteBIT")?"WhiteBIT":provider.startsWith("KuCoin")?"KuCoin":"Gate",complete:!truncated,coverage_start:Number.isFinite(oldestTrade)?oldestTrade:null,window_start:cutoff,window_end:now,updated_at:now,rows};
+ return {symbol:pair,window_minutes:minutes,buy5m,sell5m,net5m:buy5m-sell5m,trade_count:trades.length,provider,exchange:provider.startsWith("Bybit")?"Bybit":provider.startsWith("Binance")?"Binance":provider.startsWith("OKX")?"OKX":provider.startsWith("MEXC")?"MEXC":provider.startsWith("WhiteBIT")?"WhiteBIT":provider.startsWith("KuCoin")?"KuCoin":"Gate",complete:!truncated,coverage_start:Number.isFinite(oldestTrade)?oldestTrade:null,window_start:cutoff,window_end:now,updated_at:now,rows,request_count:requestsUsed,request_budget:maxRequests};
 }
 async function fetchHunterCandles(symbol,marketType="spot",asset=null){
  const pair=symbol+"USDT",get=url=>marketFlowJson(url,4500);
