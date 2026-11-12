@@ -1672,14 +1672,14 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/market-proxy"){
   ].filter(Boolean).join("|");
   const marketCacheKey=await marketFallbackKey(cacheIdentity);
   const staleMarketResponse=await readMarketFallback(env,marketCacheKey);
-  const responseCacheTtl=source.startsWith("coingecko")?60:source.includes("tether")||source.includes("wallex")?10:5;
+  const responseCacheTtl=source.startsWith("coingecko")?180:source==="coinlore-top"?60:source.includes("tether")||source.includes("wallex")?10:5;
   let lastError=null;
   for(const endpoint of candidates){
    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),9000);
    try{
     const upstreamHeaders={"Accept":"application/json, text/plain, */*","User-Agent":"MMP-COIN-AI/1.0","Accept-Language":"en-US,en;q=0.9"};
    if(source==="wallex-markets"){upstreamHeaders.Origin="https://wallex.ir";upstreamHeaders.Referer="https://wallex.ir/";upstreamHeaders["User-Agent"]="curl/8.14.1";}
-   const upstream=await fetch(endpoint,{headers:upstreamHeaders,signal:controller.signal,cf:{cacheTtl:source.startsWith("coingecko")?60:source.includes("tether")||source.includes("wallex")?10:5,cacheEverything:true}});
+   const upstream=await fetch(endpoint,{headers:upstreamHeaders,signal:controller.signal,cf:{cacheTtl:responseCacheTtl,cacheEverything:true}});
     if(!upstream.ok){lastError="Upstream HTTP "+upstream.status;continue;}
     let data=await upstream.json();
     if(data===null||typeof data!=="object")throw new Error("Invalid upstream JSON");
