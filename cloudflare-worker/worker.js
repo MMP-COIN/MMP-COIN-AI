@@ -788,10 +788,10 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
  const sources=marketType==="futures"?futuresSources:spotSources,errors=[];
  const unique=values=>[...new Set(values.filter(Number.isInteger))];
  let order=[];
- const reliableIndices=marketType==="futures"?[4,5,6]:[4,5,6,8];
+ const reliableIndices=marketType==="futures"?[4,5,2]:[4,3,6,8];
  if(marketType==="futures"){
   const indexOf=name=>{const value=String(name||"").trim().toLowerCase();return value.startsWith("binance")?0:value.startsWith("bybit")?1:value.startsWith("okx")?2:value.startsWith("bitget")?3:value.startsWith("gate")?4:value.startsWith("mexc")?5:value.startsWith("kucoin")?6:null;};
-  const priority=[4,5,6,2,1,3,0],available=unique(String(asset?.hunterExchange||"").split(",").map(indexOf).filter(Number.isInteger)).sort((a,b)=>priority.indexOf(a)-priority.indexOf(b)),primary=indexOf(asset?.hunterPriceExchange),primaryTrusted=[4,5,6].includes(primary);
+  const priority=[4,5,2,6,1,3,0],available=unique(String(asset?.hunterExchange||"").split(",").map(indexOf).filter(Number.isInteger)).sort((a,b)=>priority.indexOf(a)-priority.indexOf(b)),primary=indexOf(asset?.hunterPriceExchange),primaryTrusted=[4,5,6].includes(primary);
   order=unique([...(primaryTrusted&&available.includes(primary)?[primary]:[]),...available]).sort((a,b)=>priority.indexOf(a)-priority.indexOf(b));
  }else{
   const indices={Binance:0,Bybit:1,Bitget:2,OKX:3,Gate:4,"Gate.io":4,KuCoin:5,WhiteBIT:6,"Binance.US":7,BinanceUS:7,MEXC:8};
@@ -802,7 +802,7 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
  const preferredOrder=unique(order.filter(index=>reliableIndices.includes(index)));
  const primaryIndex=preferredOrder[0]??fallbackPriority[0],primaryOrder=[primaryIndex];
  const fallbackPool=unique([...fallbackPriority.filter(index=>!primaryOrder.includes(index)),...preferredOrder.slice(1),...sources.map((_,index)=>index)]).filter(index=>!primaryOrder.includes(index));
- const sourceLimit=Math.min(4,sources.length),orderedIndices=unique([...primaryOrder,...fallbackPool]),orderedSources=orderedIndices.map(index=>sources[index]).filter(Boolean).slice(0,sourceLimit),verified=[];
+ const sourceLimit=Math.min(4,sources.length),orderedIndices=unique([...primaryOrder,...fallbackPool]),preferredOrder=unique(order.filter(index=>reliableIndices.includes(index))),selectedIndices=(preferredOrder.length>=3?preferredOrder:orderedIndices).slice(0,sourceLimit),orderedSources=selectedIndices.map(index=>sources[index]).filter(Boolean),verified=[];
  let selectedPair=null,bestObservedPair=null;
  const evaluatePairs=()=>{
   const pairs=[];
@@ -818,6 +818,12 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
  const attempts=await Promise.allSettled(orderedSources.map(fn=>fn()));
  for(const result of attempts){if(result.status==="fulfilled"){const [provider,rows]=result.value;verified.push({provider,rows});}else errors.push(String(result.reason?.message||result.reason).slice(0,180));}
  selectedPair=evaluatePairs();
+ if(!selectedPair&&preferredOrder.length>=3){
+  const extraIndices=orderedIndices.filter(index=>!selectedIndices.includes(index)).slice(0,2);
+  const extra=await Promise.allSettled(extraIndices.map(index=>sources[index]()));
+  for(const result of extra){if(result.status==="fulfilled"){const [provider,rows]=result.value;verified.push({provider,rows});}else errors.push(String(result.reason?.message||result.reason).slice(0,180));}
+  selectedPair=evaluatePairs();
+ }
  if(!selectedPair){
   if(verified.length<2)throw new Error((marketType==="futures"?"Futures":"Spot")+" candles unavailable or only one exchange responded: "+errors.join(" | "));
   if(!bestObservedPair)throw new Error("QUALITY_REJECTED: کندل بسته‌شده مشترک برای تأیید چندصرافی پیدا نشد");
