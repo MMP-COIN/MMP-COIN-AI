@@ -2776,10 +2776,15 @@ html body #ai-section .tf-card{min-width:0!important;max-width:100%!important;ov
   try{const r=await fetch(API+path,{cache:"no-store",headers:{"Accept":"application/json"},signal:controller.signal});if(!r.ok)throw new Error("HTTP "+r.status);return await r.json();}
   finally{clearTimeout(timer);}
  }
+ async function post(path,payload,timeout=26000){
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeout);
+  try{const r=await fetch(API+path,{method:"POST",cache:"no-store",headers:{"Accept":"application/json","Content-Type":"application/json"},body:JSON.stringify(payload),signal:controller.signal});const data=await r.json().catch(()=>({}));if(!r.ok)throw new Error(data.detail||data.error||("HTTP "+r.status));return data;}
+  finally{clearTimeout(timer);}
+ }
  function row(name,status,detail){return '<div class="mmp-ah-row"><span>'+esc(name)+(detail?' <small style="color:#8293a4">'+esc(detail)+'</small>':'')+'</span><span class="mmp-ah-state"><i class="mmp-ah-dot '+dot(status)+'"></i>'+stateLabel(status)+'</span></div>';}
- async function run(){
+ async function run(withAI=false){
   const button=$("mmp-ah-run"),retry=$("mmp-ah-recheck");
-  button.disabled=true;retry.disabled=true;button.textContent="در حال پایش…";
+  button.disabled=true;retry.disabled=true;button.textContent=withAI?"پایش و تحلیل AI…":"در حال پایش…";
   $("mmp-ah-mode").textContent="در حال دریافت شواهد زنده";
   const jobs=await Promise.allSettled([
    get("/health"),get("/connections-health",25000),get("/hunter-snapshot"),get("/futures-engine-health"),get("/hunter-futures-snapshot")
@@ -2821,17 +2826,29 @@ html body #ai-section .tf-card{min-width:0!important;max-width:100%!important;ov
   if(inactive.length)advice.push("متخصص‌های بدون شواهد کافی: "+inactive.map(k=>engineNames[k]).join("، ")+". ابتدا ورودی داده و اتصال آن‌ها تکمیل شود؛ فعال‌نمایی یا امتیازدهی ساختگی ممنوع.");
   if(spot?.learning?.status==="unavailable"||futures?.learning?.status==="unavailable")advice.push("دفتر یادگیری تطبیقی در دسترس نیست؛ ذخیره نتایج سیگنال و بلوغ نمونه‌های آموزشی بررسی شود.");
   if(!advice.length)advice.push("در این چرخه خطای بحرانی شناسایی نشد؛ سلامت را با چرخه بعدی و داده‌های تازه دوباره تأیید کن.");
-  $("mmp-ah-advice").innerHTML=advice.map(x=>"<li>"+esc(x)+"</li>").join("");
   const errors=[...(spot?.last_errors||[]),...(futures?.last_errors||[])].slice(0,4);
+  let aiProvider="تحلیل تله‌متری محلی";
+  if(withAI){
+   try{
+    const diagnosis=await post("/system-diagnose",{diagnostics:{checked_at:new Date().toISOString(),worker:{status:health?.worker||"unknown",engine_version:health?.engine_version||spot?.engine_version||"",ai_binding:health?.ai_binding===true,futures_binding:health?.futures_engine_binding===true},services:services.concat(checks.map(x=>({name:x.name,status:x.status,detail:x.status==="down"?(x.error||"down"):(x.ping??"")+" ms"}))),engines:keys.map(k=>({name:engineNames[k],processed:active[k].processed,evidence:active[k].evidence})),recent_errors:errors}});
+    if(diagnosis.status==="ok"){
+     aiProvider=diagnosis.provider||"AI";
+     if(diagnosis.summary)advice.unshift("تشخیص AI: "+diagnosis.summary);
+     (diagnosis.issues||[]).forEach(x=>advice.push((x.severity==="critical"?"بحرانی: ":x.severity==="warning"?"هشدار: ":"")+x.component+" — "+x.evidence+"؛ اقدام: "+x.recommendation));
+     (diagnosis.upgrade_recommendations||[]).forEach(x=>advice.push("پیشنهاد ارتقا ("+x.priority+"): "+x.module+" — "+x.reason));
+    }else throw new Error("AI diagnostic returned no usable result");
+   }catch(error){advice.push("تحلیل مدل AI در دسترس نبود؛ گزارش فعلی بر اساس تله‌متری زنده و قواعد سلامت است: "+String(error.message||error).slice(0,150));}
+  }
+  $("mmp-ah-advice").innerHTML=advice.map(x=>"<li>"+esc(x)+"</li>").join("");
   $("mmp-ah-report").innerHTML="<div>زمان پایش: "+esc(new Date().toLocaleString("fa-IR"))+"</div><div>Spot: "+esc(spot?.status||"بدون پاسخ")+" · Futures: "+esc(futures?.status||"بدون پاسخ")+"</div><div>منابع متصل: "+online+" از "+checks.length+"</div><div>متخصص‌های دارای شواهد: "+activeCount+" از "+keys.length+"</div>"+(errors.length?"<div style='color:#f0c15f;margin-top:7px'>خطاهای اخیر: "+errors.map(esc).join(" | ")+"</div>":"");
   $("mmp-ah-mode").textContent=healthy===services.length&&online===checks.length?"پایش کامل شد · بدون خطای سرویس":"پایش کامل شد · نیازمند بررسی";
   $("mmp-ah-foot").textContent="آخرین بررسی: "+new Date().toLocaleTimeString("fa-IR")+" · پایش خودکار هر ۶۰ ثانیه. ترمیم خودکار کد هنوز فعال نیست؛ این پنل خطاها را شناسایی و اقدام اصلاحی پیشنهاد می‌کند و از نمایش وضعیت سالم بدون شواهد جلوگیری می‌کند.";
-  button.disabled=false;retry.disabled=false;button.textContent="اجرای پایش و تحلیل";
+  button.disabled=false;retry.disabled=false;button.textContent="اجرای پایش و تحلیل AI";
  }
- $("mmp-ah-run").addEventListener("click",run);
- $("mmp-ah-recheck").addEventListener("click",run);
- run().catch(e=>{$("mmp-ah-report").textContent="خطای پایش: "+String(e.message||e);$("mmp-ah-run").disabled=false;$("mmp-ah-recheck").disabled=false;});
- setInterval(()=>{if(!document.hidden)run().catch(()=>{});},60000);
+ $("mmp-ah-run").addEventListener("click",()=>run(true));
+ $("mmp-ah-recheck").addEventListener("click",()=>run(false));
+ run(false).catch(e=>{$("mmp-ah-report").textContent="خطای پایش: "+String(e.message||e);$("mmp-ah-run").disabled=false;$("mmp-ah-recheck").disabled=false;});
+ setInterval(()=>{if(!document.hidden)run(false).catch(()=>{});},60000);
 })();
 </script>
 
