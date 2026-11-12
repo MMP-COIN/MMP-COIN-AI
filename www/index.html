@@ -2791,10 +2791,22 @@ html body #ai-section .tf-card{min-width:0!important;max-width:100%!important;ov
   </div>
 </div>
 <div class="mmp-chart-toolbar" aria-label="تنظیمات نمودار">
- <div class="mmp-chart-timeframes" role="group" aria-label="بازه زمانی"><button type="button" data-chart-tf="1m" onclick="mmpSetChartInterval('1m')">۱د</button><button type="button" data-chart-tf="5m" onclick="mmpSetChartInterval('5m')">۵د</button><button type="button" data-chart-tf="15m" onclick="mmpSetChartInterval('15m')">۱۵د</button><button type="button" data-chart-tf="1h" class="active" onclick="mmpSetChartInterval('1h')">۱س</button><button type="button" data-chart-tf="4h" onclick="mmpSetChartInterval('4h')">۴س</button><button type="button" data-chart-tf="1d" onclick="mmpSetChartInterval('1d')">۱روز</button></div>
+ <div class="mmp-chart-timeframes" role="group" aria-label="بازه زمانی"><button type="button" data-chart-tf="1m" onclick="mmpSetChartInterval('1m')">۱د</button><button type="button" data-chart-tf="3m" onclick="mmpSetChartInterval('3m')">۳د</button><button type="button" data-chart-tf="5m" onclick="mmpSetChartInterval('5m')">۵د</button><button type="button" data-chart-tf="15m" onclick="mmpSetChartInterval('15m')">۱۵د</button><button type="button" data-chart-tf="1h" class="active" onclick="mmpSetChartInterval('1h')">۱س</button><button type="button" data-chart-tf="4h" onclick="mmpSetChartInterval('4h')">۴س</button><button type="button" data-chart-tf="1d" onclick="mmpSetChartInterval('1d')">۱روز</button></div>
  <label class="mmp-chart-market">بازار <select id="mmp-chart-market" onchange="mmpSetChartMarket(this.value)"><option value="spot">اسپات</option><option value="futures">فیوچرز</option></select></label>
- <button type="button" id="mmp-chart-ema-toggle" class="mmp-chart-toggle active" onclick="mmpToggleChartEMA()">EMA 20/50</button><button type="button" id="mmp-chart-bollinger-toggle" class="mmp-chart-toggle" onclick="mmpToggleChartBollinger()">Bollinger 20/2</button><button type="button" id="mmp-chart-volume-toggle" class="mmp-chart-toggle active" onclick="mmpToggleChartVolume()">حجم</button><button type="button" class="mmp-chart-refresh" onclick="mmpLoadChart(true)">↻ تازه‌سازی</button>
+ <button type="button" id="mmp-chart-ema-toggle" class="mmp-chart-toggle active" onclick="mmpToggleChartEMA()" aria-pressed="true">EMA 20/50</button><button type="button" id="mmp-chart-bollinger-toggle" class="mmp-chart-toggle" onclick="mmpToggleChartBollinger()" aria-pressed="false">Bollinger 20/2</button><button type="button" id="mmp-chart-volume-toggle" class="mmp-chart-toggle active" onclick="mmpToggleChartVolume()" aria-pressed="true">حجم</button><button type="button" class="mmp-chart-refresh" onclick="mmpLoadChart(true)">↻ تازه‌سازی</button>
 </div>
+<div class="mmp-chart-indicators" aria-label="اندیکاتورهای تکنیکال نمودار">
+ <span>اندیکاتورها:</span>
+ <button type="button" class="mmp-chart-toggle active" data-mmp-indicator="sma" onclick="mmpToggleChartIndicator('sma')" aria-pressed="true">SMA 20/50</button>
+ <button type="button" class="mmp-chart-toggle" data-mmp-indicator="vwap" onclick="mmpToggleChartIndicator('vwap')" aria-pressed="false">VWAP</button>
+ <button type="button" class="mmp-chart-toggle" data-mmp-indicator="supertrend" onclick="mmpToggleChartIndicator('supertrend')" aria-pressed="false">Supertrend</button>
+ <button type="button" class="mmp-chart-toggle" data-mmp-indicator="ichimoku" onclick="mmpToggleChartIndicator('ichimoku')" aria-pressed="false">Ichimoku</button>
+ <button type="button" class="mmp-chart-toggle active" data-mmp-indicator="rsi" onclick="mmpToggleChartIndicator('rsi')" aria-pressed="true">RSI 14</button>
+ <button type="button" class="mmp-chart-toggle" data-mmp-indicator="macd" onclick="mmpToggleChartIndicator('macd')" aria-pressed="false">MACD</button>
+ <button type="button" class="mmp-chart-toggle active" id="mmp-chart-type-toggle" onclick="mmpToggleChartType()" aria-label="تغییر نوع نمودار">کندلی</button>
+</div>
+<div id="mmp-chart-metrics" class="mmp-chart-metrics" aria-live="polite"></div>
+<div class="mmp-chart-note">اندیکاتورها از همان کندل‌های معتبر دریافتی محاسبه می‌شوند؛ نمودار در زمان قابل مشاهده هر ۳۰ ثانیه تازه‌سازی می‌شود.</div>
 <div id="mmp-chart-status" class="mmp-chart-status" role="status" aria-live="polite">در حال آماده‌سازی نمودار…</div>
 <div id="chart-container"><button class="chart-exit-fullscreen-btn" id="chart-exit-fullscreen-btn" type="button" aria-label="بازگشت از حالت تمام‌صفحه نمودار" onclick="toggleChartFullscreen()">↙ بازگشت به صفحه</button><div id="tradingview_widget" style="width:100%;height:100%;"></div></div>
 </section>
@@ -3095,11 +3107,11 @@ function mmpRenderChart(payload){
 }
 function initTradingView(){mmpLoadChart(true);if(mmpChartState.refreshTimer)clearInterval(mmpChartState.refreshTimer);mmpChartState.refreshTimer=setInterval(()=>{if(!document.hidden&&document.getElementById("chart-section")?.getBoundingClientRect().top<window.innerHeight+600)mmpLoadChart(false);},60000);}
 function changeTradingViewSymbol(){mmpLoadChart(true);}
-function mmpSetChartInterval(value){if(!["1m","5m","15m","1h","4h","1d"].includes(value))return;mmpChartState.interval=value;mmpLoadChart(true);}
+function mmpSetChartInterval(value){if(!["1m","3m","5m","15m","1h","4h","1d"].includes(value))return;mmpChartState.interval=value;mmpLoadChart(true);}
 function mmpSetChartMarket(value){mmpChartState.market=value==="futures"?"futures":"spot";mmpLoadChart(true);}
-function mmpToggleChartEMA(){mmpChartState.showEMA=!mmpChartState.showEMA;document.getElementById("mmp-chart-ema-toggle")?.classList.toggle("active",mmpChartState.showEMA);const c=mmpChartState.cache.get([mmpChartSymbol(),mmpChartState.interval,mmpChartState.market].join(":"));if(c)mmpRenderChart(c.payload);}
-function mmpToggleChartBollinger(){mmpChartState.showBollinger=!mmpChartState.showBollinger;document.getElementById("mmp-chart-bollinger-toggle")?.classList.toggle("active",mmpChartState.showBollinger);const c=mmpChartState.cache.get([mmpChartSymbol(),mmpChartState.interval,mmpChartState.market].join(":"));if(c)mmpRenderChart(c.payload);}
-function mmpToggleChartVolume(){mmpChartState.showVolume=!mmpChartState.showVolume;document.getElementById("mmp-chart-volume-toggle")?.classList.toggle("active",mmpChartState.showVolume);const c=mmpChartState.cache.get([mmpChartSymbol(),mmpChartState.interval,mmpChartState.market].join(":"));if(c)mmpRenderChart(c.payload);}
+function mmpToggleChartEMA(){mmpChartState.showEMA=!mmpChartState.showEMA;const b=document.getElementById("mmp-chart-ema-toggle");if(b){b.classList.toggle("active",mmpChartState.showEMA);b.setAttribute("aria-pressed",String(mmpChartState.showEMA));}const c=mmpChartState.cache.get([mmpChartSymbol(),mmpChartState.interval,mmpChartState.market].join(":"));if(c)mmpRenderChart(c.payload);}
+function mmpToggleChartBollinger(){mmpChartState.showBollinger=!mmpChartState.showBollinger;const b=document.getElementById("mmp-chart-bollinger-toggle");if(b){b.classList.toggle("active",mmpChartState.showBollinger);b.setAttribute("aria-pressed",String(mmpChartState.showBollinger));}const c=mmpChartState.cache.get([mmpChartSymbol(),mmpChartState.interval,mmpChartState.market].join(":"));if(c)mmpRenderChart(c.payload);}
+function mmpToggleChartVolume(){mmpChartState.showVolume=!mmpChartState.showVolume;const b=document.getElementById("mmp-chart-volume-toggle");if(b){b.classList.toggle("active",mmpChartState.showVolume);b.setAttribute("aria-pressed",String(mmpChartState.showVolume));}const c=mmpChartState.cache.get([mmpChartSymbol(),mmpChartState.interval,mmpChartState.market].join(":"));if(c)mmpRenderChart(c.payload);}
 async function toggleChartFullscreen() {
   const chart = $('chart-container');
   const fallbackActive = chart.classList.contains('chart-fullscreen-fallback');
@@ -7224,5 +7236,25 @@ html body section#market-snapshot .mmp-card-track{height:2px!important;padding-t
 }
 </style>
 
+
+<style id="mmp-chart-pro-style">
+.mmp-chart-indicators{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:9px 0 5px;border-top:1px solid var(--line);margin-top:8px}
+.mmp-chart-indicators>span{font-size:10px;color:var(--muted);font-weight:800}
+.mmp-chart-indicators button{font-size:10px;padding:6px 9px}
+.mmp-chart-toggle{border:1px solid var(--line);background:var(--panel2);color:var(--muted);border-radius:8px;padding:7px 10px;font-size:11px;font-weight:800;cursor:pointer}
+.mmp-chart-toggle.active{color:#f5d98f;border-color:#b99450;background:#8d6d3024}
+.mmp-chart-metrics{display:flex;flex-wrap:wrap;gap:6px;margin:7px 0 10px}
+.mmp-chart-metrics span{padding:5px 8px;border:1px solid var(--line);border-radius:8px;background:#0c1420;font-size:10px;color:#b8c5d2}
+.mmp-chart-metrics b{color:#f1d18a;direction:ltr;display:inline-block;margin-right:4px}
+.mmp-chart-note{font-size:10px;line-height:1.8;color:var(--muted);margin:2px 0 9px}
+#chart-container{height:590px!important}
+#tradingview_widget{display:flex;flex-direction:column;min-height:0}
+#mmp-candle-canvas{flex:1 1 auto;min-height:300px}
+#mmp-rsi-canvas{flex:0 0 105px}
+#mmp-macd-canvas{width:100%;height:118px;flex:0 0 118px;border-top:1px solid #ffffff12}
+@media(max-width:760px){.mmp-chart-indicators{gap:5px}.mmp-chart-indicators button{font-size:9px;padding:6px 7px}#chart-container{height:690px!important}#mmp-candle-canvas{min-height:330px}}
+@media(prefers-reduced-motion:reduce){.mmp-chart-toggle{transition:none!important}}
+</style>
+<script src="assets/mmp-chart-pro.js?v=20261112-pro-chart-2" defer></script>
 </body>
 </html>
