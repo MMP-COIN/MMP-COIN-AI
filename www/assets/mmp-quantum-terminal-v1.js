@@ -24,7 +24,7 @@ function init(){
  const heat=main.querySelector(".market-heatmap-entry");if(heat)heat.dataset.mmpCenter="markets";
  const toolbar=document.createElement("section");toolbar.id="mmp-center-toolbar";toolbar.hidden=true;
  toolbar.innerHTML='<div class="mmp-center-title"><img src="assets/mmp-coin-mark.svg" alt=""><div><strong id="mmp-center-title-text"></strong><small id="mmp-center-title-en"></small></div></div><div class="mmp-center-actions"><div class="mmp-center-currency" role="group" aria-label="واحد نمایش قیمت"><button type="button" class="mmp-currency-irt active" data-mmp-currency="IRT" aria-pressed="true" onclick="setCurrency(\'IRT\')">تومان</button><button type="button" class="mmp-currency-usdt" data-mmp-currency="USDT" aria-pressed="false" onclick="setCurrency(\'USDT\')">تتر / USDT</button></div><div id="mmp-center-jumps"></div><button type="button" class="mmp-center-back" data-mmp-home>بازگشت به صفحه اصلی</button></div>';
- hub.after(toolbar);
+ main.insertBefore(toolbar,main.firstChild);
  let appDock=null;
  if(appMode){
   const shortLabels={command:"فرمان",hunter:"شکار",charts:"چارت",flow:"نقدینگی",ai:"هوش",strategy:"استراتژی",markets:"بازار",lab:"آزمایشگاه"};
