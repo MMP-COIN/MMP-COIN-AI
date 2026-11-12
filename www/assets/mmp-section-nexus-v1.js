@@ -23,6 +23,7 @@
   {id:"radar-signal-page",title:"آزمایشگاه سیگنال",caption:"ماژول داخلی سیگنال",icon:"⌁"}
  ];
  var byId={};modules.forEach(function(m){byId[m.id]=m;});
+ var setupErrors=[],started=false;
  function el(tag,cls,text){var n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=text;return n;}
  function labelFor(node,index){
   var value=node.getAttribute("aria-label")||node.getAttribute("title")||node.getAttribute("data-label")||node.getAttribute("placeholder")||"";
@@ -131,7 +132,7 @@
    var counts={};root.querySelectorAll("[id]").forEach(function(n){counts[n.id]=(counts[n.id]||0)+1;});
    var duplicates=Object.keys(counts).filter(function(id){return counts[id]>1;}).length;
    var textSize=(root.innerText||root.textContent||"").trim().length;
-   var status=(broken||duplicates||textSize<8)?"warn":"ok";
+   var status=(broken||duplicates||textSize<8||setupErrors.some(function(x){return x.id===config.id;}))?"warn":"ok";
    var badge=root.querySelector(".mmp-section-health");
    if(badge){
     badge.classList.toggle("is-warn",status==="warn");
@@ -142,13 +143,20 @@
    root.dataset.mmpUiHealth=status;
    report.push({id:config.id,status:status,controls:controls,broken:broken,duplicates:duplicates,contentChars:textSize});
   });
-  window.mmpSectionHealthReport={checkedAt:new Date().toISOString(),scope:"DOM/UI only; backend APIs and market-data correctness are not inferred",sections:report};
+  window.mmpSectionHealthReport={checkedAt:new Date().toISOString(),scope:"DOM/UI only; backend APIs and market-data correctness are not inferred",setupErrors:setupErrors.slice(),sections:report};
   document.documentElement.dataset.mmpSectionHealthChecked="1";
   document.dispatchEvent(new CustomEvent("mmp:section-health",{detail:window.mmpSectionHealthReport}));
   return window.mmpSectionHealthReport;
  }
  function start(){
-  modules.forEach(setup);
+  if(started)return;started=true;
+  modules.forEach(function(config){
+   try{setup(config);}catch(error){
+    setupErrors.push({id:config.id,error:String(error&&error.message||error)});
+    var root=document.getElementById(config.id);
+    if(root&&!root.querySelector(".mmp-section-health"))root.appendChild(el("span","mmp-section-health is-warn","نیازمند بررسی"));
+   }
+  });
   audit();
   window.addEventListener("load",audit,{once:true});
   window.setTimeout(audit,2600);
@@ -158,6 +166,8 @@
    if(target){event.preventDefault();link.closest(".mmp-section-actions").open=false;target.scrollIntoView({behavior:"smooth",block:"center"});}
   });
  }
- if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start,{once:true});else start();
  window.mmpRunSectionHealthAudit=audit;
+ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start,{once:true});else start();
+ window.addEventListener("load",start,{once:true});
+ window.setTimeout(start,0);
 })();
