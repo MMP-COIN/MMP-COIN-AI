@@ -16,5 +16,3 @@ binding = "ADMIN_DB"
 database_name = "mmp_coin_ai_private_admin"
 database_id = "dfb3ee95-ef2f-4067-a973-31b8fb1ee62f"
 
-[triggers]
-crons = ["* * * * *"]
