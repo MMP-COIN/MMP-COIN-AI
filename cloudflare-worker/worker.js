@@ -2,6 +2,7 @@
 import { QUANTUM_ENGINE_NAME, QUANTUM_ENGINE_VERSION, normalizeQuantumUniverse, scoreQuantumOpportunity, calculateQuantumIndicators, calculateMarketScanPriority, detectEarlyMovePressure } from "./quantum-core.js";
 import { normalizeMarketCandles, alignMarketCandles, assessMarketDataFreshness } from "./market-data-core.js";
 import { updateLearningLedger, applyLearningCalibration } from "./learning-engine.js";
+import { decideQuantumSignal } from "./decision-engine.js";
 const HUNTER_BATCH_SIZE = 8; // per-cycle budget; the full rotating universe remains uncapped
 const FUTURES_HUNTER_BATCH_SIZE = 8; // per-cycle budget; the full rotating universe remains uncapped
 const MODEL = "@cf/openai/gpt-oss-120b";
@@ -1103,8 +1104,9 @@ async function scanHunterSymbols(symbols,marketType="spot",assetList=[],env=null
    const qBars=Array.isArray(x.rows)?x.rows.slice(-70):[],qRanges=qBars.slice(1).map((bar,i)=>Math.max(Number(bar[2])-Number(bar[3]),Math.abs(Number(bar[2])-Number(qBars[i][4])),Math.abs(Number(bar[3])-Number(qBars[i][4])))).filter(v=>Number.isFinite(v)&&v>0),qAtr=qRanges.length?qRanges.slice(-14).reduce((a,b)=>a+b,0)/Math.min(14,qRanges.length):0,qEntry=Number(x.price),qAtrPct=qEntry>0?qAtr/qEntry*100:null,qStopPct=qEntry>0?Math.max(qAtr*1.25,qEntry*.002)/qEntry*100:null,qDepthImbalance=Number(depth.totalDepthUsdt)>0?(Number(depth.bidUsdt)-Number(depth.askUsdt))/Number(depth.totalDepthUsdt):0,qSmartMoneyScore=Math.max(0,Math.min(100,50+Math.sign(imb)*(x.trend==="bull"?1:-1)*Math.min(22,Math.abs(imb)*90)+qDepthImbalance*(x.trend==="bull"?1:-1)*18+Math.min(10,Math.log2(Math.max(1,f.trade_count))*2))),qExplosionScore=Math.max(0,Math.min(100,Math.max(0,Number(x.volumeRatio)-1)*28+Math.abs(imb)*45+Math.min(25,Math.log2(Math.max(1,f.trade_count))*5)));
    const scenarioScore=Math.max(0,Math.min(100,42+(x.breakout?18:0)+(x.technicalAligned?18:0)+Math.min(15,Math.max(0,x.volumeRatio-1)*12)-(x.overextended?25:0)));markQuantumEvidence(engineActivity,"scenario");markQuantumEvidence(engineActivity,"risk");
    const quantum=scoreQuantumOpportunity({...x,rsi14:x.indicators?.rsi14,ema9:x.indicators?.ema9,ema21:x.indicators?.ema21,ema50:x.indicators?.ema50,macdHistogram:x.indicators?.macdHistogram,structureAligned:x.evidence?.structure===true&&x.evidence?.coreAligned===true,totalVolume24h:Number(x.coin?.total_volume??x.totalVolume24h)||0,flowImbalance:imb,flowConfirmed:true,multiExchangeConfirmed:x.multiExchangeConfirmed,volumeRatio:x.volumeRatio,depthConfirmed:true,depthImbalance:qDepthImbalance,atrPct:qAtrPct,explosionScore:qExplosionScore,smartMoneyScore:qSmartMoneyScore,smartMoneyConfirmed:true,scenarioScore,stopDistancePct:qStopPct,requireDepthConfirmation:true,dataAgeMs:Date.now()-x.candleTime,sentimentScore:sentiment.available?sentiment.score:undefined,sentimentConfirmed:sentiment.available,sentimentSource:sentiment.available?sentiment.sources.join(" + "):undefined});
-   x.quantum=quantum;x.score=quantum.score;x.depth=depth;x.sentiment=sentiment.available?sentiment:null;
-   if(!quantum.qualityGate)return;
+   const decision=decideQuantumSignal({quantum,trend:x.trend,score:quantum.score,stopDistancePct:qStopPct,flowConfirmed:true,multiExchangeConfirmed:x.multiExchangeConfirmed,depthConfirmed:depth.confirmed===true,dataAgeMs:Date.now()-x.candleTime});
+   x.quantum=quantum;x.decision=decision;x.score=decision.score;x.depth=depth;x.sentiment=sentiment.available?sentiment:null;
+   if(decision.action==="WAIT")return;
    markQuantumEvidence(engineActivity,"decision");
    x.flow={buy5m:f.buy5m,sell5m:f.sell5m,net5m:f.net5m,windowMinutes:f.window_minutes||5,tradeCount:f.trade_count,provider:f.provider,complete:f.complete,coverageStart:f.coverage_start,rows:f.rows,imbalance:+imb.toFixed(4)};
    x.flowSignal=f.net5m>0?"inflow":"outflow";
