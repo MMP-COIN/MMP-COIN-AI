@@ -2701,6 +2701,139 @@ html body #ai-section .tf-card{min-width:0!important;max-width:100%!important;ov
  <a class="market-heatmap-entry-button" href="/market-heatmap.html"><span class="market-heatmap-entry-icon">▦</span><span><b>ورود به نقشه حرارتی</b><small>مشاهده نقشه زنده بازار</small></span><strong>←</strong></a>
 </section>
 
+
+<style id="mmp-autonomous-health-center-css">
+#mmp-autonomous-health-center{border:1px solid #9a7b454d;background:radial-gradient(ellipse at 88% 0,rgba(45,177,148,.10),transparent 38%),linear-gradient(145deg,#151d28,#0b1119);margin:0 0 16px;padding:16px;border-radius:18px;box-shadow:0 14px 38px #0006}
+#mmp-autonomous-health-center .mmp-ah-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+#mmp-autonomous-health-center .mmp-ah-kicker{font-size:9px;letter-spacing:1.2px;color:#d9b66d;font-weight:900}
+#mmp-autonomous-health-center h2{font-size:17px;margin:5px 0;color:#f0dba9}
+#mmp-autonomous-health-center .mmp-ah-desc{font-size:11px;color:#9cabb9;line-height:1.9;margin:4px 0 12px;max-width:820px}
+#mmp-autonomous-health-center .mmp-ah-actions{display:flex;gap:7px;flex-wrap:wrap}
+#mmp-autonomous-health-center .mmp-ah-actions button{border:1px solid #75603a;background:#1a2632;color:#f1d79b;border-radius:9px;padding:9px 12px;font-size:10px;font-weight:800}
+#mmp-autonomous-health-center .mmp-ah-actions button.primary{background:linear-gradient(120deg,#d8b46a,#a47a3d);color:#17130b;border:0}
+#mmp-autonomous-health-center .mmp-ah-actions button:disabled{opacity:.5}
+#mmp-autonomous-health-center .mmp-ah-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:12px 0}
+#mmp-autonomous-health-center .mmp-ah-metric{border:1px solid #334152;border-radius:11px;background:#0d151f;padding:10px;min-width:0}
+#mmp-autonomous-health-center .mmp-ah-metric small{display:block;color:#91a0af;font-size:9px;margin-bottom:5px}
+#mmp-autonomous-health-center .mmp-ah-metric b{display:block;color:#f0dfb9;font-size:16px;direction:ltr;text-align:right;overflow-wrap:anywhere}
+#mmp-autonomous-health-center .mmp-ah-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+#mmp-autonomous-health-center .mmp-ah-box{border:1px solid #2d3b4c;border-radius:12px;background:#0d141e;padding:11px;min-width:0}
+#mmp-autonomous-health-center .mmp-ah-box h3{font-size:11px;color:#e7ce91;margin:0 0 9px}
+#mmp-autonomous-health-center .mmp-ah-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px solid #ffffff0c;font-size:10px}
+#mmp-autonomous-health-center .mmp-ah-row:last-child{border-bottom:0}
+#mmp-autonomous-health-center .mmp-ah-state{display:inline-flex;align-items:center;gap:5px;color:#9caaba;white-space:nowrap}
+#mmp-autonomous-health-center .mmp-ah-dot{width:7px;height:7px;border-radius:50%;background:#788493;display:inline-block}
+#mmp-autonomous-health-center .mmp-ah-dot.ok{background:#27d69a;box-shadow:0 0 9px #27d69a88}
+#mmp-autonomous-health-center .mmp-ah-dot.warn{background:#f0c15f;box-shadow:0 0 9px #f0c15f77}
+#mmp-autonomous-health-center .mmp-ah-dot.bad{background:#ff6576;box-shadow:0 0 9px #ff657688}
+#mmp-autonomous-health-center .mmp-ah-advice{font-size:10px;line-height:1.9;color:#b8c4d0}
+#mmp-autonomous-health-center .mmp-ah-advice li{margin:4px 0}
+#mmp-autonomous-health-center .mmp-ah-foot{font-size:9px;color:#8796a5;line-height:1.8;margin-top:10px}
+#mmp-autonomous-health-center .mmp-ah-tag{display:inline-block;border:1px solid #9c7c4655;border-radius:20px;padding:4px 8px;color:#dfc17f;font-size:8px}
+@media(max-width:700px){#mmp-autonomous-health-center{padding:12px}.mmp-ah-summary{grid-template-columns:repeat(2,minmax(0,1fr))!important}.mmp-ah-grid{grid-template-columns:1fr!important}}
+</style>
+<section class="card" id="mmp-autonomous-health-center" data-quantum-module="autonomous-health">
+ <div class="mmp-ah-head">
+  <div>
+   <div class="mmp-ah-kicker">MMP AUTONOMOUS INTELLIGENCE &amp; RECOVERY CENTER</div>
+   <h2>مرکز هوشمند سلامت و خودترمیمی MMP</h2>
+   <p class="mmp-ah-desc">پایش پیوسته منابع، Workerها، رادار، شکارچی و فعالیت موتورهای QIE؛ شناسایی کمبود شواهد و ارائه اقدام اصلاحی بر اساس داده واقعی.</p>
+   <span class="mmp-ah-tag" id="mmp-ah-mode">پایش زنده · تحلیل مبتنی بر شواهد</span>
+  </div>
+  <div class="mmp-ah-actions">
+   <button class="primary" id="mmp-ah-run" type="button">اجرای پایش و تحلیل</button>
+   <button id="mmp-ah-recheck" type="button">بازآزمایی اتصالات</button>
+  </div>
+ </div>
+ <div class="mmp-ah-summary">
+  <div class="mmp-ah-metric"><small>سرویس‌های سالم</small><b id="mmp-ah-healthy">—</b></div>
+  <div class="mmp-ah-metric"><small>منابع بازار متصل</small><b id="mmp-ah-sources">—</b></div>
+  <div class="mmp-ah-metric"><small>موتورهای دارای فعالیت</small><b id="mmp-ah-engines">—</b></div>
+  <div class="mmp-ah-metric"><small>نسخه موتور QIE</small><b id="mmp-ah-version">—</b></div>
+ </div>
+ <div class="mmp-ah-grid">
+  <div class="mmp-ah-box"><h3>سلامت سرویس‌ها و جریان داده</h3><div id="mmp-ah-services"><div class="mmp-ah-row">در انتظار اولین پایش…</div></div></div>
+  <div class="mmp-ah-box"><h3>وضعیت واقعی متخصص‌های QIE</h3><div id="mmp-ah-engine-list"><div class="mmp-ah-row">در انتظار Snapshot زنده…</div></div></div>
+  <div class="mmp-ah-box"><h3>تشخیص و پیشنهادهای هوشمند</h3><ul class="mmp-ah-advice" id="mmp-ah-advice"><li>پس از دریافت داده‌های زنده، موارد ناقص و اولویت اصلاح نمایش داده می‌شوند.</li></ul></div>
+  <div class="mmp-ah-box"><h3>گزارش آخرین چرخه</h3><div class="mmp-ah-advice" id="mmp-ah-report">هنوز چرخه‌ای اجرا نشده است.</div></div>
+ </div>
+ <div class="mmp-ah-foot" id="mmp-ah-foot">پایش خودکار هر ۶۰ ثانیه انجام می‌شود. در این نسخه، ترمیم امن به معنی تکرار آزمون و استفاده از مسیرهای جایگزین موجود است؛ تغییر کد، تنظیمات Worker یا وزن موتور بدون نسخه پشتیبان و تست مستقل اجرا نمی‌شود.</div>
+</section>
+<script id="mmp-autonomous-health-center-js">
+(function(){
+ "use strict";
+ const root=document.getElementById("mmp-autonomous-health-center");
+ if(!root||root.dataset.initialized==="1")return;
+ root.dataset.initialized="1";
+ const API="https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev";
+ const $=id=>document.getElementById(id);
+ const engineNames={momentum:"مومنتوم",flow:"جریان معاملات",structure:"ساختار بازار",liquidity:"نقدشوندگی",multiTimeframe:"هم‌جهتی تایم‌فریم",regime:"رژیم بازار",volatility:"نوسان",sentiment:"احساسات بازار",smartMoney:"اسمارت‌مانی",scenario:"شبیه‌ساز سناریو",risk:"مدیریت ریسک",dataQuality:"کیفیت داده",explosion:"حرکت انفجاری",earlyOpportunity:"فرصت زودهنگام",decision:"تصمیم‌گیر مرکزی",learning:"یادگیری تطبیقی"};
+ const stateLabel=s=>s==="ok"||s==="online"||s==="success"?"سالم":s==="slow"?"کند":s==="warming_up"?"در حال آماده‌سازی":s==="down"||s==="error"||s==="offline"?"خراب":"نامشخص";
+ const dot=s=>s==="ok"||s==="online"||s==="success"?"ok":s==="slow"||s==="warming_up"?"warn":s==="down"||s==="error"||s==="offline"?"bad":"";
+ const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+ async function get(path,timeout=12000){
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeout);
+  try{const r=await fetch(API+path,{cache:"no-store",headers:{"Accept":"application/json"},signal:controller.signal});if(!r.ok)throw new Error("HTTP "+r.status);return await r.json();}
+  finally{clearTimeout(timer);}
+ }
+ function row(name,status,detail){return '<div class="mmp-ah-row"><span>'+esc(name)+(detail?' <small style="color:#8293a4">'+esc(detail)+'</small>':'')+'</span><span class="mmp-ah-state"><i class="mmp-ah-dot '+dot(status)+'"></i>'+stateLabel(status)+'</span></div>';}
+ async function run(){
+  const button=$("mmp-ah-run"),retry=$("mmp-ah-recheck");
+  button.disabled=true;retry.disabled=true;button.textContent="در حال پایش…";
+  $("mmp-ah-mode").textContent="در حال دریافت شواهد زنده";
+  const jobs=await Promise.allSettled([
+   get("/health"),get("/connections-health",25000),get("/hunter-snapshot"),get("/futures-engine-health"),get("/hunter-futures-snapshot")
+  ]);
+  const take=i=>jobs[i].status==="fulfilled"?jobs[i].value:null;
+  const health=take(0),connections=take(1),spot=take(2),futuresEngine=take(3),futures=take(4);
+  const services=[];
+  services.push({name:"Analyzer Worker",status:health?.worker==="online"?"ok":"down",detail:health?.engine_version||"بدون نسخه"});
+  services.push({name:"اتصال AI Binding",status:health?.ai_binding?"ok":"down",detail:health?.ai_binding?"Binding موجود؛ اجرای مدل جداگانه نیازمند تست است":"Binding موجود نیست"});
+  services.push({name:"سرویس Futures",status:futuresEngine?.service_binding==="connected"?"ok":"down",detail:futuresEngine?.engine_version||futuresEngine?.detail||"بدون پاسخ"});
+  services.push({name:"Spot Hunter",status:spot?.status==="online"?"ok":spot?.status||"down",detail:(spot?.scanned_count??0)+" نماد اسکن‌شده"});
+  services.push({name:"Futures Hunter",status:futures?.status==="online"?"ok":futures?.status||"down",detail:(futures?.scanned_count??0)+" نماد اسکن‌شده"});
+  const checks=Array.isArray(connections?.checks)?connections.checks:[];
+  const online=checks.filter(x=>x.status==="ok"||x.status==="slow").length;
+  $("mmp-ah-sources").textContent=checks.length?online+"/"+checks.length:"—";
+  const active=spot?.engine_activity||futures?.engine_activity||{};
+  const keys=Object.keys(engineNames),activeCount=keys.filter(k=>Number(active[k]?.processed)>0&&Number(active[k]?.evidence)>0).length;
+  $("mmp-ah-engines").textContent=Object.keys(active).length?activeCount+"/"+keys.length:"—";
+  $("mmp-ah-version").textContent=health?.engine_version||spot?.engine_version||"—";
+  const healthy=services.filter(x=>x.status==="ok"||x.status==="slow").length;
+  $("mmp-ah-healthy").textContent=healthy+"/"+services.length;
+  let serviceHtml=services.map(x=>row(x.name,x.status,x.detail)).join("");
+  if(checks.length)serviceHtml+=checks.map(x=>row(x.name,x.status,(x.ping??"—")+" ms")).join("");
+  else serviceHtml+=row("بررسی منابع صرافی‌ها","down","پاسخ دریافت نشد");
+  $("mmp-ah-services").innerHTML=serviceHtml;
+  $("mmp-ah-engine-list").innerHTML=keys.map(k=>{
+   const item=active[k]||{},n=Number(item.processed)||0,e=Number(item.evidence)||0,status=n>0&&e>0?"ok":n>0?"slow":"warming_up";
+   return row(engineNames[k],status,"پردازش "+n+" · شواهد "+e);
+  }).join("");
+  const advice=[];
+  if(!health||health.worker!=="online")advice.push("Analyzer Worker پاسخ سالم نمی‌دهد؛ وضعیت سرویس و آخرین انتشار Worker بررسی شود.");
+  if(health&&!health.ai_binding)advice.push("اتصال Workers AI در محیط اجرا موجود نیست؛ Binding و محدودیت بودجه روزانه بررسی شود.");
+  if(health?.ai_binding)advice.push("AI Binding موجود است؛ این فقط سلامت اتصال را ثابت می‌کند، نه موفقیت فراخوانی مدل یا کیفیت خروجی.");
+  if(checks.some(x=>x.status==="down"))advice.push("حداقل یک منبع بازار قطع است؛ خطای HTTP و مسیر جایگزین همان صرافی بررسی و منبع سالم جایگزین شود.");
+  if(spot?.status!=="online")advice.push("Snapshot شکارچی Spot آماده یا تازه نیست؛ چرخه زمان‌بندی، D1 و زمان آخرین به‌روزرسانی بررسی شود.");
+  if(futures?.status!=="online")advice.push("Snapshot شکارچی Futures آماده نیست؛ Worker مستقل و اتصال سرویس Futures بررسی شود.");
+  const inactive=keys.filter(k=>!Number(active[k]?.processed)||!Number(active[k]?.evidence));
+  if(inactive.length)advice.push("متخصص‌های بدون شواهد کافی: "+inactive.map(k=>engineNames[k]).join("، ")+". ابتدا ورودی داده و اتصال آن‌ها تکمیل شود؛ فعال‌نمایی یا امتیازدهی ساختگی ممنوع.");
+  if(spot?.learning?.status==="unavailable"||futures?.learning?.status==="unavailable")advice.push("دفتر یادگیری تطبیقی در دسترس نیست؛ ذخیره نتایج سیگنال و بلوغ نمونه‌های آموزشی بررسی شود.");
+  if(!advice.length)advice.push("در این چرخه خطای بحرانی شناسایی نشد؛ سلامت را با چرخه بعدی و داده‌های تازه دوباره تأیید کن.");
+  $("mmp-ah-advice").innerHTML=advice.map(x=>"<li>"+esc(x)+"</li>").join("");
+  const errors=[...(spot?.last_errors||[]),...(futures?.last_errors||[])].slice(0,4);
+  $("mmp-ah-report").innerHTML="<div>زمان پایش: "+esc(new Date().toLocaleString("fa-IR"))+"</div><div>Spot: "+esc(spot?.status||"بدون پاسخ")+" · Futures: "+esc(futures?.status||"بدون پاسخ")+"</div><div>منابع متصل: "+online+" از "+checks.length+"</div><div>متخصص‌های دارای شواهد: "+activeCount+" از "+keys.length+"</div>"+(errors.length?"<div style='color:#f0c15f;margin-top:7px'>خطاهای اخیر: "+errors.map(esc).join(" | ")+"</div>":"");
+  $("mmp-ah-mode").textContent=healthy===services.length&&online===checks.length?"پایش کامل شد · بدون خطای سرویس":"پایش کامل شد · نیازمند بررسی";
+  $("mmp-ah-foot").textContent="آخرین بررسی: "+new Date().toLocaleTimeString("fa-IR")+" · پایش خودکار هر ۶۰ ثانیه. ترمیم خودکار کد هنوز فعال نیست؛ این پنل خطاها را شناسایی و اقدام اصلاحی پیشنهاد می‌کند و از نمایش وضعیت سالم بدون شواهد جلوگیری می‌کند.";
+  button.disabled=false;retry.disabled=false;button.textContent="اجرای پایش و تحلیل";
+ }
+ $("mmp-ah-run").addEventListener("click",run);
+ $("mmp-ah-recheck").addEventListener("click",run);
+ run().catch(e=>{$("mmp-ah-report").textContent="خطای پایش: "+String(e.message||e);$("mmp-ah-run").disabled=false;$("mmp-ah-recheck").disabled=false;});
+ setInterval(()=>{if(!document.hidden)run().catch(()=>{});},60000);
+})();
+</script>
+
 <section class="terminal-grid" id="opportunities" data-quantum-module="radar">
 <section class="card radar-card"><div class="section-head"><div class="mmp-section-heading-content"><img class="mmp-module-logo" src="assets/logos/mmp-radar.svg" alt="نشان رادار کوانتومی"><div class="section-kicker">QUANTUM RADAR CORE · UNIFIED ENGINE</div><h2>رادار کوانتومی فرصت‌های بازار</h2><p class="sub">یک موتور هوشمند واحد برای تحلیل داده‌های زنده، قدرت حرکت، هم‌جهتی تایم‌فریم‌ها و حجم نسبی؛ بدون اسکن موازی در این بخش.</p></div><span class="badge">قدرت ترکیبی / ۱۰۰</span></div>
 <div class="radar-live-note"><span class="radar-live-dot"></span><span>تحلیل یکپارچه · داده زنده موتور مرکزی · حفظ سیگنال تا افت تأییدشده</span><span id="radar-updated" class="sub">در انتظار دریافت داده از موتور مرکزی…</span></div>
