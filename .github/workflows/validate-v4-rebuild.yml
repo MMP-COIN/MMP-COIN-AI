@@ -77,3 +77,65 @@ jobs:
           assert "Math.random" not in js and "fake" not in js.lower(), "Synthetic market data is not allowed"
           print("V4 UI mounts, responsive assets, live endpoints, and no-fabricated-data guard validated.")
           PY
+
+      - name: Install Playwright and Chromium
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Run desktop and mobile browser smoke tests
+        run: |
+          python3 -m http.server 4173 --directory www/v4 >/tmp/mmp-v4-http.log 2>&1 &
+          echo $! >/tmp/mmp-v4-http.pid
+          node --input-type=module <<'JS'
+          import { chromium } from "playwright";
+          import assert from "node:assert/strict";
+
+          const browser = await chromium.launch({headless: true});
+          const failures = [];
+          async function checkDevice(name, viewport, mobile) {
+            const context = await browser.newContext({ viewport, isMobile: mobile, hasTouch: mobile });
+            const page = await context.newPage();
+            page.on("pageerror", error => failures.push(name + " page error: " + error.message));
+            const response = await page.goto("http://127.0.0.1:4173/", {waitUntil: "networkidle", timeout: 30000});
+            assert.equal(response.status(), 200, name + ": homepage must return HTTP 200");
+            await page.waitForSelector("#engineGrid .engine-item", {timeout: 10000});
+            assert.equal(await page.locator("#engineGrid .engine-item").count(), 12, name + ": expected 12 engine tiles");
+            for (const id of ["command", "radar", "hunter", "analyzer", "engines"]) {
+              assert.equal(await page.locator("#" + id).count(), 1, name + ": missing section #" + id);
+            }
+            assert.equal(await page.locator("#ticker .ticker-item").count(), 4, name + ": expected four ticker slots");
+
+            if (mobile) {
+              const nav = page.locator(".desktop-nav");
+              await page.locator("#menuToggle").click();
+              assert(await nav.evaluate(el => el.classList.contains("open")), "mobile menu must open");
+              await nav.locator('a[href="#radar"]').click();
+              assert(!(await nav.evaluate(el => el.classList.contains("open"))), "mobile menu must close after navigation");
+            } else {
+              await page.locator('.desktop-nav a[href="#radar"]').click();
+              assert((await page.locator("#radar").evaluate(el => Math.abs(el.getBoundingClientRect().top) < 180)), "desktop radar navigation must scroll to section");
+            }
+
+            await page.locator('[data-refresh="radar"]').click();
+            await page.locator('[data-refresh="hunter"]').click();
+            await page.locator("#refreshAll").click();
+            await page.waitForTimeout(500);
+
+            const dimensions = await page.evaluate(() => ({
+              viewport: document.documentElement.clientWidth,
+              page: document.documentElement.scrollWidth
+            }));
+            assert(dimensions.page <= dimensions.viewport + 2,
+              name + ": horizontal overflow (" + dimensions.page + " > " + dimensions.viewport + ")");
+            await context.close();
+            console.log("PASS browser smoke:", name);
+          }
+
+          try {
+            await checkDevice("desktop", {width: 1440, height: 1000}, false);
+            await checkDevice("android-mobile", {width: 390, height: 844}, true);
+          } finally {
+            await browser.close();
+          }
+          assert.deepEqual(failures, [], "browser runtime errors: " + failures.join("; "));
+          JS
