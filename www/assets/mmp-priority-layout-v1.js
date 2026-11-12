@@ -20,7 +20,7 @@
   Object.keys(modules).forEach(function(id){
    var section=document.getElementById(id),cfg=modules[id];
    if(!section||section.dataset.mmpCompactReady==='1')return;
-   section.dataset.mmpCompactReady='1';section.classList.add('mmp-priority-module');
+   section.dataset.mmpCompactReady='1';section.classList.add('mmp-priority-module','mmp-priority-card-flattened');section.classList.remove('card');
    var first=section.firstElementChild;
    var logo=section.querySelector('.mmp-module-logo');
    var toolbar=document.createElement('div');toolbar.className='mmp-priority-toolbar';
