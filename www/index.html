@@ -2736,9 +2736,9 @@ html body #ai-section .tf-card{min-width:0!important;max-width:100%!important;ov
 <section class="card" id="mmp-autonomous-health-center" data-quantum-module="autonomous-health">
  <div class="mmp-ah-head">
   <div>
-   <div class="mmp-ah-kicker">MMP AUTONOMOUS INTELLIGENCE &amp; RECOVERY CENTER</div>
-   <h2>مرکز هوشمند سلامت و خودترمیمی MMP</h2>
-   <p class="mmp-ah-desc">پایش پیوسته منابع، Workerها، رادار، شکارچی و فعالیت موتورهای QIE؛ شناسایی کمبود شواهد و ارائه اقدام اصلاحی بر اساس داده واقعی.</p>
+   <div class="mmp-ah-kicker">MMP NEXUS · AUTONOMOUS SYSTEM INTELLIGENCE</div>
+   <h2>MMP NEXUS | مغز مستقل پایش، ترمیم و تکامل</h2>
+   <p class="mmp-ah-desc">ناظر مستقل کل سامانه؛ پایش جداگانه Analyzer، Radar، Spot/Futures Hunter، منابع داده و شواهد QIE. تشخیص با AI، اجرای فقط اقدامات امنِ ازپیش‌مجاز و بازآزمایی نتیجه.</p>
    <span class="mmp-ah-tag" id="mmp-ah-mode">پایش زنده · تحلیل مبتنی بر شواهد</span>
   </div>
   <div class="mmp-ah-actions">
@@ -2758,7 +2758,8 @@ html body #ai-section .tf-card{min-width:0!important;max-width:100%!important;ov
   <div class="mmp-ah-box"><h3>تشخیص و پیشنهادهای هوشمند</h3><ul class="mmp-ah-advice" id="mmp-ah-advice"><li>پس از دریافت داده‌های زنده، موارد ناقص و اولویت اصلاح نمایش داده می‌شوند.</li></ul></div>
   <div class="mmp-ah-box"><h3>گزارش آخرین چرخه</h3><div class="mmp-ah-advice" id="mmp-ah-report">هنوز چرخه‌ای اجرا نشده است.</div></div>
  </div>
- <div class="mmp-ah-foot" id="mmp-ah-foot">پایش خودکار هر ۶۰ ثانیه انجام می‌شود. در این نسخه، ترمیم امن به معنی تکرار آزمون و استفاده از مسیرهای جایگزین موجود است؛ تغییر کد، تنظیمات Worker یا وزن موتور بدون نسخه پشتیبان و تست مستقل اجرا نمی‌شود.</div>
+ <div class="mmp-ah-box"><h3>دفتر اقدامات و نتیجه بازآزمایی</h3><div class="mmp-ah-advice" id="mmp-ah-action-log">هنوز اقدام اصلاحی ثبت نشده است.</div></div>
+ <div class="mmp-ah-foot" id="mmp-ah-foot">NEXUS مستقل از چرخه‌های بازار اجرا می‌شود؛ پایش خودکار هر ۶۰ ثانیه. فقط عملیات امن و محدود مانند اجرای مجدد چرخه Hunter مجاز است. تغییر کد، Secret، تنظیمات Worker یا وزن مدل خودکار انجام نمی‌شود و به تغییر نسخه‌دار، بازبینی و تست نیاز دارد.</div>
 </section>
 <script id="mmp-autonomous-health-center-js">
 (function(){
@@ -2768,7 +2769,14 @@ html body #ai-section .tf-card{min-width:0!important;max-width:100%!important;ov
  root.dataset.initialized="1";
  const API="https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev";
  const RADAR_API="https://mmp-coin-ai-radar.mehrdadmohammadi1988.workers.dev";
- let lastSafeRecoveryAt=0,lastRecoveryNote="";
+ let lastSafeRecoveryAt=0,lastRecoveryNote="",isRunning=false;
+ const actionHistory=[];
+ const recordAction=message=>{
+  actionHistory.unshift(new Date().toLocaleTimeString("fa-IR")+" · "+message);
+  actionHistory.splice(8);
+  const target=$("mmp-ah-action-log");
+  if(target)target.innerHTML=actionHistory.map(x=>"<div>"+esc(x)+"</div>").join("");
+ };
  const $=id=>document.getElementById(id);
  const engineNames={momentum:"مومنتوم",flow:"جریان معاملات",structure:"ساختار بازار",liquidity:"نقدشوندگی",multiTimeframe:"هم‌جهتی تایم‌فریم",regime:"رژیم بازار",volatility:"نوسان",sentiment:"احساسات بازار",smartMoney:"اسمارت‌مانی",scenario:"شبیه‌ساز سناریو",risk:"مدیریت ریسک",dataQuality:"کیفیت داده"};
  const stateLabel=s=>s==="ok"||s==="online"||s==="success"?"سالم":s==="slow"?"کند":s==="warming_up"?"در حال آماده‌سازی":s==="down"||s==="error"||s==="offline"?"خراب":"نامشخص";
@@ -2786,7 +2794,10 @@ html body #ai-section .tf-card{min-width:0!important;max-width:100%!important;ov
  }
  function row(name,status,detail){return '<div class="mmp-ah-row"><span>'+esc(name)+(detail?' <small style="color:#8293a4">'+esc(detail)+'</small>':'')+'</span><span class="mmp-ah-state"><i class="mmp-ah-dot '+dot(status)+'"></i>'+stateLabel(status)+'</span></div>';}
  async function run(withAI=false,allowRecovery=true){
+  if(isRunning)return;
+  isRunning=true;
   const button=$("mmp-ah-run"),retry=$("mmp-ah-recheck");
+  try{
   button.disabled=true;retry.disabled=true;button.textContent=withAI?"پایش و تحلیل AI…":"در حال پایش…";
   $("mmp-ah-mode").textContent="در حال دریافت شواهد زنده";
   const jobs=await Promise.allSettled([
@@ -2856,6 +2867,7 @@ html body #ai-section .tf-card{min-width:0!important;max-width:100%!important;ov
      if(diagnosis.summary)advice.unshift("تشخیص AI: "+diagnosis.summary);
      (diagnosis.issues||[]).forEach(x=>advice.push((x.severity==="critical"?"بحرانی: ":x.severity==="warning"?"هشدار: ":"")+x.component+" — "+x.evidence+"؛ اقدام: "+x.recommendation));
      (diagnosis.upgrade_recommendations||[]).forEach(x=>advice.push("پیشنهاد ارتقا ("+x.priority+"): "+x.module+" — "+x.reason));
+     (diagnosis.next_checks||[]).forEach(x=>advice.push("آزمون بعدی: "+x));
     }else throw new Error("AI diagnostic returned no usable result");
    }catch(error){advice.push("تحلیل مدل AI در دسترس نبود؛ گزارش فعلی بر اساس تله‌متری زنده و قواعد سلامت است: "+String(error.message||error).slice(0,150));}
   }
@@ -2866,16 +2878,22 @@ html body #ai-section .tf-card{min-width:0!important;max-width:100%!important;ov
    if(!spotHealthy)recoveries.push(["Spot Hunter",get("/hunter-run",45000)]);
    if(!futuresHealthy)recoveries.push(["Futures Hunter",get("/hunter-futures-run",45000)]);
    const outcomes=await Promise.allSettled(recoveries.map(x=>x[1]));
-   lastRecoveryNote="خودترمیمی امن: "+recoveries.map((x,i)=>x[0]+" "+(outcomes[i].status==="fulfilled"?"چرخه مجدد اجرا شد":"ناموفق: "+String(outcomes[i].reason?.message||"خطا"))).join(" · ")+"؛ اکنون نتیجه دوباره بررسی می‌شود.";
+   lastRecoveryNote="خودترمیمی امن: "+recoveries.map((x,i)=>x[0]+" "+(outcomes[i].status==="fulfilled"?"درخواست اجرای مجدد پذیرفته شد":"ناموفق: "+String(outcomes[i].reason?.message||"خطا"))).join(" · ")+"؛ نتیجه در Snapshot بعدی بازآزمایی می‌شود.";
+   recordAction(lastRecoveryNote);
    $("mmp-ah-run").disabled=false;$("mmp-ah-recheck").disabled=false;
+   isRunning=false;
    await run(false,false);
    return;
   }
   $("mmp-ah-advice").innerHTML=advice.map(x=>"<li>"+esc(x)+"</li>").join("");
   $("mmp-ah-report").innerHTML="<div>زمان پایش: "+esc(new Date().toLocaleString("fa-IR"))+"</div><div>Spot: "+esc(spot?.status||"بدون پاسخ")+" · Futures: "+esc(futures?.status||"بدون پاسخ")+"</div><div>منابع متصل: "+online+" از "+checks.length+"</div><div>متخصص‌های دارای شواهد: "+activeCount+" از "+keys.length+"</div>"+(errors.length?"<div style='color:#f0c15f;margin-top:7px'>خطاهای اخیر: "+errors.map(esc).join(" | ")+"</div>":"");
-  $("mmp-ah-mode").textContent=healthy===services.length&&online===checks.length?"پایش کامل شد · بدون خطای سرویس":"پایش کامل شد · نیازمند بررسی";
-  $("mmp-ah-foot").textContent="آخرین بررسی: "+new Date().toLocaleTimeString("fa-IR")+" · پایش خودکار هر ۶۰ ثانیه؛ در خرابی Snapshotهای Spot/Futures، اجرای مجدد امن با فاصله حداقل ۵ دقیقه و سپس بازآزمایی انجام می‌شود. تغییر خودکار کد یا وزن موتور فعال نیست و نیازمند تأیید و تست مستقل است.";
+  $("mmp-ah-mode").textContent=healthy===services.length&&online===checks.length&&radarReady?"NEXUS · همه آزمون‌های اصلی سالم":"NEXUS · نیازمند اقدام یا بررسی";
+  $("mmp-ah-foot").textContent="آخرین بررسی: "+new Date().toLocaleTimeString("fa-IR")+" · Radar مستقل نیز از نظر سلامت Worker، تازگی Snapshot و خطای آخر پایش شد. خودترمیمی خودکار فقط چرخه‌های مجاز Hunter را دوباره اجرا می‌کند؛ 403/451 فقط با مسیر جایگزین مجاز مدیریت می‌شود. تغییر کد، Secret یا وزن موتور نیازمند PR نسخه‌دار و تست مستقل است.";
   button.disabled=false;retry.disabled=false;button.textContent="اجرای پایش و تحلیل AI";
+ } finally {
+  isRunning=false;
+  button.disabled=false;retry.disabled=false;
+  if(button.textContent==="در حال پایش…"||button.textContent==="پایش و تحلیل AI…")button.textContent="اجرای پایش و تحلیل AI";
  }
  $("mmp-ah-run").addEventListener("click",()=>run(true,true));
  $("mmp-ah-recheck").addEventListener("click",()=>run(false,false));
