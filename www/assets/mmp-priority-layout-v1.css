@@ -1,0 +1,38 @@
+/* MMP compact priority sections */
+:root{--mmp-section-gap:12px}
+#hero>.mmp-priority-module{position:relative;margin:0 0 var(--mmp-section-gap)!important;padding:clamp(12px,1.5vw,18px)!important;border-radius:14px!important;min-width:0}
+#hero>.mmp-priority-module>.mmp-priority-toolbar{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex-wrap:wrap;margin:0 0 10px;min-height:30px}
+.mmp-priority-tools{display:flex;align-items:center;gap:6px;margin-inline-start:auto}
+.mmp-priority-icon{width:30px;height:30px;display:grid;place-items:center;flex:0 0 30px;border:1px solid #8f7546;border-radius:9px;background:linear-gradient(145deg,#292316,#14151b);color:#f0d38e;font-size:15px}
+.mmp-priority-logo{width:26px;height:26px;object-fit:contain;display:block}
+.mmp-priority-title{font-size:12px;font-weight:800;color:var(--gold2);line-height:1.5}
+.mmp-priority-subtitle{font-size:10px;color:var(--muted);line-height:1.6}
+.mmp-priority-toggle,.mmp-priority-menu summary{border:1px solid var(--line);border-radius:8px;background:#171a23;color:#e9d29c;padding:6px 9px;font-size:10px;font-weight:700;cursor:pointer;list-style:none;white-space:nowrap}
+.mmp-priority-toggle:hover,.mmp-priority-menu summary:hover{border-color:var(--gold);background:#211e18}
+.mmp-priority-menu{position:relative}
+.mmp-priority-menu summary::-webkit-details-marker{display:none}
+.mmp-priority-menu[open] summary{border-color:var(--gold)}
+.mmp-priority-menu-links{position:absolute;inset-inline-end:0;top:calc(100% + 6px);z-index:80;min-width:170px;padding:6px;background:#11141c;border:1px solid #665638;border-radius:10px;box-shadow:0 12px 28px #0009;display:grid;gap:3px}
+.mmp-priority-menu-links a{color:#e8e1d2;text-decoration:none;font-size:11px;padding:8px;border-radius:7px}
+.mmp-priority-menu-links a:hover{background:#272319;color:var(--gold2)}
+#hero>.mmp-priority-module.mmp-priority-collapsed>*:not(.mmp-priority-toolbar){display:none!important}
+#hero>.mmp-priority-module.mmp-priority-collapsed>.mmp-priority-toolbar{margin:0}
+#hero>.mmp-priority-module .section-head,#hero>.mmp-priority-module .chart-top-bar,#hero>.mmp-priority-module .intel-suite-head,#hero>.mmp-priority-module .mmp-ah-head,#hero>.mmp-priority-module .hunter-topline{min-width:0;gap:8px}
+#hero>.mmp-priority-module h2{font-size:clamp(13px,1.4vw,16px)!important;line-height:1.65;overflow-wrap:anywhere}
+#hero>.mmp-priority-module p{line-height:1.8}
+#hero>.mmp-priority-module .card{padding:12px;border-radius:12px;margin-bottom:10px}
+#hero>.mmp-priority-module .section-head{margin-bottom:10px}
+#hero>.mmp-priority-module .mmp-module-logo{width:28px;height:28px;object-fit:contain}
+#hero>.mmp-priority-module button,#hero>.mmp-priority-module select,#hero>.mmp-priority-module input{min-height:34px}
+#hero>.mmp-priority-module button{transition:background .16s ease,border-color .16s ease,transform .16s ease}
+#hero>.mmp-priority-module button:active{transform:scale(.98)}
+#hero>.mmp-priority-module button:focus-visible,#hero>.mmp-priority-module a:focus-visible{outline:2px solid var(--gold2);outline-offset:2px}
+@media(max-width:760px){
+ #hero>.mmp-priority-module{padding:11px!important;margin-bottom:9px!important;border-radius:12px!important}
+ #hero>.mmp-priority-module>.mmp-priority-toolbar{margin-bottom:8px}
+ .mmp-priority-title{font-size:11px}
+ .mmp-priority-subtitle{font-size:9px}
+ #hero>.mmp-priority-module h2{font-size:13px!important}
+ #hero>.mmp-priority-module .card{padding:10px}
+}
+@media(prefers-reduced-motion:reduce){#hero>.mmp-priority-module button{transition:none}}
