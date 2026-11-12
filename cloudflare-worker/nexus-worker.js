@@ -109,8 +109,11 @@ async function runCycle(env){
   const lastAI=Number(await readState(env.NEXUS_DB,"last_ai_at")||0);
   const utcDay=new Date().toISOString().slice(0,10);
   const aiCalls=Number(await readState(env.NEXUS_DB,"ai_calls:"+utcDay)||0);
+  let aiIssues=[],upgradeRecommendations=[];
   if(issues.length&&env.AI&&Date.now()-lastAI>=900000&&aiCalls<20){
     try{
+      await writeState(env.NEXUS_DB,"last_ai_at",Date.now());
+      await writeState(env.NEXUS_DB,"ai_calls:"+utcDay,aiCalls+1);
       const prompt="You are MMP NEXUS, an independent reliability diagnostician. Use only these observed facts. Separate facts from hypotheses. Never bypass 403/451 restrictions. Only recommend bounded reversible actions already exposed; never claim source code or secrets were changed. Return JSON with severity, summary, issues, upgrade_recommendations, next_checks. Telemetry: "+JSON.stringify(snapshot)+" Actions: "+JSON.stringify(actions);
       const response=await env.AI.run("@cf/openai/gpt-oss-120b",{messages:[{role:"system",content:"Return one valid JSON object only. No markdown."},{role:"user",content:prompt}],max_tokens:1200,temperature:0.2});
       const raw=response?.choices?.[0]?.message?.content||response?.response||response?.output_text||"";
@@ -120,13 +123,15 @@ async function runCycle(env){
         if(["healthy","warning","critical"].includes(parsed.severity))severity=parsed.severity;
         if(parsed.summary)summary=safe(parsed.summary);
         if(Array.isArray(parsed.next_checks))nextChecks=parsed.next_checks.slice(0,6).map(safe);
+        if(Array.isArray(parsed.issues))aiIssues=parsed.issues.slice(0,6).map(x=>({component:safe(x.component),severity:["info","warning","critical"].includes(x.severity)?x.severity:"warning",evidence:safe(x.evidence),recommendation:safe(x.recommendation)}));
+        if(Array.isArray(parsed.upgrade_recommendations))upgradeRecommendations=parsed.upgrade_recommendations.slice(0,6).map(x=>({module:safe(x.module),reason:safe(x.reason),priority:["low","medium","high"].includes(x.priority)?x.priority:"medium"}));
         provider="Cloudflare Workers AI";
-        await writeState(env.NEXUS_DB,"last_ai_at",Date.now());
-        await writeState(env.NEXUS_DB,"ai_calls:"+utcDay,aiCalls+1);
       }
     }catch(error){actions.push({action:"ai_diagnosis",status:"fallback",detail:safe(error?.message||error)});}
   }
-  const report={status:"ok",checked_at:snapshot.checked_at,severity,summary,ai_provider:provider,services,issues,actions,next_checks:nextChecks,radar:snapshot.radar,spot_flow:snapshot.spot_flow,futures_flow:snapshot.futures_flow,monitor:"server-cron-5m",code_changes_executed:false};
+  snapshot.ai_issues=aiIssues;
+  snapshot.upgrade_recommendations=upgradeRecommendations;
+  const report={status:"ok",checked_at:snapshot.checked_at,severity,summary,ai_provider:provider,services,issues,ai_issues:aiIssues,upgrade_recommendations:upgradeRecommendations,actions,next_checks:nextChecks,radar:snapshot.radar,spot_flow:snapshot.spot_flow,futures_flow:snapshot.futures_flow,monitor:"server-cron-5m",code_changes_executed:false};
   await env.NEXUS_DB.prepare("INSERT INTO nexus_runs(checked_at,severity,summary,snapshot_json,issues_json,actions_json,ai_provider) VALUES(?,?,?,?,?,?,?)")
     .bind(report.checked_at,severity,summary,JSON.stringify(snapshot),JSON.stringify(issues),JSON.stringify(actions),provider).run();
   await env.NEXUS_DB.prepare("DELETE FROM nexus_runs WHERE id NOT IN (SELECT id FROM nexus_runs ORDER BY id DESC LIMIT 200)").run();
@@ -135,7 +140,8 @@ async function runCycle(env){
 async function latestReport(env){
   const row=await env.NEXUS_DB.prepare("SELECT * FROM nexus_runs ORDER BY id DESC LIMIT 1").first();
   if(!row)return {status:"warming_up",monitor:"server-cron-5m",message:"Waiting for first scheduled NEXUS cycle"};
-  return {status:"ok",checked_at:row.checked_at,severity:row.severity,summary:row.summary,ai_provider:row.ai_provider,services:JSON.parse(row.snapshot_json||"{}").services||[],issues:JSON.parse(row.issues_json||"[]"),actions:JSON.parse(row.actions_json||"[]"),snapshot:JSON.parse(row.snapshot_json||"{}"),monitor:"server-cron-5m",code_changes_executed:false};
+  const snapshot=JSON.parse(row.snapshot_json||"{}");
+  return {status:"ok",checked_at:row.checked_at,severity:row.severity,summary:row.summary,ai_provider:row.ai_provider,services:snapshot.services||[],issues:JSON.parse(row.issues_json||"[]"),ai_issues:snapshot.ai_issues||[],upgrade_recommendations:snapshot.upgrade_recommendations||[],actions:JSON.parse(row.actions_json||"[]"),next_checks:snapshot.next_checks||[],snapshot,monitor:"server-cron-5m",code_changes_executed:false};
 }
 export default {
   async fetch(request,env){
