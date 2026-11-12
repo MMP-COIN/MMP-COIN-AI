@@ -40,7 +40,7 @@ jobs:
           for (const required of ["refreshDigitalHunterUniverses", "digital-hunter-universe-refresh", "hourly-universe-refresh", "async scheduled(event,env)", "Object.create(env)", "PUBLIC_API_LIMITER"]) {
             if (!source.includes(required)) throw new Error("Dedicated Hunter scheduler missing: " + required);
           }
-          if (!config.includes('crons = ["*/15 * * * *"]') || !config.includes('binding = "ADMIN_DB"') || !config.includes('binding = "AI"')) throw new Error("Dedicated Hunter Cron deployment config does not match production");
+          if (!config.includes('crons = ["5 * * * *"]') || !config.includes('binding = "ADMIN_DB"') || !config.includes('binding = "AI"')) throw new Error("Dedicated Hunter Cron deployment config does not match production");
           console.log("Dedicated universe refresh worker and trusted internal limiter verified.");
           NODE
       - name: Validate Worker syntax and Quantum signal gates
