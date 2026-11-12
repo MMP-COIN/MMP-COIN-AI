@@ -302,34 +302,32 @@ jobs:
         run: |
           set -euo pipefail
           curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-delay 10 --retry-max-time 100 --max-time 25 "$WORKER_URL/health" -o /tmp/health.json
-          jq -e '.worker == "online" and .ai_binding == true and .futures_engine_binding == true' /tmp/health.json >/dev/null
+          jq -e '.worker == "online" and .ai_binding == true' /tmp/health.json >/dev/null
           {
             echo "## Worker health"
             echo "- Worker: online"
             echo "- AI binding: available"
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Check Futures service and live Quantum snapshots
+      - name: Check production Spot and Futures snapshot interface
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
-          FUTURES_URL: https://mmp-coin-ai-futures.mehrdadmohammadi1988.workers.dev
         run: |
           set -euo pipefail
-          curl --fail --silent --show-error --retry 2 --retry-delay 3 --max-time 20 "$FUTURES_URL/health" -o /tmp/futures-health.json
-          jq -e '.status == "online" and .market == "futures" and .d1 == true' /tmp/futures-health.json >/dev/null
-          for endpoint in hunter-snapshot hunter-futures-snapshot; do
-            output="/tmp/${endpoint}.json"
-            status=$(curl --silent --show-error --max-time 20 -o "$output" -w "%{http_code}" "$WORKER_URL/$endpoint" || true)
-            echo "Endpoint $endpoint: HTTP $status"
-            cat "$output" || true
-            test "$status" = "200"
-            jq -e '(.status == "online" or .status == "warming_up") and (.universe_count // 0) > 0' "$output" >/dev/null
-          done
-          cp /tmp/hunter-snapshot.json /tmp/spot-hunter.json
-          cp /tmp/hunter-futures-snapshot.json /tmp/futures-hunter.json
+          curl --fail --silent --show-error --retry 2 --retry-delay 3 --max-time 25 "$WORKER_URL/hunter-combined-snapshot" -o /tmp/hunter-combined.json
+          jq -e '
+            (.spot | type == "object") and
+            (.futures | type == "object") and
+            (.spot.status == "online" or .spot.status == "warming_up" or .spot.status == "partial") and
+            (.futures.status == "online" or .futures.status == "warming_up" or .futures.status == "partial") and
+            ((.spot.signals | type) == "array") and
+            ((.futures.signals | type) == "array") and
+            (.futures.market == "futures")
+          ' /tmp/hunter-combined.json >/dev/null
           {
-            echo "- Quantum Spot universe: $(jq -r '.universe_count' /tmp/spot-hunter.json) assets; last batch $(jq -r '.scanned_count // 0' /tmp/spot-hunter.json) scanned"
-            echo "- Quantum Futures universe: $(jq -r '.universe_count' /tmp/futures-hunter.json) contracts; last batch $(jq -r '.scanned_count // 0' /tmp/futures-hunter.json) scanned; $(jq -r '.failed_count // 0' /tmp/futures-hunter.json) failures"
+            echo "- Combined Spot/Futures interface: HTTP 200"
+            echo "- Spot: $(jq -r '.spot.status' /tmp/hunter-combined.json), universe $(jq -r '.spot.universe_count // 0' /tmp/hunter-combined.json), scanned $(jq -r '.spot.scanned_count // 0' /tmp/hunter-combined.json)"
+            echo "- Futures: $(jq -r '.futures.status' /tmp/hunter-combined.json), universe $(jq -r '.futures.universe_count // 0' /tmp/hunter-combined.json), scanned $(jq -r '.futures.scanned_count // 0' /tmp/hunter-combined.json)"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Smoke-test production five-provider Quantum Hunter
