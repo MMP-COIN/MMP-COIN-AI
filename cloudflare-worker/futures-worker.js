@@ -15,7 +15,18 @@ export default {
  },
  async scheduled(event,env,ctx){
   if(!env.ADMIN_DB)throw new Error("ADMIN_DB binding missing");
-  const tetherMonitor=env.TETHER_MONITOR?.fetch?env.TETHER_MONITOR.fetch(new Request("https://tether-monitor.internal/run",{method:"POST",headers:{"Content-Type":"application/json"}})).then(async response=>{if(!response.ok)throw new Error("Tether monitor HTTP "+response.status);const result=await response.json();console.log("Tether monitor isolated run",JSON.stringify({status:result.status,source_count:result.source_count,checked_at:result.checked_at}));}).catch(error=>console.error("Futures Cron Tether monitor failed:",error?.message||error)):Promise.resolve();
+  const tetherMonitor=(async()=>{
+   const row=await env.ADMIN_DB.prepare("SELECT payload FROM hunter_engine_state WHERE id = ?").bind("local-tether-watch").first();
+   let saved=null;try{saved=row?.payload?JSON.parse(row.payload):null;}catch{}
+   const updated=Date.parse(saved?.monitor_updated_at||saved?.checked_at||"");
+   if(!Number.isFinite(updated)||Date.now()-updated>120000){
+    if(!env.TETHER_MONITOR?.fetch)throw new Error("Tether service binding unavailable while monitor snapshot is stale");
+    const response=await env.TETHER_MONITOR.fetch(new Request("https://tether-monitor.internal/run",{method:"POST",headers:{"Content-Type":"application/json"}}));
+    if(!response.ok)throw new Error("Tether monitor HTTP "+response.status);
+    const result=await response.json();
+    console.log("Futures Cron Tether fallback run",JSON.stringify({status:result.status,source_count:result.source_count,checked_at:result.checked_at}));
+   }
+  })().catch(error=>console.error("Futures Cron Tether monitor fallback failed:",error?.message||error));
   if(ctx?.waitUntil)ctx.waitUntil(tetherMonitor);else await tetherMonitor;
   const id="digital-hunter-futures-cron-heartbeat",started=Date.now(),stamp=new Date(started).toISOString();
   const save=payload=>env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(id,JSON.stringify(payload),payload.updated_at||new Date().toISOString()).run();
