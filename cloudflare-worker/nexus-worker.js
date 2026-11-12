@@ -131,6 +131,7 @@ async function runCycle(env){
   }
   snapshot.ai_issues=aiIssues;
   snapshot.upgrade_recommendations=upgradeRecommendations;
+  snapshot.next_checks=nextChecks;
   const report={status:"ok",checked_at:snapshot.checked_at,severity,summary,ai_provider:provider,services,issues,ai_issues:aiIssues,upgrade_recommendations:upgradeRecommendations,actions,next_checks:nextChecks,radar:snapshot.radar,spot_flow:snapshot.spot_flow,futures_flow:snapshot.futures_flow,monitor:"server-cron-5m",code_changes_executed:false};
   await env.NEXUS_DB.prepare("INSERT INTO nexus_runs(checked_at,severity,summary,snapshot_json,issues_json,actions_json,ai_provider) VALUES(?,?,?,?,?,?,?)")
     .bind(report.checked_at,severity,summary,JSON.stringify(snapshot),JSON.stringify(issues),JSON.stringify(actions),provider).run();
