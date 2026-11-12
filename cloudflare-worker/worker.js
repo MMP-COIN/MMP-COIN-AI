@@ -1684,7 +1684,7 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/market-proxy"){
   if(source==="coingecko-top"&&!Number.isSafeInteger(requestedTopPage)||source==="coingecko-top"&&requestedTopPage<1)return json({error:"Invalid CoinGecko page"},400,request);
   if(source==="coinlore-top"&&(!Number.isSafeInteger(requestedOffset)||requestedOffset<0||requestedOffset%100!==0))return json({error:"Invalid CoinLore offset"},400,request);
   const urls={
-   "binance-tickers":["https://api.binance.com/api/v3/ticker/24hr","https://api.binance.us/api/v3/ticker/24hr","https://api1.binance.com/api/v3/ticker/24hr","https://api2.binance.com/api/v3/ticker/24hr","https://api3.binance.com/api/v3/ticker/24hr","https://data-api.binance.vision/api/v3/ticker/24hr"],
+   "binance-tickers":["https://data-api.binance.vision/api/v3/ticker/24hr","https://api.binance.com/api/v3/ticker/24hr","https://api-gcp.binance.com/api/v3/ticker/24hr","https://api1.binance.com/api/v3/ticker/24hr","https://api2.binance.com/api/v3/ticker/24hr","https://api3.binance.com/api/v3/ticker/24hr"],
    "bitget-tickers":["https://api.bitget.com/api/v3/market/tickers?category=SPOT","https://api.bitget.com/api/v2/spot/market/tickers"],
    "okx-tickers":["https://www.okx.com/api/v5/market/tickers?instType=SPOT","https://us.okx.com/api/v5/market/tickers?instType=SPOT"],
    "bybit-tickers":["https://api.bybit.com/v5/market/tickers?category=spot","https://api.bytick.com/v5/market/tickers?category=spot","https://api.bybit.eu/v5/market/tickers?category=spot"],
