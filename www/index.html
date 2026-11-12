@@ -5001,9 +5001,13 @@ html.mmp-native-app .native-refresh-label{font:700 9px Tahoma,Arial,sans-serif!i
 @media(max-width:390px){html.mmp-native-app .native-refresh-btn{min-width:72px!important;height:32px!important;padding:0 5px!important}html.mmp-native-app .native-refresh-label{font-size:8px!important}}
 .hunter-head-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap;justify-content:flex-end}.hunter-refresh-btn{white-space:nowrap}.hunter-refresh-btn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}.hunter-refresh-btn.is-refreshing svg{animation:radar-spin 1s linear infinite}@media(max-width:640px){.hunter-topline{align-items:flex-start}.hunter-head-actions{gap:6px}.hunter-refresh-btn{padding:7px 9px;font-size:11px}}
 </style>
+<style id="mmp-native-app-header-fix-20261112">
+html.mmp-native-app header.top{display:none!important}
+</style>
 <script>
 (function(){
  try{
+  var liveUpdateChecking=false,lastLiveCheck=0,liveUpdateInitialCheck=false;
   var native=!!(window.Capacitor&&(window.Capacitor.isNativePlatform?.()||window.Capacitor.getPlatform?.()==="android"))||location.protocol==="capacitor:";
   if(!native)return;
   document.documentElement.classList.add("mmp-native-app");
