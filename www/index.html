@@ -2793,7 +2793,7 @@ html body #ai-section .tf-card{min-width:0!important;max-width:100%!important;ov
 <div class="mmp-chart-toolbar" aria-label="تنظیمات نمودار">
  <div class="mmp-chart-timeframes" role="group" aria-label="بازه زمانی"><button type="button" data-chart-tf="1m" onclick="mmpSetChartInterval('1m')">۱د</button><button type="button" data-chart-tf="5m" onclick="mmpSetChartInterval('5m')">۵د</button><button type="button" data-chart-tf="15m" onclick="mmpSetChartInterval('15m')">۱۵د</button><button type="button" data-chart-tf="1h" class="active" onclick="mmpSetChartInterval('1h')">۱س</button><button type="button" data-chart-tf="4h" onclick="mmpSetChartInterval('4h')">۴س</button><button type="button" data-chart-tf="1d" onclick="mmpSetChartInterval('1d')">۱روز</button></div>
  <label class="mmp-chart-market">بازار <select id="mmp-chart-market" onchange="mmpSetChartMarket(this.value)"><option value="spot">اسپات</option><option value="futures">فیوچرز</option></select></label>
- <button type="button" id="mmp-chart-ema-toggle" class="mmp-chart-toggle active" onclick="mmpToggleChartEMA()">EMA 20/50</button><button type="button" id="mmp-chart-volume-toggle" class="mmp-chart-toggle active" onclick="mmpToggleChartVolume()">حجم</button><button type="button" class="mmp-chart-refresh" onclick="mmpLoadChart(true)">↻ تازه‌سازی</button>
+ <button type="button" id="mmp-chart-ema-toggle" class="mmp-chart-toggle active" onclick="mmpToggleChartEMA()">EMA 20/50</button><button type="button" id="mmp-chart-bollinger-toggle" class="mmp-chart-toggle" onclick="mmpToggleChartBollinger()">Bollinger 20/2</button><button type="button" id="mmp-chart-volume-toggle" class="mmp-chart-toggle active" onclick="mmpToggleChartVolume()">حجم</button><button type="button" class="mmp-chart-refresh" onclick="mmpLoadChart(true)">↻ تازه‌سازی</button>
 </div>
 <div id="mmp-chart-status" class="mmp-chart-status" role="status" aria-live="polite">در حال آماده‌سازی نمودار…</div>
 <div id="chart-container"><button class="chart-exit-fullscreen-btn" id="chart-exit-fullscreen-btn" type="button" aria-label="بازگشت از حالت تمام‌صفحه نمودار" onclick="toggleChartFullscreen()">↙ بازگشت به صفحه</button><div id="tradingview_widget" style="width:100%;height:100%;"></div></div>
@@ -3033,11 +3033,12 @@ function formatVal(usdPrice) {
   }
 }
 
-let mmpChartState={chart:null,candles:null,volume:null,emaFast:null,emaSlow:null,rsiChart:null,rsiSeries:null,abort:null,seq:0,interval:"1h",market:"spot",showEMA:true,showVolume:true,cache:new Map(),resizeObserver:null,refreshTimer:null,viewKey:null};
+let mmpChartState={chart:null,candles:null,volume:null,emaFast:null,emaSlow:null,rsiChart:null,rsiSeries:null,abort:null,seq:0,interval:"1h",market:"spot",showEMA:true,showBollinger:false,showVolume:true,cache:new Map(),resizeObserver:null,refreshTimer:null,viewKey:null};
 function mmpChartSymbol(){const raw=String(document.getElementById("tv-symbol")?.value||"BINANCE:BTCUSDT").split(":").pop().toUpperCase();return raw.endsWith("USDT")?raw:raw+"USDT";}
 function mmpChartStatus(message,kind=""){const el=document.getElementById("mmp-chart-status");if(el){el.textContent=message;el.className="mmp-chart-status"+(kind?" "+kind:"");}}
 function mmpChartRsi(rows,period=14){const out=[];let gain=0,loss=0;for(let i=1;i<rows.length;i++){const d=rows[i].close-rows[i-1].close;if(i<=period){gain+=Math.max(0,d);loss+=Math.max(0,-d);if(i===period)out.push({time:rows[i].time,value:loss===0?100:100-100/(1+gain/loss)});}else{gain=(gain*(period-1)+Math.max(0,d))/period;loss=(loss*(period-1)+Math.max(0,-d))/period;out.push({time:rows[i].time,value:loss===0?100:100-100/(1+gain/loss)});}}return out;}
 function mmpChartEma(rows,period){const out=[];let value=null;const alpha=2/(period+1);rows.forEach((r,i)=>{value=value===null?r.close:r.close*alpha+value*(1-alpha);if(i>=period-1)out.push({time:r.time,value});});return out;}
+function mmpChartBollinger(rows,period=20,multiplier=2){const upper=[],lower=[];for(let i=period-1;i<rows.length;i++){const window=rows.slice(i-period+1,i+1).map(r=>r.close),mean=window.reduce((a,b)=>a+b,0)/period,variance=window.reduce((a,b)=>a+(b-mean)**2,0)/period,band=multiplier*Math.sqrt(variance);upper.push({time:rows[i].time,value:mean+band});lower.push({time:rows[i].time,value:mean-band});}return {upper,lower};}
 function mmpCreateNativeChart(){
  const host=document.getElementById("tradingview_widget");if(!host||!window.LightweightCharts)return false;
  host.innerHTML='<div id="mmp-candle-canvas"></div><div id="mmp-rsi-canvas"></div>';
@@ -3048,10 +3049,11 @@ function mmpCreateNativeChart(){
  const volume=chart.addHistogramSeries({color:"#20c997",priceFormat:{type:"volume"},priceScaleId:"volume",lastValueVisible:false,priceLineVisible:false});
  chart.priceScale("volume").applyOptions({scaleMargins:{top:.82,bottom:0},visible:false});
  const emaFast=chart.addLineSeries({color:"#e8c36f",lineWidth:2,priceLineVisible:false,lastValueVisible:false}),emaSlow=chart.addLineSeries({color:"#68a9ff",lineWidth:2,priceLineVisible:false,lastValueVisible:false});
+ const bollingerUpper=chart.addLineSeries({color:"rgba(183,156,255,.8)",lineWidth:1,lineStyle:2,priceLineVisible:false,lastValueVisible:false}),bollingerLower=chart.addLineSeries({color:"rgba(183,156,255,.8)",lineWidth:1,lineStyle:2,priceLineVisible:false,lastValueVisible:false});
  const rsiChart=LightweightCharts.createChart(rsiEl,{...common,width:rsiEl.clientWidth||600,height:112,rightPriceScale:{borderColor:"rgba(145,165,185,.18)",scaleMargins:{top:.12,bottom:.12}},timeScale:{visible:false,borderColor:"rgba(145,165,185,.18)"}});
  const rsiSeries=rsiChart.addLineSeries({color:"#b79cff",lineWidth:2,priceLineVisible:false,lastValueVisible:true,priceFormat:{type:"price",precision:1,minMove:.1}});
  [70,30].forEach(v=>rsiSeries.createPriceLine({price:v,color:"rgba(183,156,255,.38)",lineWidth:1,lineStyle:2,axisLabelVisible:true,title:String(v)}));
- Object.assign(mmpChartState,{chart,candles,volume,emaFast,emaSlow,rsiChart,rsiSeries});
+ Object.assign(mmpChartState,{chart,candles,volume,emaFast,emaSlow,bollingerUpper,bollingerLower,rsiChart,rsiSeries});
  const resize=()=>{const w=candleEl.clientWidth||host.clientWidth||600;chart.applyOptions({width:w});rsiChart.applyOptions({width:w});};
  if(window.ResizeObserver){mmpChartState.resizeObserver=new ResizeObserver(resize);mmpChartState.resizeObserver.observe(host);}else window.addEventListener("resize",resize);
  return true;
@@ -3083,7 +3085,7 @@ function mmpRenderChart(payload){
  const viewKey=[payload.symbol,payload.interval,payload.market].join(":"),newView=viewKey!==st.viewKey,range=st.chart.timeScale().getVisibleLogicalRange();
  st.candles.setData(rows.map(c=>({time:c.time,open:c.open,high:c.high,low:c.low,close:c.close})));
  st.volume.setData(rows.map(c=>({time:c.time,value:c.volume,color:c.close>=c.open?"rgba(32,201,151,.48)":"rgba(240,92,112,.48)"})));
- st.emaFast.setData(st.showEMA?mmpChartEma(rows,20):[]);st.emaSlow.setData(st.showEMA?mmpChartEma(rows,50):[]);st.volume.applyOptions({visible:st.showVolume});st.rsiSeries.setData(mmpChartRsi(rows));
+ st.emaFast.setData(st.showEMA?mmpChartEma(rows,20):[]);st.emaSlow.setData(st.showEMA?mmpChartEma(rows,50):[]);const bands=mmpChartBollinger(rows,20,2);st.bollingerUpper.setData(st.showBollinger?bands.upper:[]);st.bollingerLower.setData(st.showBollinger?bands.lower:[]);st.volume.applyOptions({visible:st.showVolume});st.rsiSeries.setData(mmpChartRsi(rows));
  if(newView||!range){st.chart.timeScale().fitContent();st.rsiChart.timeScale().fitContent();}else{try{st.chart.timeScale().setVisibleLogicalRange(range);}catch(e){}}
  st.viewKey=viewKey;
  const last=rows[rows.length-1],date=new Date(last.time*1000).toLocaleString("fa-IR"),ageMs=Math.max(0,Number(payload.data_age_ms)||Date.now()-last.time*1000),ageLabel=ageMs<60000?"کمتر از یک دقیقه":Math.round(ageMs/60000).toLocaleString("fa-IR")+" دقیقه",stale=payload.data_stale?" · داده کش‌شده/قدیمی":" · دریافت زنده از منبع";
@@ -3096,6 +3098,7 @@ function changeTradingViewSymbol(){mmpLoadChart(true);}
 function mmpSetChartInterval(value){if(!["1m","5m","15m","1h","4h","1d"].includes(value))return;mmpChartState.interval=value;mmpLoadChart(true);}
 function mmpSetChartMarket(value){mmpChartState.market=value==="futures"?"futures":"spot";mmpLoadChart(true);}
 function mmpToggleChartEMA(){mmpChartState.showEMA=!mmpChartState.showEMA;document.getElementById("mmp-chart-ema-toggle")?.classList.toggle("active",mmpChartState.showEMA);const c=mmpChartState.cache.get([mmpChartSymbol(),mmpChartState.interval,mmpChartState.market].join(":"));if(c)mmpRenderChart(c.payload);}
+function mmpToggleChartBollinger(){mmpChartState.showBollinger=!mmpChartState.showBollinger;document.getElementById("mmp-chart-bollinger-toggle")?.classList.toggle("active",mmpChartState.showBollinger);const c=mmpChartState.cache.get([mmpChartSymbol(),mmpChartState.interval,mmpChartState.market].join(":"));if(c)mmpRenderChart(c.payload);}
 function mmpToggleChartVolume(){mmpChartState.showVolume=!mmpChartState.showVolume;document.getElementById("mmp-chart-volume-toggle")?.classList.toggle("active",mmpChartState.showVolume);const c=mmpChartState.cache.get([mmpChartSymbol(),mmpChartState.interval,mmpChartState.market].join(":"));if(c)mmpRenderChart(c.payload);}
 async function toggleChartFullscreen() {
   const chart = $('chart-container');
