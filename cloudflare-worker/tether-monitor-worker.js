@@ -146,9 +146,5 @@ export default {
   }
   if(url.pathname==="/health"&&request.method==="GET")return new Response(JSON.stringify({status:"online",role:"internal-tether-monitor",admin_db:!!env.ADMIN_DB}),{headers:{"Content-Type":"application/json","Cache-Control":"no-store"}});
   return new Response("Not found",{status:404,headers:{"Cache-Control":"no-store"}});
- },
- async scheduled(event,env,ctx){
-  const task=monitorLocalTether(env).catch(error=>console.error("Dedicated Tether monitor failed:",error?.message||error));
-  if(ctx?.waitUntil)ctx.waitUntil(task);else await task;
  }
 };
