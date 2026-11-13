@@ -3944,7 +3944,7 @@ function renderHeroCards() {
   const describe=(usd,change,source)=>{
     const counterpart=currentCurrency==='IRT'
       ? money(usd,usd<1?8:4)+' USDT'
-      : (currentTetherPrice>0?toman(usd*currentTetherPrice)+' تومان':'معادل تومانی در دسترس نیست');
+      : (isTetherRateFresh()?toman(usd*currentTetherPrice)+' تومان':'معادل تومانی در دسترس نیست');
     const changeText=Number.isFinite(Number(change))
       ? '۲۴ ساعت: '+(Number(change)>=0?'+':'')+Number(change).toFixed(2)+'%'
       : 'تغییر ۲۴ ساعته ناموجود';
@@ -4029,7 +4029,7 @@ function renderCoinsTables(data) {
   else grid.innerHTML=(showAll?'<button type="button" class="mmp-market-drawer-close" id="market-catalog-close"><span>فهرست کامل دارایی‌ها · '+ranked.length.toLocaleString("fa-IR")+' مورد</span><b>بستن ×</b></button>':"")+visible.map(c=>{
    const id=aiEscape(String(c.id||"")),symbol=aiEscape(String(c.symbol||"").toUpperCase()),name=aiEscape(c.name||symbol),price=Number(c.current_price);
    const quoteFresh=c.price_is_stale!==true&&Number.isFinite(Date.parse(c.price_updated_at||""))&&Date.now()-Date.parse(c.price_updated_at)<=120000;
-   const priceText=quoteFresh&&Number.isFinite(price)&&price>0?(price<1?money(price,8):money(price,2))+" USDT":"قیمت زنده ناموجود",tomanText=quoteFresh&&currentTetherPrice>0&&currentTetherUpdatedAt>0&&Date.now()-currentTetherUpdatedAt<=120000&&price>0?toman(price*currentTetherPrice)+" تومان":"— تومان";
+   const priceText=quoteFresh&&Number.isFinite(price)&&price>0?(price<1?money(price,8):money(price,2))+" USDT":"قیمت زنده ناموجود",tomanText=quoteFresh&&isTetherRateFresh()&&price>0?toman(price*currentTetherPrice)+" تومان":"— تومان";
    const change=Number(c.price_change_percentage_24h),changeText=Number.isFinite(change)?(change>=0?"+":"")+change.toFixed(2)+"%":"—";
    const image=aiEscape(c.image||("https://assets.coincap.io/assets/icons/"+String(c.symbol||"").toLowerCase()+"@2x.png"));
    const sources=Array.isArray(c.marketPairs)?[...new Set(c.marketPairs.map(x=>x.exchange).filter(Boolean))]:[];
