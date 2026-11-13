@@ -56,3 +56,10 @@ environment = "production"
 binding = "TETHER_MONITOR"
 service = "mmp-coin-ai-tether-monitor"
 environment = "production"
+
+# Private service binding to the internal GitHub bridge API.
+# The analyzer can call env.GITHUB_DEPLOY_API.fetch(...) without exposing the API publicly.
+[[services]]
+binding = "GITHUB_DEPLOY_API"
+service = "mmp-coin-ai-github-deploy"
+environment = "production"
