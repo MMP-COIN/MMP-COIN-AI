@@ -1,0 +1,31 @@
+name = "mmp-coin-ai-github-deploy"
+main = "github-deploy-worker.js"
+compatibility_date = "2026-11-13"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = false
+preview_urls = false
+
+[ai]
+binding = "AI"
+
+[[kv_namespaces]]
+binding = "PREVIEW_RADAR"
+id = "9170b43c58d5476c96e64387b1c6ea34"
+
+[[kv_namespaces]]
+binding = "FAST_RADAR"
+id = "c87328700fbd4796bfd86b7a4df46648"
+
+[[d1_databases]]
+binding = "MARKET_DATA"
+database_name = "mmp_market_data_preview"
+database_id = "4d03a56f-05c4-4cbf-8568-6fd124747002"
+
+[[d1_databases]]
+binding = "ADMIN_DB"
+database_name = "mmp_coin_ai_preview_admin"
+database_id = "396916eb-4b22-4f18-87d7-d8733b6a196a"
+
+[observability]
+enabled = true
+head_sampling_rate = 1
