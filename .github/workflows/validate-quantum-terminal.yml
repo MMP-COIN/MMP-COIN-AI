@@ -34,25 +34,27 @@ jobs:
           node <<'NODE'
           const fs = require("node:fs");
           const path = require("node:path");
+          const { execFileSync } = require("node:child_process");
           const pages = ["www/index.html", "www/quantum-lab.html", "www/market-heatmap.html"];
           const scripts = new Set();
           for (const page of pages) {
             const html = fs.readFileSync(page, "utf8");
-            const ids = [...html.matchAll(/\\bid=["']([^"']+)["']/g)].map(match => match[1]);
+            const ids = [...html.matchAll(/\bid=["']([^"']+)["']/g)].map(match => match[1]);
             const duplicates = [...new Set(ids.filter((id, index) => ids.indexOf(id) !== index))];
             if (duplicates.length) throw new Error(page + " has duplicate IDs: " + duplicates.join(", "));
-            for (const match of html.matchAll(/<(script|link)\\b([^>]+)>/gi)) {
-              const tag = match[1].toLowerCase();
-              const attr = tag === "script" ? "src" : "href";
-              const value = (match[2].match(new RegExp("\\\\b" + attr + "=[\\\\"']([^\\\\"']+)", "i")) || [])[1];
-              if (!value || /^(?:https?:|data:|#|\/\/)/i.test(value)) continue;
+            const refs = [
+              ...[...html.matchAll(/<script\b[^>]*\bsrc=["']([^"']+)["'][^>]*>/gi)].map(match => ["script", match[1]]),
+              ...[...html.matchAll(/<link\b[^>]*\bhref=["']([^"']+)["'][^>]*>/gi)].map(match => ["link", match[1]])
+            ];
+            for (const [tag, value] of refs) {
+              if (/^(?:https?:|data:|#|\/\/)/i.test(value)) continue;
               const local = path.normalize(path.join(path.dirname(page), value.split(/[?#]/)[0]));
               if (!fs.existsSync(local)) throw new Error(page + " references missing local " + tag + ": " + value);
-              if (tag === "script" && /\\.js$/i.test(local)) scripts.add(local);
+              if (tag === "script" && /\.js$/i.test(local)) scripts.add(local);
             }
           }
           for (const script of scripts) {
-            require("node:child_process").execFileSync(process.execPath, ["--check", script], {stdio:"inherit"});
+            execFileSync(process.execPath, ["--check", script], {stdio:"inherit"});
             console.log("JavaScript syntax OK: " + script);
           }
           console.log("All local HTML references, unique IDs, and shipped JavaScript bundles are valid.");
