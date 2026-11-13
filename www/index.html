@@ -3246,6 +3246,7 @@ async function refreshLiveQuotes(){
 
 const money=(v,d=2)=>Number(v).toLocaleString('en-US',{maximumFractionDigits:d});
 const toman=(v)=>Math.round(v).toLocaleString('en-US');
+const isTetherRateFresh=()=>currentTetherPrice>0&&currentTetherUpdatedAt>0&&Date.now()-currentTetherUpdatedAt<=120000;
 
 function clock(){$('clock').textContent=new Date().toLocaleTimeString('fa-IR')}
 setInterval(clock,1000);clock();
@@ -3308,7 +3309,7 @@ function setCurrency(curr) {
 
 function formatVal(usdPrice) {
   if (currentCurrency === 'IRT') {
-    return currentTetherPrice>0?toman(usdPrice * currentTetherPrice) + ' تومان':'— تومان';
+    return isTetherRateFresh()?toman(usdPrice * currentTetherPrice) + ' تومان':'— تومان';
   } else {
     return '$' + money(usdPrice, usdPrice < 1 ? 4 : 2);
   }
@@ -3531,7 +3532,8 @@ async function fetchTetherRate(){
    if(data?.fresh===false||data?.data_stale===true)throw new Error("stale local tether snapshot");
    const sources=Array.isArray(data?.sources)?data.sources.filter(x=>x?.fresh===true&&Number(x.price_toman)>0).map(x=>String(x.exchange||"")).filter(Boolean):[];
    const price=Number(data?.median_toman);
-   if(Number.isFinite(price)&&price>=1000&&price<=100000000&&sources.length)return {price,sources,warning:String(data.warning||"")};
+   const deviationPct=Number(data.source_deviation_pct)||0;
+   if(Number.isFinite(price)&&price>=1000&&price<=100000000&&sources.length&&deviationPct<=2.5)return {price,sources,warning:String(data.warning||""),deviationPct};
   }catch(error){console.warn("Local market monitor unavailable:",error?.message||error);}
   finally{clearTimeout(timer);}
   return null;
@@ -3554,6 +3556,7 @@ async function fetchTetherRate(){
    try{
     const response=await fetch(item.url,{cache:"no-store",signal:controller.signal});
     if(!response.ok)throw new Error("HTTP "+response.status);
+    if(response.headers.get("X-MMP-Cache")==="stale")throw new Error("stale cached quote");
     const data=await response.json(),price=item.read(data);
     if(!Number.isFinite(price)||price<1000||price>100000000)throw new Error("invalid rate");
     return {source:item.source,price};
@@ -3568,7 +3571,7 @@ async function fetchTetherRate(){
   return {price:(a.price+b.price)/2,sources:valid.map(x=>x.source),warning:""};
  })();
  const [local,fallback]=await Promise.all([localPromise,fallbackPromise]);
- if(local&&local.sources.length>=(fallback?.sources?.length||0))return local;
+ if(local&&local.sources.length>=(fallback?.sources?.length||0)&&Number(local.deviationPct??0)<=2.5)return local;
  return fallback?.price>0?fallback:local||{price:0,sources:[],warning:"نرخ تتر موقتاً از منابع داخلی دریافت نشد"};
 }
 
@@ -3604,12 +3607,12 @@ async function refreshBenchmarkQuotes(){
    return {id:symbol==="BTC"?"bitcoin":"ethereum",symbol,name:old.name||symbol,current_price:Number(old.current_price)||0,price_change_percentage_24h:old.price_change_percentage_24h,price_source:old.price_source||"آخرین داده معتبر",price_updated_at:old.price_updated_at||null};
   });
   const quotes=await enrichWithBinance(seed);
-  const now=Date.now(),fresh=quotes.filter(c=>Number(c.current_price)>0&&Number.isFinite(Date.parse(c.price_updated_at||""))&&now-Date.parse(c.price_updated_at)<=60000&&["Binance Spot","Gate.io Spot","KuCoin Spot","MEXC Spot","OKX Spot","Bitget Spot"].includes(c.price_source));
+  const now=Date.now(),fresh=quotes.filter(c=>Number(c.current_price)>0&&c.price_is_stale!==true&&Number(c.price_source_count)>=1&&Number.isFinite(Date.parse(c.price_updated_at||""))&&now-Date.parse(c.price_updated_at)<=120000);
   if(!fresh.length)return false;
   const bySymbol=new Map(fresh.map(c=>[String(c.symbol).toUpperCase(),c]));
   cachedCoinsData=cachedCoinsData.map(c=>bySymbol.get(String(c.symbol||"").toUpperCase())?{...c,...bySymbol.get(String(c.symbol||"").toUpperCase())}:c);
   lastMarket.crypto=lastMarket.crypto||{};
-  fresh.forEach(c=>{lastMarket.crypto[c.symbol.toUpperCase()]={usd:Number(c.current_price),change24h:c.price_change_percentage_24h};});
+  fresh.forEach(c=>{lastMarket.crypto[c.symbol.toUpperCase()]={usd:Number(c.current_price),change24h:c.price_change_percentage_24h,updatedAt:now,sources:c.price_source};});
   renderHeroCards();
   return true;
  }catch(error){console.warn("Independent BTC/ETH quote refresh failed:",error);return false;}
@@ -3870,8 +3873,10 @@ async function refreshAll(){
 function renderHeroCards() {
   const btcCoin=cachedCoinsData.find(x=>x.id==='bitcoin'||String(x?.symbol||"").toUpperCase()==='BTC');
   const ethCoin=cachedCoinsData.find(x=>x.id==='ethereum'||String(x?.symbol||"").toUpperCase()==='ETH');
-  const btcUsd=Number(lastMarket.crypto?.BTC?.usd||btcCoin?.current_price);
-  const ethUsd=Number(lastMarket.crypto?.ETH?.usd||ethCoin?.current_price);
+  const btcLive=lastMarket.crypto?.BTC&&now-Number(lastMarket.crypto.BTC.updatedAt||0)<=120000;
+  const ethLive=lastMarket.crypto?.ETH&&now-Number(lastMarket.crypto.ETH.updatedAt||0)<=120000;
+  const btcUsd=btcLive?Number(lastMarket.crypto.BTC.usd):0;
+  const ethUsd=ethLive?Number(lastMarket.crypto.ETH.usd):0;
   const describe=(usd,change,source)=>{
     const counterpart=currentCurrency==='IRT'
       ? '$'+money(usd,usd<1?6:2)
@@ -3883,14 +3888,14 @@ function renderHeroCards() {
   };
   if(Number.isFinite(btcUsd)&&btcUsd>0){
     $('btc').textContent=formatVal(btcUsd);
-    $('btc-sub').textContent=describe(btcUsd,lastMarket.crypto?.BTC?.change24h??btcCoin?.price_change_percentage_24h,btcCoin?.price_source||'CoinGecko');
+    $('btc-sub').textContent=describe(btcUsd,lastMarket.crypto?.BTC?.change24h,lastMarket.crypto?.BTC?.sources||btcCoin?.price_source);
   }else{
     $('btc').textContent='—';
     $('btc-sub').textContent='داده معتبر BTC هنوز دریافت نشده است';
   }
   if(Number.isFinite(ethUsd)&&ethUsd>0){
     $('eth').textContent=formatVal(ethUsd);
-    $('eth-sub').textContent=describe(ethUsd,lastMarket.crypto?.ETH?.change24h??ethCoin?.price_change_percentage_24h,ethCoin?.price_source||'CoinGecko');
+    $('eth-sub').textContent=describe(ethUsd,lastMarket.crypto?.ETH?.change24h,lastMarket.crypto?.ETH?.sources||ethCoin?.price_source);
   }else{
     $('eth').textContent='—';
     $('eth-sub').textContent='داده معتبر ETH هنوز دریافت نشده است';
@@ -3901,13 +3906,13 @@ function renderHeroCards() {
 
 function renderTetherCard(){
  const value=$("usdt"),source=$("usdt-source");if(!value||!source)return;
- if(currentTetherPrice>0){
+ if(isTetherRateFresh()){
   const inToman=money(currentTetherPrice,0)+" تومان";
   value.textContent=currentCurrency==="USDT"?"1.00 USDT":inToman;
   source.textContent=(currentCurrency==="USDT"?"معادل تومانی: "+inToman:"معادل تتری: 1.00 USDT")+" · منبع: "+(currentTetherSources.length?currentTetherSources.join(" + "):"آخرین نرخ معتبر")+(currentTetherWarning?" · "+currentTetherWarning:"");
  }else{
   value.textContent="—";
-  source.textContent=currentTetherWarning||"نرخ تتر در دسترس نیست";
+  source.textContent=currentTetherWarning||"نرخ زنده تتر در دسترس نیست؛ آخرین نرخ به‌عنوان قیمت جاری نمایش داده نمی‌شود";
  }
 }
 
