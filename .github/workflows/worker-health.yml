@@ -10,6 +10,8 @@ on:
       - "cloudflare-worker/**"
       - "www/index.html"
       - "www/quantum-lab.html"
+      - "www/v4/**"
+      - ".github/workflows/validate-v4-rebuild.yml"
       - ".github/workflows/worker-health.yml"
 
 permissions:
@@ -417,7 +419,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Smoke-test live MMP NEXUS AI diagnostic endpoint
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' || github.event_name == 'pull_request'
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
@@ -475,7 +477,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Smoke-test production five-provider Quantum Hunter
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' || github.head_ref == 'rebuild/v4-new-platform'
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
@@ -489,7 +491,7 @@ jobs:
           jq -e '.requested == 6 and (.scanned // 0) >= 4 and (.failed // 6) <= 2' /tmp/futures-provider-hunter.json >/dev/null
           jq -r '"Deployed Futures fallback: " + (.scanned|tostring) + "/6 scanned; " + (.failed|tostring) + " data failures; " + (.signals|length|tostring) + " flow-confirmed signals." ' /tmp/futures-provider-hunter.json
       - name: Verify scheduled Spot and Futures hunter cycles
-        if: always() && github.ref == 'refs/heads/main'
+        if: always() && (github.ref == 'refs/heads/main' || github.head_ref == 'rebuild/v4-new-platform')
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
@@ -513,7 +515,7 @@ jobs:
           echo "- Scheduled Spot and Futures engines: both completed a live scan without cycle errors" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Verify independent server-side fast radar scan
-        if: always() && github.ref == 'refs/heads/main'
+        if: always() && (github.ref == 'refs/heads/main' || github.head_ref == 'rebuild/v4-new-platform')
         env:
           RADAR_WORKER_URL: https://mmp-coin-ai-radar.mehrdadmohammadi1988.workers.dev
         run: |
@@ -538,7 +540,7 @@ jobs:
           echo "- Independent server-side radar: live scan and snapshot verified" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Check private analytics Worker
-        if: always() && github.ref == 'refs/heads/main'
+        if: always() && (github.ref == 'refs/heads/main' || github.head_ref == 'rebuild/v4-new-platform')
         env:
           ADMIN_WORKER_URL: https://mmp-coin-ai-admin.mehrdadmohammadi1988.workers.dev
         run: |
@@ -550,7 +552,7 @@ jobs:
           echo "- Private analytics Worker: online; admin API responds without a session" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Diagnose exchange API access from GitHub runner
-        if: always() && github.ref == 'refs/heads/main'
+        if: always() && (github.ref == 'refs/heads/main' || github.head_ref == 'rebuild/v4-new-platform')
         continue-on-error: true
         run: |
           set -u
@@ -577,7 +579,7 @@ jobs:
           probe_cors "Bitget" "https://api.bitget.com/api/v3/market/tickers?category=SPOT&symbol=BTCUSDT"
 
       - name: Check exchange connection monitor
-        if: always() && github.ref == 'refs/heads/main'
+        if: always() && (github.ref == 'refs/heads/main' || github.head_ref == 'rebuild/v4-new-platform')
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
@@ -593,7 +595,7 @@ jobs:
           fi
 
       - name: Check expanded multi-exchange hunter universe
-        if: always() && github.ref == 'refs/heads/main'
+        if: always() && (github.ref == 'refs/heads/main' || github.head_ref == 'rebuild/v4-new-platform')
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
@@ -608,7 +610,7 @@ jobs:
           echo "- Canonical catalog: $count assets; independent Hunter universe: $hunter_count instruments ($discovered outside metadata catalog) across $venues" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Verify shared edge cache for Hunter universe
-        if: always() && github.ref == 'refs/heads/main'
+        if: always() && (github.ref == 'refs/heads/main' || github.head_ref == 'rebuild/v4-new-platform')
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
@@ -630,7 +632,7 @@ jobs:
           echo "- Hunter universe: shared D1 cache or age-labeled stale fallback verified" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Check market data proxy
-        if: always() && github.ref == 'refs/heads/main'
+        if: always() && (github.ref == 'refs/heads/main' || github.head_ref == 'rebuild/v4-new-platform')
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
@@ -672,7 +674,7 @@ jobs:
           echo "- CoinLore fallback proxy: responding with ranked assets and live USD prices" >> "$GITHUB_STEP_SUMMARY"
  
       - name: Smoke-test live spot candlestick endpoint
-        if: always() && github.ref == 'refs/heads/main'
+        if: always() && (github.ref == 'refs/heads/main' || github.head_ref == 'rebuild/v4-new-platform')
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
@@ -691,7 +693,7 @@ jobs:
 
 
       - name: Run and verify the scheduled Quantum Hunter snapshot
-        if: always() && github.ref == 'refs/heads/main'
+        if: always() && (github.ref == 'refs/heads/main' || github.head_ref == 'rebuild/v4-new-platform')
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
@@ -706,7 +708,7 @@ jobs:
           jq -r '"Quantum Hunter snapshot: scanned " + (.scanned_count|tostring) + "/" + (.universe_count|tostring) + " liquid instruments; " + (.signals|length|tostring) + " confirmed signals; failures " + (.failed_count|tostring)' /tmp/hunter-snapshot.json >> "$GITHUB_STEP_SUMMARY"
 
       - name: Verify 1m/3m/5m and Futures candle endpoints
-        if: always() && github.ref == 'refs/heads/main'
+        if: always() && (github.ref == 'refs/heads/main' || github.head_ref == 'rebuild/v4-new-platform')
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
@@ -724,7 +726,7 @@ jobs:
       # Preview workers.dev hostnames are disabled by policy. Keep the production
       # completeness assertions below as the authoritative gate instead of testing dead preview URLs.
       - name: Smoke-test Spot/Futures trade flow, order book and analysis
-        if: always() && github.ref == 'refs/heads/main'
+        if: always() && (github.ref == 'refs/heads/main' || github.head_ref == 'rebuild/v4-new-platform')
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
@@ -795,7 +797,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Smoke-test market intelligence endpoints
-        if: always() && github.ref == 'refs/heads/main'
+        if: always() && (github.ref == 'refs/heads/main' || github.head_ref == 'rebuild/v4-new-platform')
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
@@ -823,7 +825,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Smoke-test Iranian tether watch and early pressure APIs
-        if: always() && github.ref == 'refs/heads/main'
+        if: always() && (github.ref == 'refs/heads/main' || github.head_ref == 'rebuild/v4-new-platform')
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
@@ -862,7 +864,7 @@ jobs:
           NODE
 
       - name: Live AI analyzer end-to-end smoke test
-        if: always() && github.ref == 'refs/heads/main'
+        if: always() && (github.ref == 'refs/heads/main' || github.head_ref == 'rebuild/v4-new-platform')
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
