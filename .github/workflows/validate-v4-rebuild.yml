@@ -27,6 +27,10 @@ jobs:
           set -euo pipefail
           status=$(curl -sSL --max-time 20 -o /tmp/mmp-current-pages.html -w "%{http_code}" "https://mmp-coin.github.io/")
           echo "PUBLIC_PAGES_HTTP=$status"
+          if [ "$status" = "404" ] || [ "$status" = "410" ] || [ "$status" = "503" ]; then
+            echo "PUBLIC_PAGES_UNAVAILABLE=true"
+            exit 0
+          fi
           python3 - <<'PY'
           from pathlib import Path
           import re
