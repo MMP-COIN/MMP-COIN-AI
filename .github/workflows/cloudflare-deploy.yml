@@ -64,7 +64,10 @@ jobs:
           node --check --input-type=module < cloudflare-worker/hunter-cron-worker.js
           node --check --input-type=module < cloudflare-worker/nexus-worker.js
           node --check --input-type=module < cloudflare-worker/tether-monitor-worker.js
-          echo "All six production Worker entry points passed syntax validation."
+          node --check --input-type=module < cloudflare-worker/github-deploy-worker.js
+          grep -q '^workers_dev = false$' cloudflare-worker/github-deploy-wrangler.toml
+          grep -q '^preview_urls = false$' cloudflare-worker/github-deploy-wrangler.toml
+          echo "All seven Worker entry points passed syntax validation; internal bridge is configured private-only."
 
       - name: Deploy isolated Tether monitor
         run: npx --yes wrangler@4 deploy --config cloudflare-worker/tether-monitor-wrangler.toml
@@ -84,6 +87,9 @@ jobs:
       - name: Deploy NEXUS monitor
         run: npx --yes wrangler@4 deploy --config cloudflare-worker/nexus-wrangler.toml
 
+      - name: Deploy private GitHub bridge API
+        run: npx --yes wrangler@4 deploy --config cloudflare-worker/github-deploy-wrangler.toml
+
       - name: Verify deployed Analyzer and Futures service binding
         run: |
           set -euo pipefail
@@ -96,4 +102,4 @@ jobs:
       - name: Record deployment provenance
         run: |
           echo "Deployed canonical commit: $GITHUB_SHA"
-          echo "All six production Workers deployed and post-deployment health checks passed."
+          echo "All six production Workers and the private GitHub bridge deployment completed; Analyzer and Futures health checks passed."
