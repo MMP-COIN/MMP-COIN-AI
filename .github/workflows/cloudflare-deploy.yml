@@ -47,7 +47,7 @@ jobs:
           fi
           echo "::add-mask::$TOKEN"
           printf 'CLOUDFLARE_API_TOKEN=%s\n' "$TOKEN" >> "$GITHUB_ENV"
-          VERIFY_STATUS="$(curl --silent --show-error --max-time 20 -o /tmp/cloudflare-token-verify.json -w '%{http_code}' -H "Authorization: Bearer $TOKEN" https://api.cloudflare.com/client/v4/user/tokens/verify)"
+          VERIFY_STATUS="$(curl --silent --show-error --max-time 20 -o /tmp/cloudflare-token-verify.json -w '%{http_code}' -H "Authorization: Bearer $TOKEN" https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/tokens/verify)"
           if [ "$VERIFY_STATUS" != "200" ] || ! jq -e '.success == true and .result.status == "active"' /tmp/cloudflare-token-verify.json >/dev/null; then
             echo "::error::Cloudflare API token verification failed. Replace CLOUDFLARE_API_TOKEN with the active raw token from Cloudflare. Token values are never printed."
             jq -c '{success,errors}' /tmp/cloudflare-token-verify.json || true
