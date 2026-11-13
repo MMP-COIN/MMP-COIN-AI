@@ -1779,7 +1779,7 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/market-proxy"){
    // Prefer a known-good D1 snapshot during provider throttling; do not turn
    // a temporary upstream 429 into a site-wide market-catalog outage.
    if(/429|502|503|504/.test(String(lastError||""))&&Array.isArray(staleMarketResponse?.payload)&&staleMarketResponse.payload.length){
-    return json(staleMarketResponse.payload,200,request,{"X-MMP-Data-Source":"D1 market fallback","X-MMP-Cache":"stale","X-MMP-Data-Age":String(staleMarketResponse.ageMs),"Warning":"110 - \\"Response is stale\\""});
+    return json(staleMarketResponse.payload,200,request,{"X-MMP-Data-Source":"D1 market fallback","X-MMP-Cache":"stale","X-MMP-Data-Age":String(staleMarketResponse.ageMs),"Warning":"110 - \"Response is stale\""});
    }
    // CoinGecko may throttle deep pages. Fetch CoinLore slices sequentially
    // to avoid burst traffic; retry one 429 with a bounded Retry-After delay.
