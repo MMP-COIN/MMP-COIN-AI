@@ -32,7 +32,7 @@ async function readSource(urls,exchange,normalize,headers=HEADERS){
   }catch(error){lastError=error;}
  }
  return value>0
-  ?{exchange,price_irr:value,price_toman:value/10,fresh:true}
+  ?{exchange,price_irr:value,price_toman:value/10,fresh:true,updated_at:new Date().toISOString()}
   :{exchange,price_irr:null,price_toman:null,fresh:false,error:String(lastError?.message||"no valid price response").slice(0,100)};
 }
 async function fetchLocalTetherSnapshot(){
@@ -106,10 +106,51 @@ async function fetchLocalTetherSnapshot(){
    return rawPrice>0?(["IRT","TMN","TOMAN"].includes(quote)?rawPrice*10:rawPrice):null;
   })
  ]);
- const valid=sources.filter(x=>x.fresh&&Number.isFinite(x.price_toman)),values=valid.map(x=>x.price_toman).sort((a,b)=>a-b);
- const median=values.length?(values.length%2?values[(values.length-1)/2]:(values[values.length/2-1]+values[values.length/2])/2):null;
- const deviation=median?Math.max(...values.map(x=>Math.abs(x-median)/median*100)):null;
- return {market:"USDT/IRR",unit:"Toman",sources,source_count:valid.length,median_toman:median,source_deviation_pct:deviation,status:valid.length>=2?"multi_source":valid.length===1?"single_source":"offline",warning:valid.length===1?"فقط یک منبع معتبر پاسخ داده؛ مقایسه چندصرافی در دسترس نیست.":valid.length===0?"هیچ منبع زنده معتبر پاسخ نداده است.":null,checked_at:new Date().toISOString(),cache:"bypassed"};
+ const valid=sources.filter(x=>x.fresh&&Number.isFinite(x.price_toman)&&x.price_toman>=1000&&x.price_toman<=100000000);
+ const median=rows=>{const values=rows.map(x=>Number(x.price_toman)).sort((a,b)=>a-b),n=values.length;return n?(n%2?values[(n-1)/2]:(values[n/2-1]+values[n/2])/2):null;};
+ const spread=(rows,center)=>center&&rows.length?Math.max(...rows.map(x=>Math.abs(Number(x.price_toman)-center)/center*100)):0;
+ const primary=valid.find(x=>x.exchange==="Nobitex")||null,backups=valid.filter(x=>x.exchange!=="Nobitex");
+ let selected=null,selectedSources=[],selectionMethod="offline",warning="",primaryGap=null,selectedSpread=0;
+ if(primary){
+  const backupMedian=median(backups),backupSpread=spread(backups,backupMedian);
+  primaryGap=backupMedian?Math.abs(primary.price_toman-backupMedian)/backupMedian*100:null;
+  if(backups.length>=2&&backupSpread<=2.5&&primaryGap!==null&&primaryGap>3){
+   const corroborated=backups.filter(x=>Math.abs(x.price_toman-backupMedian)/backupMedian*100<=2.5);
+   selected=median(corroborated);selectedSources=corroborated;selectionMethod="fallback_consensus";
+   selectedSpread=spread(corroborated,selected);
+   warning="نرخ نوبیتکس با اجماع منابع جایگزین بیش از ۳٪ اختلاف داشت؛ نرخ جایگزینِ تأییدشده نمایش داده شد.";
+  }else{
+   selected=primary.price_toman;
+   selectedSources=[primary,...backups.filter(x=>Math.abs(x.price_toman-primary.price_toman)/primary.price_toman*100<=3)];
+   selectionMethod=selectedSources.length>1?"primary_nobitex_confirmed":"primary_nobitex";
+   selectedSpread=spread(selectedSources,selected);
+   if(!backups.length)warning="نوبیتکس منبع اصلی است؛ منابع پشتیبان فعلاً پاسخ نداده‌اند.";
+   else if(primaryGap!==null&&primaryGap>3)warning="نرخ نوبیتکس به‌عنوان مرجع اصلی حفظ شد؛ اختلاف منابع پشتیبان نیازمند توجه است.";
+  }
+ }else if(valid.length){
+  const center=median(valid),corroborated=valid.filter(x=>Math.abs(x.price_toman-center)/center*100<=2.5);
+  if(corroborated.length>=2){
+   selected=median(corroborated);selectedSources=corroborated;selectionMethod="fallback_consensus";
+   selectedSpread=spread(corroborated,selected);
+   warning="نوبیتکس در دسترس نیست؛ نرخ از اجماع منابع پشتیبان محاسبه شد.";
+  }else if(corroborated.length===1){
+   selected=corroborated[0].price_toman;selectedSources=corroborated;selectionMethod="fallback_single";
+   warning="نوبیتکس در دسترس نیست؛ فقط یک منبع جایگزین معتبر پاسخ داده است.";
+  }else{
+   selected=center;selectedSources=valid;selectionMethod="fallback_disagreement";
+   selectedSpread=spread(valid,center);
+   warning="نوبیتکس در دسترس نیست و منابع جایگزین اختلاف دارند؛ میانه منابع نمایش داده شده است.";
+  }
+ }
+ const selectedNames=[...new Set(selectedSources.map(x=>x.exchange))];
+ const allMedian=median(valid),allSpread=spread(valid,allMedian);
+ return {
+  market:"USDT/IRR",unit:"Toman",sources,source_count:valid.length,
+  selected_source:primary&&selectionMethod.startsWith("primary")?"Nobitex":selectedNames.join(" + "),
+  selected_sources:selectedNames,selection_method:selectionMethod,selected_toman:selected,median_toman:selected,
+  source_deviation_pct:selectedSpread,all_source_deviation_pct:allSpread,primary_deviation_pct:primaryGap,
+  status:selectionMethod,warning:warning||null,checked_at:new Date().toISOString(),cache:"bypassed"
+ };
 }
 async function readLocalTetherState(env){
  try{const row=await env.ADMIN_DB.prepare("SELECT payload FROM hunter_engine_state WHERE id = ?").bind("local-tether-watch").first();return row?.payload?JSON.parse(row.payload):null;}catch{return null;}
