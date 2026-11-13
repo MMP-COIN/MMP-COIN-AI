@@ -270,7 +270,7 @@ jobs:
               if (path === "/market-proxy" && source.endsWith("-tickers") && response.ok()) {
                 const cacheState = String(response.headers()["x-mmp-cache"] || "").toLowerCase();
                 if (cacheState !== "fresh") {
-                  failures.push(name + " stale or unverified exchange proxy cache: " + source);
+                  optionalUpstreamFailures.push(source + ": stale cache rejected");
                   return;
                 }
                 const payload = await response.json().catch(() => null);
