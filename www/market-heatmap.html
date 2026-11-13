@@ -40,6 +40,7 @@ const API="https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev";
 const $=id=>document.getElementById(id);
 const fmt=(n,d=2)=>Number(n).toLocaleString("en-US",{maximumFractionDigits:d,minimumFractionDigits:d});
 const usd=n=>"$"+Number(n).toLocaleString("en-US",{maximumFractionDigits:0});
+const priceUsd=n=>{const v=Number(n);if(!Number.isFinite(v)||v<=0)return "—";const d=v>=1000?2:v>=1?4:v>=0.01?6:8;return "$"+v.toLocaleString("en-US",{maximumFractionDigits:d});};
 let data=[],filter="all",busy=false;
 function render(){
  const count=Number($("count").value)||30,sort=$("sort").value;
