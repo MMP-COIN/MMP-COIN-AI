@@ -1,10 +1,17 @@
-import { runDigitalHunterMarketCycle } from "./worker.js";
+import { runDigitalHunterMarketCycle, loadFuturesMarketFlow } from "./worker.js";
 import { QUANTUM_ENGINE_NAME, QUANTUM_ENGINE_VERSION } from "./quantum-core.js";
 const json=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store","X-Content-Type-Options":"nosniff"}});
 export default {
  async fetch(request,env){
   const url=new URL(request.url);
   if(url.pathname==="/health"&&request.method==="GET")return json({status:"online",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,market:"futures",d1:!!env.ADMIN_DB});
+  if(url.pathname==="/market-flow"&&request.method==="GET"){
+   if(!env.FUTURES_ENGINE_TOKEN||request.headers.get("X-MMP-Futures-Token")!==env.FUTURES_ENGINE_TOKEN)return json({error:"Unauthorized"},401);
+   const symbol=String(url.searchParams.get("symbol")||"").toUpperCase(),windowMinutes=url.searchParams.get("window")||1;
+   if(!/^[A-Z0-9]{2,24}(USDT)?$/.test(symbol))return json({error:"Invalid Futures symbol"},400);
+   try{return json(await loadFuturesMarketFlow(symbol,windowMinutes),200);}
+   catch(error){return json({error:String(error?.message||error).slice(0,260)},502);}
+  }
   if(url.pathname==="/run"&&request.method==="POST"){
    if(!env.FUTURES_ENGINE_TOKEN||request.headers.get("X-MMP-FUTURES-TOKEN")!==env.FUTURES_ENGINE_TOKEN)return json({error:"Unauthorized"},401);
    if(!env.ADMIN_DB)return json({error:"ADMIN_DB binding missing"},503);
