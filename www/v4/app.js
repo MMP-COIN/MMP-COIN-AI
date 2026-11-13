@@ -8,6 +8,16 @@
   try{const response=await fetch(url,{signal:controller.signal,cache:"no-store",headers:{Accept:"application/json"}});if(!response.ok)throw new Error("HTTP "+response.status);return await response.json();}
   finally{clearTimeout(timer);}
  }
+ async function getFreshProxy(url,timeout=9000){
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeout);
+  try{
+   const response=await fetch(url,{signal:controller.signal,cache:"no-store",headers:{Accept:"application/json"}});
+   if(!response.ok)throw new Error("HTTP "+response.status);
+   const cacheState=String(response.headers.get("X-MMP-Cache")||"").toLowerCase();
+   if(cacheState!=="fresh")throw new Error(cacheState==="stale"?"stale market cache":"market cache freshness not confirmed");
+   return await response.json();
+  }finally{clearTimeout(timer);}
+ }
  function money(v){const n=Number(v);return Number.isFinite(n)&&n>0?n.toLocaleString("en-US",{maximumFractionDigits:n>100?2:4}):"—";}
  let currentTetherPrice=0,currentTetherSources=[],currentTetherWarning="",currentTetherUpdatedAt=0;
  let selectedCurrency="IRT",latestTickerRows=[],latestTickerFailures=[];
@@ -27,6 +37,7 @@
     const response=await fetch(MAIN+"/local-market-watch",{cache:"no-store",signal:controller.signal,headers:{Accept:"application/json"}});
     if(!response.ok)throw new Error("HTTP "+response.status);
     const data=await response.json();
+    if(data?.data_stale===true||data?.fresh!==true)throw new Error("stale local Toman rate");
     const sources=Array.isArray(data?.sources)?data.sources.filter(x=>x?.fresh===true&&Number(x.price_toman)>0).map(x=>String(x.exchange||"")).filter(Boolean):[];
     const price=Number(data?.median_toman);
     if(Number.isFinite(price)&&price>=1000&&price<=100000000&&sources.length)return {price,sources,warning:String(data.warning||"")};
@@ -52,6 +63,7 @@
     try{
      const response=await fetch(item.url,{cache:"no-store",signal:controller.signal});
      if(!response.ok)throw new Error("HTTP "+response.status);
+     if(String(response.headers.get("X-MMP-Cache")||"").toLowerCase()!=="fresh")throw new Error("stale or unverified Toman-rate cache");
      const data=await response.json(),price=item.read(data);
      if(!Number.isFinite(price)||price<1000||price>100000000)throw new Error("invalid rate");
      return {source:item.source,price};
@@ -102,7 +114,7 @@
    return rows.map(([symbol,price])=>[String(symbol||"").toUpperCase().replace(/[^A-Z0-9]/g,""),Number(price)]);
   };
   const [settled,tether]=await Promise.all([
-   Promise.allSettled(sources.map(async source=>({source,data:await get(MAIN+"/market-proxy?source="+source)}))),
+   Promise.allSettled(sources.map(async source=>({source,data:await getFreshProxy(MAIN+"/market-proxy?source="+source)}))),
    fetchTetherRate()
   ]);
   if(tether?.price>0){
@@ -370,12 +382,14 @@
  }
  function renderAnalysis(payload){
   const r=payload?.analysis||{},market=payload?.market||{},frames=market.timeframes||{};
+  const fresh=market.market_data_fresh===true&&r.market_data_fresh===true;
   lastAnalysis=payload;
   const actions={BUY:"خرید",SELL:"فروش",WAIT:"فعلاً انتظار"};
-  $("analysisAction").textContent=actions[String(r.action||"WAIT").toUpperCase()]||"فعلاً انتظار";
-  $("analysisPrice").textContent=analysisPrice(r.market?.price_usd||frames["4h"]?.price);
-  $("analysisRisk").textContent=String(r.risk_level||"نامشخص");
-  const confidence=Math.max(0,Math.min(100,Number(r.confidence)||0));
+  const action=fresh?String(r.action||"WAIT").toUpperCase():"WAIT";
+  $("analysisAction").textContent=actions[action]||"فعلاً انتظار";
+  $("analysisPrice").textContent=fresh?analysisPrice(r.market?.price_usd||frames["4h"]?.price):"—";
+  $("analysisRisk").textContent=fresh?String(r.risk_level||"نامشخص"):"داده تازه تأیید نشده";
+  const confidence=fresh?Math.max(0,Math.min(100,Number(r.confidence)||0)):0;
   $("analysisConfidence").textContent=confidence+"/100";
   $("analysisConfidenceBar").style.width=confidence+"%";
   const labels={"15m":"۱۵ دقیقه","1h":"۱ ساعت","4h":"۴ ساعت","1d":"روزانه"};
@@ -383,7 +397,7 @@
    const f=frames[tf]||{},trend=f.ema_trend==="bullish"?"صعودی":f.ema_trend==="bearish"?"نزولی":"خنثی / نامشخص";
    return '<div class="analysis-tf"><b>'+label+'</b><strong>'+trend+'</strong><small>RSI: '+escapeHTML(f.rsi??"—")+' · حجم: '+escapeHTML(f.volume_ratio??"—")+'<br>حمایت: '+analysisPrice(f.support)+'<br>مقاومت: '+analysisPrice(f.resistance)+'</small></div>';
   }).join("");
-  const levels=r.levels||{},active=r.plan_status==="active_signal";
+  const levels=r.levels||{},active=fresh&&r.plan_status==="active_signal";
   const levelRows=active?[
    ["محدوده ورود",analysisLevel(levels.entry_zone)],["حد ضرر",analysisLevel(levels.stop_loss)],
    ["هدف اول",analysisLevel(levels.tp1)],["هدف دوم",analysisLevel(levels.tp2)],["هدف سوم",analysisLevel(levels.tp3)],["نسبت سود به زیان",r.risk_reward??"—"]
@@ -422,7 +436,8 @@
    if(!data?.analysis||!data?.market?.timeframes)throw new Error("ساختار پاسخ تحلیل ناقص است؛ گزارش قبلی حفظ شد.");
    analysisCache.set(key,{payload:data,time:Date.now()});
    renderAnalysis(data);
-   $("analysisStatus").textContent="تحلیل دریافت شد · منبع و زمان کندل در گزارش ثبت شده است.";
+   const fresh=data.market.market_data_fresh===true&&data.analysis.market_data_fresh===true;
+    $("analysisStatus").textContent=fresh?"تحلیل دریافت شد · تازگی هر چهار بازه تأیید شده است.":"تحلیل دریافت شد؛ تازگی داده تأیید نشد و فقط حالت انتظار نمایش داده می‌شود.";
   }catch(error){
    $("analysisStatus").textContent=error.name==="AbortError"?"زمان پاسخ موتور تحلیل تمام شد؛ اتصال یا مسیر جایگزین را دوباره امتحان کن.":"تحلیل دریافت نشد: "+String(error.message||error);
    if(!lastAnalysis)$("analysisReport").innerHTML='<div class="empty-state"><b>موتور تحلیل موقتاً در دسترس نیست</b><small>هیچ خروجی ساختگی جایگزین نشده است.</small></div>';
