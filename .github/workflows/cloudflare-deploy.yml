@@ -1,0 +1,104 @@
+name: Deploy MMP COIN AI Cloudflare Workers
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "cloudflare-worker/**"
+      - ".github/workflows/cloudflare-deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Never cancel a deployment halfway through the dependency chain.
+concurrency:
+  group: mmp-cloudflare-production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Validate and deploy production Workers
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout canonical source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22"
+
+      - name: Require Cloudflare deployment credentials
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::error::Cloudflare deployment is blocked. Add repository Actions secrets CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID. No deployment was attempted."
+            exit 1
+          fi
+          echo "Cloudflare credentials are present (values are never printed)."
+
+      - name: Validate Worker JavaScript syntax
+        run: |
+          set -euo pipefail
+          node --check --input-type=module < cloudflare-worker/worker.js
+          node --check --input-type=module < cloudflare-worker/futures-worker.js
+          node --check --input-type=module < cloudflare-worker/radar-worker.js
+          node --check --input-type=module < cloudflare-worker/hunter-cron-worker.js
+          node --check --input-type=module < cloudflare-worker/nexus-worker.js
+          node --check --input-type=module < cloudflare-worker/tether-monitor-worker.js
+          echo "All six production Worker entry points passed syntax validation."
+
+      - name: Deploy isolated Tether monitor
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@4 deploy --config cloudflare-worker/tether-monitor-wrangler.toml
+
+      - name: Deploy Radar Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@4 deploy --config cloudflare-worker/radar-wrangler.toml
+
+      - name: Deploy Futures Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@4 deploy --config cloudflare-worker/futures-wrangler.toml
+
+      - name: Deploy main Analyzer Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@4 deploy --config cloudflare-worker/wrangler.toml
+
+      - name: Deploy independent Hunter scheduler
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@4 deploy --config cloudflare-worker/hunter-cron-wrangler.toml
+
+      - name: Deploy NEXUS monitor
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@4 deploy --config cloudflare-worker/nexus-wrangler.toml
+
+      - name: Verify deployed Analyzer and Futures service binding
+        run: |
+          set -euo pipefail
+          BASE="https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev"
+          curl --fail --silent --show-error --retry 5 --retry-delay 3 "$BASE/health" -o /tmp/analyzer-health.json
+          node -e 'const x=require("/tmp/analyzer-health.json"); if(x.worker!=="online"||x.futures_engine_binding!==true) { console.error(x); process.exit(1) } console.log("Analyzer is online and Futures service binding is configured.")'
+          curl --fail --silent --show-error --retry 5 --retry-delay 3 "$BASE/futures-engine-health" -o /tmp/futures-health.json
+          node -e 'const x=require("/tmp/futures-health.json"); if(x.status!=="online"||x.service_binding!=="connected") { console.error(x); process.exit(1) } console.log("Dedicated Futures Worker is online through the production service binding.")'
+
+      - name: Record deployment provenance
+        run: |
+          echo "Deployed canonical commit: $GITHUB_SHA"
+          echo "All six production Workers deployed and post-deployment health checks passed."
