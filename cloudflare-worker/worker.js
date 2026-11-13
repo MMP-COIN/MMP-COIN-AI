@@ -1776,18 +1776,34 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/market-proxy"){
    finally{clearTimeout(timer);}
   }
   if(source==="coingecko-top"){
-   // CoinGecko can rate-limit deep pagination. Build the same 250-row page
-   // from three independent CoinLore slices so the asset catalog keeps paging.
-   const baseOffset=(requestedTopPage-1)*250,offsets=[baseOffset,baseOffset+100,baseOffset+200],limits=[100,100,50];
-   const pages=await Promise.allSettled(offsets.map(async(offset,index)=>{
-    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),7000);
-    try{
-     const response=await fetch("https://api.coinlore.net/api/tickers/?start="+offset+"&limit="+limits[index],{headers:{"Accept":"application/json","User-Agent":"MMP-COIN-AI/1.0"},signal:controller.signal,cf:{cacheTtl:60,cacheEverything:true}});
-     if(!response.ok)throw new Error("CoinLore HTTP "+response.status);
-     const rows=await response.json();if(!Array.isArray(rows))throw new Error("CoinLore page invalid");return rows;
-    }finally{clearTimeout(timer);}
-   }));
-   const rows=pages.flatMap(result=>result.status==="fulfilled"?result.value:[]);
+   // Prefer a known-good D1 snapshot during provider throttling; do not turn
+   // a temporary upstream 429 into a site-wide market-catalog outage.
+   if(/429|502|503|504/.test(String(lastError||""))&&Array.isArray(staleMarketResponse?.payload)&&staleMarketResponse.payload.length){
+    return json(staleMarketResponse.payload,200,request,{"X-MMP-Data-Source":"D1 market fallback","X-MMP-Cache":"stale","X-MMP-Data-Age":String(staleMarketResponse.ageMs),"Warning":"110 - \\"Response is stale\\""});
+   }
+   // CoinGecko may throttle deep pages. Fetch CoinLore slices sequentially
+   // to avoid burst traffic; retry one 429 with a bounded Retry-After delay.
+   const baseOffset=(requestedTopPage-1)*250,offsets=[baseOffset,baseOffset+100,baseOffset+200],limits=[100,100,50],rows=[];
+   for(let index=0;index<offsets.length;index++){
+    let pageRows=null,lastPageError=null;
+    for(let attempt=0;attempt<2;attempt++){
+     const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),7000);
+     try{
+      const response=await fetch("https://api.coinlore.net/api/tickers/?start="+offsets[index]+"&limit="+limits[index],{headers:{"Accept":"application/json","User-Agent":"MMP-COIN-AI/1.0"},signal:controller.signal,cf:{cacheTtl:180,cacheEverything:true}});
+      if(response.status===429&&attempt===0){
+       const retryAfter=Number(response.headers.get("Retry-After"))||1;
+       await new Promise(resolve=>setTimeout(resolve,Math.min(1500,Math.max(500,retryAfter*1000))));
+       continue;
+      }
+      if(!response.ok)throw new Error("CoinLore HTTP "+response.status);
+      const result=await response.json();if(!Array.isArray(result))throw new Error("CoinLore page invalid");
+      pageRows=result;break;
+     }catch(error){lastPageError=error;if(attempt===1)break;}
+     finally{clearTimeout(timer);}
+    }
+    if(pageRows?.length)rows.push(...pageRows);
+    else if(!rows.length)lastError=String(lastPageError?.message||"CoinLore fallback unavailable");
+   }
    if(rows.length){
     const data=rows.map(item=>({id:String(item.id),symbol:String(item.symbol||"").toLowerCase(),name:String(item.name||item.symbol||""),image:"",current_price:Number(item.price_usd)||0,market_cap:Number(item.market_cap_usd)||0,market_cap_rank:Number(item.rank)||null,fully_diluted_valuation:null,total_volume:Number(item.volume24)||0,high_24h:null,low_24h:null,price_change_24h:null,price_change_percentage_24h:Number(item.percent_change_24h)||0,market_cap_change_24h:null,market_cap_change_percentage_24h:null,circulating_supply:Number(item.csupply)||null,total_supply:Number(item.tsupply)||null,max_supply:Number(item.msupply)||null,ath:null,ath_change_percentage:null,ath_date:null,atl:null,atl_change_percentage:null,atl_date:null,roi:null,last_updated:new Date().toISOString()})).filter(item=>item.symbol&&item.current_price>0);
     if(data.length){
