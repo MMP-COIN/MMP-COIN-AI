@@ -1,19 +1,17 @@
 name: Validate MMP Quantum Terminal
 
 on:
+  push:
+    branches: ["main"]
+    paths:
+      - "www/**/*.html"
+      - "www/assets/**"
+      - ".github/workflows/validate-quantum-terminal.yml"
   pull_request:
     branches: ["main"]
     paths:
-      - "www/index.html"
-      - "www/quantum-lab.html"
-      - "www/market-heatmap.html"
-      - "www/assets/mmp-quantum-terminal-v1.*"
-      - ".github/workflows/validate-quantum-terminal.yml"
-  push:
-    branches: ["rebuild/**"]
-    paths:
-      - "www/index.html"
-      - "www/assets/mmp-quantum-terminal-v1.*"
+      - "www/**/*.html"
+      - "www/assets/**"
       - ".github/workflows/validate-quantum-terminal.yml"
 
 permissions:
@@ -31,6 +29,34 @@ jobs:
           node-version: 20
       - name: Validate terminal navigation JavaScript
         run: node --check www/assets/mmp-quantum-terminal-v1.js
+      - name: Validate every local HTML asset reference and shipped JavaScript bundle
+        run: |
+          node <<'NODE'
+          const fs = require("node:fs");
+          const path = require("node:path");
+          const pages = ["www/index.html", "www/quantum-lab.html", "www/market-heatmap.html"];
+          const scripts = new Set();
+          for (const page of pages) {
+            const html = fs.readFileSync(page, "utf8");
+            const ids = [...html.matchAll(/\\bid=["']([^"']+)["']/g)].map(match => match[1]);
+            const duplicates = [...new Set(ids.filter((id, index) => ids.indexOf(id) !== index))];
+            if (duplicates.length) throw new Error(page + " has duplicate IDs: " + duplicates.join(", "));
+            for (const match of html.matchAll(/<(script|link)\\b([^>]+)>/gi)) {
+              const tag = match[1].toLowerCase();
+              const attr = tag === "script" ? "src" : "href";
+              const value = (match[2].match(new RegExp("\\\\b" + attr + "=[\\\\"']([^\\\\"']+)", "i")) || [])[1];
+              if (!value || /^(?:https?:|data:|#|\/\/)/i.test(value)) continue;
+              const local = path.normalize(path.join(path.dirname(page), value.split(/[?#]/)[0]));
+              if (!fs.existsSync(local)) throw new Error(page + " references missing local " + tag + ": " + value);
+              if (tag === "script" && /\\.js$/i.test(local)) scripts.add(local);
+            }
+          }
+          for (const script of scripts) {
+            require("node:child_process").execFileSync(process.execPath, ["--check", script], {stdio:"inherit"});
+            console.log("JavaScript syntax OK: " + script);
+          }
+          console.log("All local HTML references, unique IDs, and shipped JavaScript bundles are valid.");
+          NODE
       - name: Validate canonical homepage wiring and preserved market controls
         run: |
           python3 - <<'PY'
