@@ -59,34 +59,51 @@ async function load(){
   {name:"Gate.io Spot",url:API+"/market-proxy?source=gate-tickers",normalize:d=>Array.isArray(d)?d.filter(t=>String(t.currency_pair||"").endsWith("_USDT")).map(t=>({symbol:String(t.currency_pair).replace("_",""),lastPrice:t.last,priceChangePercent:Number(t.change_percentage),quoteVolume:t.quote_volume,closeTime:Number(t.update_time_ms)||Number(t.update_time)*1000||Date.now()})):[]},
   {name:"KuCoin Spot",url:API+"/market-proxy?source=kucoin-tickers",normalize:d=>d?.code==="200000"&&Array.isArray(d.data?.ticker)?d.data.ticker.filter(t=>String(t.symbol||"").endsWith("-USDT")).map(t=>({symbol:String(t.symbol).replace("-",""),lastPrice:t.last,priceChangePercent:Number(t.changeRate)*100,quoteVolume:t.volValue,closeTime:Number(d.data.time)||Date.now()})):[]},
   {name:"MEXC Spot",url:API+"/market-proxy?source=mexc-tickers",normalize:d=>Array.isArray(d)?d.map(t=>({symbol:t.symbol,lastPrice:t.lastPrice,priceChangePercent:Number(t.priceChangePercent),quoteVolume:t.quoteVolume,closeTime:Number(t.closeTime)||Date.now()})):[]},
-  {name:"OKX Spot",url:API+"/market-proxy?source=okx-tickers",normalize:d=>d?.code==="0"&&Array.isArray(d.data)?d.data.filter(t=>String(t.instId||"").endsWith("-USDT")).map(t=>({symbol:String(t.instId).replace("-USDT","")+"USDT",lastPrice:t.last,priceChangePercent:Number(t.open24h)>0?(Number(t.last)/Number(t.open24h)-1)*100:NaN,quoteVolume:t.volCcy24h??t.vol24h,closeTime:Number(t.ts)||Date.now()})):[]},
+  {name:"OKX Spot",url:API+"/market-proxy?source=okx-tickers",normalize:d=>d?.code==="0"&&Array.isArray(d.data)?d.data.filter(t=>String(t.instId||"").endsWith("-USDT")).map(t=>({symbol:String(t.instId).replace("-USDT","")+"USDT",lastPrice:t.last,priceChangePercent:Number(t.open24h)>0?(Number(t.last)/Number(t.open24h)-1)*100:NaN,quoteVolume:t.volCcy24h,closeTime:Number(t.ts)||Date.now()})):[]},
   {name:"Bitget Spot",url:API+"/market-proxy?source=bitget-tickers",fallbackUrl:"https://api.bitget.com/api/v3/market/tickers?category=SPOT",normalize:d=>["00000","0"].includes(String(d?.code))&&Array.isArray(d.data)?d.data.map(t=>({symbol:t.symbol,lastPrice:t.lastPr??t.lastPrice,priceChangePercent:Number.isFinite(Number(t.change24h))?Number(t.change24h)*100:Number(t.price24hPcnt)*100,quoteVolume:t.usdtVolume??t.quoteVolume,closeTime:Number(t.ts??t.tsMs)||Date.now()})):[]}
  ];
  let selected=null;const errors=[];
- for(const provider of providers){
-  const providerErrors=[];let valid=[];
-  for(const url of [provider.url,provider.fallbackUrl].filter(Boolean)){
-   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),6500);
-   try{
-    const response=await fetch(url,{cache:"no-store",signal:controller.signal,headers:{Accept:"application/json"}});
-    if(!response.ok)throw new Error("HTTP "+response.status);
-    const payload=await response.json(),rows=provider.normalize(payload);
-    valid=rows.filter(x=>/^[A-Z0-9]+USDT$/.test(String(x.symbol||""))&&Number(x.lastPrice)>0&&Number.isFinite(Number(x.priceChangePercent))&&Number(x.quoteVolume)>0);
-    if(valid.length)break;
-    throw new Error("تیکر معتبر دریافت نشد");
-   }catch(error){providerErrors.push(String(error?.message||error).slice(0,90));}
-   finally{clearTimeout(timer);}
-  }
-  if(valid.length){selected={name:provider.name,rows:valid};break;}
-  errors.push(provider.name+": "+providerErrors.join(" / "));
- }
  try{
-  if(!selected)throw new Error(errors.slice(0,3).join(" · ")||"هیچ منبع تیکر معتبری پاسخ نداد");
+  const settled=await Promise.allSettled(providers.map(async provider=>{
+   let lastError=null;
+   for(const url of [provider.url,provider.fallbackUrl].filter(Boolean)){
+    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),6500);
+    try{
+     const response=await fetch(url,{cache:"no-store",signal:controller.signal,headers:{Accept:"application/json"}});
+     if(!response.ok)throw new Error("HTTP "+response.status);
+     if(response.headers.get("X-MMP-Cache")==="stale")throw new Error("داده کش‌شده و قدیمی");
+     const payload=await response.json(),rows=provider.normalize(payload);
+     const valid=rows.filter(x=>/^[A-Z0-9]+USDT$/.test(String(x.symbol||""))&&Number(x.lastPrice)>0&&Number.isFinite(Number(x.lastPrice))&&Number.isFinite(Number(x.priceChangePercent))&&Number(x.quoteVolume)>0);
+     if(valid.length)return {name:provider.name,rows:valid,receivedAt:Date.now()};
+     throw new Error("تیکر معتبر دریافت نشد");
+    }catch(error){lastError=error;}
+    finally{clearTimeout(timer);}
+   }
+   throw lastError||new Error("منبع پاسخ نداد");
+  }));
+  const bySymbol=new Map();
+  settled.forEach((result,index)=>{
+   if(result.status!=="fulfilled"){errors.push(providers[index].name);return;}
+   const source=result.value;
+   for(const ticker of source.rows){
+    const symbol=String(ticker.symbol).replace(/USDT$/,"").toUpperCase(),price=Number(ticker.lastPrice),change=Number(ticker.priceChangePercent),volume=Number(ticker.quoteVolume),rawTime=Number(ticker.closeTime),time=Number.isFinite(rawTime)&&rawTime>0?rawTime:source.receivedAt;
+    if(Date.now()-time>120000||time>Date.now()+30000)continue;
+    const rows=bySymbol.get(symbol)||[];rows.push({price,change,volume,time,source:source.name});bySymbol.set(symbol,rows);
+   }
+  });
+  const median=values=>{const sorted=values.slice().sort((a,b)=>a-b),n=sorted.length;return n?(n%2?sorted[(n-1)/2]:(sorted[n/2-1]+sorted[n/2])/2):null;};
   const stable=new Set(["USDC","FDUSD","TUSD","USDP","DAI","USDE","EUR","BUSD"]);
-  data=selected.rows.filter(x=>!stable.has(String(x.symbol).replace(/USDT$/,""))).map(x=>({symbol:String(x.symbol).replace(/USDT$/,""),price:Number(x.lastPrice),change:Number(x.priceChangePercent),volume:Number(x.quoteVolume),time:Number(x.closeTime)||Date.now()}));
-  if(!data.length)throw new Error("نماد معتبر دریافت نشد");
-  render();const stamp=Math.max(...data.map(x=>x.time));$("status").textContent="منبع: "+selected.name+" · "+data.length+" جفت معتبر USDT · آخرین زمان تیکر "+(stamp?new Date(stamp).toLocaleTimeString("fa-IR"):"نامشخص")+" · اندازه خانه‌ها بر اساس گردش ۲۴ ساعته است، نه ارزش بازار یا جریان خالص پول.";
- }catch(e){$("heatmap").innerHTML='<div class="empty">دریافت نقشه ناموفق بود: '+String(e.message||e).replace(/[<>]/g,"")+'</div>';$("status").textContent="داده معتبر در دسترس نیست؛ اطلاعات قبلی به‌عنوان زنده نمایش داده نمی‌شود.";}
+  data=[...bySymbol.entries()].flatMap(([symbol,quotes])=>{
+   if(stable.has(symbol)||!quotes.length)return [];
+   const center=median(quotes.map(x=>x.price)),consistent=quotes.filter(x=>Math.abs(x.price-center)/center<=0.015);
+   if(quotes.length>1&&consistent.length<2)return [];
+   const accepted=consistent.length?consistent:quotes;
+   return [{symbol,price:median(accepted.map(x=>x.price)),change:median(accepted.map(x=>x.change)),volume:accepted.reduce((sum,x)=>sum+x.volume,0),time:Math.max(...accepted.map(x=>x.time)),sourceCount:new Set(accepted.map(x=>x.source)).size}];
+  });
+  if(!data.length)throw new Error("هیچ قیمت چندمنبعی تازه و سازگار دریافت نشد");
+  render();const stamp=Math.max(...data.map(x=>x.time)),sourceCount=settled.filter(x=>x.status==="fulfilled").length;
+  $("status").textContent="تجمیع میانه قیمت از "+sourceCount+" صرافی زنده · "+data.length+" جفت معتبر USDT · آخرین دریافت "+(stamp?new Date(stamp).toLocaleTimeString("fa-IR"):"نامشخص")+" · گردش، مجموع حجم گزارش‌شده منابع پذیرفته‌شده است.";
+ }catch(e){$("heatmap").innerHTML='<div class="empty">دریافت نقشه ناموفق بود: '+String(e.message||e).replace(/[<>]/g,"")+'</div>';$("status").textContent="قیمت تأییدشده و تازه در دسترس نیست؛ داده قدیمی نمایش داده نمی‌شود.";}
  finally{busy=false;$("refresh").disabled=false;$("refresh").textContent="↻ تازه‌سازی";}
 }
 
