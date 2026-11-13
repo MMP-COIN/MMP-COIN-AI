@@ -35,6 +35,17 @@ function init(){
  const jumpHost=$("#mmp-center-jumps",toolbar);
  function menuMarkup(){return (appMode?"":'<a href="/" data-mmp-home><i class="menu-icon">⌂</i><span>صفحه اصلی</span></a>')+'<div class="menu-section-label">هشت مرکز تخصصی MMP</div>'+Object.entries(CENTERS).filter(([id])=>id!=="support").map(([id,c],i)=>'<a href="'+(c.url||"#center-"+id)+'" data-mmp-open-center="'+id+'"><i class="menu-icon">'+c.icon+'</i><span>'+esc(c.title)+'</span></a>').join("")+(appMode?'<div class="menu-divider"></div><a href="#app-download" data-mmp-open-center="support"><i class="menu-icon">✉</i><span>اشتراک و ارتباط</span></a>':'')+'<div class="menu-divider"></div>';}
  const menu=$("#dropdownMenu");if(menu)menu.innerHTML=menuMarkup();
+ const menuButton=$(".menu-btn");
+ if(menu&&menuButton&&!menuButton.dataset.mmpTerminalMenuBound){
+  menuButton.dataset.mmpTerminalMenuBound="1";
+  menuButton.addEventListener("click",event=>{
+   event.preventDefault();event.stopPropagation();
+   const open=!menu.classList.contains("show");
+   menu.classList.toggle("show",open);
+   menuButton.setAttribute("aria-expanded",String(open));
+   menuButton.setAttribute("aria-label",open?"بستن منوی اصلی":"باز کردن منوی اصلی");
+  });
+ }
  function show(view,updateHistory){
   const config=CENTERS[view];if(!config)view="home";
   if(view==="lab"){const target=new URL(CENTERS.lab.url,location.origin),version=new URLSearchParams(location.search).get("mmp_native_version");if(version)target.searchParams.set("mmp_native_version",version);location.href=target.pathname+target.search;return;}
