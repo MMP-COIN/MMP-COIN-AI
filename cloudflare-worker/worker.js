@@ -979,7 +979,7 @@ export async function loadFuturesMarketFlow(symbol,windowMinutes=5,signal=null){
    if(rows.length&&betterFlow(rows,historyTruncated)){trades=rows;truncated=historyTruncated;provider="OKX USDT Swap · paged real trades";}
   }catch(error){lastError="OKX history: "+String(error?.message||error).slice(0,120);}
  }
- if(!trades?.length){
+ if(!trades?.length||truncated||trades.length<8){
   try{
    const contract=base+"_USDT";
    const loadGate=async host=>{
@@ -997,7 +997,7 @@ export async function loadFuturesMarketFlow(symbol,windowMinutes=5,signal=null){
    if(gateTrades.length&&betterFlow(gateTrades,gateTruncated)){trades=gateTrades;truncated=gateTruncated;provider="Gate USDT Futures · paged real trades";}
   }catch(error){lastError="Gate: "+String(error?.message||error).slice(0,120);}
  }
- if(!trades?.length){
+ if(!trades?.length||truncated||trades.length<8){
   try{
    const kucoinSymbol=(base==="BTC"?"XBT":base)+"USDTM";
    const [contractInfo,d]=await Promise.all([
@@ -1013,7 +1013,7 @@ export async function loadFuturesMarketFlow(symbol,windowMinutes=5,signal=null){
    if(rows.length&&betterFlow(rows,kucoinTruncated)){trades=rows;truncated=kucoinTruncated;provider="KuCoin USDT Futures · real trades";}
   }catch(error){lastError="KuCoin Futures: "+String(error?.message||error).slice(0,120);}
  }
- if(!trades?.length){
+ if(!trades?.length||truncated||trades.length<8){
  try{
   const market=base+"_PERP";
   const [buyRows,sellRows]=await Promise.all([
