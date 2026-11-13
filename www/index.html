@@ -3226,15 +3226,15 @@ async function refreshLiveQuotes(){
  try{
   const updated=await enrichWithBinance(cachedCoinsData);
   const now=Date.now();
-  const fresh=updated.filter(c=>Number(c.current_price)>0&&Number.isFinite(Date.parse(c.price_updated_at||""))&&now-Date.parse(c.price_updated_at)<=45000&&(["Binance Spot","Gate.io Spot","KuCoin Spot","MEXC Spot","OKX Spot","Bitget Spot"].includes(c.price_source)));
+  const fresh=updated.filter(c=>Number(c.current_price)>0&&c.price_is_stale!==true&&Number(c.price_source_count)>=1&&Number.isFinite(Date.parse(c.price_updated_at||""))&&now-Date.parse(c.price_updated_at)<=120000);
   if(!fresh.length)return false;
   const byId=new Map(updated.map(c=>[String(c.id),c]));
   cachedCoinsData=cachedCoinsData.map(c=>byId.get(String(c.id))||c);
   lastMarket.crypto=lastMarket.crypto||{};
   cachedCoinsData.forEach(c=>{
    const symbol=String(c.symbol||"").toUpperCase();
-   if(symbol==="BTC")lastMarket.crypto.BTC={usd:Number(c.current_price),change24h:c.price_change_percentage_24h};
-   if(symbol==="ETH")lastMarket.crypto.ETH={usd:Number(c.current_price),change24h:c.price_change_percentage_24h};
+   if(symbol==="BTC")lastMarket.crypto.BTC={usd:Number(c.current_price),change24h:c.price_change_percentage_24h,updatedAt:now};
+   if(symbol==="ETH")lastMarket.crypto.ETH={usd:Number(c.current_price),change24h:c.price_change_percentage_24h,updatedAt:now};
   });
   renderCoinsTables(cachedCoinsData);renderHeroCards();
   const stamp=new Date().toLocaleTimeString("fa-IR");
@@ -3474,79 +3474,51 @@ function passesMarketQualityFilter(coin){
 async function enrichWithBinance(coins){
  const fetchJson=async(url,timeoutMs=6500)=>{
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeoutMs);
-  try{const response=await fetch(url,{cache:"no-store",signal:controller.signal,headers:{"Accept":"application/json"}});if(!response.ok)throw new Error("HTTP "+response.status);return await response.json();}
-  finally{clearTimeout(timer);}
+  try{
+   const response=await fetch(url,{cache:"no-store",signal:controller.signal,headers:{"Accept":"application/json"}});
+   if(!response.ok)throw new Error("HTTP "+response.status);
+   if(response.headers.get("X-MMP-Cache")==="stale")throw new Error("stale exchange snapshot");
+   return await response.json();
+  }finally{clearTimeout(timer);}
  };
  const providers=[
-  {name:"Binance Spot",load:async()=>{
-   const d=await fetchJson(AI_ANALYSIS_ENDPOINT+"/market-proxy?source=binance-tickers",7000);
-   if(Array.isArray(d)&&d.length)return d;
-   throw new Error("Binance Worker ticker proxy unavailable");
-  }},
-  {name:"Gate.io Spot",load:async()=>{
-   const d=await fetchJson(AI_ANALYSIS_ENDPOINT+"/market-proxy?source=gate-tickers",6500);
-   if(!Array.isArray(d)||!d.length)throw new Error("Invalid Gate ticker response");
-   return d.filter(t=>String(t.currency_pair||"").endsWith("_USDT")).map(t=>({symbol:String(t.currency_pair).replace("_",""),lastPrice:t.last,priceChangePercent:Number(t.change_percentage),closeTime:Number(t.update_time_ms)||Number(t.update_time)*1000||Date.now()}));
-  }},
-  {name:"KuCoin Spot",load:async()=>{
-   const d=await fetchJson(AI_ANALYSIS_ENDPOINT+"/market-proxy?source=kucoin-tickers",6500),rows=Array.isArray(d?.data?.ticker)?d.data.ticker:[];
-   if(d?.code!=="200000"||!rows.length)throw new Error("Invalid KuCoin ticker response");
-   return rows.filter(t=>String(t.symbol||"").endsWith("-USDT")).map(t=>({symbol:String(t.symbol).replace("-",""),lastPrice:t.last,priceChangePercent:Number(t.changeRate)*100,closeTime:Number(d.data.time)||Date.now()}));
-  }},
-  {name:"MEXC Spot",load:async()=>{
-   const d=await fetchJson(AI_ANALYSIS_ENDPOINT+"/market-proxy?source=mexc-tickers",6500);
-   if(!Array.isArray(d)||!d.length)throw new Error("Invalid MEXC ticker response");
-   return d;
-  }},
-  {name:"OKX Spot",load:async()=>{
-   const d=await fetchJson(AI_ANALYSIS_ENDPOINT+"/market-proxy?source=okx-tickers",6500);
-   if(d?.code!=="0"||!Array.isArray(d.data)||!d.data.length)throw new Error("Invalid OKX ticker response");
-   return d.data.filter(t=>String(t.instId||"").endsWith("-USDT")).map(t=>({symbol:String(t.instId).replace("-USDT","")+"USDT",lastPrice:t.last,priceChangePercent:Number(t.open24h)>0?(Number(t.last)/Number(t.open24h)-1)*100:NaN,closeTime:t.ts}));
-  }},
-  {name:"Bitget Spot",load:async()=>{
-   const normalize=d=>{
-    if(!["00000","0"].includes(String(d?.code))||!Array.isArray(d.data)||!d.data.length)throw new Error("Invalid Bitget ticker response");
-    return d.data.map(t=>({symbol:t.symbol,lastPrice:t.lastPr??t.lastPrice,priceChangePercent:Number.isFinite(Number(t.change24h))?Number(t.change24h)*100:Number(t.price24hPcnt)*100,closeTime:t.ts??t.tsMs??Date.now()}));
-   };
-   try{return normalize(await fetchJson(AI_ANALYSIS_ENDPOINT+"/market-proxy?source=bitget-tickers",7000));}
-   catch(proxyError){console.warn("Bitget Worker feed unavailable; trying direct endpoint:",proxyError?.message||proxyError);}
-   return normalize(await fetchJson("https://api.bitget.com/api/v3/market/tickers?category=SPOT",6500));
-  }}
- ];;
- let tickers=[],priceSource="",failures=[];
- const attempts=providers.map(provider=>provider.load().then(rows=>{
-  if(!Array.isArray(rows)||!rows.length)throw new Error("Empty ticker list");
-  return {name:provider.name,rows};
- }).catch(error=>{
-  failures.push(provider.name+": "+String(error?.message||error).slice(0,100));
-  throw error;
- }));
- try{
-  const fastest=await Promise.any(attempts);
-  tickers=fastest.rows;
-  priceSource=fastest.name;
- }catch(error){
-  console.warn("All live quote routes unavailable; preserving last valid prices:",failures);
-  return coins.map(c=>({...c,price_source:c.price_source||"آخرین داده معتبر"}));
- }
+  {name:"Binance Spot",load:async()=>{const d=await fetchJson(AI_ANALYSIS_ENDPOINT+"/market-proxy?source=binance-tickers",7000);if(Array.isArray(d)&&d.length)return d;throw new Error("Binance ticker unavailable");}},
+  {name:"Gate.io Spot",load:async()=>{const d=await fetchJson(AI_ANALYSIS_ENDPOINT+"/market-proxy?source=gate-tickers");if(!Array.isArray(d)||!d.length)throw new Error("Invalid Gate ticker");return d.filter(t=>String(t.currency_pair||"").endsWith("_USDT")).map(t=>({symbol:String(t.currency_pair).replace("_",""),lastPrice:t.last,priceChangePercent:Number(t.change_percentage),closeTime:Number(t.update_time_ms)||Number(t.update_time)*1000||Date.now()}));}},
+  {name:"KuCoin Spot",load:async()=>{const d=await fetchJson(AI_ANALYSIS_ENDPOINT+"/market-proxy?source=kucoin-tickers");const rows=Array.isArray(d?.data?.ticker)?d.data.ticker:[];if(d?.code!=="200000"||!rows.length)throw new Error("Invalid KuCoin ticker");return rows.filter(t=>String(t.symbol||"").endsWith("-USDT")).map(t=>({symbol:String(t.symbol).replace("-",""),lastPrice:t.last,priceChangePercent:Number(t.changeRate)*100,closeTime:Number(d.data.time)||Date.now()}));}},
+  {name:"MEXC Spot",load:async()=>{const d=await fetchJson(AI_ANALYSIS_ENDPOINT+"/market-proxy?source=mexc-tickers");if(!Array.isArray(d)||!d.length)throw new Error("Invalid MEXC ticker");return d;}},
+  {name:"OKX Spot",load:async()=>{const d=await fetchJson(AI_ANALYSIS_ENDPOINT+"/market-proxy?source=okx-tickers");if(d?.code!=="0"||!Array.isArray(d.data)||!d.data.length)throw new Error("Invalid OKX ticker");return d.data.filter(t=>String(t.instId||"").endsWith("-USDT")).map(t=>({symbol:String(t.instId).replace("-USDT","")+"USDT",lastPrice:t.last,priceChangePercent:Number(t.open24h)>0?(Number(t.last)/Number(t.open24h)-1)*100:NaN,closeTime:Number(t.ts)||Date.now()}));}},
+  {name:"Bitget Spot",load:async()=>{const normalize=d=>{if(!["00000","0"].includes(String(d?.code))||!Array.isArray(d.data)||!d.data.length)throw new Error("Invalid Bitget ticker");return d.data.map(t=>({symbol:t.symbol,lastPrice:t.lastPr??t.lastPrice,priceChangePercent:Number.isFinite(Number(t.change24h))?Number(t.change24h)*100:Number(t.price24hPcnt)*100,closeTime:Number(t.ts??t.tsMs)||Date.now()}));};try{return normalize(await fetchJson(AI_ANALYSIS_ENDPOINT+"/market-proxy?source=bitget-tickers",7000));}catch(error){return normalize(await fetchJson("https://api.bitget.com/api/v3/market/tickers?category=SPOT",6500));}}}
+ ];
+ const settled=await Promise.allSettled(providers.map(async provider=>({name:provider.name,rows:await provider.load(),receivedAt:Date.now()})));
  const bySymbol=new Map();
- tickers.forEach(t=>{
-  const symbol=String(t.symbol||"").toUpperCase(),price=Number(t.lastPrice);
-  if(symbol.endsWith("USDT")&&Number.isFinite(price)&&price>0)bySymbol.set(symbol,t);
+ settled.forEach(result=>{
+  if(result.status!=="fulfilled")return;
+  const source=result.value;
+  for(const ticker of source.rows){
+   const pair=String(ticker.symbol||"").toUpperCase(),price=Number(ticker.lastPrice),change=Number(ticker.priceChangePercent);
+   if(!/^[A-Z0-9]{2,30}USDT$/.test(pair)||!(price>0)||!Number.isFinite(price))continue;
+   const stamp=Number(ticker.closeTime),updated=Number.isFinite(stamp)&&stamp>0?stamp:source.receivedAt;
+   if(Date.now()-updated>120000||updated>Date.now()+30000)continue;
+   const key=pair.slice(0,-4),list=bySymbol.get(key)||[];
+   list.push({price,change:Number.isFinite(change)?change:null,source:source.name,updated});
+   bySymbol.set(key,list);
+  }
  });
  const counts=new Map();
  coins.forEach(c=>{const symbol=String(c.symbol||"").toUpperCase();counts.set(symbol,(counts.get(symbol)||0)+1);});
- return coins.map(c=>{
-  const symbol=String(c.symbol||"").toUpperCase();
-  const ticker=counts.get(symbol)===1&&!NON_TRADABLE_SYMBOLS.has(symbol)&&!NON_TRADABLE_COIN_IDS.has(c.id)?bySymbol.get(symbol+"USDT"):null;
-  const price=Number(ticker?.lastPrice),change=Number(ticker?.priceChangePercent),updated=Number(ticker?.closeTime);
-  if(ticker&&Number.isFinite(price)&&price>0){
-   return {...c,current_price:price,price_change_percentage_24h:Number.isFinite(change)?change:c.price_change_percentage_24h,price_source:priceSource,price_updated_at:new Date(Number.isFinite(updated)&&updated>0?updated:Date.now()).toISOString()};
-  }
-  return {...c,price_source:c.price_source||"CoinGecko",price_updated_at:c.price_updated_at||c.last_updated||null};
+ const median=values=>{const sorted=values.slice().sort((a,b)=>a-b),n=sorted.length;return n?(n%2?sorted[(n-1)/2]:(sorted[n/2-1]+sorted[n/2])/2):null;};
+ return coins.map(coin=>{
+  const symbol=String(coin.symbol||"").toUpperCase(),quotes=counts.get(symbol)===1&&!NON_TRADABLE_SYMBOLS.has(symbol)&&!NON_TRADABLE_COIN_IDS.has(coin.id)?(bySymbol.get(symbol)||[]):[];
+  if(!quotes.length)return {...coin,price_is_stale:true,price_source:"داده زنده صرافی‌ها در دسترس نیست"};
+  const center=median(quotes.map(q=>q.price));
+  const consistent=quotes.filter(q=>Math.abs(q.price-center)/center<=0.015);
+  if(quotes.length>1&&consistent.length<2)return {...coin,price_is_stale:true,price_source:"اختلاف غیرعادی میان منابع؛ قیمت تأیید نشد"};
+  const accepted=consistent.length?consistent:quotes;
+  const price=median(accepted.map(q=>q.price)),changes=accepted.map(q=>q.change).filter(Number.isFinite);
+  const sources=[...new Set(accepted.map(q=>q.source))],updated=Math.max(...accepted.map(q=>q.updated));
+  return {...coin,current_price:price,price_change_percentage_24h:changes.length?median(changes):coin.price_change_percentage_24h,price_source:sources.join(" + "),price_sources:sources,price_updated_at:new Date(updated).toISOString(),price_is_stale:false,price_source_count:sources.length};
  });
 }
-
 async function fetchTetherRate(){
  // Run the consolidated three-exchange monitor and the independent proxy fallback
  // in parallel, so a slow domestic venue cannot hold up the whole market refresh.
@@ -3556,6 +3528,7 @@ async function fetchTetherRate(){
    const response=await fetch(AI_ANALYSIS_ENDPOINT+"/local-market-watch",{cache:"no-store",signal:controller.signal,headers:{"Accept":"application/json"}});
    if(!response.ok)throw new Error("HTTP "+response.status);
    const data=await response.json();
+   if(data?.fresh===false||data?.data_stale===true)throw new Error("stale local tether snapshot");
    const sources=Array.isArray(data?.sources)?data.sources.filter(x=>x?.fresh===true&&Number(x.price_toman)>0).map(x=>String(x.exchange||"")).filter(Boolean):[];
    const price=Number(data?.median_toman);
    if(Number.isFinite(price)&&price>=1000&&price<=100000000&&sources.length)return {price,sources,warning:String(data.warning||"")};
@@ -3983,7 +3956,8 @@ function renderCoinsTables(data) {
   if(!ranked.length)grid.innerHTML='<div class="ai-empty">'+(rows.length?'ارزی با این نام یا نماد در فهرست پشتیبانی‌شده پیدا نشد.':'فهرست دارایی‌ها هنوز دریافت نشده است.')+'</div>';
   else grid.innerHTML=(showAll?'<button type="button" class="mmp-market-drawer-close" id="market-catalog-close"><span>فهرست کامل دارایی‌ها · '+ranked.length.toLocaleString("fa-IR")+' مورد</span><b>بستن ×</b></button>':"")+visible.map(c=>{
    const id=aiEscape(String(c.id||"")),symbol=aiEscape(String(c.symbol||"").toUpperCase()),name=aiEscape(c.name||symbol),price=Number(c.current_price);
-   const priceText=Number.isFinite(price)&&price>0?(price<1?money(price,8):money(price,2))+" USDT":"قیمت ناموجود",tomanText=currentTetherPrice>0&&price>0?toman(price*currentTetherPrice)+" تومان":"— تومان";
+   const quoteFresh=c.price_is_stale!==true&&Number.isFinite(Date.parse(c.price_updated_at||""))&&Date.now()-Date.parse(c.price_updated_at)<=120000;
+   const priceText=quoteFresh&&Number.isFinite(price)&&price>0?(price<1?money(price,8):money(price,2))+" USDT":"قیمت زنده ناموجود",tomanText=quoteFresh&&currentTetherPrice>0&&currentTetherUpdatedAt>0&&Date.now()-currentTetherUpdatedAt<=120000&&price>0?toman(price*currentTetherPrice)+" تومان":"— تومان";
    const change=Number(c.price_change_percentage_24h),changeText=Number.isFinite(change)?(change>=0?"+":"")+change.toFixed(2)+"%":"—";
    const image=aiEscape(c.image||("https://assets.coincap.io/assets/icons/"+String(c.symbol||"").toLowerCase()+"@2x.png"));
    const sources=Array.isArray(c.marketPairs)?[...new Set(c.marketPairs.map(x=>x.exchange).filter(Boolean))]:[];
