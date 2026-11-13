@@ -2568,16 +2568,19 @@ html.mmp-native-app .native-menu-version{padding:5px 3px;color:#7893a7;text-alig
   <button class="menu-btn" type="button" aria-label="باز کردن منوی اصلی" aria-controls="dropdownMenu" aria-expanded="false"><span aria-hidden="true">☰</span></button>
 </div>
 <div class="dropdown-menu" id="dropdownMenu" aria-label="منوی اصلی">
-  <div class="menu-section-label">بخش‌های اصلی</div>
-  <a href="/quantum-lab.html"><i class="menu-icon">⬡</i><span>مرکز فرماندهی کوانتومی MMP</span></a>
-  <a href="/market-heatmap.html"><i class="menu-icon">▦</i><span>نقشه حرارتی بازار</span></a>
-  <a href="#opportunities"><i class="menu-icon">⌖</i><span>رادار هوشمند بازار</span></a>
+  <div class="menu-section-label">بخش‌های اصلی · به ترتیب کاربرد</div>
+  <a href="#market-snapshot"><i class="menu-icon">◈</i><span>چهار دارایی شاخص</span></a>
+  <a href="#opportunities"><i class="menu-icon">⌖</i><span>رادار هوشمند فرصت‌ها</span></a>
   <a href="#market-hunter"><i class="menu-icon">🎯</i><span>شکارچی کوانتومی بازار</span></a>
   <a href="#ai-section"><i class="menu-icon">✧</i><span>تحلیلگر هوشمند AI</span></a>
-  <a href="#mmp-autonomous-health-center"><i class="menu-icon">⛨</i><span>مرکز سلامت و خودترمیمی</span></a>
   <a href="#boom-hunter"><i class="menu-icon">ϟ</i><span>آزمایشگاه Boom Hunter</span></a>
+  <a href="#market-intelligence"><i class="menu-icon">◉</i><span>مرکز هوشمندی بازار</span></a>
   <a href="#chart-section"><i class="menu-icon">▥</i><span>نمودار حرفه‌ای</span></a>
-  <a href="#trading-tools"><i class="menu-icon">⌗</i><span>ابزارهای معامله</span></a>
+  <a href="/market-heatmap.html"><i class="menu-icon">▦</i><span>نقشه حرارتی بازار</span></a>
+  <a href="#coins-section"><i class="menu-icon">▤</i><span>فهرست رمزارزها</span></a>
+  <a href="#trading-tools"><i class="menu-icon">⌗</i><span>ابزارهای معامله‌گری</span></a>
+  <a href="/quantum-lab.html"><i class="menu-icon">⬡</i><span>مرکز فرماندهی کوانتومی</span></a>
+  <a href="#mmp-autonomous-health-center"><i class="menu-icon">⛨</i><span>سلامت و خودترمیمی سامانه</span></a>
   <div class="menu-divider"></div>
   <details class="menu-group">
     <summary><span>تحلیل‌های تخصصی</span><span aria-hidden="true">⌄</span></summary>
@@ -2592,7 +2595,7 @@ html.mmp-native-app .native-menu-version{padding:5px 3px;color:#7893a7;text-alig
     <summary><span>بازار و داده‌ها</span><span aria-hidden="true">⌄</span></summary>
     <a href="#coins-section">فهرست بازار رمزارزها</a>
     <a href="#market-hours">ساعت بازارهای جهانی</a>
-    <a href="#connections">وضعیت اتصال صرافی‌ها</a>
+    <a href="#exchange-connections">وضعیت اتصال صرافی‌ها</a>
   </details>
   <details class="menu-group">
     <summary><span>اپلیکیشن و ارتباط</span><span aria-hidden="true">⌄</span></summary>
@@ -2604,25 +2607,27 @@ html.mmp-native-app .native-menu-version{padding:5px 3px;color:#7893a7;text-alig
 
 <aside class="mmp-sidebar" id="mmp-sidebar">
   <div class="side-brand"><div class="side-emblem" style="background:transparent;box-shadow:none"><img src="assets/mmp-coin-mark.svg?v=20261108-qcoin2" alt="نشان سکه کوانتومی MMP" style="width:100%;height:100%;object-fit:contain"></div><div><b>MMP <span>COIN AI</span></b><small>PRO TRADING TERMINAL</small></div></div>
-  <div class="side-caption">INTELLIGENCE FIRST</div>
-  <a class="side-link active" href="#hero"><i>◈</i><span>نمای کلی بازار</span><em>01</em></a>
-  <a class="side-link quantum-center-nav" href="#quantum-center-entry"><i>✧</i><span>مرکز هوشمند رمزارزها</span><em>CORE</em></a>
+  <div class="side-caption">نمای کلی و ویترین</div>
+  <a class="side-link active" href="#hero"><i>◈</i><span>مرکز هوشمند رمزارزها</span><em>01</em></a>
+  <a class="side-link" href="#market-snapshot"><i>₿</i><span>چهار دارایی شاخص</span><em>02</em></a>
+  <div class="side-caption">ابزارهای اصلی بازار</div>
+  <a class="side-link" href="#opportunities"><i>⌖</i><span>رادار فرصت‌های بازار</span><em>03</em></a>
+  <a class="side-link hunter-nav-link" href="#market-hunter"><i>🎯</i><span>شکارچی بازار</span><em>04</em></a>
+  <a class="side-link" href="#ai-section"><i>✧</i><span>تحلیلگر هوشمند AI</span><em>05</em></a>
+  <a class="side-link" href="#boom-hunter"><i>ϟ</i><span>آزمایشگاه مومنتوم</span><em>06</em></a>
+  <a class="side-link" href="#market-intelligence"><i>◉</i><span>هوشمندی بازار</span><em>07</em></a>
+  <a class="side-link" href="#chart-section"><i>⌁</i><span>نمودار حرفه‌ای</span><em>08</em></a>
   <a class="side-link" href="/market-heatmap.html"><i>▦</i><span>نقشه حرارتی بازار</span><em>LIVE</em></a>
-  <a class="side-link" href="#opportunities"><i>⌖</i><span>رادار صعودی و نزولی</span><em>02</em></a>
-  <a class="side-link hunter-nav-link" href="#market-hunter"><i>🎯</i><span>شکارچی بازار</span><em>03</em></a>
-  <a class="side-link" href="#ai-section"><i>✧</i><span>تحلیلگر هوشمند AI</span><em>04</em></a>
-  <a class="side-link" href="#boom-hunter"><i>◉</i><span>آزمایشگاه Boom Hunter</span><em>05</em></a>
-  <a class="side-link" href="#chart-section"><i>⌁</i><span>نمودار حرفه‌ای</span><em>06</em></a>
-  <a class="side-link" href="#market-intelligence"><i>◉</i><span>مرکز هوشمندی بازار</span><em>07</em></a>
-  <div class="side-caption">MARKET & PERSONAL</div>
-  <a class="side-link" href="#coins-section"><i>▤</i><span>بازار رمزارزها</span><em>10</em></a>
-  <div class="side-caption">TRADING DESK</div>
-  <a class="side-link" href="#trading-tools"><i>⌗</i><span>ابزارهای معامله‌گری</span><em>11</em></a>
+  <div class="side-caption">دارایی‌ها و ابزارها</div>
+  <a class="side-link" href="#coins-section"><i>▤</i><span>بازار رمزارزها</span><em>09</em></a>
+  <a class="side-link" href="#trading-tools"><i>⌗</i><span>ابزارهای معامله‌گری</span><em>10</em></a>
+  <a class="side-link quantum-center-nav" href="#quantum-center-entry"><i>✧</i><span>مرکز فرماندهی کوانتومی</span><em>CORE</em></a>
+  <div class="side-caption">پشتیبانی و سلامت</div>
+  <a class="side-link" href="#mmp-autonomous-health-center"><i>⛨</i><span>سلامت سامانه</span><em>11</em></a>
   <a class="side-link" href="#market-hours"><i>◷</i><span>ساعت بازارهای جهان</span><em>12</em></a>
-  <a class="side-link" href="#connections"><i>◉</i><span>سلامت منابع داده</span><em>13</em></a>
+  <a class="side-link" href="#exchange-connections"><i>◉</i><span>سلامت منابع داده</span><em>13</em></a>
   <a class="side-link" href="#app-download"><i>⬇</i><span>دانلود اپلیکیشن</span><em>14</em></a>
   <a class="side-link" href="#contact-us"><i>✉</i><span>ارتباط با مدیریت</span><em>15</em></a>
-  
   <div class="side-footer"><span class="live-dot"></span><span>اتصال زنده بازار</span><small>DATA STREAM ACTIVE</small></div>
 </aside>
 <!-- منوی پایین حذف شد؛ منوی اصلی در سربرگ قرار دارد. -->
@@ -3197,6 +3202,14 @@ html.mmp-native-app .native-menu-version{padding:5px 3px;color:#7893a7;text-alig
 
 
 <div class="mmp-coin-detail-backdrop" id="mmp-coin-detail" hidden role="dialog" aria-modal="true" aria-labelledby="mmp-coin-detail-title"><div class="mmp-coin-detail-panel"><button type="button" class="mmp-coin-detail-close" id="mmp-coin-detail-close" aria-label="بستن">×</button><div id="mmp-coin-detail-content"></div><div class="mmp-coin-detail-actions"></div></div></div>
+<script id="mmp-home-priority-layout-20261113">
+(()=>{const main=document.getElementById("hero");if(!main)return;
+ const order=["opportunities","market-hunter","ai-section","boom-hunter","market-intelligence","chart-section","coins-section","trading-tools","quantum-center-entry","mmp-autonomous-health-center","exchange-connections","market-hours","app-download","contact-us"];
+ const fragment=document.createDocumentFragment();
+ order.forEach(id=>{const node=document.getElementById(id);if(node&&node.parentElement===main)fragment.appendChild(node);});
+ const anchor=main.querySelector(".mmp-coin-detail-backdrop");main.insertBefore(fragment,anchor||null);
+})();
+</script>
 </main>
 
 
@@ -3217,7 +3230,8 @@ let currentCurrency = 'IRT';
 let currentTetherSources=[];
 let currentTetherWarning='';
 let currentTetherUpdatedAt=0;
-try{const saved=JSON.parse(localStorage.getItem('mmp_tether_cache_v1')||'null');if(saved&&Number(saved.price)>0&&Date.now()-Number(saved.updatedAt)<15*60*1000){currentTetherPrice=Number(saved.price);currentTetherSources=Array.isArray(saved.sources)?saved.sources:[];currentTetherUpdatedAt=Number(saved.updatedAt);currentTetherWarning='آخرین نرخ معتبر ذخیره‌شده';}}catch(e){}
+let currentTetherStale=false;
+try{const saved=JSON.parse(localStorage.getItem('mmp_tether_cache_v1')||'null');if(saved&&Number(saved.price)>0&&Date.now()-Number(saved.updatedAt)<15*60*1000){currentTetherPrice=Number(saved.price);currentTetherSources=Array.isArray(saved.sources)?saved.sources:[];currentTetherUpdatedAt=Number(saved.updatedAt);currentTetherStale=saved.stale===true||Date.now()-currentTetherUpdatedAt>120000;currentTetherWarning=currentTetherStale?'آخرین نرخ ذخیره‌شده؛ داده زنده در دسترس نیست':'آخرین نرخ معتبر ذخیره‌شده';}}catch(e){}
 let cachedCoinsData = [];
 let liveQuoteInFlight=false;
 async function refreshLiveQuotes(){
@@ -3246,7 +3260,8 @@ async function refreshLiveQuotes(){
 
 const money=(v,d=2)=>Number(v).toLocaleString('en-US',{maximumFractionDigits:d});
 const toman=(v)=>Math.round(v).toLocaleString('en-US');
-const isTetherRateFresh=()=>currentTetherPrice>0&&currentTetherUpdatedAt>0&&Date.now()-currentTetherUpdatedAt<=120000;
+const isTetherRateFresh=()=>currentTetherPrice>0&&!currentTetherStale&&currentTetherUpdatedAt>0&&Date.now()-currentTetherUpdatedAt<=120000;
+const isTetherRateRecentlyKnown=()=>currentTetherPrice>0&&currentTetherUpdatedAt>0&&Date.now()-currentTetherUpdatedAt<=15*60*1000;
 
 function clock(){$('clock').textContent=new Date().toLocaleTimeString('fa-IR')}
 setInterval(clock,1000);clock();
@@ -3521,60 +3536,108 @@ async function enrichWithBinance(coins){
  });
 }
 async function fetchTetherRate(){
- // Run the consolidated three-exchange monitor and the independent proxy fallback
- // in parallel, so a slow domestic venue cannot hold up the whole market refresh.
  const localPromise=(async()=>{
-  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),10000);
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),9000);
   try{
    const response=await fetch(AI_ANALYSIS_ENDPOINT+"/local-market-watch",{cache:"no-store",signal:controller.signal,headers:{"Accept":"application/json"}});
    if(!response.ok)throw new Error("HTTP "+response.status);
-   const data=await response.json();
-   if(data?.fresh===false||data?.data_stale===true)throw new Error("stale local tether snapshot");
-   const sources=Array.isArray(data?.sources)?data.sources.filter(x=>x?.fresh===true&&Number(x.price_toman)>0).map(x=>String(x.exchange||"")).filter(Boolean):[];
-   const price=Number(data?.median_toman);
-   const deviationPct=Number(data.source_deviation_pct)||0;
-   if(Number.isFinite(price)&&price>=1000&&price<=100000000&&sources.length&&deviationPct<=2.5)return {price,sources,warning:String(data.warning||""),deviationPct};
-  }catch(error){console.warn("Local market monitor unavailable:",error?.message||error);}
+   const data=await response.json(),checkedAt=Date.parse(data.checked_at||""),lastKnownAt=Date.parse(data.last_known_checked_at||data.checked_at||"");
+   const names=Array.isArray(data.selected_sources)&&data.selected_sources.length?data.selected_sources:(Array.isArray(data.sources)?data.sources.filter(x=>x?.fresh===true&&Number(x.price_toman)>0).map(x=>String(x.exchange||"")).filter(Boolean):[]);
+   const price=Number(data.selected_toman??data.median_toman),deviation=Number(data.source_deviation_pct)||0;
+   if(data?.fresh!==false&&data?.data_stale!==true&&Number.isFinite(price)&&price>=1000&&price<=100000000&&names.length&&deviation<=2.5){
+    return {price,sources:names,warning:String(data.warning||""),updatedAt:Number.isFinite(checkedAt)?checkedAt:Date.now(),stale:false,selectedSource:String(data.selected_source||names[0]||"")};
+   }
+   const lastKnown=Number(data.last_known_toman),age=Number(data.last_known_age_ms);
+   if(lastKnown>=1000&&lastKnown<=100000000&&Number.isFinite(lastKnownAt)&&Date.now()-lastKnownAt<=15*60*1000&&(Number.isFinite(age)?age<=15*60*1000:true)){
+    return {price:lastKnown,sources:names,warning:"منابع زنده موقتاً پاسخ نداده‌اند؛ آخرین نرخ معتبر ذخیره‌شده نمایش داده می‌شود.",updatedAt:lastKnownAt,stale:true,selectedSource:String(data.selected_source||"آخرین نرخ معتبر")};
+   }
+  }catch(error){console.warn("Dedicated tether monitor unavailable:",error?.message||error);}
   finally{clearTimeout(timer);}
   return null;
  })();
  const fallbackPromise=(async()=>{
   const requests=[
-   {source:"Nobitex",url:AI_ANALYSIS_ENDPOINT+"/market-proxy?source=nobitex-tether",read:d=>Number(d?.stats?.["usdt-rls"]?.latest)/10},
-   {source:"Wallex",url:AI_ANALYSIS_ENDPOINT+"/market-proxy?source=wallex-markets",read:d=>{
-    const raw=d?.result?.symbols||d?.result?.markets||{};
-    const markets=Array.isArray(raw)?raw:Object.values(raw);
-    const tomanMarket=markets.find(m=>String(m?.symbol||"").toUpperCase()==="USDTTMN");
-    const rialMarket=markets.find(m=>String(m?.symbol||"").toUpperCase()==="USDTIRT");
-    const toman=Number(tomanMarket?.stats?.lastPrice??tomanMarket?.lastPrice);
-    const rial=Number(rialMarket?.stats?.lastPrice??rialMarket?.lastPrice);
-    return toman>0?toman:rial/10;
+   {source:"Nobitex",url:"/market-proxy?source=nobitex-tether",read:d=>{
+    const stats=d?.stats||{},rial=Number(stats["usdt-rls"]?.latest),toman=Number(stats["usdt-irt"]?.latest??stats["usdt-tmn"]?.latest);
+    return rial>0?rial/10:toman>0?toman:Number(d?.lastTradePrice)||0;
+   }},
+   {source:"Wallex",url:"/market-proxy?source=wallex-markets",read:d=>{
+    const raw=d?.result?.symbols||d?.result?.markets||{},rows=Array.isArray(raw)?raw:Object.values(raw);
+    const tmn=rows.find(x=>String(x?.symbol||"").toUpperCase()==="USDTTMN"),irr=rows.find(x=>String(x?.symbol||"").toUpperCase()==="USDTIRT");
+    const t=Number(tmn?.stats?.lastPrice??tmn?.lastPrice),r=Number(irr?.stats?.lastPrice??irr?.lastPrice);
+    return t>0?t:r>0?r/10:0;
+   }},
+   {source:"Bitpin",url:"/market-proxy?source=bitpin-tickers",read:d=>{
+    const rows=Array.isArray(d?.results)?d.results:Array.isArray(d?.data)?d.data:Array.isArray(d)?d:[];
+    const pair=rows.find(x=>{
+     const code=String(x?.code||x?.symbol||"").replace(/[/-]/g,"_").toUpperCase().replace(/_/g,"");
+     const base=String(x?.currency1?.code||x?.base_currency||x?.baseAsset||"").toUpperCase(),quote=String(x?.currency2?.code||x?.quote_currency||x?.quoteAsset||"").toUpperCase();
+     return code==="USDTIRT"||(base==="USDT"&&quote==="IRT");
+    });
+    const price=Number(pair?.price_info?.price??pair?.internal_price_info?.price??pair?.price??pair?.last_price??pair?.last);
+    const quote=String(pair?.currency2?.code||pair?.quote_currency||pair?.quoteAsset||"IRT").toUpperCase();
+    return price>0?(["IRR","RLS"].includes(quote)?price/10:price):0;
+   }},
+   {source:"Exir",url:"/market-proxy?source=exir-tickers",read:d=>{
+    const source=d?.result||d?.data||d||{},entries=Array.isArray(source)?source.map(x=>[x?.symbol||x?.pair||"",x]):Object.entries(source);
+    const pair=entries.find(([key,value])=>/^(usdt-(irt|tmn|toman|irr|rls)|(irt|tmn|toman|irr|rls)-usdt)$/.test(String(value?.symbol||value?.pair||key).toLowerCase().replace(/[_/]/g,"-")));
+    if(!pair)return 0;
+    const symbol=String(pair[1]?.symbol||pair[0]).toLowerCase().replace(/[_/]/g,"-"),parts=symbol.split("-"),reverse=parts[0]!=="usdt",unit=reverse?parts[0]:parts[1];
+    const raw=Number(pair[1]?.last??pair[1]?.close??pair[1]?.price),price=reverse&&raw>0?1/raw:raw;
+    return price>0?(["irt","tmn","toman"].includes(unit)?price:price/10):0;
+   }},
+   {source:"Ramzinex",url:"/market-proxy?source=ramzinex-pairs",read:d=>{
+    const raw=d?.result?.data??d?.data??d?.result?.pairs??d?.pairs??[],rows=Array.isArray(raw)?raw:Object.values(raw);
+    const code=v=>Array.isArray(v)?String(v[0]?.symbol??v[0]?.code??v[0]??""):String(v?.symbol??v?.code??v?.name??v??"");
+    const pair=rows.find(x=>{
+     const base=code(x?.base_currency_symbol??x?.base_currency??x?.baseCurrency).toUpperCase(),quote=code(x?.quote_currency_symbol??x?.quote_currency??x?.quoteCurrency).toUpperCase(),name=String(x?.url_name??x?.symbol??x?.pair??"").toLowerCase().replace(/[_/]/g,"-");
+     return (base==="USDT"&&["IRR","IRT","RLS","TMN","TOMAN"].includes(quote))||/^usdt-(irr|irt|rls|tmn|toman)$/.test(name);
+    });
+    if(!pair)return 0;
+    const buy=Number(pair.buy??pair.best_buy??pair.bid),sell=Number(pair.sell??pair.best_sell??pair.ask),last=Number(pair.last??pair.last_price??pair.price??pair.rate),rawPrice=buy>0&&sell>0?(buy+sell)/2:last;
+    const quote=code(pair.quote_currency_symbol??pair.quote_currency??pair.quoteCurrency).toUpperCase()||String(pair.url_name||pair.symbol||"").toUpperCase().split(/[-_/]/)[1];
+    return rawPrice>0?(["IRT","TMN","TOMAN"].includes(quote)?rawPrice:rawPrice/10):0;
    }}
   ];
   const results=await Promise.all(requests.map(async item=>{
-   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),9000);
+   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),7500);
    try{
-    const response=await fetch(item.url,{cache:"no-store",signal:controller.signal});
-    if(!response.ok)throw new Error("HTTP "+response.status);
-    if(response.headers.get("X-MMP-Cache")==="stale")throw new Error("stale cached quote");
-    const data=await response.json(),price=item.read(data);
-    if(!Number.isFinite(price)||price<1000||price>100000000)throw new Error("invalid rate");
+    const response=await fetch(AI_ANALYSIS_ENDPOINT+item.url,{cache:"no-store",signal:controller.signal,headers:{"Accept":"application/json"}});
+    if(!response.ok||response.headers.get("X-MMP-Cache")==="stale")throw new Error("stale or unavailable source");
+    const data=await response.json(),price=Number(item.read(data));
+    if(!Number.isFinite(price)||price<1000||price>100000000)throw new Error("invalid tether rate");
     return {source:item.source,price};
    }catch(error){return null;}
    finally{clearTimeout(timer);}
   }));
-  const valid=results.filter(Boolean);
-  if(!valid.length)return {price:0,sources:[],warning:"نرخ تتر موقتاً از منابع داخلی دریافت نشد"};
-  if(valid.length===1)return {price:valid[0].price,sources:[valid[0].source],warning:"فقط یک منبع نرخ تتر پاسخ داد"};
-  const a=valid[0],b=valid[1],diff=Math.abs(a.price-b.price)/((a.price+b.price)/2);
-  if(diff>0.03)return {price:a.price,sources:[a.source],warning:"اختلاف بیش از ۳٪ میان منابع؛ نرخ منبع اصلی نمایش داده شد"};
-  return {price:(a.price+b.price)/2,sources:valid.map(x=>x.source),warning:""};
+  const valid=results.filter(Boolean),primary=valid.find(x=>x.source==="Nobitex"),backups=valid.filter(x=>x.source!=="Nobitex");
+  const median=rows=>{const values=rows.map(x=>x.price).sort((a,b)=>a-b),n=values.length;return n?(n%2?values[(n-1)/2]:(values[n/2-1]+values[n/2])/2):0;};
+  const spread=(rows,center)=>center&&rows.length?Math.max(...rows.map(x=>Math.abs(x.price-center)/center*100)):0;
+  let price=0,selected=[],warning="";
+  if(primary){
+   const backupMedian=median(backups),backupSpread=spread(backups,backupMedian),gap=backupMedian?Math.abs(primary.price-backupMedian)/backupMedian*100:null;
+   if(backups.length>=2&&backupSpread<=2.5&&gap!==null&&gap>3){
+    selected=backups.filter(x=>Math.abs(x.price-backupMedian)/backupMedian*100<=2.5);price=median(selected);
+    warning="نرخ نوبیتکس با اجماع منابع جایگزین اختلاف داشت؛ نرخ جایگزینِ تأییدشده فعال شد.";
+   }else{
+    price=primary.price;selected=[primary,...backups.filter(x=>Math.abs(x.price-primary.price)/primary.price*100<=3)];
+    if(!backups.length)warning="نوبیتکس فعال است؛ منابع پشتیبان فعلاً پاسخ نداده‌اند.";
+    else if(gap!==null&&gap>3)warning="نوبیتکس به‌عنوان مرجع اصلی حفظ شد؛ اختلاف منابع پشتیبان بررسی شود.";
+   }
+  }else if(valid.length){
+   const center=median(valid),consensus=valid.filter(x=>Math.abs(x.price-center)/center*100<=2.5);
+   if(consensus.length>=2){selected=consensus;price=median(consensus);warning="نوبیتکس در دسترس نیست؛ نرخ از اجماع منابع جایگزین محاسبه شد.";}
+   else if(consensus.length===1){selected=consensus;price=consensus[0].price;warning="نوبیتکس در دسترس نیست؛ فقط یک منبع جایگزین معتبر پاسخ داده است.";}
+   else{selected=valid;price=center;warning="نوبیتکس در دسترس نیست و منابع جایگزین اختلاف دارند؛ میانه منابع نمایش داده شد.";}
+  }
+  if(!(price>0))return {price:0,sources:[],warning:"نرخ زنده تتر از منابع اصلی و پشتیبان دریافت نشد"};
+  return {price,sources:[...new Set(selected.map(x=>x.source))],warning,updatedAt:Date.now(),stale:false,selectedSource:primary&&selected.some(x=>x.source==="Nobitex")?"Nobitex":"اجماع منابع پشتیبان"};
  })();
  const [local,fallback]=await Promise.all([localPromise,fallbackPromise]);
- if(local&&local.sources.length>=(fallback?.sources?.length||0)&&Number(local.deviationPct??0)<=2.5)return local;
- return fallback?.price>0?fallback:local||{price:0,sources:[],warning:"نرخ تتر موقتاً از منابع داخلی دریافت نشد"};
+ if(local&&local.price>0&&!local.stale)return local;
+ if(fallback&&fallback.price>0)return fallback;
+ return local||{price:0,sources:[],warning:"نرخ تتر از منابع اصلی و پشتیبان در دسترس نیست"};
 }
-
 function normalizeCoinLoreAssets(payload){
  const rows=Array.isArray(payload?.data)?payload.data:[];
  const stamp=Number(payload?.info?.time)||Math.floor(Date.now()/1000);
@@ -3657,12 +3720,12 @@ async function refreshAll(){
  try{
   const tether=await fetchTetherRate();
   if(tether.price>0){
-   currentTetherPrice=tether.price;currentTetherSources=tether.sources;currentTetherWarning=tether.warning;currentTetherUpdatedAt=Date.now();
-   try{localStorage.setItem("mmp_tether_cache_v1",JSON.stringify({price:currentTetherPrice,sources:currentTetherSources,updatedAt:currentTetherUpdatedAt}));}catch(e){}
-  }else if(currentTetherPrice>0&&currentTetherUpdatedAt&&Date.now()-currentTetherUpdatedAt<15*60*1000){
-   currentTetherWarning="اتصال موقتاً ناپایدار؛ آخرین نرخ معتبر نمایش داده می‌شود";
+   currentTetherPrice=tether.price;currentTetherSources=tether.sources;currentTetherWarning=tether.warning;currentTetherUpdatedAt=Number(tether.updatedAt)||Date.now();currentTetherStale=tether.stale===true;
+   try{localStorage.setItem("mmp_tether_cache_v1",JSON.stringify({price:currentTetherPrice,sources:currentTetherSources,updatedAt:currentTetherUpdatedAt,stale:currentTetherStale}));}catch(e){}
+  }else if(isTetherRateRecentlyKnown()){
+   currentTetherStale=true;currentTetherWarning="اتصال موقتاً ناپایدار؛ آخرین نرخ معتبر با برچسب داده قدیمی نمایش داده می‌شود";
   }else{
-   currentTetherPrice=0;currentTetherSources=[];currentTetherWarning=tether.warning;
+   currentTetherPrice=0;currentTetherSources=[];currentTetherStale=true;currentTetherWarning=tether.warning;
   }
   renderTetherCard();
   const marketController=new AbortController(),marketTimer=setTimeout(()=>marketController.abort(),16000);
@@ -3907,13 +3970,16 @@ function renderHeroCards() {
 
 function renderTetherCard(){
  const value=$("usdt"),source=$("usdt-source");if(!value||!source)return;
+ const inToman=money(currentTetherPrice,0)+" تومان",provider=currentTetherSources.length?currentTetherSources.join(" + "):"آخرین نرخ معتبر";
  if(isTetherRateFresh()){
-  const inToman=money(currentTetherPrice,0)+" تومان";
   value.textContent=currentCurrency==="USDT"?"1.00 USDT":inToman;
-  source.textContent=(currentCurrency==="USDT"?"معادل تومانی: "+inToman:"معادل تتری: 1.00 USDT")+" · منبع: "+(currentTetherSources.length?currentTetherSources.join(" + "):"آخرین نرخ معتبر")+(currentTetherWarning?" · "+currentTetherWarning:"");
+  source.textContent=(currentCurrency==="USDT"?"معادل تومانی: "+inToman:"معادل تتری: 1.00 USDT")+" · منبع: "+provider+(currentTetherWarning?" · "+currentTetherWarning:"");
+ }else if(isTetherRateRecentlyKnown()){
+  value.textContent=currentCurrency==="USDT"?"1.00 USDT":inToman;
+  source.textContent="آخرین نرخ معتبر · "+new Date(currentTetherUpdatedAt).toLocaleTimeString("fa-IR")+" · "+provider+" · داده قدیمی است؛ نرخ زنده نیست";
  }else{
   value.textContent="—";
-  source.textContent=currentTetherWarning||"نرخ زنده تتر در دسترس نیست؛ آخرین نرخ به‌عنوان قیمت جاری نمایش داده نمی‌شود";
+  source.textContent=currentTetherWarning||"نرخ تتر از منابع اصلی و پشتیبان در دسترس نیست";
  }
 }
 
@@ -3995,7 +4061,7 @@ function renderCoinsTables(data) {
     const cap=Number(c.market_cap),volume=Number(c.total_volume),supply=Number(c.circulating_supply),pairList=Array.isArray(c.marketPairs)?[...new Set(c.marketPairs.map(x=>x.exchange).filter(Boolean))]:[];
     const detailMetric=(label,value)=>'<div><small>'+label+'</small><b>'+value+'</b></div>';
     const detailMoney=value=>Number.isFinite(value)&&value>0?money(value,0)+" USDT":"ناموجود";
-    host.innerHTML='<div class="mmp-coin-detail-identity"><img src="'+aiEscape(c.image||("https://assets.coincap.io/assets/icons/"+String(c.symbol||"").toLowerCase()+"@2x.png"))+'" alt="" onerror="handleAiCoinIconError(this)" data-symbol="'+symbol+'" data-fallback-step="0"><div><h3 id="mmp-coin-detail-title">'+name+'</h3><small>'+symbol+'</small></div></div><div class="mmp-coin-detail-metrics">'+detailMetric("قیمت دلاری",price>0?money(price,price<1?8:2)+" USDT":"ناموجود")+detailMetric("قیمت تومانی",price>0&&currentTetherPrice>0?toman(price*currentTetherPrice)+" تومان":"ناموجود")+detailMetric("تغییر ۲۴ ساعته",Number.isFinite(change)?(change>=0?"+":"")+change.toFixed(2)+"%":"ناموجود")+detailMetric("رتبه بازار",Number(c.market_cap_rank)>0?"#"+Number(c.market_cap_rank):"نامشخص")+detailMetric("ارزش بازار",detailMoney(cap))+detailMetric("حجم معاملات ۲۴ساعته",detailMoney(volume))+detailMetric("عرضه در گردش",supply>0?money(supply,0)+" "+symbol:"ناموجود")+detailMetric("بازارهای شناسایی‌شده",pairList.length?pairList.length.toLocaleString("fa-IR")+" بازار":"نامشخص")+'</div><div class="mmp-coin-detail-note"><b>بازارهای شناسایی‌شده:</b> '+(pairList.length?aiEscape(pairList.join(" · ")):"اطلاعات صرافی برای این دارایی موجود نیست")+'<br>برای دیدن اطلاعات کامل، روی هر ارز بزنید. داده‌های بدون منبع معتبر ساختگی نمایش داده نمی‌شوند.</div><div class="mmp-coin-detail-actions"><button type="button" class="btn primary mmp-coin-analyze-action">تحلیل این ارز در موتور هوشمند</button></div>';
+    host.innerHTML='<div class="mmp-coin-detail-identity"><img src="'+aiEscape(c.image||("https://assets.coincap.io/assets/icons/"+String(c.symbol||"").toLowerCase()+"@2x.png"))+'" alt="" onerror="handleAiCoinIconError(this)" data-symbol="'+symbol+'" data-fallback-step="0"><div><h3 id="mmp-coin-detail-title">'+name+'</h3><small>'+symbol+'</small></div></div><div class="mmp-coin-detail-metrics">'+detailMetric("قیمت دلاری",price>0?money(price,price<1?8:2)+" USDT":"ناموجود")+detailMetric("قیمت تومانی",price>0&&isTetherRateFresh()?toman(price*currentTetherPrice)+" تومان":"ناموجود")+detailMetric("تغییر ۲۴ ساعته",Number.isFinite(change)?(change>=0?"+":"")+change.toFixed(2)+"%":"ناموجود")+detailMetric("رتبه بازار",Number(c.market_cap_rank)>0?"#"+Number(c.market_cap_rank):"نامشخص")+detailMetric("ارزش بازار",detailMoney(cap))+detailMetric("حجم معاملات ۲۴ساعته",detailMoney(volume))+detailMetric("عرضه در گردش",supply>0?money(supply,0)+" "+symbol:"ناموجود")+detailMetric("بازارهای شناسایی‌شده",pairList.length?pairList.length.toLocaleString("fa-IR")+" بازار":"نامشخص")+'</div><div class="mmp-coin-detail-note"><b>بازارهای شناسایی‌شده:</b> '+(pairList.length?aiEscape(pairList.join(" · ")):"اطلاعات صرافی برای این دارایی موجود نیست")+'<br>برای دیدن اطلاعات کامل، روی هر ارز بزنید. داده‌های بدون منبع معتبر ساختگی نمایش داده نمی‌شوند.</div><div class="mmp-coin-detail-actions"><button type="button" class="btn primary mmp-coin-analyze-action">تحلیل این ارز در موتور هوشمند</button></div>';
    $("mmp-coin-detail").hidden=false;return;
   }
   if(event.target.closest("#mmp-coin-detail-close")||event.target.id==="mmp-coin-detail"){close();return;}
@@ -4316,7 +4382,7 @@ function restoreAiReportOnce(){
 }
 function aiEscape(v){return String(v??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));}
 function aiNum(v){return Number.isFinite(Number(v))?Number(v):null;}
-function aiPrice(v){if(v==null||!Number.isFinite(Number(v)))return "—";const usd=Number(v);const usdText="$"+money(usd,usd<1?6:2)+" USDT";const tomanText=currentTetherPrice>0?" · "+toman(usd*currentTetherPrice)+" تومان":"";return usdText+tomanText;}
+function aiPrice(v){if(v==null||!Number.isFinite(Number(v)))return "—";const usd=Number(v);const usdText="$"+money(usd,usd<1?6:2)+" USDT";const tomanText=isTetherRateFresh()?" · "+toman(usd*currentTetherPrice)+" تومان":"";return usdText+tomanText;}
 function aiSetStatus(t,busy=false){$("ai-status").textContent=t;$("ai-status").classList.toggle("busy",busy);}
 function renderAiReport(r,c,market={}){
  const action=String(r.action||"WAIT").toUpperCase();
@@ -4329,7 +4395,7 @@ function renderAiReport(r,c,market={}){
  $("ai-confidence-fill").style.width=Math.max(0,Math.min(100,Number(r.confidence)||0))+"%";
  $("ai-risk").textContent=r.risk_level||"نامشخص";
  const referencePrice=aiNum(r.market?.price_usd??c?.current_price);
- $("ai-live-price").innerHTML=referencePrice==null?"—":'<span class="ai-reference-usdt">$ '+money(referencePrice,referencePrice<1?6:2)+' USDT</span>'+(currentTetherPrice>0?'<span class="ai-reference-irt">'+toman(referencePrice*currentTetherPrice)+' تومان</span>':"");
+ $("ai-live-price").innerHTML=referencePrice==null?"—":'<span class="ai-reference-usdt">$ '+money(referencePrice,referencePrice<1?6:2)+' USDT</span>'+(isTetherRateFresh()?'<span class="ai-reference-irt">'+toman(referencePrice*currentTetherPrice)+' تومان</span>':"");
  const tfNames={"15m":"۱۵ دقیقه","1h":"۱ ساعت","4h":"۴ ساعت","1d":"روزانه"};
  const timeframeData=market.timeframes&&typeof market.timeframes==="object"?market.timeframes:{};
  const timeframeOrder=["15m","1h","4h","1d"];
