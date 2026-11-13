@@ -187,6 +187,9 @@ jobs:
           html = Path("www/v4/index.html").read_text(encoding="utf-8")
           css = Path("www/v4/app.css").read_text(encoding="utf-8")
           js = Path("www/v4/app.js").read_text(encoding="utf-8")
+          preview_manifest = Path("www/v4/manifest.webmanifest").read_text(encoding="utf-8")
+          assert '"start_url": "/v4/"' in preview_manifest, "V4 preview manifest must start at /v4/"
+          assert '"scope": "/v4/"' in preview_manifest, "V4 preview manifest must be scoped to /v4/"
           for required in ["id=\"command\"", "id=\"chart\"", "id=\"marketChart\"", "id=\"macdChart\"", "id=\"rsiChart\"", "id=\"radar\"", "id=\"hunter\"", "id=\"analyzer\"", "id=\"engines\"", "id=\"engineCore\"", "app.css", "app.js", "lightweight-charts"]:
               assert required in html, f"Missing required UI mount: {required}"
           for required in ['id="runtimeVersion"', "QIE Adaptive Intelligence", "فرماندهی کوانتومی", "نمودار حرفه‌ای", "رادار هوشمند", "شکارچی کوانتومی", "تحلیل‌گر هوشمند", "موتور هوشمند یکپارچه", "۱۲ بُعد امتیازدهی وزن‌دار"]:
@@ -234,6 +237,11 @@ jobs:
             ["/index.html", {path: "www/v4/index.html", type: "text/html; charset=utf-8"}],
             ["/app.css", {path: "www/v4/app.css", type: "text/css; charset=utf-8"}],
             ["/app.js", {path: "www/v4/app.js", type: "text/javascript; charset=utf-8"}],
+            ["/v4/", {path: "www/v4/index.html", type: "text/html; charset=utf-8"}],
+            ["/v4/index.html", {path: "www/v4/index.html", type: "text/html; charset=utf-8"}],
+            ["/v4/app.css", {path: "www/v4/app.css", type: "text/css; charset=utf-8"}],
+            ["/v4/app.js", {path: "www/v4/app.js", type: "text/javascript; charset=utf-8"}],
+            ["/v4/manifest.webmanifest", {path: "www/v4/manifest.webmanifest", type: "application/manifest+json"}],
             ["/assets/mmp-coin-ai-icon.svg", {path: "www/assets/mmp-coin-ai-icon.svg", type: "image/svg+xml"}],
             ["/manifest.webmanifest", {path: "manifest.webmanifest", type: "application/manifest+json"}]
           ]);
@@ -360,8 +368,13 @@ jobs:
             }));
             assert(dimensions.page <= dimensions.viewport + 2,
               name + ": horizontal overflow (" + dimensions.page + " > " + dimensions.viewport + ")");
+            await page.goto("https://mmp-coin.github.io/v4/", {waitUntil: "domcontentloaded", timeout: 30000});
+            assert.equal(await page.locator("#engineCore").count(), 1, name + ": V4 preview path must mount the same application");
+            const previewManifest = await page.evaluate(async () => fetch("./manifest.webmanifest").then(r => r.json()));
+            assert.equal(previewManifest.start_url, "/v4/", name + ": preview manifest start_url");
+            assert.equal(previewManifest.scope, "/v4/", name + ": preview manifest scope");
             await context.close();
-            console.log("PASS browser smoke:", name);
+            console.log("PASS browser smoke and V4 preview manifest:", name);
           }
 
           try {
