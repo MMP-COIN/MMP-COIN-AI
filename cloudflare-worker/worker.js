@@ -1618,8 +1618,15 @@ async function handle(request,env){
    for(const [p,q] of depth.asks||[])if(mid&&Number(p)<=mid*1.01)ask+=Number(p)*Number(q);
   }
   let flowData=null,flowError=null;
-  const flowWindow=marketType==="futures"?1:5;try{flowData=marketType==="futures"?await loadFuturesMarketFlow(base,flowWindow):await loadMarketFlow(base,flowWindow);}
-  catch(error){flowError=String(error?.message||error).slice(0,220);}
+  const flowWindow=marketType==="futures"?1:5;try{
+   if(marketType==="futures"){
+    if(!env.FUTURES_ENGINE||!env.FUTURES_ENGINE_TOKEN)throw new Error("Dedicated Futures flow service is not configured");
+    const internal=new Request("https://futures-engine/market-flow?symbol="+encodeURIComponent(base)+"&window="+encodeURIComponent(flowWindow),{headers:{"X-MMP-Futures-Token":env.FUTURES_ENGINE_TOKEN}});
+    const response=await env.FUTURES_ENGINE.fetch(internal),payload=await response.json();
+    if(!response.ok)throw new Error(payload.error||"Dedicated Futures flow request failed");
+    flowData=payload;
+   }else flowData=await loadMarketFlow(base,flowWindow);
+  }catch(error){flowError=String(error?.message||error).slice(0,220);}
   const imbalance=bid+ask?(bid-ask)/(bid+ask)*100:null;
   return json({
    symbol:base,market:marketType,
