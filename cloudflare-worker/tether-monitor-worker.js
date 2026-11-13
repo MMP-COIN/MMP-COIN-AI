@@ -66,7 +66,8 @@ async function fetchLocalTetherSnapshot(){
   },WALLEX_HEADERS),
   readSource([
    "https://api.bitpin.org/api/v1/mkt/tickers/",
-   "https://api.bitpin.ir/api/v1/mkt/tickers/"
+   "https://api.bitpin.ir/api/v1/mkt/tickers/",
+   "https://api.bitpin.market/api/v1/mkt/tickers/"
   ],"Bitpin",d=>{
    const rows=Array.isArray(d?.results)?d.results:Array.isArray(d?.data)?d.data:Array.isArray(d)?d:[];
    const pair=rows.find(m=>{
