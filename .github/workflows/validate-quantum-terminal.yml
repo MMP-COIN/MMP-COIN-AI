@@ -65,6 +65,13 @@ jobs:
           from pathlib import Path
           import re
           html = Path("www/index.html").read_text(encoding="utf-8")
+          admin = Path("www/admin.html").read_text(encoding="utf-8")
+          android_workflow = Path(".github/workflows/android-apk.yml").read_text(encoding="utf-8")
+          assert not Path("admin.html").exists(), "Retired standalone admin panel has returned"
+          assert not Path("v4").exists(), "Retired v4 site generation has returned"
+          assert not Path("assets").exists(), "Duplicate root asset directory has returned; www/assets is canonical"
+          assert "پنل مدیریت فعلاً غیرفعال است" in admin, "Public admin route must remain a disabled placeholder"
+          assert "www/assets/mmp-coin-ai-icon.svg" in android_workflow, "Android launcher icon must use the canonical web asset"
           css = Path("www/assets/mmp-quantum-terminal-v1.css")
           js = Path("www/assets/mmp-quantum-terminal-v1.js")
           assert css.is_file() and css.stat().st_size > 1000, "Terminal stylesheet missing or unexpectedly small"
