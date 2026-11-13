@@ -50,7 +50,7 @@ function render(){
  const total=rows.reduce((n,x)=>n+x.volume,0),up=rows.filter(x=>x.change>0).length,down=rows.filter(x=>x.change<0).length;
  $("summary").innerHTML='<div>نمادهای نمایش‌داده‌شده<b>'+rows.length+'</b></div><div>مثبت<b>'+up+'</b></div><div>منفی<b>'+down+'</b></div><div>گردش معاملات<b>'+usd(total)+'</b></div>';
  const max=rows.reduce((m,x)=>Math.max(m,x.volume),1);
- $("heatmap").innerHTML=rows.length?rows.map(x=>{const ratio=x.volume/max,c=ratio>=.18?2:1,r=ratio>=.45?2:1,share=total?x.volume/total*100:0,cls=x.change>.05?"positive":x.change<-.05?"negative":"neutral";return '<article class="tile '+cls+((c>1||r>1)?" major":"")+'" style="--c:'+c+';--r:'+r+'"><b>'+x.symbol+'/USDT</b><strong>'+(x.change>0?"+":"")+fmt(x.change,2)+'٪</strong><small>'+usd(x.price)+'</small><em>سهم گردش '+fmt(share,1)+'٪ · '+usd(x.volume)+'</em></article>';}).join(""):'<div class="empty">برای این فیلتر داده‌ای وجود ندارد.</div>';
+ $("heatmap").innerHTML=rows.length?rows.map(x=>{const ratio=x.volume/max,c=ratio>=.18?2:1,r=ratio>=.45?2:1,share=total?x.volume/total*100:0,cls=x.change>.05?"positive":x.change<-.05?"negative":"neutral";return '<article class="tile '+cls+((c>1||r>1)?" major":"")+'" style="--c:'+c+';--r:'+r+'"><b>'+x.symbol+'/USDT</b><strong>'+(x.change>0?"+":"")+fmt(x.change,2)+'٪</strong><small>'+priceUsd(x.price)+'</small><em>سهم گردش '+fmt(share,1)+'٪ · '+usd(x.volume)+'</em></article>';}).join(""):'<div class="empty">برای این فیلتر داده‌ای وجود ندارد.</div>';
 }
 async function load(){
  if(busy)return;busy=true;$("refresh").disabled=true;$("refresh").textContent="در حال دریافت…";$("status").textContent="در حال دریافت تیکرهای واقعی از صرافی‌های متصل…";
