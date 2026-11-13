@@ -252,7 +252,7 @@ async function candles(symbol,interval,env,marketType="spot"){
     }catch(e){errors.push("OKX: "+e.message);if(/HTTP (400|403|429|451)|invalid|not listed|insufficient|Symbol Is Invalid/i.test(String(e?.message||e)))break;}
    }
   }
-  for(const host of ["https://fapi.binance.com","https://fapi1.binance.com","https://fapi2.binance.com","https://fapi3.binance.com"]){
+  for(const host of ["https://fapi.binance.com","https://fapi1.binance.com"]){
    try{
     const r=await fetchWithTimeout(host+"/fapi/v1/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250",{headers});
     if(!r.ok)throw new Error("Binance Futures HTTP "+r.status);
@@ -869,8 +869,16 @@ async function analyzeDigitalHunterSymbol(symbol,marketType="spot",asset=null,ac
  markQuantumEvidence(activity,"earlyOpportunity");
  return {symbol,trend,score,explosionScore,compression,change1m:m1,change3m:m3,change5m:m5,change15m:m15,volumeRatio,breakout,technicalAligned,earlyCoreAligned,candidateGate:quantum.candidateGate,quantum,indicators,price:last[4],totalVolume24h:Number(asset?.total_volume)||0,provider:m.provider,multiExchangeConfirmed:m.multiExchangeConfirmed,multiExchangeEvidence:m.multiExchangeEvidence,lowLiquidity,rows:rows.slice(-30),updatedAt:now,candleTime:last[0],engine:"quantum-hunter-v3",market:marketType,timeframes:{m1,m3,m5,m15},evidence:{volumeRatio:+volumeRatio.toFixed(2),breakout,trend15m:trend15,structure,coreAligned,technical:{rsi14:indicators.rsi14,ema9:indicators.ema9,ema21:indicators.ema21,ema50:indicators.ema50,macdHistogram:indicators.macdHistogram,vwapDeviationPct:indicators.vwapDeviationPct,obvTrend:indicators.obvTrend},multiExchange:m.multiExchangeEvidence},overextended};
 }
-async function loadFuturesMarketFlow(symbol,windowMinutes=5,signal=null){
- const get=(url,timeoutMs=4500)=>marketFlowJson(url,timeoutMs,signal);
+export async function loadFuturesMarketFlow(symbol,windowMinutes=5,signal=null){
+ // This flow runs in the dedicated Futures Worker so its exchange requests do not
+ // compete with the analyzer, Spot flow, depth, or sentiment subrequests.
+ let requestsUsed=0;
+ const maxRequests=50;
+ const get=(url,timeoutMs=4500)=>{
+  if(requestsUsed>=maxRequests)throw new Error("Futures flow request budget reached");
+  requestsUsed++;
+  return marketFlowJson(url,timeoutMs,signal);
+ };
  const base=String(symbol||"").toUpperCase().replace(/USDT$/,""),pair=base+"USDT";
  if(!/^[A-Z0-9]{2,24}USDT$/.test(pair))throw new Error("Invalid Futures symbol");
  const minutes=Math.max(1,Math.min(15,Number(windowMinutes)||5)),now=Date.now(),cutoff=now-minutes*60000;
@@ -893,7 +901,7 @@ async function loadFuturesMarketFlow(symbol,windowMinutes=5,signal=null){
  }
 
  if(!trades?.length||truncated||trades.length<8){
- for(const host of ["https://api.bybit.eu","https://api.bytick.eu","https://api.bybit.com","https://api.bytick.com"]){
+ for(const host of ["https://api.bybit.eu","https://api.bytick.eu"]){
   try{
    const d=await get(host+"/v5/market/recent-trade?category=linear&symbol="+pair+"&limit=1000");
    if(Number(d.retCode)!==0)throw Error(d.retMsg||"Bybit Linear trades unavailable");
@@ -953,7 +961,7 @@ async function loadFuturesMarketFlow(symbol,windowMinutes=5,signal=null){
  if(!trades?.length||truncated||trades.length<8){
   try{
    const instId=base+"-USDT-SWAP",history=[],seen=new Set();let after="",historyTruncated=true;
-   for(let page=0;page<35;page++){
+   for(let page=0;page<45;page++){
     const query="https://www.okx.com/api/v5/market/history-trades?instId="+encodeURIComponent(instId)+"&limit=100"+(after?"&after="+encodeURIComponent(after):"");
     const d=await get(query,4500);
     if(String(d.code)!=="0")throw Error(d.msg||"OKX history Futures trades unavailable");
@@ -971,7 +979,7 @@ async function loadFuturesMarketFlow(symbol,windowMinutes=5,signal=null){
    if(rows.length&&betterFlow(rows,historyTruncated)){trades=rows;truncated=historyTruncated;provider="OKX USDT Swap · paged real trades";}
   }catch(error){lastError="OKX history: "+String(error?.message||error).slice(0,120);}
  }
- if(!trades?.length||truncated||trades.length<8){
+ if(!trades?.length){
   try{
    const contract=base+"_USDT";
    const loadGate=async host=>{
@@ -989,7 +997,7 @@ async function loadFuturesMarketFlow(symbol,windowMinutes=5,signal=null){
    if(gateTrades.length&&betterFlow(gateTrades,gateTruncated)){trades=gateTrades;truncated=gateTruncated;provider="Gate USDT Futures · paged real trades";}
   }catch(error){lastError="Gate: "+String(error?.message||error).slice(0,120);}
  }
- if(!trades?.length||truncated||trades.length<8){
+ if(!trades?.length){
   try{
    const kucoinSymbol=(base==="BTC"?"XBT":base)+"USDTM";
    const [contractInfo,d]=await Promise.all([
@@ -1005,7 +1013,7 @@ async function loadFuturesMarketFlow(symbol,windowMinutes=5,signal=null){
    if(rows.length&&betterFlow(rows,kucoinTruncated)){trades=rows;truncated=kucoinTruncated;provider="KuCoin USDT Futures · real trades";}
   }catch(error){lastError="KuCoin Futures: "+String(error?.message||error).slice(0,120);}
  }
- if(!trades?.length||truncated||trades.length<8){
+ if(!trades?.length){
  try{
   const market=base+"_PERP";
   const [buyRows,sellRows]=await Promise.all([
@@ -1023,7 +1031,7 @@ if(!trades?.length)throw new Error("Futures trade flow unavailable from Bybit, B
  const buckets=new Map();let buy5m=0,sell5m=0;
  for(const trade of trades){const quote=trade.price*trade.size;if(!(quote>0))continue;if(trade.side==="Buy")buy5m+=quote;else sell5m+=quote;const minute=Math.floor(trade.time/60000)*60000,bucket=buckets.get(minute)||{time:minute,buy:0,sell:0,count:0};bucket[trade.side==="Buy"?"buy":"sell"]+=quote;bucket.count++;buckets.set(minute,bucket);}
  const rows=[...buckets.values()].sort((a,b)=>a.time-b.time).map(x=>[x.time,x.buy,x.sell,x.buy-x.sell]);
- return {symbol:pair,window_minutes:minutes,buy5m,sell5m,net5m:buy5m-sell5m,trade_count:trades.length,provider,exchange:provider.startsWith("Bybit")?"Bybit":provider.startsWith("Bitget")?"Bitget":provider.startsWith("Binance")?"Binance":provider.startsWith("Gate")?"Gate":provider.startsWith("MEXC")?"MEXC":provider.startsWith("KuCoin")?"KuCoin":"OKX",complete:!truncated,coverage_start:trades.reduce((v,x)=>Math.min(v,x.time),Infinity),window_start:cutoff,window_end:now,updated_at:now,fallback_error:lastError||null,rows};
+ return {symbol:pair,window_minutes:minutes,buy5m,sell5m,net5m:buy5m-sell5m,trade_count:trades.length,provider,exchange:provider.startsWith("Bybit")?"Bybit":provider.startsWith("Bitget")?"Bitget":provider.startsWith("Binance")?"Binance":provider.startsWith("Gate")?"Gate":provider.startsWith("MEXC")?"MEXC":provider.startsWith("KuCoin")?"KuCoin":"OKX",complete:!truncated,coverage_start:trades.reduce((v,x)=>Math.min(v,x.time),Infinity),window_start:cutoff,window_end:now,updated_at:now,fallback_error:lastError||null,request_count:requestsUsed,request_budget:maxRequests,rows};
 }
 async function loadHunterDepth(symbol,marketType="spot",preferredProviders=[],signal=null){
  const get=(url,timeoutMs=4500)=>marketFlowJson(url,timeoutMs,signal);
@@ -1303,8 +1311,15 @@ async function handle(request,env){
   const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"market-flow"),request);if(limited)return limited;
   const url=new URL(request.url),symbol=String(url.searchParams.get("symbol")||"").toUpperCase(),marketType=url.searchParams.get("market")==="futures"?"futures":"spot";
   if(!/^[A-Z0-9]{2,24}(USDT)?$/.test(symbol))return json({error:"نماد نامعتبر است."},400,request);
-  const flowWindow=url.searchParams.get("window")||(marketType==="futures"?1:5);try{return json(marketType==="futures"?await loadFuturesMarketFlow(symbol,flowWindow):await loadMarketFlow(symbol,flowWindow),200,request);}
-  catch(error){return json({error:String(error?.message||"دریافت جریان معاملات ناموفق بود").slice(0,260)},502,request);}
+  const flowWindow=url.searchParams.get("window")||(marketType==="futures"?1:5);try{
+   if(marketType==="futures"){
+    if(!env.FUTURES_ENGINE||!env.FUTURES_ENGINE_TOKEN)return json({error:"Dedicated Futures flow service is not configured"},503,request);
+    const internal=new Request("https://futures-engine/market-flow?symbol="+encodeURIComponent(symbol)+"&window="+encodeURIComponent(flowWindow),{headers:{"X-MMP-Futures-Token":env.FUTURES_ENGINE_TOKEN}});
+    const response=await env.FUTURES_ENGINE.fetch(internal),payload=await response.json();
+    return json(payload,response.status,request);
+   }
+   return json(await loadMarketFlow(symbol,flowWindow),200,request);
+  }catch(error){return json({error:String(error?.message||"دریافت جریان معاملات ناموفق بود").slice(0,260)},502,request);}
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-combined-snapshot"){
   const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-combined-snapshot"),request);if(limited)return limited;
