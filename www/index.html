@@ -7637,5 +7637,62 @@ html body section#market-snapshot.mmp-market-snapshot>article.mmp-market-card:ho
 <script src="assets/mmp-priority-layout-v1.js?v=4" defer></script>
 <script src="assets/mmp-compact-redesign.js?v=2" defer></script>
 <script src="assets/mmp-section-nexus-v1.js?v=20261113-2" defer></script>
+
+<style id="mmp-home-four-market-cards-refresh-20261113">
+/* Four signature market cards directly beneath the main home banner */
+html body main#hero>#mmp-home-hero{margin-bottom:14px!important}
+html body main#hero>section#market-snapshot.mmp-market-snapshot{
+  display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  gap:13px!important;margin:0 0 20px!important;align-items:stretch!important
+}
+html body #market-snapshot>.mmp-market-card{
+  min-height:150px!important;padding:15px 14px 12px!important;
+  border:1.5px solid var(--mmp-card-accent)!important;
+  border-radius:22px 9px 22px 9px!important;
+  background:
+    radial-gradient(circle at 92% 4%,var(--mmp-card-glow),transparent 48%),
+    linear-gradient(145deg,var(--mmp-card-surface),#0b111b 78%)!important;
+  box-shadow:0 12px 28px #0007,inset 0 1px #ffffff18!important;
+  overflow:hidden!important;position:relative!important;isolation:isolate!important;
+}
+html body #market-snapshot>.mmp-btc-card{--mmp-card-accent:#ffb84d;--mmp-card-glow:#ff9d3540;--mmp-card-surface:#382719;border-radius:22px 9px 22px 9px!important}
+html body #market-snapshot>.mmp-eth-card{--mmp-card-accent:#a99aff;--mmp-card-glow:#8c7aff42;--mmp-card-surface:#292344;border-radius:9px 22px 9px 22px!important}
+html body #market-snapshot>.mmp-usdt-card{--mmp-card-accent:#39d7a1;--mmp-card-glow:#24c99440;--mmp-card-surface:#12392f;border-radius:22px 22px 9px 22px!important}
+html body #market-snapshot>.mmp-gold-card{--mmp-card-accent:#f0d47d;--mmp-card-glow:#e8bd4b40;--mmp-card-surface:#3a321b;border-radius:9px 22px 22px 9px!important}
+html body #market-snapshot>.mmp-market-card:before{
+  content:""!important;position:absolute!important;inset:0 0 auto!important;height:3px!important;
+  width:100%!important;background:linear-gradient(90deg,transparent,var(--mmp-card-accent),transparent)!important;
+  z-index:0!important;pointer-events:none!important
+}
+html body #market-snapshot>.mmp-market-card:after{
+  content:""!important;position:absolute!important;right:-35px!important;top:-43px!important;
+  width:112px!important;height:112px!important;border:1px solid color-mix(in srgb,var(--mmp-card-accent) 48%,transparent)!important;
+  border-radius:28px!important;transform:rotate(35deg)!important;z-index:-1!important;pointer-events:none!important
+}
+html body #market-snapshot .mmp-asset-icon{
+  border:1px solid color-mix(in srgb,var(--mmp-card-accent) 78%,transparent)!important;
+  border-radius:11px 5px 11px 5px!important;background:color-mix(in srgb,var(--mmp-card-accent) 13%,#101722)!important;
+  color:var(--mmp-card-accent)!important
+}
+html body #market-snapshot .mmp-card-tag{color:color-mix(in srgb,var(--mmp-card-accent) 80%,white)!important}
+html body #market-snapshot .stat-value{color:#fff!important;text-shadow:0 0 16px var(--mmp-card-glow)!important}
+html body #market-snapshot .mmp-card-track{background:#ffffff18!important}
+html body #market-snapshot .mmp-card-track i{background:var(--mmp-card-accent)!important;box-shadow:0 0 12px var(--mmp-card-glow)!important}
+html body #market-snapshot>.mmp-market-card:hover{
+  transform:translateY(-4px)!important;box-shadow:0 18px 34px #0009,0 0 18px var(--mmp-card-glow)!important;
+  border-color:color-mix(in srgb,var(--mmp-card-accent) 70%,white)!important
+}
+@media(max-width:900px){
+ html body main#hero>section#market-snapshot.mmp-market-snapshot{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important}
+}
+@media(max-width:560px){
+ html body main#hero>section#market-snapshot.mmp-market-snapshot{gap:8px!important;margin-bottom:16px!important}
+ html body #market-snapshot>.mmp-market-card{min-height:132px!important;padding:11px 10px 9px!important}
+}
+@media(prefers-reduced-motion:reduce){
+ html body #market-snapshot>.mmp-market-card{transition:none!important}
+}
+</style>
+
 </body>
 </html>
