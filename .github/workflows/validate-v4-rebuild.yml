@@ -193,7 +193,7 @@ jobs:
           const providerSuccesses = new Set();
           const optionalUpstreamFailures = [];
           async function checkDevice(name, viewport, mobile) {
-            const context = await browser.newContext({ viewport, isMobile: mobile, hasTouch: mobile });
+            const context = await browser.newContext({ viewport, isMobile: mobile, hasTouch: mobile, locale: "fa-IR" });
             const page = await context.newPage();
             await page.route("https://mmp-coin.github.io/**", async route => {
               const pathname = new URL(route.request().url()).pathname;
