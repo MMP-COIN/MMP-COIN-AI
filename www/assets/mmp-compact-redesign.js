@@ -56,31 +56,7 @@
   if(brand)brand.after(nav);else sidebar.prepend(nav);
   if(footer)sidebar.appendChild(footer);
  }
- const menu=document.getElementById("dropdownMenu");
- const button=document.querySelector(".menu-btn");
- if(menu){
-  menu.replaceChildren();
-  const label=document.createElement("div");label.className="mmp-menu-heading";label.textContent="فهرست بخش‌ها";
-  menu.append(label,makeGroups());
- }
- function toggle(open){
-  if(!menu||!button)return;
-  const next=typeof open==="boolean"?open:!menu.classList.contains("show");
-  menu.classList.toggle("show",next);
-  button.setAttribute("aria-expanded",String(next));
-  button.setAttribute("aria-label",next?"بستن منوی اصلی":"باز کردن منوی اصلی");
- }
- // The homepage owns the single menu-button toggle handler; do not register a second one here.
- if(menu)menu.addEventListener("click",event=>{
-  const link=event.target.closest("a.mmp-nav-link");if(!link)return;
-  toggle(false);
-  if(link.getAttribute("href").startsWith("#")){
-   const target=document.getElementById(link.getAttribute("href").slice(1));
-   if(target){event.preventDefault();target.scrollIntoView({behavior:"smooth",block:"start"});}
-  }
- });
- document.addEventListener("click",event=>{if(menu&&!menu.contains(event.target)&&!event.target.closest(".menu-btn"))toggle(false);});
- document.addEventListener("keydown",event=>{if(event.key==="Escape")toggle(false);});
+ // The top dropdown is owned by mmp-quantum-terminal-v1.js; this script only builds sidebar groups.
  const links=[...document.querySelectorAll(".mmp-nav-link[href^='#']")];
  const targets=links.map(link=>({link,target:document.getElementById(link.getAttribute("href").slice(1))})).filter(x=>x.target);
  function setActive(target){
