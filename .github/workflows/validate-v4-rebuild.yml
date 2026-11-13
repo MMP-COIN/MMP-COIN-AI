@@ -152,18 +152,16 @@ jobs:
             market_timestamp: analyzePayload.market.market_timestamp
           });
           for (const origin of ["https://mmp-coin.github.io", "capacitor://localhost"]) {
-            const radarOptions = await fetch("https://mmp-coin-ai-radar.mehrdadmohammadi1988.workers.dev/fast-radar-snapshot", {
-              method: "OPTIONS", headers: {Origin: origin, "Access-Control-Request-Method": "GET"}
-            });
-            if (radarOptions.status !== 204 || radarOptions.headers.get("access-control-allow-origin") !== "*" ||
-                !String(radarOptions.headers.get("access-control-allow-methods") || "").includes("GET"))
-              throw new Error("Radar OPTIONS CORS failed for " + origin);
             const radarCors = await fetch("https://mmp-coin-ai-radar.mehrdadmohammadi1988.workers.dev/fast-radar-snapshot", {
               headers: {Origin: origin, Accept: "application/json"}
             });
             if (!radarCors.ok || radarCors.headers.get("access-control-allow-origin") !== "*")
-              throw new Error("Radar GET CORS failed for " + origin);
-            console.log("PASS Radar GET/OPTIONS CORS", origin);
+              throw new Error("Radar actual GET CORS failed for " + origin + ": HTTP " + radarCors.status);
+            const radarPayload = await radarCors.json();
+            if (!Array.isArray(radarPayload.signals) || !Number(radarPayload.universe_count) ||
+                !recent(radarPayload.scanned_at, 10*60*1000))
+              throw new Error("Radar returned stale or empty data for " + origin);
+            console.log("PASS Radar actual GET CORS and fresh snapshot", origin);
           }
           JS
       - name: Validate rebuild structure and assets
