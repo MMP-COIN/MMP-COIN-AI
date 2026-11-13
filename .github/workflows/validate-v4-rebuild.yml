@@ -22,6 +22,22 @@ jobs:
           node-version: 20
       - name: Check JavaScript syntax
         run: node --check www/v4/app.js
+      - name: Inspect current public Pages response without publishing
+        run: |
+          set +e
+          status=$(curl -sSL --max-time 20 -o /tmp/mmp-current-pages.html -w "%{http_code}" "https://mmp-coin.github.io/")
+          echo "PUBLIC_PAGES_HTTP=$status"
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path("/tmp/mmp-current-pages.html")
+          body=p.read_text(encoding="utf-8",errors="replace") if p.exists() else ""
+          title=re.search(r"<title[^>]*>(.*?)</title>",body,re.I|re.S)
+          markers=("maintenance","تعمیر","در حال به‌روزرسانی","موقتاً غیرفعال","نسخه جدید")
+          print("PUBLIC_PAGES_TITLE="+(re.sub(r"\\s+"," ",title.group(1)).strip() if title else "UNAVAILABLE"))
+          print("PUBLIC_PAGES_MAINTENANCE_MARKER="+str(any(x.lower() in body.lower() for x in markers)).lower())
+          print("PUBLIC_PAGES_BYTES="+str(len(body)))
+          PY
       - name: Smoke-test live market services and browser CORS
         run: |
           node --input-type=module <<'JS'
