@@ -9,6 +9,8 @@ on:
       - "package-lock.json"
       - "capacitor.config.json"
       - "assets/mmp-coin-ai-icon.svg"
+      - "www/assets/mmp-coin-ai-icon.svg"
+      - ".github/workflows/android-apk.yml"
       - "android/**"
   workflow_dispatch:
 
@@ -83,7 +85,6 @@ jobs:
           # the root M coin mark is an older variant and would overwrite the current web artwork.
           test -s www/assets/mmp-coin-ai-icon.svg
           test -s www/assets/mmp-coin-mark.svg
-          cmp assets/mmp-coin-ai-icon.svg www/assets/mmp-coin-ai-icon.svg
           cmp manifest.webmanifest www/manifest.webmanifest
           echo "Canonical www brand assets and manifest verified; no legacy asset overwrite performed."
 
@@ -104,7 +105,7 @@ jobs:
           node <<'NODE'
           const fs = require('fs');
           const sharp = require('sharp');
-          const svg = fs.readFileSync('assets/mmp-coin-ai-icon.svg');
+          const svg = fs.readFileSync('www/assets/mmp-coin-ai-icon.svg');
           (async () => {
             const densities = {
               mdpi: { icon: 48, foreground: 108 },
