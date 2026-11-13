@@ -3233,8 +3233,8 @@ async function refreshLiveQuotes(){
   lastMarket.crypto=lastMarket.crypto||{};
   cachedCoinsData.forEach(c=>{
    const symbol=String(c.symbol||"").toUpperCase();
-   if(symbol==="BTC")lastMarket.crypto.BTC={usd:Number(c.current_price),change24h:c.price_change_percentage_24h,updatedAt:now};
-   if(symbol==="ETH")lastMarket.crypto.ETH={usd:Number(c.current_price),change24h:c.price_change_percentage_24h,updatedAt:now};
+   if(symbol==="BTC")lastMarket.crypto.BTC={usd:Number(c.current_price),change24h:c.price_change_percentage_24h,updatedAt:now,sources:c.price_source};
+   if(symbol==="ETH")lastMarket.crypto.ETH={usd:Number(c.current_price),change24h:c.price_change_percentage_24h,updatedAt:now,sources:c.price_source};
   });
   renderCoinsTables(cachedCoinsData);renderHeroCards();
   const stamp=new Date().toLocaleTimeString("fa-IR");
@@ -3871,6 +3871,7 @@ async function refreshAll(){
 }
 
 function renderHeroCards() {
+  const now=Date.now();
   const btcCoin=cachedCoinsData.find(x=>x.id==='bitcoin'||String(x?.symbol||"").toUpperCase()==='BTC');
   const ethCoin=cachedCoinsData.find(x=>x.id==='ethereum'||String(x?.symbol||"").toUpperCase()==='ETH');
   const btcLive=lastMarket.crypto?.BTC&&now-Number(lastMarket.crypto.BTC.updatedAt||0)<=120000;
