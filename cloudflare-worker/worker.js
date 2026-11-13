@@ -1703,7 +1703,10 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/market-proxy"){
    "coingecko-top":["https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page="+requestedTopPage+"&sparkline=false&price_change_percentage=1h%2C24h%2C7d"],
    "coinlore-top":["https://api.coinlore.net/api/tickers/?start="+requestedOffset+"&limit=100"],
    "nobitex-tether":["https://apiv2.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls","https://apiv2.nobitex.ir/market/stats?dstCurrency=rls","https://apiv2.nobitex.ir/v3/orderbook/USDTIRT","https://api.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls","https://api.nobitex.ir/v3/orderbook/USDTIRT"],
-   "wallex-markets":["https://api.wallex.ir/hector/web/v1/markets","https://api.wallex.ir/v1/markets","https://api.wallex.ir/v1/otc/markets"]
+   "wallex-markets":["https://api.wallex.ir/hector/web/v1/markets","https://api.wallex.ir/v1/markets","https://api.wallex.ir/v1/otc/markets"],
+   "bitpin-tickers":["https://api.bitpin.org/api/v1/mkt/tickers/","https://api.bitpin.ir/api/v1/mkt/tickers/"],
+   "exir-tickers":["https://api.exir.io/v2/tickers"],
+   "ramzinex-pairs":["https://publicapi.ramzinex.com/exchange/api/v1.0/exchange/pairs"]
   };
   let candidates=urls[source]||null;
   if(source==="coingecko-extra"){
@@ -1719,7 +1722,7 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/market-proxy"){
   ].filter(Boolean).join("|");
   const marketCacheKey=await marketFallbackKey(cacheIdentity);
   const staleMarketResponse=await readMarketFallback(env,marketCacheKey);
-  const responseCacheTtl=source.startsWith("coingecko")?180:source==="coinlore-top"?60:source.includes("tether")||source.includes("wallex")?10:5;
+  const responseCacheTtl=source.startsWith("coingecko")?180:source==="coinlore-top"?60:source.includes("tether")||source.includes("wallex")||source.includes("bitpin")||source.includes("exir")||source.includes("ramzinex")?10:5;
   let lastError=null;
   for(const endpoint of candidates){
    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),9000);
