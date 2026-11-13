@@ -1732,10 +1732,12 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/market-proxy"){
     if(data===null||typeof data!=="object")throw new Error("Invalid upstream JSON");
     if(source==="nobitex-tether"){
      const stats=data?.stats||{};
-     let rate=Number(stats["usdt-rls"]?.latest??stats["usdt-irt"]?.latest??stats["usdt-tmn"]?.latest);
+     const rialRate=Number(stats["usdt-rls"]?.latest),tomanRate=Number(stats["usdt-irt"]?.latest??stats["usdt-tmn"]?.latest);
+     let rate=rialRate>0?rialRate:(tomanRate>0?tomanRate*10:0);
      if(!(data?.status==="ok"&&Number.isFinite(rate)&&rate>0)){
       const bid=Number(data?.bids?.[0]?.[0]),ask=Number(data?.asks?.[0]?.[0]),last=Number(data?.lastTradePrice);
-      rate=last>0?last:bid>0&&ask>0?(bid+ask)/2:0;
+      const tomanBookPrice=last>0?last:(bid>0&&ask>0?(bid+ask)/2:0);
+      rate=tomanBookPrice>0?tomanBookPrice*10:0;
       if(data?.status!=="ok"||!(rate>0)){
        lastError="Nobitex returned no valid USDT/IRT rate";
        continue;
