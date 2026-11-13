@@ -70,7 +70,7 @@
   button.setAttribute("aria-expanded",String(next));
   button.setAttribute("aria-label",next?"بستن منوی اصلی":"باز کردن منوی اصلی");
  }
- if(button)button.addEventListener("click",event=>{event.preventDefault();event.stopPropagation();toggle();});
+ // The homepage owns the single menu-button toggle handler; do not register a second one here.
  if(menu)menu.addEventListener("click",event=>{
   const link=event.target.closest("a.mmp-nav-link");if(!link)return;
   toggle(false);
