@@ -79,9 +79,13 @@ jobs:
           grep -q 'id="boom-hunter"' www/index.html
           grep -q 'MMP QUANTUM INTELLIGENCE NETWORK' www/index.html
           grep -q 'data-quantum-module="hunter"' www/index.html
-          mkdir -p www/assets
-          cp -R assets/. www/assets/
-          cp manifest.webmanifest www/manifest.webmanifest
+          # www/ is the canonical web bundle. Do not bulk-copy root brand assets over it:
+          # the root M coin mark is an older variant and would overwrite the current web artwork.
+          test -s www/assets/mmp-coin-ai-icon.svg
+          test -s www/assets/mmp-coin-mark.svg
+          cmp assets/mmp-coin-ai-icon.svg www/assets/mmp-coin-ai-icon.svg
+          cmp manifest.webmanifest www/manifest.webmanifest
+          echo "Canonical www brand assets and manifest verified; no legacy asset overwrite performed."
 
       - name: Stamp app version into the bundled dashboard
         env:
