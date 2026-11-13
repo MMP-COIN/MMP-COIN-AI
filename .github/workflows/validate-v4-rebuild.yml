@@ -175,7 +175,7 @@ jobs:
               assert required in html, f"Missing required UI mount: {required}"
           for required in ['id="runtimeVersion"', "QIE Adaptive Intelligence", "فرماندهی کوانتومی", "نمودار حرفه‌ای", "رادار هوشمند", "شکارچی کوانتومی", "تحلیل‌گر هوشمند", "موتور هوشمند یکپارچه", "۱۲ بُعد امتیازدهی وزن‌دار"]:
               assert required in html, f"Missing required product section: {required}"
-          for required in ["hunter-combined-snapshot", "fast-radar-snapshot", "/connections-health", "cache:\"no-store\"", "fetchTetherRate", "getFreshProxy", "X-MMP-Cache", "data_stale!==true", "market.market_data_fresh===true", "r.market_data_fresh===true", "local-market-watch", "nobitex-tether", "wallex-markets", "mmp_tether_cache_v1", "Math.round(x.price*currentTetherPrice)", "— تومان"]:
+          for required in ["hunter-combined-snapshot", "fast-radar-snapshot", "/connections-health", "cache:\"no-store\"", "fetchTetherRate", "getFreshProxy", "X-MMP-Cache", "data?.data_stale===true", "market.market_data_fresh===true", "r.market_data_fresh===true", "local-market-watch", "nobitex-tether", "wallex-markets", "mmp_tether_cache_v1", "Math.round(x.price*currentTetherPrice)", "— تومان"]:
               assert required in js, f"Missing live integration: {required}"
           assert "هیچ سیگنال ساختگی" in html, "No fabricated-signal disclosure"
           for required in ['meta name="mmp-app-version"', '__MMP_WEB_BUILD_ID__', 'mmp_native_version', 'mmp_live_refresh', 'aria-controls="primaryNav"', 'aria-expanded="false"']:
