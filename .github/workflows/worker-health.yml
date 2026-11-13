@@ -362,7 +362,7 @@ jobs:
           if (missingEngineLabels.length) throw new Error("Homepage Quantum Command module labels missing: " + missingEngineLabels.join(", "));
           const terminal = fs.readFileSync("www/assets/mmp-quantum-terminal-v1.js", "utf8");
           if (!terminal.includes('if(el.id==="quantum-center-entry")visible=view==="home"||view==="command"||view==="ai";')) throw new Error("Quantum Command must remain visible on homepage, Market Command and AI center");
-          const terminalScriptRef = home.match(/<script\\b[^>]*src=["']assets\\/mmp-quantum-terminal-v1\\.js\\?v=([^"']+)["'][^>]*>/i);
+          const terminalScriptRef = home.match(/<script\b[^>]*src=["']assets\/mmp-quantum-terminal-v1\.js\?v=([^"']+)["'][^>]*>/i);
           if (!terminalScriptRef || !terminalScriptRef[1].trim()) throw new Error("Homepage terminal bundle must use a versioned cache-busting script URL");
           const homeEngineMonitor = home.slice(home.indexOf('<script id="mmp-home-engine-live-monitor">'), home.indexOf('</script>', home.indexOf('<script id="mmp-home-engine-live-monitor">')));
           if (!homeEngineMonitor.includes('refresh(true)') || !homeEngineMonitor.includes('loadDigitalHunterSnapshot(true)') || !homeEngineMonitor.includes('/hunter-combined-snapshot') || !homeEngineMonitor.includes('/hunter-futures-snapshot') || !homeEngineMonitor.includes('},30000)')) throw new Error("Quantum Command must bootstrap its own Spot/Futures snapshot with independent fallback and 30s freshness checks");
