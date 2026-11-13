@@ -24,7 +24,7 @@ jobs:
         run: node --check www/v4/app.js
       - name: Inspect current public Pages response without publishing
         run: |
-          set +e
+          set -euo pipefail
           status=$(curl -sSL --max-time 20 -o /tmp/mmp-current-pages.html -w "%{http_code}" "https://mmp-coin.github.io/")
           echo "PUBLIC_PAGES_HTTP=$status"
           python3 - <<'PY'
@@ -33,10 +33,19 @@ jobs:
           p=Path("/tmp/mmp-current-pages.html")
           body=p.read_text(encoding="utf-8",errors="replace") if p.exists() else ""
           title=re.search(r"<title[^>]*>(.*?)</title>",body,re.I|re.S)
-          markers=("maintenance","تعمیر","در حال به‌روزرسانی","موقتاً غیرفعال","نسخه جدید")
-          print("PUBLIC_PAGES_TITLE="+(re.sub(r"\\s+"," ",title.group(1)).strip() if title else "UNAVAILABLE"))
-          print("PUBLIC_PAGES_MAINTENANCE_MARKER="+str(any(x.lower() in body.lower() for x in markers)).lower())
+          title_text=re.sub(r"\s+"," ",title.group(1)).strip() if title else "UNAVAILABLE"
+          maintenance_terms=("maintenance","در حال تعمیر","موقتاً غیرفعال","سایت موقتاً در دسترس نیست","در حال آماده‌سازی نسخه جدید")
+          legacy_terms=("MMP QUANTUM | مرکز هوشمند رمزارزها","native-app-menu","native-update-check-btn","دانلود و به‌روزرسانی اپلیکیشن")
+          maintenance_hits=[x for x in maintenance_terms if x.lower() in body.lower()]
+          legacy_hits=[x for x in legacy_terms if x.lower() in body.lower()]
+          print("PUBLIC_PAGES_TITLE="+title_text)
+          print("PUBLIC_PAGES_MAINTENANCE_HITS="+repr(maintenance_hits))
+          print("PUBLIC_PAGES_LEGACY_HITS="+repr(legacy_hits))
           print("PUBLIC_PAGES_BYTES="+str(len(body)))
+          if not body or (not maintenance_hits and len(legacy_hits)>0):
+              raise SystemExit("Public Pages is serving legacy site content without an explicit maintenance screen.")
+          if not maintenance_hits and title_text != "UNAVAILABLE":
+              raise SystemExit("Public Pages returned HTML without an explicit maintenance marker; release remains locked.")
           PY
       - name: Smoke-test live market services and browser CORS
         run: |
