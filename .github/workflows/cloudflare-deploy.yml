@@ -21,6 +21,9 @@ jobs:
     name: Validate and deploy production Workers
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID || '2120f8e58c2e72df4acadeb00999324a' }}
     steps:
       - name: Checkout canonical source
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -30,17 +33,27 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Require Cloudflare deployment credentials
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID || '2120f8e58c2e72df4acadeb00999324a' }}
+      - name: Validate and normalize Cloudflare deployment credentials
         run: |
           set -euo pipefail
-          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
-            echo "::error::Cloudflare deployment is blocked. Add CLOUDFLARE_API_TOKEN as a repository Actions secret. CLOUDFLARE_ACCOUNT_ID can be set as a secret or repository variable; the verified account ID fallback is also configured. No deployment was attempted."
+          TOKEN="$(printf '%s' "$CLOUDFLARE_API_TOKEN" | tr -d '[:space:]')"
+          if [ -z "$TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::error::Cloudflare deployment is blocked. Set CLOUDFLARE_API_TOKEN as a valid repository Actions secret. The account ID fallback is configured. No deployment was attempted."
             exit 1
           fi
-          echo "Cloudflare credentials are present (values are never printed)."
+          if [[ ! "$TOKEN" =~ ^[A-Za-z0-9._-]+$ ]]; then
+            echo "::error::CLOUDFLARE_API_TOKEN contains unsupported characters after whitespace normalization. Replace the GitHub Actions secret with the raw Cloudflare API token only."
+            exit 1
+          fi
+          echo "::add-mask::$TOKEN"
+          printf 'CLOUDFLARE_API_TOKEN=%s\n' "$TOKEN" >> "$GITHUB_ENV"
+          VERIFY_STATUS="$(curl --silent --show-error --max-time 20 -o /tmp/cloudflare-token-verify.json -w '%{http_code}' -H "Authorization: Bearer $TOKEN" https://api.cloudflare.com/client/v4/user/tokens/verify)"
+          if [ "$VERIFY_STATUS" != "200" ] || ! jq -e '.success == true and .result.status == "active"' /tmp/cloudflare-token-verify.json >/dev/null; then
+            echo "::error::Cloudflare API token verification failed. Replace CLOUDFLARE_API_TOKEN with the active raw token from Cloudflare. Token values are never printed."
+            jq -c '{success,errors}' /tmp/cloudflare-token-verify.json || true
+            exit 1
+          fi
+          echo "Cloudflare API token is active and account ID is configured."
 
       - name: Validate Worker JavaScript syntax
         run: |
@@ -54,39 +67,21 @@ jobs:
           echo "All six production Worker entry points passed syntax validation."
 
       - name: Deploy isolated Tether monitor
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID || '2120f8e58c2e72df4acadeb00999324a' }}
         run: npx --yes wrangler@4 deploy --config cloudflare-worker/tether-monitor-wrangler.toml
 
       - name: Deploy Radar Worker
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID || '2120f8e58c2e72df4acadeb00999324a' }}
         run: npx --yes wrangler@4 deploy --config cloudflare-worker/radar-wrangler.toml
 
       - name: Deploy Futures Worker
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID || '2120f8e58c2e72df4acadeb00999324a' }}
         run: npx --yes wrangler@4 deploy --config cloudflare-worker/futures-wrangler.toml
 
       - name: Deploy main Analyzer Worker
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID || '2120f8e58c2e72df4acadeb00999324a' }}
         run: npx --yes wrangler@4 deploy --config cloudflare-worker/wrangler.toml
 
       - name: Deploy independent Hunter scheduler
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID || '2120f8e58c2e72df4acadeb00999324a' }}
         run: npx --yes wrangler@4 deploy --config cloudflare-worker/hunter-cron-wrangler.toml
 
       - name: Deploy NEXUS monitor
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID || '2120f8e58c2e72df4acadeb00999324a' }}
         run: npx --yes wrangler@4 deploy --config cloudflare-worker/nexus-wrangler.toml
 
       - name: Verify deployed Analyzer and Futures service binding
