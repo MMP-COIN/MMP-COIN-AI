@@ -3311,7 +3311,7 @@ function formatVal(usdPrice) {
   if (currentCurrency === 'IRT') {
     return isTetherRateFresh()?toman(usdPrice * currentTetherPrice) + ' تومان':'— تومان';
   } else {
-    return '$' + money(usdPrice, usdPrice < 1 ? 4 : 2);
+    return money(usdPrice, usdPrice < 1 ? 8 : 4) + ' USDT';
   }
 }
 
@@ -3880,7 +3880,7 @@ function renderHeroCards() {
   const ethUsd=ethLive?Number(lastMarket.crypto.ETH.usd):0;
   const describe=(usd,change,source)=>{
     const counterpart=currentCurrency==='IRT'
-      ? '$'+money(usd,usd<1?6:2)
+      ? money(usd,usd<1?8:4)+' USDT'
       : (currentTetherPrice>0?toman(usd*currentTetherPrice)+' تومان':'معادل تومانی در دسترس نیست');
     const changeText=Number.isFinite(Number(change))
       ? '۲۴ ساعت: '+(Number(change)>=0?'+':'')+Number(change).toFixed(2)+'%'
