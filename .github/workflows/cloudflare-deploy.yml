@@ -33,11 +33,11 @@ jobs:
       - name: Require Cloudflare deployment credentials
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID || '2120f8e58c2e72df4acadeb00999324a' }}
         run: |
           set -euo pipefail
           if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
-            echo "::error::Cloudflare deployment is blocked. Add repository Actions secrets CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID. No deployment was attempted."
+            echo "::error::Cloudflare deployment is blocked. Add CLOUDFLARE_API_TOKEN as a repository Actions secret. CLOUDFLARE_ACCOUNT_ID can be set as a secret or repository variable; the verified account ID fallback is also configured. No deployment was attempted."
             exit 1
           fi
           echo "Cloudflare credentials are present (values are never printed)."
@@ -56,37 +56,37 @@ jobs:
       - name: Deploy isolated Tether monitor
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID || '2120f8e58c2e72df4acadeb00999324a' }}
         run: npx --yes wrangler@4 deploy --config cloudflare-worker/tether-monitor-wrangler.toml
 
       - name: Deploy Radar Worker
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID || '2120f8e58c2e72df4acadeb00999324a' }}
         run: npx --yes wrangler@4 deploy --config cloudflare-worker/radar-wrangler.toml
 
       - name: Deploy Futures Worker
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID || '2120f8e58c2e72df4acadeb00999324a' }}
         run: npx --yes wrangler@4 deploy --config cloudflare-worker/futures-wrangler.toml
 
       - name: Deploy main Analyzer Worker
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID || '2120f8e58c2e72df4acadeb00999324a' }}
         run: npx --yes wrangler@4 deploy --config cloudflare-worker/wrangler.toml
 
       - name: Deploy independent Hunter scheduler
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID || '2120f8e58c2e72df4acadeb00999324a' }}
         run: npx --yes wrangler@4 deploy --config cloudflare-worker/hunter-cron-wrangler.toml
 
       - name: Deploy NEXUS monitor
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID || '2120f8e58c2e72df4acadeb00999324a' }}
         run: npx --yes wrangler@4 deploy --config cloudflare-worker/nexus-wrangler.toml
 
       - name: Verify deployed Analyzer and Futures service binding
