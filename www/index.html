@@ -3233,8 +3233,8 @@ async function refreshLiveQuotes(){
   lastMarket.crypto=lastMarket.crypto||{};
   cachedCoinsData.forEach(c=>{
    const symbol=String(c.symbol||"").toUpperCase();
-   if(symbol==="BTC")lastMarket.crypto.BTC={usd:Number(c.current_price),change24h:c.price_change_percentage_24h,updatedAt:now,sources:c.price_source};
-   if(symbol==="ETH")lastMarket.crypto.ETH={usd:Number(c.current_price),change24h:c.price_change_percentage_24h,updatedAt:now,sources:c.price_source};
+   if(symbol==="BTC"&&c.price_is_stale!==true&&Number(c.price_source_count)>=1)lastMarket.crypto.BTC={usd:Number(c.current_price),change24h:c.price_change_percentage_24h,updatedAt:now,sources:c.price_source};
+   if(symbol==="ETH"&&c.price_is_stale!==true&&Number(c.price_source_count)>=1)lastMarket.crypto.ETH={usd:Number(c.current_price),change24h:c.price_change_percentage_24h,updatedAt:now,sources:c.price_source};
   });
   renderCoinsTables(cachedCoinsData);renderHeroCards();
   const stamp=new Date().toLocaleTimeString("fa-IR");
