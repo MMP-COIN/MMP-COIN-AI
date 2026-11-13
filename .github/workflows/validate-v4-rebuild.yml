@@ -25,23 +25,39 @@ jobs:
       - name: Smoke-test live market services and browser CORS
         run: |
           node --input-type=module <<'JS'
+          const recent = (value, maxAgeMs) => {
+            const at = Date.parse(value || ""), age = Date.now() - at;
+            return Number.isFinite(at) && age >= -120000 && age <= maxAgeMs;
+          };
           const checks = [
             ["main worker health", "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/health", d => d.worker === "online" && /^QIE-\d+\.\d+\.\d+$/.test(d.engine_version) && d.ai_binding === true && d.futures_engine_binding === true && d.market_cache_binding === true],
             ["futures engine binding", "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/futures-engine-health", d => d.service_binding === "connected" && d.status === "online" && d.market === "futures" && /^QIE-\d+\.\d+\.\d+$/.test(d.engine_version)],
-            ["exchange connections", "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/connections-health", d => Array.isArray(d.checks) && d.checks.length >= 10 && d.checks.some(x => x.status === "ok" || x.status === "slow")],
-            ["hunter snapshot", "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/hunter-combined-snapshot", d => !!d.spot && !!d.futures && Array.isArray(d.spot.signals) && Array.isArray(d.futures.signals) && Number(d.spot.universe_count) > 0 && Number(d.futures.universe_count) > 0],
+            ["exchange connections", "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/connections-health", d => {
+              const healthy = market => d.checks.filter(x => x.market === market && ["ok", "slow"].includes(x.status)).length;
+              return Array.isArray(d.checks) && d.checks.length >= 10 && healthy("spot") >= 2 && healthy("futures") >= 2 && healthy("iran") >= 1;
+            }],
+            ["hunter snapshot", "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/hunter-combined-snapshot", d => {
+              const spot = d.spot?.snapshot || d.spot, futures = d.futures?.snapshot || d.futures;
+              return !!spot && !!futures && Array.isArray(spot.signals) && Array.isArray(futures.signals) &&
+                Number(spot.universe_count) > 0 && Number(futures.universe_count) > 0 &&
+                Number(spot.scanned_count) > 0 && Number(futures.scanned_count) > 0 &&
+                recent(spot.scanned_at || spot.checked_at, 15*60*1000) &&
+                recent(futures.scanned_at || futures.checked_at, 15*60*1000);
+            }],
             ["market proxy", "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-proxy?source=okx-tickers", d => Array.isArray(d.data) && d.data.some(x => x.instId === "BTC-USDT" && Number(x.last) > 0)],
             ["live spot candles", "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-candles?symbol=BTCUSDT&interval=1h&market=spot", d => d.symbol === "BTCUSDT" && d.market === "spot" && d.data_stale !== true && Number(d.data_age_ms) < 2*3600000+120000 && Array.isArray(d.candles) && d.candles.length >= 55 && d.candles.every(x => Number(x.time) > 0 && Number(x.open) > 0 && Number(x.high) >= Math.max(Number(x.open),Number(x.close)) && Number(x.low) <= Math.min(Number(x.open),Number(x.close)) && Number(x.close) > 0)],
             ["live futures candles", "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-candles?symbol=BTCUSDT&interval=1h&market=futures", d => d.symbol === "BTCUSDT" && d.market === "futures" && d.data_stale !== true && Number(d.data_age_ms) < 2*3600000+120000 && Array.isArray(d.candles) && d.candles.length >= 55 && d.candles.every(x => Number(x.time) > 0 && Number(x.open) > 0 && Number(x.high) >= Math.max(Number(x.open),Number(x.close)) && Number(x.low) <= Math.min(Number(x.open),Number(x.close)) && Number(x.close) > 0)],
             ["radar health", "https://mmp-coin-ai-radar.mehrdadmohammadi1988.workers.dev/health", d => d.worker === "online"],
-            ["radar snapshot", "https://mmp-coin-ai-radar.mehrdadmohammadi1988.workers.dev/fast-radar-snapshot", d => Array.isArray(d.signals) && !!d.engine && !!d.engine_version && Number(d.universe_count) > 0 && !!d.scanned_at],
-                  ];
+            ["radar snapshot", "https://mmp-coin-ai-radar.mehrdadmohammadi1988.workers.dev/fast-radar-snapshot", d => Array.isArray(d.signals) && !!d.engine && !!d.engine_version && Number(d.universe_count) > 0 && Number(d.scanned_count) > 0 && recent(d.scanned_at, 10*60*1000)],
+          ];
           const livePayloads = {};
           for (const [name, url, valid] of checks) {
             const response = await fetch(url, {headers: {accept: "application/json"}});
             if (!response.ok) throw new Error(name + " returned HTTP " + response.status);
             const data = await response.json();
             if (!valid(data)) throw new Error(name + " returned an unexpected payload");
+            if (name === "market proxy" && response.headers.get("X-MMP-Cache") !== "fresh")
+              throw new Error("market proxy returned stale or unverified cache data");
             livePayloads[name] = data;
             console.log("PASS", name);
           }
@@ -50,15 +66,18 @@ jobs:
           console.log("PASS matching runtime version", livePayloads["main worker health"].engine_version);
 
           const tetherChecks = await Promise.allSettled([
-            fetch("https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/local-market-watch", {signal: AbortSignal.timeout(12000)}).then(r => r.ok ? r.json() : null),
-            fetch("https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-proxy?source=nobitex-tether", {signal: AbortSignal.timeout(12000)}).then(r => r.ok ? r.json() : null),
-            fetch("https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-proxy?source=wallex-markets", {signal: AbortSignal.timeout(12000)}).then(r => r.ok ? r.json() : null),
+            fetch("https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/local-market-watch", {signal: AbortSignal.timeout(12000)}).then(async r => r.ok ? {data: await r.json()} : null),
+            fetch("https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-proxy?source=nobitex-tether", {signal: AbortSignal.timeout(12000)}).then(async r => r.ok ? {data: await r.json(), cache: r.headers.get("X-MMP-Cache")} : null),
+            fetch("https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-proxy?source=wallex-markets", {signal: AbortSignal.timeout(12000)}).then(async r => r.ok ? {data: await r.json(), cache: r.headers.get("X-MMP-Cache")} : null),
           ]);
-          const local = tetherChecks[0].status === "fulfilled" ? tetherChecks[0].value : null;
-          const nobitex = tetherChecks[1].status === "fulfilled" ? tetherChecks[1].value : null;
-          const wallex = tetherChecks[2].status === "fulfilled" ? tetherChecks[2].value : null;
+          const localResult = tetherChecks[0].status === "fulfilled" ? tetherChecks[0].value : null;
+          const nobitexResult = tetherChecks[1].status === "fulfilled" ? tetherChecks[1].value : null;
+          const wallexResult = tetherChecks[2].status === "fulfilled" ? tetherChecks[2].value : null;
+          const local = localResult?.data || null;
+          const nobitex = nobitexResult?.cache === "fresh" ? nobitexResult.data : null;
+          const wallex = wallexResult?.cache === "fresh" ? wallexResult.data : null;
           const localPrice = Number(local?.median_toman);
-          const localValid = Number.isFinite(localPrice) && localPrice >= 1000 && localPrice <= 100000000 &&
+          const localValid = local?.fresh === true && local?.data_stale !== true && Number.isFinite(localPrice) && localPrice >= 1000 && localPrice <= 100000000 &&
             Array.isArray(local?.sources) && local.sources.some(x => x?.fresh === true && Number(x.price_toman) > 0);
           const nobitexPrice = Number(nobitex?.stats?.["usdt-rls"]?.latest) / 10;
           const nobitexValid = Number.isFinite(nobitexPrice) && nobitexPrice >= 1000 && nobitexPrice <= 100000000;
@@ -74,9 +93,14 @@ jobs:
             throw new Error("No valid live Toman/USDT rate from local-market-watch, Nobitex or Wallex");
           console.log("PASS Toman/USDT live rate source", {localValid, nobitexValid, wallexValid});
           const mainEndpoints = [
+            "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/health",
+            "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/futures-engine-health",
             "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/connections-health",
             "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/hunter-combined-snapshot",
             "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-proxy?source=okx-tickers",
+            "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/local-market-watch",
+            "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-proxy?source=nobitex-tether",
+            "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-proxy?source=wallex-markets",
             "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-candles?symbol=BTCUSDT&interval=1h&market=spot",
           ];
           for (const origin of ["https://mmp-coin.github.io", "capacitor://localhost"]) {
@@ -114,22 +138,33 @@ jobs:
               !analyzedFrames || !requiredFrames.every(tf =>
                 Number(analyzedFrames[tf]?.price) > 0 &&
                 Number.isFinite(Number(analyzedFrames[tf]?.data_age_ms)) &&
+                Number(analyzedFrames[tf]?.data_age_ms) >= 0 &&
+                Number(analyzedFrames[tf]?.data_age_ms) <= ({"15m":20,"1h":65,"4h":245,"1d":1445}[tf] * 60000) &&
                 typeof analyzedFrames[tf]?.data_provider === "string" &&
-                analyzedFrames[tf].data_provider.length > 0))
+                analyzedFrames[tf].data_provider.length > 0) ||
+              analyzePayload.analysis.market_data_fresh !== true)
             throw new Error("Analyzer POST returned incomplete, stale, or empty four-timeframe market data");
           console.log("PASS live analyzer POST", {
             symbol: analyzePayload.market.symbol,
             action: analyzePayload.analysis.action,
             providers: [...new Set(requiredFrames.map(tf => analyzedFrames[tf].data_provider))],
+            ages_ms: Object.fromEntries(requiredFrames.map(tf => [tf, analyzedFrames[tf].data_age_ms])),
             market_timestamp: analyzePayload.market.market_timestamp
           });
-          const radarCors = await fetch("https://mmp-coin-ai-radar.mehrdadmohammadi1988.workers.dev/fast-radar-snapshot", {
-            headers: {Origin: "capacitor://localhost", Accept: "application/json"}
-          });
-          if (!radarCors.ok) throw new Error("Radar GET failed for Capacitor origin: HTTP " + radarCors.status);
-          if (radarCors.headers.get("access-control-allow-origin") !== "*")
-            throw new Error("Radar GET CORS missing wildcard; received " + radarCors.headers.get("access-control-allow-origin"));
-          console.log("PASS Radar GET CORS wildcard for Capacitor origin");
+          for (const origin of ["https://mmp-coin.github.io", "capacitor://localhost"]) {
+            const radarOptions = await fetch("https://mmp-coin-ai-radar.mehrdadmohammadi1988.workers.dev/fast-radar-snapshot", {
+              method: "OPTIONS", headers: {Origin: origin, "Access-Control-Request-Method": "GET"}
+            });
+            if (radarOptions.status !== 204 || radarOptions.headers.get("access-control-allow-origin") !== "*" ||
+                !String(radarOptions.headers.get("access-control-allow-methods") || "").includes("GET"))
+              throw new Error("Radar OPTIONS CORS failed for " + origin);
+            const radarCors = await fetch("https://mmp-coin-ai-radar.mehrdadmohammadi1988.workers.dev/fast-radar-snapshot", {
+              headers: {Origin: origin, Accept: "application/json"}
+            });
+            if (!radarCors.ok || radarCors.headers.get("access-control-allow-origin") !== "*")
+              throw new Error("Radar GET CORS failed for " + origin);
+            console.log("PASS Radar GET/OPTIONS CORS", origin);
+          }
           JS
       - name: Validate rebuild structure and assets
         run: |
@@ -142,7 +177,7 @@ jobs:
               assert required in html, f"Missing required UI mount: {required}"
           for required in ['id="runtimeVersion"', "QIE Adaptive Intelligence", "فرماندهی کوانتومی", "نمودار حرفه‌ای", "رادار هوشمند", "شکارچی کوانتومی", "تحلیل‌گر هوشمند", "موتور هوشمند یکپارچه", "۱۲ بُعد امتیازدهی وزن‌دار"]:
               assert required in html, f"Missing required product section: {required}"
-          for required in ["hunter-combined-snapshot", "fast-radar-snapshot", "/connections-health", "cache:\"no-store\"", "fetchTetherRate", "local-market-watch", "nobitex-tether", "wallex-markets", "mmp_tether_cache_v1", "Math.round(x.price*currentTetherPrice)", "— تومان"]:
+          for required in ["hunter-combined-snapshot", "fast-radar-snapshot", "/connections-health", "cache:\"no-store\"", "fetchTetherRate", "getFreshProxy", "X-MMP-Cache", "data_stale!==true", "market.market_data_fresh===true", "r.market_data_fresh===true", "local-market-watch", "nobitex-tether", "wallex-markets", "mmp_tether_cache_v1", "Math.round(x.price*currentTetherPrice)", "— تومان"]:
               assert required in js, f"Missing live integration: {required}"
           assert "هیچ سیگنال ساختگی" in html, "No fabricated-signal disclosure"
           for required in ['meta name="mmp-app-version"', '__MMP_WEB_BUILD_ID__', 'mmp_native_version', 'mmp_live_refresh', 'aria-controls="primaryNav"', 'aria-expanded="false"']:
@@ -206,8 +241,8 @@ jobs:
             await page.route("https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/analyze", async route => {
               if (route.request().method() === "OPTIONS") return route.continue();
               const fixture = {
-                analysis: {action: "WAIT", risk_level: "unknown", confidence: 0, summary: "Browser interaction fixture", technical_analysis: "", reasons: [], scenarios: [], recommendations: [], invalidation: "test fixture", market_timestamp: "test fixture", market_data_fresh: false},
-                market: {timeframes: {"15m": {}, "1h": {}, "4h": {}, "1d": {}}}
+                analysis: {action: "BUY", plan_status: "active_signal", levels: {entry_zone: {low: 1, high: 2}, stop_loss: 0.9, tp1: 3, tp2: 4, tp3: 5}, risk_level: "unknown", confidence: 90, summary: "Browser interaction fixture", technical_analysis: "", reasons: [], scenarios: [], recommendations: [], invalidation: "test fixture", market_timestamp: "test fixture", market_data_fresh: false},
+                market: {market_data_fresh: false, timeframes: {"15m": {}, "1h": {}, "4h": {}, "1d": {}}}
               };
               return route.fulfill({status: 200, headers: {
                 "access-control-allow-origin": "https://mmp-coin.github.io",
@@ -235,6 +270,11 @@ jobs:
                 return;
               }
               if (path === "/market-proxy" && source.endsWith("-tickers") && response.ok()) {
+                const cacheState = String(response.headers()["x-mmp-cache"] || "").toLowerCase();
+                if (cacheState !== "fresh") {
+                  failures.push(name + " stale or unverified exchange proxy cache: " + source);
+                  return;
+                }
                 const payload = await response.json().catch(() => null);
                 const nonEmpty = Array.isArray(payload) ? payload.length > 0 :
                   Array.isArray(payload?.data) ? payload.data.length > 0 :
@@ -291,7 +331,9 @@ jobs:
             await page.locator('[data-refresh="radar"]').click();
             await page.locator('[data-refresh="hunter"]').click();
             await page.locator("#refreshAll").click();
-            await page.waitForFunction(() => document.querySelector("#analysisStatus").textContent.includes("تحلیل دریافت شد"), null, {timeout: 5000});
+            await page.waitForFunction(() => document.querySelector("#analysisStatus").textContent.includes("تازگی داده تأیید نشد"), null, {timeout: 5000});
+            assert.equal(await page.locator("#analysisAction").textContent(), "فعلاً انتظار", name + ": stale analysis must never expose BUY/SELL");
+            assert((await page.locator("#analysisReport").innerText()).includes("ورود فوری تأیید نشده"), name + ": stale analysis must not expose an active trade plan");
             await page.waitForFunction(() =>
               document.querySelector("#tickerIntegrity").textContent.includes("دارایی چندمنبعی"),
               null, {timeout: 20000});
