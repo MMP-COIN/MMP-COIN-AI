@@ -1,0 +1,323 @@
+name: Validate MMP V4 rebuild
+on:
+  push:
+    branches: ["rebuild/**"]
+    paths:
+      - "www/v4/**"
+      - ".github/workflows/validate-v4-rebuild.yml"
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "www/v4/**"
+      - ".github/workflows/validate-v4-rebuild.yml"
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 20
+      - name: Check JavaScript syntax
+        run: node --check www/v4/app.js
+      - name: Smoke-test live market services and browser CORS
+        run: |
+          node --input-type=module <<'JS'
+          const checks = [
+            ["main worker health", "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/health", d => d.worker === "online" && /^QIE-\d+\.\d+\.\d+$/.test(d.engine_version) && d.ai_binding === true && d.futures_engine_binding === true && d.market_cache_binding === true],
+            ["futures engine binding", "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/futures-engine-health", d => d.service_binding === "connected" && d.status === "online" && d.market === "futures" && /^QIE-\d+\.\d+\.\d+$/.test(d.engine_version)],
+            ["exchange connections", "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/connections-health", d => Array.isArray(d.checks) && d.checks.length >= 10 && d.checks.some(x => x.status === "ok" || x.status === "slow")],
+            ["hunter snapshot", "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/hunter-combined-snapshot", d => !!d.spot && !!d.futures && Array.isArray(d.spot.signals) && Array.isArray(d.futures.signals) && Number(d.spot.universe_count) > 0 && Number(d.futures.universe_count) > 0],
+            ["market proxy", "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-proxy?source=okx-tickers", d => Array.isArray(d.data) && d.data.some(x => x.instId === "BTC-USDT" && Number(x.last) > 0)],
+            ["live spot candles", "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-candles?symbol=BTCUSDT&interval=1h&market=spot", d => d.symbol === "BTCUSDT" && d.market === "spot" && d.data_stale !== true && Number(d.data_age_ms) < 2*3600000+120000 && Array.isArray(d.candles) && d.candles.length >= 55 && d.candles.every(x => Number(x.time) > 0 && Number(x.open) > 0 && Number(x.high) >= Math.max(Number(x.open),Number(x.close)) && Number(x.low) <= Math.min(Number(x.open),Number(x.close)) && Number(x.close) > 0)],
+            ["live futures candles", "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-candles?symbol=BTCUSDT&interval=1h&market=futures", d => d.symbol === "BTCUSDT" && d.market === "futures" && d.data_stale !== true && Number(d.data_age_ms) < 2*3600000+120000 && Array.isArray(d.candles) && d.candles.length >= 55 && d.candles.every(x => Number(x.time) > 0 && Number(x.open) > 0 && Number(x.high) >= Math.max(Number(x.open),Number(x.close)) && Number(x.low) <= Math.min(Number(x.open),Number(x.close)) && Number(x.close) > 0)],
+            ["radar health", "https://mmp-coin-ai-radar.mehrdadmohammadi1988.workers.dev/health", d => d.worker === "online"],
+            ["radar snapshot", "https://mmp-coin-ai-radar.mehrdadmohammadi1988.workers.dev/fast-radar-snapshot", d => Array.isArray(d.signals) && !!d.engine && !!d.engine_version && Number(d.universe_count) > 0 && !!d.scanned_at],
+                  ];
+          const livePayloads = {};
+          for (const [name, url, valid] of checks) {
+            const response = await fetch(url, {headers: {accept: "application/json"}});
+            if (!response.ok) throw new Error(name + " returned HTTP " + response.status);
+            const data = await response.json();
+            if (!valid(data)) throw new Error(name + " returned an unexpected payload");
+            livePayloads[name] = data;
+            console.log("PASS", name);
+          }
+          if (livePayloads["main worker health"].engine_version !== livePayloads["futures engine binding"].engine_version)
+            throw new Error("Analyzer and Futures runtime versions do not match");
+          console.log("PASS matching runtime version", livePayloads["main worker health"].engine_version);
+
+          const tetherChecks = await Promise.allSettled([
+            fetch("https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/local-market-watch", {signal: AbortSignal.timeout(12000)}).then(r => r.ok ? r.json() : null),
+            fetch("https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-proxy?source=nobitex-tether", {signal: AbortSignal.timeout(12000)}).then(r => r.ok ? r.json() : null),
+            fetch("https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-proxy?source=wallex-markets", {signal: AbortSignal.timeout(12000)}).then(r => r.ok ? r.json() : null),
+          ]);
+          const local = tetherChecks[0].status === "fulfilled" ? tetherChecks[0].value : null;
+          const nobitex = tetherChecks[1].status === "fulfilled" ? tetherChecks[1].value : null;
+          const wallex = tetherChecks[2].status === "fulfilled" ? tetherChecks[2].value : null;
+          const localPrice = Number(local?.median_toman);
+          const localValid = Number.isFinite(localPrice) && localPrice >= 1000 && localPrice <= 100000000 &&
+            Array.isArray(local?.sources) && local.sources.some(x => x?.fresh === true && Number(x.price_toman) > 0);
+          const nobitexPrice = Number(nobitex?.stats?.["usdt-rls"]?.latest) / 10;
+          const nobitexValid = Number.isFinite(nobitexPrice) && nobitexPrice >= 1000 && nobitexPrice <= 100000000;
+          const marketsRaw = wallex?.result?.symbols || wallex?.result?.markets || {};
+          const markets = Array.isArray(marketsRaw) ? marketsRaw : Object.values(marketsRaw);
+          const tomanMarket = markets.find(m => String(m?.symbol || "").toUpperCase() === "USDTTMN");
+          const rialMarket = markets.find(m => String(m?.symbol || "").toUpperCase() === "USDTIRT");
+          const wallexToman = Number(tomanMarket?.stats?.lastPrice ?? tomanMarket?.lastPrice);
+          const wallexRial = Number(rialMarket?.stats?.lastPrice ?? rialMarket?.lastPrice);
+          const wallexPrice = wallexToman > 0 ? wallexToman : wallexRial / 10;
+          const wallexValid = Number.isFinite(wallexPrice) && wallexPrice >= 1000 && wallexPrice <= 100000000;
+          if (!localValid && !nobitexValid && !wallexValid)
+            throw new Error("No valid live Toman/USDT rate from local-market-watch, Nobitex or Wallex");
+          console.log("PASS Toman/USDT live rate source", {localValid, nobitexValid, wallexValid});
+          const mainEndpoints = [
+            "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/connections-health",
+            "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/hunter-combined-snapshot",
+            "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-proxy?source=okx-tickers",
+            "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-candles?symbol=BTCUSDT&interval=1h&market=spot",
+          ];
+          for (const origin of ["https://mmp-coin.github.io", "capacitor://localhost"]) {
+            for (const url of mainEndpoints) {
+              const response = await fetch(url, {method: "OPTIONS", headers: {Origin: origin, "Access-Control-Request-Method": "GET"}});
+              if (response.status !== 204 || response.headers.get("access-control-allow-origin") !== origin)
+                throw new Error("CORS origin rejected for " + origin + " " + new URL(url).pathname);
+              console.log("PASS CORS", origin, new URL(url).pathname);
+            }
+            const analyzeOptions = await fetch("https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/analyze", {
+              method: "OPTIONS",
+              headers: {Origin: origin, "Access-Control-Request-Method": "POST", "Access-Control-Request-Headers": "content-type"}
+            });
+            if (analyzeOptions.status !== 204 || analyzeOptions.headers.get("access-control-allow-origin") !== origin ||
+                !String(analyzeOptions.headers.get("access-control-allow-methods") || "").includes("POST") ||
+                !String(analyzeOptions.headers.get("access-control-allow-headers") || "").toLowerCase().includes("content-type"))
+              throw new Error("Analyzer POST CORS preflight failed for " + origin);
+            console.log("PASS Analyzer POST CORS", origin);
+          }
+          const analyzeOrigin = "https://mmp-coin.github.io";
+          const analyzeResponse = await fetch("https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/analyze", {
+            method: "POST",
+            headers: {Origin: analyzeOrigin, "Content-Type": "application/json", Accept: "application/json"},
+            body: JSON.stringify({symbol: "BTCUSDT", name: "BTCUSDT", market_mode: "spot"}),
+            signal: AbortSignal.timeout(70000)
+          });
+          if (!analyzeResponse.ok) throw new Error("Analyzer POST returned HTTP " + analyzeResponse.status);
+          if (analyzeResponse.headers.get("access-control-allow-origin") !== analyzeOrigin)
+            throw new Error("Analyzer POST CORS response rejected the website origin");
+          const analyzePayload = await analyzeResponse.json();
+          const analyzedFrames = analyzePayload?.market?.timeframes;
+          const requiredFrames = ["15m", "1h", "4h", "1d"];
+          if (!analyzePayload?.analysis || !["BUY", "SELL", "WAIT"].includes(String(analyzePayload.analysis.action || "").toUpperCase()) ||
+              !analyzePayload?.market || analyzePayload.market.market_data_fresh !== true ||
+              !analyzedFrames || !requiredFrames.every(tf =>
+                Number(analyzedFrames[tf]?.price) > 0 &&
+                Number.isFinite(Number(analyzedFrames[tf]?.data_age_ms)) &&
+                typeof analyzedFrames[tf]?.data_provider === "string" &&
+                analyzedFrames[tf].data_provider.length > 0))
+            throw new Error("Analyzer POST returned incomplete, stale, or empty four-timeframe market data");
+          console.log("PASS live analyzer POST", {
+            symbol: analyzePayload.market.symbol,
+            action: analyzePayload.analysis.action,
+            providers: [...new Set(requiredFrames.map(tf => analyzedFrames[tf].data_provider))],
+            market_timestamp: analyzePayload.market.market_timestamp
+          });
+          const radarCors = await fetch("https://mmp-coin-ai-radar.mehrdadmohammadi1988.workers.dev/fast-radar-snapshot", {
+            headers: {Origin: "capacitor://localhost", Accept: "application/json"}
+          });
+          if (!radarCors.ok) throw new Error("Radar GET failed for Capacitor origin: HTTP " + radarCors.status);
+          if (radarCors.headers.get("access-control-allow-origin") !== "*")
+            throw new Error("Radar GET CORS missing wildcard; received " + radarCors.headers.get("access-control-allow-origin"));
+          console.log("PASS Radar GET CORS wildcard for Capacitor origin");
+          JS
+      - name: Validate rebuild structure and assets
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          html = Path("www/v4/index.html").read_text(encoding="utf-8")
+          css = Path("www/v4/app.css").read_text(encoding="utf-8")
+          js = Path("www/v4/app.js").read_text(encoding="utf-8")
+          for required in ["id=\"command\"", "id=\"chart\"", "id=\"marketChart\"", "id=\"macdChart\"", "id=\"rsiChart\"", "id=\"radar\"", "id=\"hunter\"", "id=\"analyzer\"", "id=\"engines\"", "id=\"engineCore\"", "app.css", "app.js", "lightweight-charts"]:
+              assert required in html, f"Missing required UI mount: {required}"
+          for required in ['id="runtimeVersion"', "QIE Adaptive Intelligence", "فرماندهی کوانتومی", "نمودار حرفه‌ای", "رادار هوشمند", "شکارچی کوانتومی", "تحلیل‌گر هوشمند", "موتور هوشمند یکپارچه", "۱۲ بُعد امتیازدهی وزن‌دار"]:
+              assert required in html, f"Missing required product section: {required}"
+          for required in ["hunter-combined-snapshot", "fast-radar-snapshot", "/connections-health", "cache:\"no-store\"", "fetchTetherRate", "local-market-watch", "nobitex-tether", "wallex-markets", "mmp_tether_cache_v1", "Math.round(x.price*currentTetherPrice)", "— تومان"]:
+              assert required in js, f"Missing live integration: {required}"
+          assert "هیچ سیگنال ساختگی" in html, "No fabricated-signal disclosure"
+          for required in ['meta name="mmp-app-version"', '__MMP_WEB_BUILD_ID__', 'mmp_native_version', 'mmp_live_refresh', 'aria-controls="primaryNav"', 'aria-expanded="false"']:
+              assert required in html, f"Missing native cache/accessibility contract: {required}"
+          for required in ['id="analysisSymbol"', 'id="analysisMarketMode"', 'id="runAnalysis"', 'id="analysisReport"']:
+              assert required in html, f"Missing real analyzer control: {required}"
+          for required in ["/analyze", "market_mode:mode", "analysisCacheTtl", "market.timeframes", "تحلیل دریافت نشد", "/market-candles", "chartEMA", "chartIndicators", "chartHeikinAshi", "data_stale===true"]:
+              assert required in js, f"Missing real analyzer integration: {required}"
+          for required in ["tickerIntegrity", "analysisStatus", "هیچ سیگنال یا سطح معاملاتی از پیش ساخته‌شده‌ای", "analysis-report", "analysis-confidence"]:
+              assert required in html, f"Missing trust policy: {required}"
+          for required in ["Promise.allSettled(sources.map", "spread>1.5", "integrity-warning", "parseTimestamp", "age>maxAgeMs", "داده اسکن قدیمی"]:
+              assert required in js, f"Missing integrity guard: {required}"
+          assert "Math.random" not in js and "fake" not in js.lower(), "Synthetic market data is not allowed"
+          for host in ["api.binance.com", "api.bybit.com", "www.okx.com", "api.gateio.ws", "api.kucoin.com", "api.bitget.com", "api.mexc.com", "api.nobitex.ir", "api.wallex.ir"]:
+              assert host not in js, f"Browser must use the Worker proxy, not direct exchange host: {host}"
+          assert "مرکز فرماندهی کوانتومی" not in html and "engineGrid" not in html and "engineGrid" not in js, "Legacy title or visible 12-engine grid remains"
+          assert "QIE-4" not in html and "4.0" not in html, "The UI must not hardcode an outdated QIE runtime version"
+          worker = Path("cloudflare-worker/worker.js").read_text(encoding="utf-8")
+          assert 'request.method!=="POST"||new URL(request.url).pathname!=="/analyze"' in worker, "Analyzer POST must be bound to the explicit /analyze route"
+          radar = Path("cloudflare-worker/radar-worker.js").read_text(encoding="utf-8")
+          assert 'new Response(null,{status:204' in radar and 'request.method==="OPTIONS")return json({},204)' not in radar, "Radar CORS preflight must return a bodyless 204 response"
+          assert len(css) > 8000, "Responsive terminal stylesheet unexpectedly small"
+          assert "Math.random" not in js and "fake" not in js.lower(), "Synthetic market data is not allowed"
+          print("V4 UI mounts, responsive assets, live endpoints, and no-fabricated-data guard validated.")
+          PY
+
+      - name: Install Playwright and Chromium
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Run desktop and mobile browser smoke tests
+        run: |
+          node --input-type=module <<'JS'
+          import { chromium } from "playwright";
+          import assert from "node:assert/strict";
+          import fs from "node:fs";
+
+          const siteFiles = new Map([
+            ["/", {path: "www/v4/index.html", type: "text/html; charset=utf-8"}],
+            ["/index.html", {path: "www/v4/index.html", type: "text/html; charset=utf-8"}],
+            ["/app.css", {path: "www/v4/app.css", type: "text/css; charset=utf-8"}],
+            ["/app.js", {path: "www/v4/app.js", type: "text/javascript; charset=utf-8"}],
+            ["/assets/mmp-coin-ai-icon.svg", {path: "www/assets/mmp-coin-ai-icon.svg", type: "image/svg+xml"}],
+            ["/manifest.webmanifest", {path: "manifest.webmanifest", type: "application/manifest+json"}]
+          ]);
+          const browser = await chromium.launch({headless: true});
+          const failures = [];
+          const providerSuccesses = new Set();
+          const optionalUpstreamFailures = [];
+          async function checkDevice(name, viewport, mobile) {
+            const context = await browser.newContext({ viewport, isMobile: mobile, hasTouch: mobile });
+            const page = await context.newPage();
+            await page.route("https://mmp-coin.github.io/**", async route => {
+              const pathname = new URL(route.request().url()).pathname;
+              const file = siteFiles.get(pathname);
+              if (!file) return route.fulfill({status: 404, contentType: "text/plain", body: "Not found"});
+              return route.fulfill({status: 200, contentType: file.type, body: fs.readFileSync(file.path)});
+            });
+            // The analyzer POST is mocked only in this UI-interaction test to avoid consuming live AI quota.
+            // Its real preflight is checked above; market-service GETs remain live.
+            await page.route("https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/analyze", async route => {
+              if (route.request().method() === "OPTIONS") return route.continue();
+              const fixture = {
+                analysis: {action: "WAIT", risk_level: "unknown", confidence: 0, summary: "Browser interaction fixture", technical_analysis: "", reasons: [], scenarios: [], recommendations: [], invalidation: "test fixture", market_timestamp: "test fixture", market_data_fresh: false},
+                market: {timeframes: {"15m": {}, "1h": {}, "4h": {}, "1d": {}}}
+              };
+              return route.fulfill({status: 200, headers: {
+                "access-control-allow-origin": "https://mmp-coin.github.io",
+                "access-control-allow-methods": "GET, POST, OPTIONS",
+                "access-control-allow-headers": "Content-Type",
+                "content-type": "application/json"
+              }, body: JSON.stringify(fixture)});
+            });
+            page.on("pageerror", error => failures.push(name + " page error: " + error.message));
+            page.on("console", message => {
+              if (message.type() === "error" &&
+                  !message.text().includes("Failed to load resource: the server responded with a status of 502"))
+                failures.push(name + " console error: " + message.text());
+            });
+            page.on("response", async response => {
+              const url = new URL(response.url());
+              const path = url.pathname;
+              const source = url.searchParams.get("source") || "";
+              if ((path.endsWith("/app.css") || path.endsWith("/app.js")) && !response.ok())
+                failures.push(name + " asset HTTP " + response.status() + ": " + path);
+              if (url.hostname === "mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev" &&
+                  (path === "/market-proxy" || path === "/local-market-watch") &&
+                  response.status() === 502) {
+                optionalUpstreamFailures.push(source || path);
+                return;
+              }
+              if (path === "/market-proxy" && source.endsWith("-tickers") && response.ok()) {
+                const payload = await response.json().catch(() => null);
+                const nonEmpty = Array.isArray(payload) ? payload.length > 0 :
+                  Array.isArray(payload?.data) ? payload.data.length > 0 :
+                  Array.isArray(payload?.data?.ticker) ? payload.data.ticker.length > 0 :
+                  Array.isArray(payload?.result?.list) ? payload.result.list.length > 0 : false;
+                if (nonEmpty) providerSuccesses.add(source);
+                else failures.push(name + " empty exchange proxy payload: " + source);
+              }
+              if (response.status() >= 400)
+                failures.push(name + " HTTP " + response.status() + ": " + url.host + path + url.search);
+            });
+            page.on("requestfailed", request => {
+              const path = new URL(request.url()).pathname;
+              if (path.endsWith("/app.css") || path.endsWith("/app.js"))
+                failures.push(name + " asset request failed: " + path);
+            });
+            const response = await page.goto("https://mmp-coin.github.io/", {waitUntil: "domcontentloaded", timeout: 30000});
+            assert.equal(response.status(), 200, name + ": homepage must return HTTP 200");
+            await page.waitForSelector("#engineCore", {timeout: 10000});
+            await page.waitForFunction(() =>
+              /^ENGINE QIE-\d+\.\d+\.\d+$/.test(document.querySelector("#runtimeVersion")?.textContent || ""),
+              null, {timeout: 10000});
+            assert.equal(await page.locator("#engineCore").count(), 1, name + ": expected one unified intelligence engine");
+            for (const id of ["command", "chart", "radar", "hunter", "analyzer", "engines"]) {
+              assert.equal(await page.locator("#" + id).count(), 1, name + ": missing section #" + id);
+            }
+            assert.equal(await page.locator("#ticker .ticker-item").count(), 4, name + ": expected four ticker slots");
+            await page.locator("#btn-usdt").click();
+            assert.equal(await page.locator("#btn-usdt").getAttribute("aria-pressed"), "true", name + ": USDT selector must activate");
+            assert.equal(await page.locator("html").getAttribute("data-currency"), "USDT", name + ": USDT display mode must apply");
+            await page.locator("#btn-irt").click();
+            assert.equal(await page.locator("#btn-irt").getAttribute("aria-pressed"), "true", name + ": Toman selector must activate");
+            assert.equal(await page.locator("html").getAttribute("data-currency"), "IRT", name + ": Toman display mode must apply");
+
+            if (mobile) {
+              const nav = page.locator(".desktop-nav");
+              await page.locator("#menuToggle").click();
+              assert(await nav.evaluate(el => el.classList.contains("open")), "mobile menu must open");
+              assert.equal(await page.locator("#menuToggle").getAttribute("aria-expanded"), "true", "mobile menu expanded state must be announced");
+              await nav.locator('a[href="#radar"]').click();
+              assert(!(await nav.evaluate(el => el.classList.contains("open"))), "mobile menu must close after navigation");
+              assert.equal(await page.locator("#menuToggle").getAttribute("aria-expanded"), "false", "mobile menu collapsed state must be announced");
+            } else {
+              await page.locator('.desktop-nav a[href="#radar"]').click();
+              await page.waitForFunction(() => Math.abs(document.querySelector("#radar").getBoundingClientRect().top) < 180, null, {timeout: 5000});
+            }
+
+            await page.waitForFunction(() => document.querySelector("#chartStatus")?.textContent.includes("نمودار آماده است") && document.querySelectorAll("#marketChart canvas").length > 0, null, {timeout: 30000});
+            await page.locator("#chartType").selectOption("heikin-ashi");
+            await page.waitForFunction(() => document.querySelectorAll("#marketChart canvas").length > 0, null, {timeout: 5000});
+            await page.locator("#showRsi").uncheck();
+            assert(await page.locator("#rsiChart").evaluate(el => el.hidden), "RSI panel toggle must hide the indicator panel");
+            await page.locator("#showRsi").check();
+            await page.locator('[data-refresh="radar"]').click();
+            await page.locator('[data-refresh="hunter"]').click();
+            await page.locator("#refreshAll").click();
+            await page.waitForFunction(() => document.querySelector("#analysisStatus").textContent.includes("تحلیل دریافت شد"), null, {timeout: 5000});
+            await page.waitForFunction(() =>
+              document.querySelector("#tickerIntegrity").textContent.includes("دارایی چندمنبعی"),
+              null, {timeout: 20000});
+            await page.waitForTimeout(300);
+            await page.waitForTimeout(200);
+
+            const dimensions = await page.evaluate(() => ({
+              viewport: document.documentElement.clientWidth,
+              page: document.documentElement.scrollWidth
+            }));
+            assert(dimensions.page <= dimensions.viewport + 2,
+              name + ": horizontal overflow (" + dimensions.page + " > " + dimensions.viewport + ")");
+            await context.close();
+            console.log("PASS browser smoke:", name);
+          }
+
+          try {
+            await checkDevice("desktop", {width: 1440, height: 1000}, false);
+            await checkDevice("android-mobile", {width: 390, height: 844}, true);
+          } finally {
+            await browser.close();
+          }
+          assert(providerSuccesses.size >= 2,
+            "Browser ticker must receive non-empty data from at least two exchange proxies; got: " + [...providerSuccesses].join(", "));
+          console.log("PASS browser multi-exchange proxies", [...providerSuccesses]);
+          if (optionalUpstreamFailures.length)
+            console.log("Optional upstream 502s handled by failover:", [...new Set(optionalUpstreamFailures)]);
+          assert.deepEqual(failures, [], "browser runtime errors: " + failures.join("; "));
+          JS

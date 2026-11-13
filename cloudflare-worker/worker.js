@@ -1880,7 +1880,7 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/futures-engine-heal
    ai_binding:!!env.AI,futures_engine_binding:!!env.FUTURES_ENGINE,market_cache_binding:!!env.MARKET_CACHE_DB,
    checked_at:new Date().toISOString()},200,request);
  }
- if(request.method!=="POST")return json({error:"Method not allowed"},405,request);
+ if(request.method!=="POST"||new URL(request.url).pathname!=="/analyze")return json({error:"Method not allowed"},405,request);
  const limitResult=await checkRateLimit(env.AI_ANALYSIS_LIMITER,request,"ai-analysis");
  const limited=rateLimitReply(limitResult,request);if(limited)return limited;
 
