@@ -2725,7 +2725,7 @@ html.mmp-native-app .native-menu-version{padding:5px 3px;color:#7893a7;text-alig
 <div class="quantum-hero-foot"><span>اسکن پویا جفت‌های واجد شرایط USDT Spot</span><span>یک موتور مرکزی · تصمیم‌گیری یکپارچه</span><span>داده ناموجود = بدون امتیازسازی جعلی</span></div>
 </section>
 
-<section class="market-heatmap-entry" aria-label="ورود به نقشه حرارتی بازار">
+<section class="market-heatmap-entry" id="market-heatmap-entry" aria-label="ورود به نقشه حرارتی بازار">
  <div class="market-heatmap-entry-copy"><span class="market-heatmap-entry-kicker">MARKET BREADTH · LIVE TURNOVER</span><h2>نقشه حرارتی بازار</h2><p>تمرکز حرکت و گردش معاملات بازار را در یک نمای تصویری بررسی کن؛ نقشه کامل فقط با ورود به این بخش بارگذاری می‌شود.</p><div class="market-heatmap-entry-tags"><span>تغییر قیمت ۲۴ ساعته</span><span>مقایسه گردش معاملات</span><span>نمادهای صعودی و نزولی</span></div></div>
  <a class="market-heatmap-entry-button" href="/market-heatmap.html"><span class="market-heatmap-entry-icon">▦</span><span><b>ورود به نقشه حرارتی</b><small>مشاهده نقشه زنده بازار</small></span><strong>←</strong></a>
 </section>
@@ -3202,14 +3202,7 @@ html.mmp-native-app .native-menu-version{padding:5px 3px;color:#7893a7;text-alig
 
 
 <div class="mmp-coin-detail-backdrop" id="mmp-coin-detail" hidden role="dialog" aria-modal="true" aria-labelledby="mmp-coin-detail-title"><div class="mmp-coin-detail-panel"><button type="button" class="mmp-coin-detail-close" id="mmp-coin-detail-close" aria-label="بستن">×</button><div id="mmp-coin-detail-content"></div><div class="mmp-coin-detail-actions"></div></div></div>
-<script id="mmp-home-priority-layout-20261113">
-(()=>{const main=document.getElementById("hero");if(!main)return;
- const order=["opportunities","market-hunter","ai-section","boom-hunter","market-intelligence","chart-section","coins-section","trading-tools","quantum-center-entry","mmp-autonomous-health-center","exchange-connections","market-hours","app-download","contact-us"];
- const fragment=document.createDocumentFragment();
- order.forEach(id=>{const node=document.getElementById(id);if(node&&node.parentElement===main)fragment.appendChild(node);});
- const anchor=main.querySelector(".mmp-coin-detail-backdrop");main.insertBefore(fragment,anchor||null);
-})();
-</script>
+<!-- Section order is controlled once by mmp-priority-layout-v1.js. -->
 </main>
 
 
@@ -7680,7 +7673,7 @@ html body section#market-snapshot.mmp-market-snapshot>article.mmp-market-card:ho
 (function(){const root=document.getElementById("mmp-autonomous-health-center");if(!root||root.dataset.exclusiveAccordion==="1")return;root.dataset.exclusiveAccordion="1";root.addEventListener("toggle",function(event){const opened=event.target;if(opened instanceof HTMLDetailsElement&&opened.matches("details.mmp-ah-accordion")&&opened.open){root.querySelectorAll("details.mmp-ah-accordion[open]").forEach(item=>{if(item!==opened)item.open=false;});}},true);})();
 </script>
 
-<script src="assets/mmp-priority-layout-v1.js?v=4" defer></script>
+<script src="assets/mmp-priority-layout-v1.js?v=5" defer></script>
 <script src="assets/mmp-compact-redesign.js?v=2" defer></script>
 <script src="assets/mmp-section-nexus-v1.js?v=20261113-2" defer></script>
 
