@@ -203,14 +203,19 @@
  async function loadHealth(){
   try{
    const [d,runtime]=await Promise.all([get(MAIN+"/connections-health"),get(MAIN+"/health").catch(()=>null)]);
+   const runtimeHealthy=runtime?.worker==="online"&&/^QIE-\\d+\\.\\d+\\.\\d+$/.test(String(runtime.engine_version||""))&&runtime.ai_binding===true&&runtime.futures_engine_binding===true&&runtime.market_cache_binding===true;
    const runtimeVersion=$("runtimeVersion");
-   if(runtimeVersion)runtimeVersion.textContent=runtime?.worker==="online"&&runtime.engine_version?"ENGINE "+runtime.engine_version:"ENGINE VERSION UNVERIFIED";
+   if(runtimeVersion)runtimeVersion.textContent=runtimeHealthy?"ENGINE "+runtime.engine_version:"ENGINE VERSION UNVERIFIED";
    const checks=Array.isArray(d.checks)?d.checks:[],up=checks.filter(x=>x.status==="ok"||x.status==="slow").length,total=checks.length;
-   $("coreStatus").textContent=total?up+" از "+total+" اتصال سالم":"پاسخ ناقص";
-   const engineStatus=$("engineStatus");if(engineStatus)engineStatus.textContent="وضعیت اتصال داده‌ها: "+(total?up+" از "+total+" اتصال سالم":"پاسخ ناقص");
+   const connectionsHealthy=total>0&&up===total;
+   const fullyHealthy=runtimeHealthy&&connectionsHealthy;
+   const partialHealthy=runtimeHealthy&&up>0;
+   const statusText=fullyHealthy?up+" از "+total+" اتصال سالم":!runtimeHealthy?"هسته اصلی تأیید نشد":up>0?up+" از "+total+" اتصال سالم · ناقص":"اتصال سرویس‌ها تأیید نشد";
+   $("coreStatus").textContent=statusText;
+   const engineStatus=$("engineStatus");if(engineStatus)engineStatus.textContent="وضعیت هسته و داده‌ها: "+statusText;
    $("coreUpdated").textContent=d.checked_at?new Date(d.checked_at).toLocaleTimeString("fa-IR"):"—";
    const live=$("serviceStatus");
-   if(live){live.textContent=total?up+"/"+total+" اتصال سالم":"پاسخ ناقص";live.classList.remove("pending","healthy","partial","down");live.classList.add(up===total&&total>0?"healthy":up>0?"partial":"down");}
+   if(live){live.textContent=fullyHealthy?"هسته و "+up+"/"+total+" اتصال سالم":!runtimeHealthy?"هسته تأییدنشده":partialHealthy?up+"/"+total+" اتصال سالم · ناقص":"اتصال تأییدنشده";live.classList.remove("pending","healthy","partial","down");live.classList.add(fullyHealthy?"healthy":partialHealthy?"partial":"down");}
   }catch(e){
    $("coreStatus").textContent="عدم دریافت پاسخ";$("coreUpdated").textContent="اتصال بررسی نشد";
    const engineStatus=$("engineStatus");if(engineStatus)engineStatus.textContent="وضعیت اتصال داده‌ها: بررسی ناموفق";
