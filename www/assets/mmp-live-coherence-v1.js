@@ -20,6 +20,7 @@
   let restBusy = false;
 
   const byId = id => document.getElementById(id);
+  const readGoldCache = () => { try { return JSON.parse(localStorage.getItem("mmp_gold_quote_v1") || "null"); } catch (error) { return null; } };
   const number = (value, digits = 2) => Number(value).toLocaleString("en-US", {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits
@@ -194,7 +195,7 @@
     goldBusy = true;
     try {
       const ok = await refreshGoldQuote();
-      const saved = JSON.parse(localStorage.getItem("mmp_gold_quote_v1") || "null");
+      const saved = readGoldCache();
       const price = Number(saved?.price);
       const updatedAt = Number(saved?.updatedAt);
       if (ok && price > 0 && updatedAt > 0 && Date.now() - updatedAt <= MAX_GOLD_AGE_MS) {
@@ -231,7 +232,7 @@
   if (typeof originalGoldRefresh === "function") {
     window.refreshGoldQuote = async function () {
       const ok = await originalGoldRefresh.apply(this, arguments);
-      const saved = JSON.parse(localStorage.getItem("mmp_gold_quote_v1") || "null");
+      const saved = readGoldCache();
       const price = Number(saved?.price);
       const updatedAt = Number(saved?.updatedAt);
       goldQuote = ok && price > 0 && updatedAt > 0 && Date.now() - updatedAt <= MAX_GOLD_AGE_MS
