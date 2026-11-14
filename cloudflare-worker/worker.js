@@ -784,11 +784,11 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
   async()=>tryHosts("KuCoin USDT Futures",["https://api-futures.kucoin.com"],host=>{const now=Date.now();const kucoinSymbol=(symbol==="BTC"?"XBT":symbol)+"USDTM";return host+"/api/v1/kline/query?symbol="+encodeURIComponent(kucoinSymbol)+"&granularity=1&from="+(now-180*60*1000)+"&to="+now;},d=>String(d.code)==="200000"?d.data:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],(+x[6]||+x[5])])
  ];
  const spotSources=[
-  async()=>tryHosts("Binance Spot",["https://api.binance.com"],host=>host+"/api/v3/klines?symbol="+pair+"&interval=1m&limit=100",d=>Array.isArray(d)?d:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],+x[7]]),
+  async()=>tryHosts("Binance Spot",["https://api.binance.com","https://data-api.binance.vision"],host=>host+"/api/v3/klines?symbol="+pair+"&interval=1m&limit=100",d=>Array.isArray(d)?d:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],+x[7]]),
   async()=>tryHosts("Bybit Spot",["https://api.bybit.com","https://api.bytick.com"],host=>host+"/v5/market/kline?category=spot&symbol="+pair+"&interval=1&limit=100",d=>Number(d.retCode)===0?d.result?.list:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],(+x[6]||+x[5])]),
   async()=>tryHosts("Bitget Spot",["https://api.bitget.com"],host=>host+"/api/v3/market/candles?category=SPOT&symbol="+pair+"&interval=1m&limit=100",d=>["00000","0"].includes(String(d.code))?d.data:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],+x[5]]),
-  async()=>tryHosts("OKX Spot",["https://www.okx.com"],host=>host+"/api/v5/market/candles?instId="+symbol+"-USDT&bar=1m&limit=100",d=>String(d.code)==="0"?d.data:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],(+x[7]||+x[6])]),
-  async()=>tryHosts("Gate Spot",["https://api.gateio.ws"],host=>host+"/api/v4/spot/candlesticks?currency_pair="+symbol+"_USDT&interval=1m&limit=100",d=>Array.isArray(d)?d:null,x=>[+x[0]*1000,+x[5],+x[3],+x[4],+x[2],+x[1]]),
+  async()=>tryHosts("OKX Spot",["https://www.okx.com","https://us.okx.com"],host=>host+"/api/v5/market/candles?instId="+symbol+"-USDT&bar=1m&limit=100",d=>String(d.code)==="0"?d.data:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],(+x[7]||+x[6])]),
+  async()=>tryHosts("Gate Spot",["https://api.gateio.ws","https://api.gate.us"],host=>host+"/api/v4/spot/candlesticks?currency_pair="+symbol+"_USDT&interval=1m&limit=100",d=>Array.isArray(d)?d:null,x=>[+x[0]*1000,+x[5],+x[3],+x[4],+x[2],+x[1]]),
   async()=>tryHosts("KuCoin Spot",["https://api.kucoin.com"],host=>host+"/api/v1/market/candles?type=1min&symbol="+symbol+"-USDT",d=>String(d.code)==="200000"?d.data:null,x=>[+x[0]*1000,+x[1],+x[3],+x[4],+x[2],(+x[6]||+x[5])]),
   async()=>tryHosts("WhiteBIT Spot",["https://whitebit.com","https://whitebit.eu"],host=>host+"/api/v1/public/kline?market="+symbol+"_USDT&interval=1m&limit=100",d=>d?.success===true?(Array.isArray(d.result)?d.result:Array.isArray(d.result?.kline)?d.result.kline:null):null,x=>Array.isArray(x)?[+x[0]*1000,+x[1],+x[3],+x[4],+x[2],+x[5]]:[+x.time*1000,+x.open,+x.highest,+x.lowest,+x.close,+x.volume]),
   async()=>tryHosts("Binance.US Spot",["https://api.binance.us"],host=>host+"/api/v3/klines?symbol="+pair+"&interval=1m&limit=100",d=>Array.isArray(d)?d:null,x=>[+x[0],+x[1],+x[2],+x[3],+x[4],+x[7]]),
@@ -807,11 +807,11 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
   const preferred=(Array.isArray(asset?.marketPairs)?asset.marketPairs.slice().sort((a,b)=>Number(b.volume||0)-Number(a.volume||0)):[]).map(x=>indices[String(x.exchange||"")]).filter(Number.isInteger),priority=[4,3,6,8,5,2,1,7,0],available=unique(preferred).sort((a,b)=>priority.indexOf(a)-priority.indexOf(b)),primary=preferred[0],primaryTrusted=[4,5,6,8].includes(primary);
   order=unique([...(primaryTrusted&&available.includes(primary)?[primary]:[]),...available]).sort((a,b)=>priority.indexOf(a)-priority.indexOf(b));
  }
- const fallbackPriority=marketType==="futures"?[4,5,2,6,1,3,0]:[4,3,6,8,5,2,1,7,0];
+ const fallbackPriority=marketType==="futures"?[4,5,2,6,1,3,0]:[4,0,1,3,5,2,6,7,8];
  const preferredOrder=unique(order.filter(index=>reliableIndices.includes(index)));
  const primaryIndex=preferredOrder[0]??fallbackPriority[0],primaryOrder=[primaryIndex];
  const fallbackPool=unique([...fallbackPriority.filter(index=>!primaryOrder.includes(index)),...preferredOrder.slice(1),...sources.map((_,index)=>index)]).filter(index=>!primaryOrder.includes(index));
- const sourceLimit=Math.min(4,sources.length),orderedIndices=unique([...primaryOrder,...fallbackPool]),selectedIndices=(preferredOrder.length>=3?preferredOrder:orderedIndices).slice(0,sourceLimit),orderedSources=selectedIndices.map(index=>sources[index]).filter(Boolean),verified=[];
+ const sourceLimit=Math.min(4,sources.length),orderedIndices=unique([...primaryOrder,...fallbackPool]),selectedIndices=orderedIndices.slice(0,sourceLimit),orderedSources=selectedIndices.map(index=>sources[index]).filter(Boolean),verified=[];
  let selectedPair=null,bestObservedPair=null;
  const evaluatePairs=()=>{
   const pairs=[];
@@ -1416,10 +1416,13 @@ async function handle(request,env){
   if(!cmcRows.length){
    // اگر کاتالوگ CMC از Worker پاسخ نداد، کاتالوگ عمومی CoinLore به‌عنوان مسیر جایگزین استفاده می‌شود.
    const fallbackPages=await Promise.allSettled(Array.from({length:10},(_,i)=>timedJson("https://api.coinlore.net/api/tickers/?start="+(i*100)+"&limit=100",15000,60)));
-   cmcRows=fallbackPages.flatMap(result=>result.status==="fulfilled"&&Array.isArray(result.value)?result.value.map(item=>({
-    id:item.id,symbol:item.symbol,name:item.name,cmc_rank:Number(item.rank)||null,metadata_source:"CoinLore",
-    quote:{USD:{price:Number(item.price_usd)||0,market_cap:Number(item.market_cap_usd)||0,percent_change_24h:Number(item.percent_change_24h)||0}}}
-   )):[]);
+   cmcRows=fallbackPages.flatMap(result=>{
+    const rows=result.status==="fulfilled"?(Array.isArray(result.value)?result.value:Array.isArray(result.value?.data)?result.value.data:[]):[];
+    return rows.map(item=>({
+     id:item.id,symbol:item.symbol,name:item.name,cmc_rank:Number(item.rank)||null,metadata_source:"CoinLore",
+     quote:{USD:{price:Number(item.price_usd)||0,market_cap:Number(item.market_cap_usd)||0,percent_change_24h:Number(item.percent_change_24h)||0}}}
+    ));
+   });
    metadataProvider="CoinLore fallback";
   }
   const binanceSymbols=new Set((binanceInfo.symbols||[]).filter(x=>x.status==="TRADING"&&x.isSpotTradingAllowed!==false&&String(x.quoteAsset||"").toUpperCase()==="USDT").map(x=>String(x.baseAsset||"").toUpperCase()).filter(Boolean));
@@ -1796,13 +1799,27 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/market-proxy"){
        continue;
       }
       if(!response.ok)throw new Error("CoinLore HTTP "+response.status);
-      const result=await response.json();if(!Array.isArray(result))throw new Error("CoinLore page invalid");
-      pageRows=result;break;
+      const result=await response.json(),candidateRows=Array.isArray(result)?result:Array.isArray(result?.data)?result.data:null;
+      if(!candidateRows)throw new Error("CoinLore page invalid");
+      pageRows=candidateRows;break;
      }catch(error){lastPageError=error;if(attempt===1)break;}
      finally{clearTimeout(timer);}
     }
     if(pageRows?.length)rows.push(...pageRows);
     else if(!rows.length)lastError=String(lastPageError?.message||"CoinLore fallback unavailable");
+   }
+   // CoinLore covers only a limited ranked range. Use CMC for deep pages when CoinGecko is throttled.
+   if(!rows.length){
+    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),10000);
+    try{
+     const response=await fetch("https://pro-api.coinmarketcap.com/public-api/v3/cryptocurrency/listings/latest?start="+(baseOffset+1)+"&limit=250&convert=USD",{headers:{"Accept":"application/json","User-Agent":"MMP-COIN-AI/1.0"},signal:controller.signal,cf:{cacheTtl:60,cacheEverything:true}});
+     if(response.ok){
+      const payload=await response.json(),items=Array.isArray(payload?.data)?payload.data:[];
+      const data=items.map(item=>{const quote=Array.isArray(item.quote)?(item.quote.find(x=>String(x.symbol).toUpperCase()==="USD")||{}):(item.quote?.USD||{});return {id:String(item.id),symbol:String(item.symbol||"").toLowerCase(),name:String(item.name||item.symbol||""),image:"https://s2.coinmarketcap.com/static/img/coins/"+String(item.id)+"/64x64.png",current_price:Number(quote.price)||0,market_cap:Number(quote.market_cap)||0,market_cap_rank:Number(item.cmc_rank)||null,total_volume:Number(quote.volume_24h)||0,price_change_percentage_24h:Number(quote.percent_change_24h)||0,last_updated:quote.last_updated||new Date().toISOString(),price_source:"CoinMarketCap"};}).filter(item=>item.symbol&&item.current_price>0);
+      if(data.length){await writeMarketFallback(env,marketCacheKey,data,staleMarketResponse,3600000);return json(data,200,request,{"X-MMP-Data-Source":"CoinMarketCap deep-page fallback","X-MMP-Cache":"fresh","Cache-Control":"public, max-age=60"});}
+     }else{lastError="CoinMarketCap fallback HTTP "+response.status;}
+    }catch(error){lastError="CoinMarketCap fallback: "+String(error?.message||error).slice(0,120);}
+    finally{clearTimeout(timer);}
    }
    if(rows.length){
     const data=rows.map(item=>({id:String(item.id),symbol:String(item.symbol||"").toLowerCase(),name:String(item.name||item.symbol||""),image:"",current_price:Number(item.price_usd)||0,market_cap:Number(item.market_cap_usd)||0,market_cap_rank:Number(item.rank)||null,fully_diluted_valuation:null,total_volume:Number(item.volume24)||0,high_24h:null,low_24h:null,price_change_24h:null,price_change_percentage_24h:Number(item.percent_change_24h)||0,market_cap_change_24h:null,market_cap_change_percentage_24h:null,circulating_supply:Number(item.csupply)||null,total_supply:Number(item.tsupply)||null,max_supply:Number(item.msupply)||null,ath:null,ath_change_percentage:null,ath_date:null,atl:null,atl_change_percentage:null,atl_date:null,roi:null,last_updated:new Date().toISOString()})).filter(item=>item.symbol&&item.current_price>0);

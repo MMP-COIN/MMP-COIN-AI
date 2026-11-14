@@ -3384,7 +3384,7 @@ function mmpRenderChart(payload){
  const link=document.getElementById("chart-replay-link");if(link){const p=String(payload.provider||"").toLowerCase(),ex=p.includes("bitget")?"BITGET":p.includes("bybit")?"BYBIT":p.includes("okx")?"OKX":p.includes("mexc")?"MEXC":"BINANCE";link.href="https://www.tradingview.com/chart/?symbol="+encodeURIComponent(ex+":"+payload.symbol);}
  document.querySelectorAll("[data-chart-tf]").forEach(b=>b.classList.toggle("active",b.dataset.chartTf===st.interval));
 }
-function initTradingView(){mmpLoadChart(true);if(mmpChartState.refreshTimer)clearInterval(mmpChartState.refreshTimer);mmpChartState.refreshTimer=setInterval(()=>{if(!document.hidden&&document.getElementById("chart-section")?.getBoundingClientRect().top<window.innerHeight+600)mmpLoadChart(false);},60000);}
+function initTradingView(){mmpLoadChart(true);if(mmpChartState.refreshTimer)clearInterval(mmpChartState.refreshTimer);mmpChartState.refreshTimer=setInterval(()=>{if(!document.hidden&&document.getElementById("chart-section")?.getBoundingClientRect().top<window.innerHeight+600)mmpLoadChart(false);},30000);}
 function changeTradingViewSymbol(){mmpLoadChart(true);}
 function mmpSetChartInterval(value){if(!["1m","3m","5m","15m","1h","4h","1d"].includes(value))return;mmpChartState.interval=value;mmpLoadChart(true);}
 function mmpSetChartMarket(value){mmpChartState.market=value==="futures"?"futures":"spot";mmpLoadChart(true);}
@@ -3683,10 +3683,15 @@ async function refreshGoldQuote(){
   const response=await fetch("https://api.gold-api.com/price/XAU",{cache:"no-store",signal:controller.signal});
   if(!response.ok)throw new Error("Gold API HTTP "+response.status);
   const payload=await response.json(),price=Number(payload?.price);
+  const rawUpdated=payload?.updatedAt??payload?.updated_at??payload?.timestamp??payload?.time;
+  const numericUpdated=Number(rawUpdated);
+  const parsedUpdated=Number.isFinite(numericUpdated)&&numericUpdated>0?(numericUpdated<1e12?numericUpdated*1000:numericUpdated):Date.parse(String(rawUpdated||""));
+  const updatedAt=Number.isFinite(parsedUpdated)?parsedUpdated:Date.now();
   if(!Number.isFinite(price)||price<=0)throw new Error("Invalid XAU quote");
+  if(Date.now()-updatedAt>180000||updatedAt>Date.now()+30000)throw new Error("Stale XAU quote");
   $("gold").textContent="$"+money(price,2);
-  const sub=$("gold-sub");if(sub)sub.textContent="منبع: Gold-API · بروزرسانی "+new Date().toLocaleTimeString("fa-IR");
-  try{localStorage.setItem("mmp_gold_quote_v1",JSON.stringify({price,updatedAt:Date.now()}));}catch(e){}
+  const sub=$("gold-sub");if(sub)sub.textContent="منبع: Gold-API · بروزرسانی "+new Date(updatedAt).toLocaleTimeString("fa-IR");
+  try{localStorage.setItem("mmp_gold_quote_v1",JSON.stringify({price,updatedAt,receivedAt:Date.now()}));}catch(e){}
   return true;
  }catch(error){
   console.warn("Gold quote refresh failed:",error);
@@ -5227,9 +5232,9 @@ checkConnections();setInterval(()=>{if(document.visibilityState!=="hidden")check
 mmpWhenVisible("#chart-section",()=>{try{initTradingView("BINANCE:BTCUSDT");}catch(error){console.error("TradingView initialization failed:",error)}},{rootMargin:"500px 0px"});
 setInterval(refreshAll, 600000);
 setInterval(()=>{if(document.visibilityState!=="hidden")refreshBenchmarkQuotes();},180000);
-setInterval(()=>{if(document.visibilityState!=="hidden")refreshLiveQuotes();},300000);
-setInterval(()=>{if(document.visibilityState!=="hidden")refreshGoldQuote();},300000);
-setInterval(()=>{if(document.visibilityState!=="hidden"&&document.getElementById("opportunities")?.getBoundingClientRect().top<window.innerHeight+650)loadUnifiedRadarSnapshot();},300000);
+setInterval(()=>{if(document.visibilityState!=="hidden")refreshLiveQuotes();},60000);
+setInterval(()=>{if(document.visibilityState!=="hidden")refreshGoldQuote();},60000);
+setInterval(()=>{if(document.visibilityState!=="hidden"&&document.getElementById("opportunities")?.getBoundingClientRect().top<window.innerHeight+650)loadUnifiedRadarSnapshot();},60000);
 
 </script>
 
@@ -6335,12 +6340,12 @@ body{background:radial-gradient(ellipse at 74% 0,#1b626755,transparent 29%),radi
  }
  $("market-heatmap-refresh")?.addEventListener("click",loadMarketHeatmap);
  $("performance-refresh")?.addEventListener("click",loadPublicPerformance);
- mmpWhenVisible("#market-intelligence",()=>{loadMarketHeatmap();loadPublicPerformance();setInterval(()=>{if(!document.hidden&&document.querySelector("#market-intelligence")?.getBoundingClientRect().top<window.innerHeight+700)loadMarketHeatmap();},900000);setInterval(()=>{if(!document.hidden&&document.querySelector("#market-intelligence")?.getBoundingClientRect().top<window.innerHeight+700)loadPublicPerformance();},1800000);},{rootMargin:"550px 0px"});
+ mmpWhenVisible("#market-intelligence",()=>{loadMarketHeatmap();loadPublicPerformance();setInterval(()=>{if(!document.hidden&&document.querySelector("#market-intelligence")?.getBoundingClientRect().top<window.innerHeight+700)loadMarketHeatmap();},60000);setInterval(()=>{if(!document.hidden&&document.querySelector("#market-intelligence")?.getBoundingClientRect().top<window.innerHeight+700)loadPublicPerformance();},300000);},{rootMargin:"550px 0px"});
  orderButton?.addEventListener("click",loadOrderflowViaWorker);
  derivButton?.addEventListener("click",loadOrderflowViaWorker);
  $("intel-symbol")?.addEventListener("change",loadOrderflowViaWorker);
  $("orderflow-market")?.addEventListener("change",loadOrderflowViaWorker);
- mmpWhenVisible("#market-intelligence",()=>{loadOrderflowViaWorker();loadDerivativesViaWorker();setInterval(()=>{if(!document.hidden&&document.querySelector("#market-intelligence")?.getBoundingClientRect().top<window.innerHeight+700)loadOrderflowViaWorker();},900000);},{rootMargin:"550px 0px"});
+ mmpWhenVisible("#market-intelligence",()=>{loadOrderflowViaWorker();loadDerivativesViaWorker();setInterval(()=>{if(!document.hidden&&document.querySelector("#market-intelligence")?.getBoundingClientRect().top<window.innerHeight+700)loadOrderflowViaWorker();},45000);},{rootMargin:"550px 0px"});
 
  // The original intelligence engine remains authoritative for futures; this adds a working BTC large-transfer feed without inventing exchange labels.
  const whale=$("whale-panel");
@@ -6350,7 +6355,7 @@ body{background:radial-gradient(ellipse at 74% 0,#1b626755,transparent 29%),radi
   const metrics=document.createElement("div");metrics.id="whale-metrics";metrics.className="whale-metrics";state?.after(metrics);const result=document.createElement("div");result.id="whale-transfer-list";result.className="whale-transfers";metrics.after(result);
   const note=document.createElement("div");note.className="intel-foot";note.textContent="دامنه داده: تراکنش‌های بزرگِ در انتظار تأیید شبکه بیت‌کوین از چند منبع عمومی مم‌پول با مسیر جایگزین. آدرس صرافی‌ها برچسب‌گذاری نمی‌شوند؛ بنابراین ورودی/خروجی صرافی گزارش نمی‌شود.";result.after(note);
   const load=async()=>{button.disabled=true;button.textContent="در حال دریافت…";result.textContent="در حال دریافت تراکنش‌های بزرگ شبکه بیت‌کوین…";try{const d=await get(api()+"/whale-watch",32000);const scanned=Number(d.scanned_count??d.sample_count??0);metrics.innerHTML='<div class="whale-metric"><small>تراکنش‌های نمونه بررسی‌شده</small><b>'+fmt(scanned,0)+'</b><span>نمونه اخیر مم‌پول</span></div><div class="whale-metric"><small>انتقال‌های بالای ۱۰ BTC</small><b>'+fmt(d.count||0,0)+'</b><span>در نمونه فعلی</span></div><div class="whale-metric"><small>آستانه پایش</small><b>۱۰ BTC</b><span>حداقل ارزش انتقال</span></div><div class="whale-metric"><small>آخرین بررسی</small><b>'+new Date(d.checked_at||Date.now()).toLocaleTimeString("fa-IR")+'</b><span>به‌روزرسانی خودکار</span></div>';result.innerHTML=d.transfers?.length?d.transfers.map(x=>'<div class="whale-transfer"><span><b>'+fmt(x.value_btc,3)+' BTC</b><br><a href="https://mempool.space/tx/'+encodeURIComponent(x.txid)+'" target="_blank" rel="noopener">'+esc(x.txid.slice(0,14))+'…'+esc(x.txid.slice(-8))+'</a></span><span>کارمزد '+fmt(x.fee_rate,1)+' sat/vB</span></div>').join(""):'<div class="whale-empty"><span class="whale-empty-icon">₿</span><div><b>در نمونه اخیر، انتقال بالای ۱۰ BTC پیدا نشد</b><p>این به معنی نبود انتقال بزرگ در کل شبکه نیست؛ این نما فقط نمونه اخیر تراکنش‌های در انتظار تأیید را بررسی می‌کند.</p><a href="https://mempool.space/mempool" target="_blank" rel="noopener">مشاهده مم‌پول زنده ↗</a></div></div>';if(state){state.querySelector("b").textContent="پایش انتقال‌های بزرگ بیت‌کوین";state.querySelector("p").textContent="منبع دریافت: "+(d.provider||"منبع عمومی مم‌پول")+" · "+fmt(d.scanned_count??d.sample_count??0,0)+" تراکنش نمونه بررسی شد؛ این داده برچسب مالک کیف‌پول ندارد.";}}catch(e){const message=String(e.message||"خطای دریافت");const unavailable=/HTTP (?:502|503|504)/.test(message);result.textContent=unavailable?"منابع عمومی موقتاً پاسخ‌گو نیستند؛ سیستم در تلاش بعدی دوباره از منابع جایگزین استفاده می‌کند. ("+message+")":"ردیابی فعلاً در دسترس نیست: "+message;}finally{button.disabled=false;button.textContent="↻ دریافت انتقال‌های بزرگ BTC";}};
-  button.addEventListener("click",load);mmpWhenVisible("#whale-panel",()=>{load();setInterval(()=>{if(!document.hidden&&document.getElementById("whale-panel")?.getBoundingClientRect().top<window.innerHeight+600)load();},900000);},{rootMargin:"500px 0px"});
+  button.addEventListener("click",load);mmpWhenVisible("#whale-panel",()=>{load();setInterval(()=>{if(!document.hidden&&document.getElementById("whale-panel")?.getBoundingClientRect().top<window.innerHeight+600)load();},120000);},{rootMargin:"500px 0px"});
  }
 })();
 </script>
@@ -6668,7 +6673,7 @@ window.mmpShareDownloadLink = async function () {
   finally{busy=false;if(button){button.disabled=false;const label=button.querySelector("span");if(label)label.textContent="به‌روزرسانی شکار";}}
  } function init(){
   // Unified hunter refresh handler owns the single refresh button; this module only polls snapshots.
-  load();setInterval(load,600000);
+  load();setInterval(load,60000);
  }
  const start=()=>window.mmpWhenVisible?window.mmpWhenVisible("#market-hunter",init,{rootMargin:"550px 0px"}):init();if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start,{once:true});else start();
 })();
@@ -7748,5 +7753,6 @@ html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-ca
 }
 </style>
 
+<script src="assets/mmp-live-coherence-v1.js?v=20261114.1"></script>
 </body>
 </html>
