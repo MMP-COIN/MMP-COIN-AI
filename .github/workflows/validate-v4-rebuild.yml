@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: mmp-coin-release-validation-${{ github.event.pull_request.head.ref || github.ref_name }}
+  group: mmp-coin-v4-validation-${{ github.event.pull_request.head.ref || github.ref_name }}
   cancel-in-progress: false
 jobs:
   validate:
