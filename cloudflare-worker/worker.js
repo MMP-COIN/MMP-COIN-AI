@@ -1821,9 +1821,25 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/market-proxy"){
    source==="coinlore-top"?"offset="+requestedOffset:"",
    source==="coingecko-extra"?"ids="+(url.searchParams.get("ids")||""):""
   ].filter(Boolean).join("|");
-  const marketCacheKey=await marketFallbackKey(cacheIdentity);
-  const staleMarketResponse=await readMarketFallback(env,marketCacheKey);
+  const structuredSource=["coingecko-top","coinlore-top","coingecko-extra","nobitex-tether"].includes(source);
+  const marketCacheKey=structuredSource?await marketFallbackKey(cacheIdentity):null;
+  const staleMarketResponse=structuredSource?await readMarketFallback(env,marketCacheKey):null;
   const responseCacheTtl=source.startsWith("coingecko")?180:source==="coinlore-top"?60:source.includes("tether")||source.includes("wallex")||source.includes("bitpin")||source.includes("exir")||source.includes("ramzinex")?10:5;
+  const rawCacheKey=new Request("https://mmp-market-proxy-cache.internal/"+encodeURIComponent(cacheIdentity));
+  let staleRawResponse=null;
+  if(!structuredSource&&typeof caches!=="undefined"&&caches.default){
+   try{staleRawResponse=await caches.default.match(rawCacheKey);}catch{}
+  }
+  if(staleRawResponse){
+   const cachedAt=Number(staleRawResponse.headers.get("X-MMP-Cached-At"))||0,ageMs=cachedAt?Math.max(0,Date.now()-cachedAt):Infinity;
+   if(ageMs<=responseCacheTtl*1000){
+    const headers=new Headers(corsHeaders(request));
+    headers.set("Content-Type",staleRawResponse.headers.get("Content-Type")||"application/json; charset=utf-8");
+    headers.set("X-MMP-Data-Source",source);headers.set("X-MMP-Cache","HIT");headers.set("X-MMP-Data-Age",String(Math.floor(ageMs)));
+    headers.set("Cache-Control","public, max-age="+responseCacheTtl);headers.set("X-Content-Type-Options","nosniff");
+    return new Response(staleRawResponse.body,{status:200,headers});
+   }
+  }
   let lastError=null;
   for(const endpoint of candidates){
    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),9000);
@@ -1832,6 +1848,17 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/market-proxy"){
    if(source==="wallex-markets"){upstreamHeaders.Origin="https://wallex.ir";upstreamHeaders.Referer="https://wallex.ir/";upstreamHeaders["User-Agent"]="curl/8.14.1";}
    const upstream=await fetch(endpoint,{headers:upstreamHeaders,signal:controller.signal,cf:{cacheTtl:responseCacheTtl,cacheEverything:true}});
     if(!upstream.ok){lastError="Upstream HTTP "+upstream.status;continue;}
+    if(!structuredSource){
+     const contentType=upstream.headers.get("content-type")||"application/json; charset=utf-8";
+     if(!contentType.toLowerCase().includes("json")){lastError="Upstream returned non-JSON content";continue;}
+     const headers=new Headers(corsHeaders(request));
+     headers.set("Content-Type",contentType);headers.set("X-MMP-Data-Source",source);headers.set("X-MMP-Cache","fresh");
+     headers.set("X-MMP-Cached-At",String(Date.now()));headers.set("Cache-Control","public, max-age="+responseCacheTtl);
+     headers.set("X-Content-Type-Options","nosniff");
+     const response=new Response(upstream.body,{status:200,headers});
+     if(typeof caches!=="undefined"&&caches.default){try{await caches.default.put(rawCacheKey,response.clone());}catch{}}
+     return response;
+    }
     let data=await upstream.json();
     if(data===null||typeof data!=="object")throw new Error("Invalid upstream JSON");
     if(source==="nobitex-tether"){
@@ -1853,6 +1880,16 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/market-proxy"){
     return json(data,200,request,{"X-MMP-Data-Source":source,"X-MMP-Cache":"fresh","Cache-Control":"public, max-age="+responseCacheTtl});
    }catch(error){lastError=String(error?.message||"network error");}
    finally{clearTimeout(timer);}
+  }
+  if(!structuredSource&&staleRawResponse){
+   const cachedAt=Number(staleRawResponse.headers.get("X-MMP-Cached-At"))||0,ageMs=cachedAt?Math.max(0,Date.now()-cachedAt):Infinity;
+   if(ageMs<=60000){
+    const headers=new Headers(corsHeaders(request));
+    headers.set("Content-Type",staleRawResponse.headers.get("Content-Type")||"application/json; charset=utf-8");
+    headers.set("X-MMP-Data-Source",source);headers.set("X-MMP-Cache","stale");headers.set("X-MMP-Data-Age",String(Math.floor(ageMs)));
+    headers.set("Warning",'110 - "Response is stale"');headers.set("Cache-Control","no-store");
+    return new Response(staleRawResponse.body,{status:200,headers});
+   }
   }
   if(source==="coingecko-top"){
    // Prefer a known-good D1 snapshot during provider throttling; do not turn
