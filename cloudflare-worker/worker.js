@@ -105,11 +105,35 @@ function corsHeaders(request){
  return headers;
 }
 const json=(obj,status=200,request=null,extraHeaders={})=>new Response(JSON.stringify(obj),{status,headers:{...corsHeaders(request),...extraHeaders,"Content-Type":extraHeaders["Content-Type"]||"application/json; charset=utf-8","Cache-Control":extraHeaders["Cache-Control"]||"no-store","X-Content-Type-Options":"nosniff","Referrer-Policy":"no-referrer"}});
-async function checkRateLimit(binding,request,scope){
- if(!binding)return "unavailable";
+async function checkRateLimit(binding,request,scope,env=null,fallbackLimit=300){
  const ip=request.headers.get("CF-Connecting-IP")||"unknown";
- try{const result=await binding.limit({key:ip+":"+scope});return result?.success?"ok":"limited";}
- catch{return "unavailable";}
+ if(binding){
+  try{
+   const result=await binding.limit({key:ip+":"+scope});
+   return result?.success?"ok":"limited";
+  }catch(error){
+   console.error("Rate-limit binding unavailable; using bounded D1 fallback:",scope,String(error?.message||error).slice(0,120));
+  }
+ }
+ // Keep the same protection if Cloudflare's native rate-limit binding is missing
+ // or temporarily unavailable. The key is a one-way hash; raw client IPs are not stored.
+ if(!env?.ADMIN_DB)return "unavailable";
+ try{
+  const now=Date.now(),windowStart=Math.floor(now/60000)*60000;
+  const digest=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(ip+":"+scope));
+  const key=Array.from(new Uint8Array(digest),byte=>byte.toString(16).padStart(2,"0")).join("");
+  const row=await env.ADMIN_DB.prepare(
+   "INSERT INTO api_rate_limits (key,window_start,count,updated_at) VALUES (?, ?, 1, ?) ON CONFLICT(key) DO UPDATE SET count=CASE WHEN api_rate_limits.window_start=excluded.window_start THEN api_rate_limits.count+1 ELSE 1 END, window_start=excluded.window_start, updated_at=excluded.updated_at RETURNING count"
+  ).bind(key,windowStart,new Date(now).toISOString()).first();
+  if(!row||!Number.isFinite(Number(row.count)))return "unavailable";
+  if(now%3600000<5000){
+   env.ADMIN_DB.prepare("DELETE FROM api_rate_limits WHERE updated_at < ?").bind(new Date(now-86400000).toISOString()).run().catch(()=>{});
+  }
+  return Number(row.count)>fallbackLimit?"limited":"ok";
+ }catch(error){
+  console.error("D1 rate-limit fallback unavailable:",scope,String(error?.message||error).slice(0,160));
+  return "unavailable";
+ }
 }
 function rateLimitReply(result,request){
  if(result==="ok")return null;
@@ -1308,7 +1332,7 @@ async function handle(request,env){
  }
 
  if(request.method==="GET"&&new URL(request.url).pathname==="/market-flow"){
-  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"market-flow"),request);if(limited)return limited;
+  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"market-flow",env,300),request);if(limited)return limited;
   const url=new URL(request.url),symbol=String(url.searchParams.get("symbol")||"").toUpperCase(),marketType=url.searchParams.get("market")==="futures"?"futures":"spot";
   if(!/^[A-Z0-9]{2,24}(USDT)?$/.test(symbol))return json({error:"نماد نامعتبر است."},400,request);
   const flowWindow=url.searchParams.get("window")||(marketType==="futures"?1:5);try{
@@ -1322,7 +1346,7 @@ async function handle(request,env){
   }catch(error){return json({error:String(error?.message||"دریافت جریان معاملات ناموفق بود").slice(0,260)},502,request);}
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-combined-snapshot"){
-  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-combined-snapshot"),request);if(limited)return limited;
+  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-combined-snapshot",env,300),request);if(limited)return limited;
   if(!env.ADMIN_DB)return json({status:"offline",error:"ADMIN_DB binding missing"},503,request);
   const [spotRow,futuresRow]=await Promise.all([
    env.ADMIN_DB.prepare("SELECT payload,updated_at FROM hunter_engine_state WHERE id = ?").bind("digital-hunter-v2").first(),
@@ -1334,15 +1358,15 @@ async function handle(request,env){
   return json({status:spot.status==="online"&&futures.status==="online"?"online":"warming_up",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,spot,futures,updated_at:{spot:spotRow?.updated_at||null,futures:futuresRow?.updated_at||null}},200,request);
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-snapshot"){
-  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-snapshot"),request);if(limited)return limited;if(!env.ADMIN_DB)return json({status:"offline",error:"ADMIN_DB binding missing"},503,request);
+  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-snapshot",env,300),request);if(limited)return limited;if(!env.ADMIN_DB)return json({status:"offline",error:"ADMIN_DB binding missing"},503,request);
   const row=await env.ADMIN_DB.prepare("SELECT payload FROM hunter_engine_state WHERE id = ?").bind("digital-hunter-v2").first();let saved=null;try{saved=row?.payload?JSON.parse(row.payload):null;}catch{}
   return json(saved?.snapshot||{status:"warming_up",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,signals:[],scanned_count:0,universe_count:0},200,request);
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-run"){
-  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-run"),request);if(limited)return limited;try{return json(await runDigitalHunterCycle(env),200,request);}catch(e){return json({status:"error",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,error:String(e?.message||e).slice(0,220)},502,request);}
+  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-run",env,300),request);if(limited)return limited;try{return json(await runDigitalHunterCycle(env),200,request);}catch(e){return json({status:"error",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,error:String(e?.message||e).slice(0,220)},502,request);}
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-cron-status"){
-  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-cron-status"),request);if(limited)return limited;
+  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-cron-status",env,300),request);if(limited)return limited;
   if(!env.ADMIN_DB)return json({status:"offline",error:"ADMIN_DB binding missing"},503,request);
   const [spotRow,futuresRow,universeRow]=await Promise.all([
    env.ADMIN_DB.prepare("SELECT payload, updated_at FROM hunter_engine_state WHERE id = ?").bind("digital-hunter-cron-heartbeat").first(),
@@ -1357,12 +1381,12 @@ async function handle(request,env){
   return json({status,engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,cron:spotSaved?.cron||futuresSaved?.cron||"* * * * *",startedAt:spotSaved?.startedAt||futuresSaved?.startedAt||null,finishedAt:spotSaved?.finishedAt||futuresSaved?.finishedAt||null,updated_at,markets:{spot,futures},universe_refresh:{status:universeSaved?.status||"warming_up",updated_at:universeRow?.updated_at||null,markets:universeSaved?.markets||{},errors:universeSaved?.errors||{}},errors:{...(spotSaved?.errors||{}),...(futuresSaved?.status==="error"?{futures:futuresSaved.error}:futuresSaved?.errors||{})}},200,request);
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-futures-snapshot"){
-  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-futures-snapshot"),request);if(limited)return limited;if(!env.ADMIN_DB)return json({status:"offline",error:"ADMIN_DB binding missing"},503,request);
+  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-futures-snapshot",env,300),request);if(limited)return limited;if(!env.ADMIN_DB)return json({status:"offline",error:"ADMIN_DB binding missing"},503,request);
   const row=await env.ADMIN_DB.prepare("SELECT payload FROM hunter_engine_state WHERE id = ?").bind("digital-hunter-v2-futures").first();let saved=null;try{saved=row?.payload?JSON.parse(row.payload):null;}catch{}
   return json(saved?.snapshot||{status:"warming_up",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,market:"futures",signals:[],scanned_count:0,universe_count:0},200,request);
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-futures-universe"){
-  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-futures-universe"),request);if(limited)return limited;
+  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-futures-universe",env,300),request);if(limited)return limited;
   if(!env.ADMIN_DB)return json({status:"offline",error:"ADMIN_DB binding missing"},503,request);
   const row=await env.ADMIN_DB.prepare("SELECT payload, updated_at FROM hunter_engine_state WHERE id = ?").bind("digital-hunter-v2-futures").first();
   let saved=null;try{saved=row?.payload?JSON.parse(row.payload):null;}catch{}
@@ -1371,17 +1395,17 @@ async function handle(request,env){
   return json({status:"online",engine:QUANTUM_ENGINE_NAME,market:"futures",universe_count:assets.length,universe_updated_at:saved.universeUpdatedAt||null,updated_at:row?.updated_at||null,source:saved.universeProvider||"multi-exchange",assets},200,request);
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-futures-run"){
-  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-futures-run"),request);if(limited)return limited;try{return json(await runDigitalHunterMarketCycle(env,"futures"),200,request);}catch(e){return json({status:"error",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,market:"futures",error:String(e?.message||e).slice(0,220)},502,request);}
+  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-futures-run",env,300),request);if(limited)return limited;try{return json(await runDigitalHunterMarketCycle(env,"futures"),200,request);}catch(e){return json({status:"error",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,market:"futures",error:String(e?.message||e).slice(0,220)},502,request);}
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-scan"){
-  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-scan"),request);if(limited)return limited;const url=new URL(request.url),symbols=[...new Set((url.searchParams.get("symbols")||"").split(",").map(x=>x.toUpperCase().replace(/[^A-Z0-9]/g,"")).filter(x=>/^[A-Z0-9]{2,24}$/.test(x)))].slice(0,12);if(!symbols.length)return json({error:"حداقل یک نماد معتبر ارسال کنید."},400,request);const marketType=url.searchParams.get("market")==="futures"?"futures":"spot";try{return json({engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,...await scanHunterSymbols(symbols,marketType,[],env)},200,request);}catch(e){return json({error:String(e?.message||e).slice(0,220)},502,request);}
+  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-scan",env,300),request);if(limited)return limited;const url=new URL(request.url),symbols=[...new Set((url.searchParams.get("symbols")||"").split(",").map(x=>x.toUpperCase().replace(/[^A-Z0-9]/g,"")).filter(x=>/^[A-Z0-9]{2,24}$/.test(x)))].slice(0,12);if(!symbols.length)return json({error:"حداقل یک نماد معتبر ارسال کنید."},400,request);const marketType=url.searchParams.get("market")==="futures"?"futures":"spot";try{return json({engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,...await scanHunterSymbols(symbols,marketType,[],env)},200,request);}catch(e){return json({error:String(e?.message||e).slice(0,220)},502,request);}
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-universe"){
   // Scheduled engine refreshes authenticate internally with a Worker secret and do not
   // consume the public IP rate-limit bucket. External requests remain rate-limited.
   const internalAuthorized=!!env.FUTURES_ENGINE_TOKEN&&request.headers.get("X-MMP-Internal-Token")===env.FUTURES_ENGINE_TOKEN;
   if(!internalAuthorized){
-   const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-universe");
+   const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-universe",env,300);
    const limited=rateLimitReply(limitResult,request);if(limited)return limited;
   }
   // Share the expensive multi-exchange catalog across web and Android clients for 90 seconds.
@@ -1522,7 +1546,7 @@ async function handle(request,env){
   return json(universePayload,200,request,{"X-MMP-Data-Source":"Binance, Bybit, OKX, Bitget, Gate, KuCoin, WhiteBIT, Nobitex, Wallex + "+metadataProvider,"X-MMP-Cache":"MISS","Cache-Control":"no-store"});
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/support-check"){
-  const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"support-check");
+  const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"support-check",env,300);
   const limited=rateLimitReply(limitResult,request);if(limited)return limited;
   const url=new URL(request.url);
   const symbols=[...new Set((url.searchParams.get("symbols")||"").split(",").map(x=>x.toUpperCase().replace(/[^A-Z0-9_]/g,"")).filter(validSymbol))].slice(0,150);
@@ -1535,7 +1559,7 @@ async function handle(request,env){
 
 
  if(request.method==="GET"&&new URL(request.url).pathname==="/market-derivatives"){
-  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"market-derivatives"),request);if(limited)return limited;
+  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"market-derivatives",env,300),request);if(limited)return limited;
   const url=new URL(request.url),raw=String(url.searchParams.get("symbol")||"BTC").toUpperCase();
   if(!/^[A-Z0-9]{2,15}$/.test(raw))return json({error:"نماد نامعتبر است."},400,request);
   const base=raw.replace(/USDT$/,""),symbol=base+"USDT",instId=base+"-USDT-SWAP";
@@ -1584,7 +1608,7 @@ async function handle(request,env){
   return json({symbol:base,...data,open_interest_unit:base,source:[...new Set(Object.values(sources))].join(" + "),sources,missing:Object.keys(data).filter(k=>data[k]===null),checked_at:new Date().toISOString()},200,request);
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/market-orderflow"){
-  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"market-orderflow"),request);if(limited)return limited;
+  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"market-orderflow",env,300),request);if(limited)return limited;
   const url=new URL(request.url),raw=String(url.searchParams.get("symbol")||"BTC").toUpperCase(),marketType=url.searchParams.get("market")==="futures"?"futures":"spot";
   if(!/^[A-Z0-9]{2,15}$/.test(raw))return json({error:"نماد نامعتبر است."},400,request);
   const base=raw.replace(/USDT$/,""),symbol=base+"USDT";
@@ -1639,7 +1663,7 @@ async function handle(request,env){
   },200,request);
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/whale-watch"){
-  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"whale-watch"),request);if(limited)return limited;
+  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"whale-watch",env,300),request);if(limited)return limited;
   try{
    const c=new AbortController(),timer=setTimeout(()=>c.abort(),9000);
    let rows;try{const r=await fetch("https://mempool.space/api/mempool/recent",{signal:c.signal,headers:{"Accept":"application/json"}});if(!r.ok)throw new Error("HTTP "+r.status);rows=await r.json();}finally{clearTimeout(timer);}
@@ -1649,7 +1673,7 @@ async function handle(request,env){
  }
 
  if(request.method==="GET"&&new URL(request.url).pathname==="/early-pressure"){
-  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"early-pressure"),request);if(limited)return limited;
+  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"early-pressure",env,300),request);if(limited)return limited;
   const url=new URL(request.url),raw=String(url.searchParams.get("symbol")||"BTC").toUpperCase();
   if(!/^[A-Z0-9]{2,24}$/.test(raw))return json({error:"نماد نامعتبر است."},400,request);
   const symbol=splitQuotePair(raw)?raw:raw+"USDT";
@@ -1677,7 +1701,7 @@ async function handle(request,env){
   }catch(error){return json({symbol:raw,state:"insufficient_data",error:String(error?.message||error).slice(0,180),sampled_at:new Date().toISOString()},502,request);}
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/market-candles"){
-  const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"market-candles");
+  const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"market-candles",env,300);
   const limited=rateLimitReply(limitResult,request);if(limited)return limited;
   const url=new URL(request.url),rawSymbol=String(url.searchParams.get("symbol")||"").toUpperCase(),marketType=url.searchParams.get("market")==="futures"?"futures":"spot";
   const interval=String(url.searchParams.get("interval")||"15m");
@@ -1700,7 +1724,7 @@ async function handle(request,env){
  }
 
  if(request.method==="GET"&&new URL(request.url).pathname==="/local-market-watch"){
-   const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"local-market-watch"),request);if(limited)return limited;
+   const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"local-market-watch",env,300),request);if(limited)return limited;
    const saved=await readLocalTetherState(env),sample=saved||{market:"USDT/IRR",unit:"Toman",sources:[],source_count:0,median_toman:null,status:"warming_up",warning:"منتظر اولین چرخه پایش مستقل هستیم.",checked_at:null};
    const checkedAt=Date.parse(sample.checked_at||""),sampleAge=Number.isFinite(checkedAt)?Math.max(0,Date.now()-checkedAt):null,dataStale=sampleAge===null||sampleAge>120000;
    const alertAt=Date.parse(saved?.alert_at||""),serverAlert=!!(saved?.alert&&Number.isFinite(alertAt)&&Date.now()-alertAt<=120000);
@@ -1708,7 +1732,7 @@ async function handle(request,env){
    return json({...sample,data_stale:dataStale,data_age_ms:sampleAge,fresh:!dataStale,last_known_toman:lastKnownToman,last_known_checked_at:lastKnownAt,last_known_age_ms:Number.isFinite(lastKnownAge)?lastKnownAge:null,server_change_pct:Number.isFinite(Number(saved?.change_pct))?Number(saved.change_pct):null,server_alert:serverAlert,server_alert_at:saved?.alert_at||null,server_monitor:saved?.monitor||"warming_up",server_monitor_updated_at:saved?.monitor_updated_at||null},200,request,{"Cache-Control":"no-store","X-MMP-Data-Source":"Dedicated Tether Worker · Nobitex/Wallex/Bitpin/Exir/Ramzinex"});
   }
 if(request.method==="GET"&&new URL(request.url).pathname==="/market-proxy"){
-  const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"market-proxy");
+  const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"market-proxy",env,300);
   const limited=rateLimitReply(limitResult,request);if(limited)return limited;
   const url=new URL(request.url),source=url.searchParams.get("source")||"";
   const requestedTopPage=Number(url.searchParams.get("page")||1);
@@ -1838,7 +1862,7 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/market-proxy"){
   return json({error:"Market data source unavailable",source,detail:String(lastError||"upstream error").slice(0,120)},502,request);
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/connections-health"){
-  const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"connections-health");
+  const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"connections-health",env,300);
   const limited=rateLimitReply(limitResult,request);if(limited)return limited;
   const timeoutFetch=async(url,valid,timeout=9000,extraHeaders={})=>{
    const started=Date.now(),controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeout);
@@ -1908,7 +1932,7 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/futures-engine-heal
  }
 
  if(request.method==="POST"&&new URL(request.url).pathname==="/system-diagnose"){
-  const limited=rateLimitReply(await checkRateLimit(env.AI_ANALYSIS_LIMITER,request,"system-diagnose"),request);if(limited)return limited;
+  const limited=rateLimitReply(await checkRateLimit(env.AI_ANALYSIS_LIMITER,request,"system-diagnose",env,15),request);if(limited)return limited;
   const contentType=request.headers.get("Content-Type")||"";
   if(!contentType.toLowerCase().includes("application/json"))return json({error:"Content-Type must be application/json"},415,request);
   const declaredLength=Number(request.headers.get("Content-Length")||0);if(declaredLength>12000)return json({error:"Diagnostic snapshot is too large"},413,request);
@@ -1941,7 +1965,7 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/futures-engine-heal
    checked_at:new Date().toISOString()},200,request);
  }
  if(request.method!=="POST")return json({error:"Method not allowed"},405,request);
- const limitResult=await checkRateLimit(env.AI_ANALYSIS_LIMITER,request,"ai-analysis");
+ const limitResult=await checkRateLimit(env.AI_ANALYSIS_LIMITER,request,"ai-analysis",env,15);
  const limited=rateLimitReply(limitResult,request);if(limited)return limited;
 
  const contentType=request.headers.get("Content-Type")||"";
