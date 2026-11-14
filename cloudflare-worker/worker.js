@@ -1992,7 +1992,7 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/futures-engine-heal
  const upstreamBudget={used:0,max:44};
  let stage="شناسایی جفت‌های فعال";
  try{
-  const catalogs=await getExchangeCatalogs();
+  const catalogs=await getExchangeCatalogs(mode,upstreamBudget);
   const support=exchangeSupport(symbol,catalogs);
   const spotPair=support.spot.pair||pair;
   const futuresPair=support.futures.pair||pair;
