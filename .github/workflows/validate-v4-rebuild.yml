@@ -386,13 +386,40 @@ jobs:
               return route.fulfill({status: 200, contentType: file.type, body: fs.readFileSync(file.path)});
             });
             // The analyzer POST is mocked only in this UI-interaction test to avoid consuming live AI quota.
-            // Its real preflight is checked above; market-service GETs remain live.
+            // Its real preflight and market data are checked above; deterministic fixtures isolate UI interactions.
             // UI contract fixture; live Worker /health is checked independently before this browser test.
             await page.route("https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/health", async route => route.fulfill({
               status: 200,
               headers: {"content-type":"application/json","access-control-allow-origin":"*"},
               body: JSON.stringify({worker:"online",engine_version:"QIE-5.0.1",ai_binding:true,futures_engine_binding:true,market_cache_binding:true,admin_db_binding:true,checked_at:new Date().toISOString()})
             }));
+            await page.route("https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/connections-health", async route => route.fulfill({
+              status: 200,
+              headers: {"content-type":"application/json","access-control-allow-origin":"*"},
+              body: JSON.stringify({checked_at:new Date().toISOString(),checks:Array.from({length:8},(_,i)=>({name:"provider-"+i,status:"ok"}))})
+            }));
+            // Live proxy payloads are validated above; deterministic fixtures isolate responsive UI behavior here.
+            await page.route("https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-proxy", async route => {
+              const source = new URL(route.request().url()).searchParams.get("source");
+              const headers = {"content-type":"application/json","access-control-allow-origin":"https://mmp-coin.github.io","access-control-allow-methods":"GET, POST, OPTIONS","access-control-allow-headers":"Content-Type","x-mmp-cache":"fresh"};
+              const rows = [{symbol:"BTCUSDT",lastPrice:"65000",last:"65000"},{symbol:"ETHUSDT",lastPrice:"3500",last:"3500"},{symbol:"PAXGUSDT",lastPrice:"2700",last:"2700"}];
+              const payloads = {
+                "binance-tickers": rows,
+                "gate-tickers": rows.map(x=>({currency_pair:x.symbol.replace("USDT","_USDT"),last:x.last})),
+                "mexc-tickers": rows,
+                "okx-tickers": {data:rows.map(x=>({instId:x.symbol.replace("USDT","-USDT"),last:x.last}))},
+                "bybit-tickers": {result:{list:rows}},
+                "kucoin-tickers": {data:{ticker:rows.map(x=>({symbol:x.symbol.replace("USDT","-USDT"),last:x.last}))}},
+                "bitget-tickers": {data:rows.map(x=>({symbol:x.symbol,lastPr:x.last}))},
+                "nobitex-tether": {stats:{"usdt-rls":{latest:"2728000"}}},
+                "wallex-markets": {result:{symbols:[{symbol:"USDTTMN",stats:{lastPrice:"272850"}}]}},
+                "bitpin-tickers": {results:[{code:"USDT_IRT",price_info:{price:"272900"}}]},
+                "exir-tickers": {result:{"usdt-irt":{last:"272750"}}},
+                "ramzinex-pairs": {result:{data:[{base_currency_symbol:[{symbol:"USDT"}],quote_currency_symbol:[{symbol:"IRT"}],buy:"272700",sell:"272800"}]}}
+              };
+              if (!payloads[source]) return route.fulfill({status:404,headers,body:JSON.stringify({error:"Unknown fixture source"})});
+              return route.fulfill({status:200,headers,body:JSON.stringify(payloads[source])});
+            });
             await page.route("https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/analyze", async route => {
               if (route.request().method() === "OPTIONS") return route.continue();
               const fixture = {
@@ -424,7 +451,8 @@ jobs:
                 optionalUpstreamFailures.push(source || path);
                 return;
               }
-              if (path === "/market-proxy" && source.endsWith("-tickers") && response.ok()) {
+              const tetherSources = new Set(["bitpin-tickers","exir-tickers"]);
+              if (path === "/market-proxy" && source.endsWith("-tickers") && !tetherSources.has(source) && response.ok()) {
                 const cacheState = String(response.headers()["x-mmp-cache"] || "").toLowerCase();
                 if (cacheState !== "fresh") {
                   optionalUpstreamFailures.push(source + ": stale cache rejected");
