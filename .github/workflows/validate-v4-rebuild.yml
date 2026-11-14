@@ -167,7 +167,7 @@ jobs:
           const nobitex = bySource["nobitex-tether"];
           addQuote("Nobitex",Number(nobitex?.stats?.["usdt-rls"]?.latest)/10);
           const wallex = bySource["wallex-markets"], wr=wallex?.result?.symbols||wallex?.result?.markets||{}, wrows=Array.isArray(wr)?wr:Object.values(wr);
-          const wt=wrows.find(x=>String(x?.symbol||"").toUpperCase()==="USDTTMN"), wi=wrows.find(x=>String(x?.symbol||"").toUpperCase()==="USDTIRT");
+          const wt=wrows.find(x=>["USDTTMN","USDTIRT"].includes(String(x?.symbol||"").toUpperCase())), wi=wrows.find(x=>["USDTIRR","USDTRLS"].includes(String(x?.symbol||"").toUpperCase()));
           const wtm=Number(wt?.stats?.lastPrice??wt?.lastPrice), wir=Number(wi?.stats?.lastPrice??wi?.lastPrice);
           addQuote("Wallex",wtm>0?wtm:wir/10);
           const bitpin=bySource["bitpin-tickers"], br=Array.isArray(bitpin?.results)?bitpin.results:Array.isArray(bitpin?.data)?bitpin.data:Array.isArray(bitpin)?bitpin:[];
