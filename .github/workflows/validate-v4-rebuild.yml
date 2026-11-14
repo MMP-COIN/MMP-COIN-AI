@@ -38,6 +38,26 @@ jobs:
             throw new Error("Reduced-motion accessibility rule is missing");
           console.log("Fresh Tether conversion and reduced-motion accessibility guards verified.");
           NODE
+      - name: Prevent false healthy status when core bindings are unavailable
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+          const app = fs.readFileSync("www/v4/app.js", "utf8");
+          const start = app.indexOf("async function loadHealth()");
+          const end = app.indexOf("let marketChart", start);
+          if (start < 0 || end < 0) throw new Error("Health status implementation missing");
+          const health = app.slice(start, end);
+          for (const required of [
+            "runtime.ai_binding===true",
+            "runtime.futures_engine_binding===true",
+            "runtime.market_cache_binding===true",
+            "const fullyHealthy=runtimeHealthy&&connectionsHealthy",
+            "ENGINE VERSION UNVERIFIED"
+          ]) {
+            if (!health.includes(required)) throw new Error("Health status must enforce: " + required);
+          }
+          console.log("Core health and all required bindings are mandatory for healthy status.");
+          NODE
       - name: Inspect current public Pages response without publishing
         run: |
           set -euo pipefail
