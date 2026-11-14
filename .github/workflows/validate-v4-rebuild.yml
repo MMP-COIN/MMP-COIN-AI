@@ -32,11 +32,10 @@ jobs:
           import fs from "node:fs";
           const app = fs.readFileSync("www/v4/app.js", "utf8");
           const css = fs.readFileSync("www/v4/app.css", "utf8");
-          for (const guard of [
-            "Date.now()-Number(saved.updatedAt)<90*1000",
-            "Date.now()-currentTetherUpdatedAt<90*1000"
-          ]) {
-            if (!app.includes(guard)) throw new Error("Tether conversion freshness guard missing: " + guard);
+          if (app.includes("mmp_tether_cache_v1") || app.includes("local-market-watch"))
+            throw new Error("V4 Tether conversion must not restore cached or monitor-state prices");
+          for (const guard of ["valid.length<2","consensus.length<2","source:\"Nobitex\"","source:\"Bitpin\"","source:\"Exir\"","source:\"Ramzinex\""]) {
+            if (!app.includes(guard)) throw new Error("Live Tether consensus guard missing: " + guard);
           }
           if (!css.includes("@media (prefers-reduced-motion: reduce)"))
             throw new Error("Reduced-motion accessibility rule is missing");
