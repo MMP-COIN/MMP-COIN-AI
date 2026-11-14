@@ -2669,14 +2669,14 @@ html.mmp-native-app .native-menu-version{padding:5px 3px;color:#7893a7;text-alig
     <div class="stat-label">اتریوم <b>ETH</b></div><div class="stat-value" id="eth">$—</div><div class="sub" id="eth-sub">در انتظار داده بازار</div>
     <div class="mmp-card-track"><i></i></div>
   </article>
-  <article id="mmp-usdt-card" class="card mmp-market-card mmp-usdt-card">
-    <div class="mmp-card-top"><span class="mmp-asset-icon usdt-icon">₮</span><span class="mmp-card-tag">نرخ بازار داخلی</span><span class="mmp-card-spark">⇄</span></div>
-    <div class="stat-label">تتر به تومان <b>USDT / IRT</b></div><div class="stat-value" id="usdt">—</div><div class="sub" id="usdt-source">منابع صرافی‌های داخلی · پایش زنده</div>
-    <div class="mmp-card-track"><i></i></div>
-  </article>
   <article id="mmp-gold-card" class="card mmp-market-card mmp-gold-card">
     <div class="mmp-card-top"><span class="mmp-asset-icon gold-icon">Au</span><span class="mmp-card-tag">دارایی جهانی</span><span class="mmp-card-spark">✧</span></div>
     <div class="stat-label">اونس جهانی طلا <b>XAU</b></div><div class="stat-value" id="gold">$—</div><div class="sub" id="gold-sub">مرجع جهانی فلزات گران‌بها · دریافت مستقل</div>
+    <div class="mmp-card-track"><i></i></div>
+  </article>
+  <article id="mmp-usdt-card" class="card mmp-market-card mmp-usdt-card">
+    <div class="mmp-card-top"><span class="mmp-asset-icon usdt-icon">₮</span><span class="mmp-card-tag">نرخ بازار داخلی</span><span class="mmp-card-spark">⇄</span></div>
+    <div class="stat-label">تتر به تومان <b>USDT / IRT</b></div><div class="stat-value" id="usdt">—</div><div class="sub" id="usdt-source">منابع صرافی‌های داخلی · پایش زنده</div>
     <div class="mmp-card-track"><i></i></div>
   </article>
 </section>
@@ -3964,28 +3964,27 @@ function renderHeroCards() {
   const now=Date.now();
   const btcCoin=cachedCoinsData.find(x=>x.id==='bitcoin'||String(x?.symbol||"").toUpperCase()==='BTC');
   const ethCoin=cachedCoinsData.find(x=>x.id==='ethereum'||String(x?.symbol||"").toUpperCase()==='ETH');
-  const btcLive=lastMarket.crypto?.BTC&&now-Number(lastMarket.crypto.BTC.updatedAt||0)<=120000;
-  const ethLive=lastMarket.crypto?.ETH&&now-Number(lastMarket.crypto.ETH.updatedAt||0)<=120000;
+  const btcAge=now-Number(lastMarket.crypto?.BTC?.updatedAt||0);
+  const ethAge=now-Number(lastMarket.crypto?.ETH?.updatedAt||0);
+  const btcLive=Number(lastMarket.crypto?.BTC?.usd)>0&&Number.isFinite(btcAge)&&btcAge>=0&&btcAge<=90000;
+  const ethLive=Number(lastMarket.crypto?.ETH?.usd)>0&&Number.isFinite(ethAge)&&ethAge>=0&&ethAge<=90000;
   const btcUsd=btcLive?Number(lastMarket.crypto.BTC.usd):0;
   const ethUsd=ethLive?Number(lastMarket.crypto.ETH.usd):0;
   const describe=(usd,change,source)=>{
-    const counterpart=currentCurrency==='IRT'
-      ? money(usd,usd<1?8:4)+' USDT'
-      : (isTetherRateFresh()?toman(usd*currentTetherPrice)+' تومان':'معادل تومانی در دسترس نیست');
-    const changeText=Number.isFinite(Number(change))
-      ? '۲۴ ساعت: '+(Number(change)>=0?'+':'')+Number(change).toFixed(2)+'%'
-      : 'تغییر ۲۴ ساعته ناموجود';
-    return [counterpart,changeText,source?'منبع: '+source:''].filter(Boolean).join(' · ');
+    const usdtText=money(usd,usd<1?8:2)+' USDT';
+    const tomanText=isTetherRateFresh()?'معادل '+toman(usd*currentTetherPrice)+' تومان':'معادل تومانی پس از دریافت نرخ زنده تتر';
+    const changeText=Number.isFinite(Number(change))?'۲۴ ساعت: '+(Number(change)>=0?'+':'')+Number(change).toFixed(2)+'%':'تغییر ۲۴ ساعته ناموجود';
+    return [usdtText,tomanText,changeText,source?'منبع: '+source:''].filter(Boolean).join(' · ');
   };
-  if(Number.isFinite(btcUsd)&&btcUsd>0){
-    $('btc').textContent=formatVal(btcUsd);
+  if(btcLive&&Number.isFinite(btcUsd)&&btcUsd>0){
+    $('btc').textContent=money(btcUsd,2)+' USDT';
     $('btc-sub').textContent=describe(btcUsd,lastMarket.crypto?.BTC?.change24h,lastMarket.crypto?.BTC?.sources||btcCoin?.price_source);
   }else{
     $('btc').textContent='—';
     $('btc-sub').textContent='داده معتبر BTC هنوز دریافت نشده است';
   }
-  if(Number.isFinite(ethUsd)&&ethUsd>0){
-    $('eth').textContent=formatVal(ethUsd);
+  if(ethLive&&Number.isFinite(ethUsd)&&ethUsd>0){
+    $('eth').textContent=money(ethUsd,2)+' USDT';
     $('eth-sub').textContent=describe(ethUsd,lastMarket.crypto?.ETH?.change24h,lastMarket.crypto?.ETH?.sources||ethCoin?.price_source);
   }else{
     $('eth').textContent='—';
@@ -3997,16 +3996,17 @@ function renderHeroCards() {
 
 function renderTetherCard(){
  const value=$("usdt"),source=$("usdt-source");if(!value||!source)return;
- const inToman=money(currentTetherPrice,0)+" تومان",provider=currentTetherSources.length?currentTetherSources.join(" + "):"آخرین نرخ معتبر";
+ const inToman=money(currentTetherPrice,0)+" تومان";
+ const provider=currentTetherSources.length?currentTetherSources.join(" + "):"منبع نرخ تتر";
  if(isTetherRateFresh()){
-  value.textContent=currentCurrency==="USDT"?"1.00 USDT":inToman;
-  source.textContent=(currentCurrency==="USDT"?"معادل تومانی: "+inToman:"معادل تتری: 1.00 USDT")+" · منبع: "+provider+(currentTetherWarning?" · "+currentTetherWarning:"");
+  value.textContent=inToman;
+  source.textContent="نرخ زنده USDT/IRT · "+provider+(currentTetherWarning?" · "+currentTetherWarning:"");
  }else if(isTetherRateRecentlyKnown()){
-  value.textContent=currentCurrency==="USDT"?"1.00 USDT":inToman;
-  source.textContent="آخرین نرخ معتبر · "+new Date(currentTetherUpdatedAt).toLocaleTimeString("fa-IR")+" · "+provider+" · داده قدیمی است؛ نرخ زنده نیست";
+  value.textContent=inToman;
+  source.textContent="آخرین نرخ ذخیره‌شده، نه قیمت زنده · "+new Date(currentTetherUpdatedAt).toLocaleTimeString("fa-IR")+" · "+provider;
  }else{
   value.textContent="—";
-  source.textContent=currentTetherWarning||"نرخ تتر از منابع اصلی و پشتیبان در دسترس نیست";
+  source.textContent=currentTetherWarning||"نرخ زنده تتر از منابع اصلی و پشتیبان در دسترس نیست";
  }
 }
 
@@ -7781,6 +7781,6 @@ html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-ca
 }
 </style>
 
-<script src="assets/mmp-live-coherence-v1.js?v=20261114.2"></script>
+<script src="assets/mmp-live-coherence-v1.js?v=20261114.3"></script>
 </body>
 </html>
