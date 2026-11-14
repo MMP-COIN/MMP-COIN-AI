@@ -3234,21 +3234,49 @@ async function refreshLiveQuotes(){
  try{
   const updated=await enrichWithBinance(cachedCoinsData);
   const now=Date.now();
-  const fresh=updated.filter(c=>Number(c.current_price)>0&&c.price_is_stale!==true&&Number(c.price_source_count)>=1&&Number.isFinite(Date.parse(c.price_updated_at||""))&&now-Date.parse(c.price_updated_at)<=120000);
-  if(!fresh.length)return false;
-  const byId=new Map(updated.map(c=>[String(c.id),c]));
-  cachedCoinsData=cachedCoinsData.map(c=>byId.get(String(c.id))||c);
+  const fresh=updated.filter(c=>{
+   const stamp=Date.parse(c.price_updated_at||"");
+   return Number(c.current_price)>0&&c.price_is_stale!==true&&Number(c.price_source_count)>=1&&Number.isFinite(stamp)&&now-stamp>=0&&now-stamp<=120000;
+  });
+  const freshById=new Map(fresh.map(c=>[String(c.id),c]));
+  const freshBySymbol=new Map(fresh.map(c=>[String(c.symbol||"").toUpperCase(),c]));
+  cachedCoinsData=cachedCoinsData.map(c=>{
+   const quote=freshById.get(String(c.id))||freshBySymbol.get(String(c.symbol||"").toUpperCase());
+   return quote?{...c,...quote,price_is_stale:false}:{...c,price_is_stale:true,price_source_count:0};
+  });
   lastMarket.crypto=lastMarket.crypto||{};
   cachedCoinsData.forEach(c=>{
-   const symbol=String(c.symbol||"").toUpperCase();
-   if(symbol==="BTC"&&c.price_is_stale!==true&&Number(c.price_source_count)>=1)lastMarket.crypto.BTC={usd:Number(c.current_price),change24h:c.price_change_percentage_24h,updatedAt:now,sources:c.price_source};
-   if(symbol==="ETH"&&c.price_is_stale!==true&&Number(c.price_source_count)>=1)lastMarket.crypto.ETH={usd:Number(c.current_price),change24h:c.price_change_percentage_24h,updatedAt:now,sources:c.price_source};
+   const symbol=String(c.symbol||"").toUpperCase(),stamp=Date.parse(c.price_updated_at||""),updatedAt=Number.isFinite(stamp)?stamp:now;
+   if(symbol==="BTC"&&c.price_is_stale!==true&&Number(c.price_source_count)>=1){
+    const current=lastMarket.crypto.BTC;
+    const websocketFresh=String(current?.sources||"").includes("Binance Spot WebSocket")&&now-Number(current.updatedAt||0)<=30000;
+    if(!websocketFresh)lastMarket.crypto.BTC={usd:Number(c.current_price),change24h:c.price_change_percentage_24h,updatedAt,sources:c.price_source};
+   }
+   if(symbol==="ETH"&&c.price_is_stale!==true&&Number(c.price_source_count)>=1){
+    const current=lastMarket.crypto.ETH;
+    const websocketFresh=String(current?.sources||"").includes("Binance Spot WebSocket")&&now-Number(current.updatedAt||0)<=30000;
+    if(!websocketFresh)lastMarket.crypto.ETH={usd:Number(c.current_price),change24h:c.price_change_percentage_24h,updatedAt,sources:c.price_source};
+   }
   });
   renderCoinsTables(cachedCoinsData);renderHeroCards();
-  const stamp=new Date().toLocaleTimeString("fa-IR");
-  const status=$("updated");if(status)status.textContent="قیمت زنده از "+[...new Set(fresh.map(c=>c.price_source))].join(" + ")+" · "+stamp;
-  return true;
- }catch(error){console.warn("Fast quote refresh failed:",error);return false;}
+  const status=$("updated");
+  if(status){
+   if(fresh.length){
+    const stamp=new Date().toLocaleTimeString("fa-IR");
+    status.textContent="قیمت زنده از "+[...new Set(fresh.map(c=>c.price_source))].join(" + ")+" · "+stamp;
+   }else status.textContent="منابع قیمت زنده پاسخ معتبر ندادند؛ قیمت‌های منقضی پنهان شدند.";
+  }
+  return fresh.length>0;
+ }catch(error){
+  const now=Date.now();
+  cachedCoinsData=cachedCoinsData.map(c=>{
+   const stamp=Date.parse(c.price_updated_at||"");
+   return !Number.isFinite(stamp)||now-stamp<0||now-stamp>120000?{...c,price_is_stale:true}:c;
+  });
+  renderCoinsTables(cachedCoinsData);
+  const status=$("updated");if(status)status.textContent="به‌روزرسانی قیمت ناموفق بود؛ قیمت‌های منقضی پنهان شدند.";
+  console.warn("Fast quote refresh failed:",error);return false;
+ }
  finally{liveQuoteInFlight=false;}
 }
 
@@ -4027,9 +4055,9 @@ function renderCoinsTables(data) {
   if(!ranked.length)grid.innerHTML='<div class="ai-empty">'+(rows.length?'ارزی با این نام یا نماد در فهرست پشتیبانی‌شده پیدا نشد.':'فهرست دارایی‌ها هنوز دریافت نشده است.')+'</div>';
   else grid.innerHTML=(showAll?'<button type="button" class="mmp-market-drawer-close" id="market-catalog-close"><span>فهرست کامل دارایی‌ها · '+ranked.length.toLocaleString("fa-IR")+' مورد</span><b>بستن ×</b></button>':"")+visible.map(c=>{
    const id=aiEscape(String(c.id||"")),symbol=aiEscape(String(c.symbol||"").toUpperCase()),name=aiEscape(c.name||symbol),price=Number(c.current_price);
-   const quoteFresh=c.price_is_stale!==true&&Number.isFinite(Date.parse(c.price_updated_at||""))&&Date.now()-Date.parse(c.price_updated_at)<=120000;
+   const quoteStamp=Date.parse(c.price_updated_at||""),quoteFresh=c.price_is_stale!==true&&Number.isFinite(quoteStamp)&&Date.now()-quoteStamp>=0&&Date.now()-quoteStamp<=120000;
    const priceText=quoteFresh&&Number.isFinite(price)&&price>0?(price<1?money(price,8):money(price,2))+" USDT":"قیمت زنده ناموجود",tomanText=quoteFresh&&isTetherRateFresh()&&price>0?toman(price*currentTetherPrice)+" تومان":"— تومان";
-   const change=Number(c.price_change_percentage_24h),changeText=Number.isFinite(change)?(change>=0?"+":"")+change.toFixed(2)+"%":"—";
+   const change=Number(c.price_change_percentage_24h),changeText=quoteFresh&&Number.isFinite(change)?(change>=0?"+":"")+change.toFixed(2)+"%":"—";
    const image=aiEscape(c.image||("https://assets.coincap.io/assets/icons/"+String(c.symbol||"").toLowerCase()+"@2x.png"));
    const sources=Array.isArray(c.marketPairs)?[...new Set(c.marketPairs.map(x=>x.exchange).filter(Boolean))]:[];
    const marketLabel=c.isMmpSignal?"سیگنال تأییدشده MMP":c.isMmpPreliminary?"پیش‌آگاهی اولیه MMP":c.hasDomesticMarket&&c.hasUsdtMarket?"داخلی + جهانی":c.hasDomesticMarket?"بازار داخلی":sources.length?sources.slice(0,3).join(" · "):"بازار تأییدشده";
@@ -4056,7 +4084,7 @@ function renderCoinsTables(data) {
    const id=card.dataset.marketCoinId;
    selectedMarketCoin=(Array.isArray(cachedCoinsData)?cachedCoinsData:[]).find(c=>String(c.id)===id)||(typeof hunterCoinIndex!=="undefined"?hunterCoinIndex.get(id):null);
    if(!selectedMarketCoin)return;
-   const c=selectedMarketCoin,symbol=aiEscape(String(c.symbol||"").toUpperCase()),name=aiEscape(c.name||symbol),price=Number(c.current_price),change=Number(c.price_change_percentage_24h),host=$("mmp-coin-detail-content");
+   const c=selectedMarketCoin,symbol=aiEscape(String(c.symbol||"").toUpperCase()),name=aiEscape(c.name||symbol),priceStamp=Date.parse(c.price_updated_at||""),priceFresh=c.price_is_stale!==true&&Number.isFinite(priceStamp)&&Date.now()-priceStamp>=0&&Date.now()-priceStamp<=120000,price=priceFresh?Number(c.current_price):0,change=priceFresh?Number(c.price_change_percentage_24h):NaN,host=$("mmp-coin-detail-content");
     const cap=Number(c.market_cap),volume=Number(c.total_volume),supply=Number(c.circulating_supply),pairList=Array.isArray(c.marketPairs)?[...new Set(c.marketPairs.map(x=>x.exchange).filter(Boolean))]:[];
     const detailMetric=(label,value)=>'<div><small>'+label+'</small><b>'+value+'</b></div>';
     const detailMoney=value=>Number.isFinite(value)&&value>0?money(value,0)+" USDT":"ناموجود";
