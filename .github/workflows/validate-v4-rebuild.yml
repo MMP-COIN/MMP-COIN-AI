@@ -54,6 +54,7 @@ jobs:
             "runtime.ai_binding===true",
             "runtime.futures_engine_binding===true",
             "runtime.market_cache_binding===true",
+            "runtime.admin_db_binding===true",
             "const fullyHealthy=runtimeHealthy&&connectionsHealthy",
             "ENGINE VERSION UNVERIFIED"
           ]) {
