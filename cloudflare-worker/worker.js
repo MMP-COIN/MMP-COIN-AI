@@ -1558,14 +1558,52 @@ async function handle(request,env){
   const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"support-check",env,300);
   const limited=rateLimitReply(limitResult,request);if(limited)return limited;
   const url=new URL(request.url);
-  const symbols=[...new Set((url.searchParams.get("symbols")||"").split(",").map(x=>x.toUpperCase().replace(/[^A-Z0-9_]/g,"")).filter(validSymbol))].slice(0,150);
+  const symbols=[...new Set((url.searchParams.get("symbols")||"").split(",").map(x=>x.toUpperCase().replace(/[^A-Z0-9_]/g,"")).filter(validSymbol))].slice(0,20);
   if(!symbols.length)return json({error:"Provide comma-separated symbols"},400,request);
-  const catalogs=await getExchangeCatalogs("both");
-  const assets=symbols.map(symbol=>exchangeSupport(symbol,catalogs));
-  const sources=Object.fromEntries(Object.entries(catalogs).map(([k,v])=>[k,{ok:!!v?.ok,status:v?.status||0,error:v?.error||null,source:v?.source||null}]));
-  return json({checked_at:new Date().toISOString(),assets,sources},200,request);
+  if(!env.ADMIN_DB)return json({error:"Support cache unavailable",stage:"admin_db_missing"},503,request);
+  try{
+   const marks=symbols.map(()=>"?").join(",");
+   const readCache=async id=>{
+    const sql="SELECT upper(json_extract(j.value,'$.symbol')) AS symbol,j.value AS asset_payload,json_extract(h.payload,'$.universeUpdatedAt') AS universe_updated_at,json_extract(h.payload,'$.universeStale') AS universe_stale,json_extract(h.payload,'$.universeProvider') AS provider FROM hunter_engine_state h,json_each(h.payload,'$.assets') j WHERE h.id=? AND upper(json_extract(j.value,'$.symbol')) IN ("+marks+")";
+    const result=await env.ADMIN_DB.prepare(sql).bind(id,...symbols).all();
+    const map=new Map();
+    for(const row of result.results||[]){
+     try{map.set(String(row.symbol||"").toUpperCase(),{asset:JSON.parse(row.asset_payload),updatedAt:Number(row.universe_updated_at)||Date.parse(row.universe_updated_at)||Date.parse(row.updated_at)||0,stale:Number(row.universe_stale)===1,provider:row.provider||"cached multi-exchange universe"});}catch{}
+    }
+    return map;
+   };
+   const [spotCache,futuresCache]=await Promise.all([
+    readCache("digital-hunter-v2-universe-cache"),
+    readCache("digital-hunter-v2-futures-universe-cache")
+   ]);
+   const now=Date.now(),maxAge=6*60*60*1000;
+   const results=symbols.map(symbol=>{
+    const spot=spotCache.get(symbol),futures=futuresCache.get(symbol);
+    const spotAge=spot?.updatedAt?Math.max(0,now-spot.updatedAt):null;
+    const futuresAge=futures?.updatedAt?Math.max(0,now-futures.updatedAt):null;
+    const spotProviders=String(spot?.asset?.hunterExchange||"").split(",").map(x=>x.trim()).filter(Boolean);
+    const futuresProviders=String(futures?.asset?.hunterExchange||"").split(",").map(x=>x.trim()).filter(Boolean);
+    const pairs=Array.isArray(spot?.asset?.marketPairs)?spot.asset.marketPairs:[];
+    const spotFresh=!!spot&&spotAge!==null&&spotAge<=maxAge&&!spot.stale;
+    const futuresFresh=!!futures&&futuresAge!==null&&futuresAge<=maxAge&&!futures.stale;
+    const spotConfirmed=spotFresh&&spotProviders.length>=2&&pairs.length>=2;
+    const futuresConfirmed=futuresFresh&&futuresProviders.length>=2;
+    return {
+     symbol,
+     spot:{confirmed:spotConfirmed,pair:pairs[0]?.pair||null,providers:spotProviders,market_pairs:pairs.length},
+     futures:{confirmed:futuresConfirmed,pair:null,providers:futuresProviders},
+     providers:{
+      spot:Object.fromEntries(spotProviders.map(name=>[name,"فعال · فهرست چندصرافی"])),
+      futures:Object.fromEntries(futuresProviders.map(name=>[name,"فعال · فهرست چندصرافی"]))
+     },
+     cache:{spot_age_ms:spotAge,futures_age_ms:futuresAge,spot_stale:!spotFresh,futures_stale:!futuresFresh,source:"D1 precomputed multi-exchange universe"}
+    };
+   });
+   return json({checked_at:new Date().toISOString(),assets:results,sources:{spot:{cache_id:"digital-hunter-v2-universe-cache",count:spotCache.size},futures:{cache_id:"digital-hunter-v2-futures-universe-cache",count:futuresCache.size}}},200,request,{"X-MMP-Data-Source":"D1 precomputed multi-exchange universe","X-MMP-Cache":"HIT"});
+  }catch(error){
+   return json({error:"Support cache query failed",stage:"support_cache_query",detail:String(error?.message||error).slice(0,180)},503,request);
+  }
  }
-
 
  if(request.method==="GET"&&new URL(request.url).pathname==="/market-derivatives"){
   const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"market-derivatives",env,300),request);if(limited)return limited;
