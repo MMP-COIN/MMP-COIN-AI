@@ -186,10 +186,10 @@ function analyzeClosedKlines(rows,interval){
  result.candle_interval=interval;
  return result;
 }
-async function candles(symbol,interval,env,marketType="spot",budget=null){
+async function candles(symbol,interval,env,marketType="spot",budget=null,minimumCandlesOverride=null){
  const fetchMarketWithBudget=(url,options={})=>fetchWithTimeout(url,options,9000,budget);
  const headers={"Accept":"application/json, text/plain, */*","User-Agent":"MMP-COIN-AI/1.0","Accept-Language":"en-US,en;q=0.9"};
- const minimumCandles=interval==="1d"?20:30;
+ const minimumCandles=Number.isInteger(minimumCandlesOverride)?Math.max(55,minimumCandlesOverride):(interval==="1d"?20:30);
  if(marketType==="spot"&&String(symbol).toUpperCase().endsWith("IRT")){
   const base=String(symbol).toUpperCase().slice(0,-3),resolution={"1m":"1","3m":"3","5m":"5","15m":"15","1h":"60","4h":"240","1d":"D"}[interval],seconds={"1m":60,"3m":180,"5m":300,"15m":900,"1h":3600,"4h":14400,"1d":86400}[interval];
   if(!base||!resolution||!seconds)throw new Error("Unsupported Nobitex candle interval or pair");
@@ -1719,7 +1719,7 @@ async function handle(request,env){
   const candleCacheKey=await marketFallbackKey("candles|"+marketType+"|"+symbol+"|"+interval);
   const staleCandles=await readMarketFallback(env,candleCacheKey);
   try{
-   const result=await candles(symbol,interval,env,marketType);
+   const result=await candles(symbol,interval,env,marketType,null,55);
    if(result.chart_data_fresh!==true)throw new Error("کندل زنده منبع "+String(result.data_provider||"بازار")+" قدیمی است: "+String(result.chart_data_freshness_reason||"freshness check failed"));
    const chartCandles=Array.isArray(result.chart_candles)&&result.chart_candles.length?result.chart_candles:result.candles.map(c=>({time:Math.floor(c.t/1000),open:c.o,high:c.h,low:c.l,close:c.c,volume:c.v}));
    const lastChartCandle=chartCandles[chartCandles.length-1],checkedAt=new Date().toISOString();
