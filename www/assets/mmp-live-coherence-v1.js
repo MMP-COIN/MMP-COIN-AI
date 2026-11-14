@@ -3,7 +3,7 @@
 (function () {
   "use strict";
 
-  const MAX_CRYPTO_AGE_MS = 30000;
+  const MAX_CRYPTO_AGE_MS = 90000;
   const MAX_GOLD_AGE_MS = 180000;
   const TETHER_POLL_MS = 30000;
   const GOLD_POLL_MS = 60000;
