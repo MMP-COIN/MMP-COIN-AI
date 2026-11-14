@@ -5,6 +5,8 @@ on:
     paths:
       - "www/v4/**"
       - "cloudflare-worker/worker.js"
+      - "cloudflare-worker/radar-worker.js"
+      - "cloudflare-worker/futures-worker.js"
       - ".github/workflows/worker-health.yml"
       - ".github/workflows/validate-v4-rebuild.yml"
 permissions:
