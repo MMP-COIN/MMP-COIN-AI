@@ -1753,7 +1753,7 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/market-proxy"){
    "coinlore-top":["https://api.coinlore.net/api/tickers/?start="+requestedOffset+"&limit=100"],
    "nobitex-tether":["https://apiv2.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls","https://apiv2.nobitex.ir/market/stats?dstCurrency=rls","https://apiv2.nobitex.ir/v3/orderbook/USDTIRT","https://api.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls","https://api.nobitex.ir/v3/orderbook/USDTIRT"],
    "wallex-markets":["https://api.wallex.ir/hector/web/v1/markets","https://api.wallex.ir/v1/markets","https://api.wallex.ir/v1/otc/markets"],
-   "bitpin-tickers":["https://api.bitpin.org/api/v1/mkt/tickers/","https://api.bitpin.ir/api/v1/mkt/tickers/"],
+   "bitpin-tickers":["https://api.bitpin.org/api/v1/mkt/tickers/","https://api.bitpin.ir/api/v1/mkt/tickers/","https://api.bitpin.market/api/v1/mkt/tickers/"],
    "exir-tickers":["https://api.exir.io/v2/tickers"],
    "ramzinex-pairs":["https://publicapi.ramzinex.com/exchange/api/v1.0/exchange/pairs"]
   };
