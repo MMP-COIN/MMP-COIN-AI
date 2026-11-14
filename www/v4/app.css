@@ -89,3 +89,4 @@
     transition-duration: 0.01ms !important;
   }
 }
+.ticker-item .ticker-secondary{font:9px var(--mono);color:#8294a8;direction:rtl;text-align:right;white-space:nowrap}
