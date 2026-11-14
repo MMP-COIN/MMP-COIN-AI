@@ -23,7 +23,7 @@
  let selectedCurrency="IRT",latestTickerRows=[],latestTickerFailures=[];
  try{
   const saved=JSON.parse(localStorage.getItem("mmp_tether_cache_v1")||"null");
-  if(saved&&Number(saved.price)>0&&Date.now()-Number(saved.updatedAt)<15*60*1000){
+  if(saved&&Number(saved.price)>0&&Date.now()-Number(saved.updatedAt)<90*1000){
    currentTetherPrice=Number(saved.price);
    currentTetherSources=Array.isArray(saved.sources)?saved.sources:[];
    currentTetherUpdatedAt=Number(saved.updatedAt);
@@ -120,7 +120,7 @@
   if(tether?.price>0){
    currentTetherPrice=tether.price;currentTetherSources=tether.sources||[];currentTetherWarning=tether.warning||"";currentTetherUpdatedAt=Date.now();
    try{localStorage.setItem("mmp_tether_cache_v1",JSON.stringify({price:currentTetherPrice,sources:currentTetherSources,updatedAt:currentTetherUpdatedAt}));}catch(e){}
-  }else if(!(currentTetherPrice>0&&currentTetherUpdatedAt&&Date.now()-currentTetherUpdatedAt<15*60*1000)){
+  }else if(!(currentTetherPrice>0&&currentTetherUpdatedAt&&Date.now()-currentTetherUpdatedAt<90*1000)){
    currentTetherPrice=0;currentTetherSources=[];currentTetherWarning=tether?.warning||"نرخ تتر در دسترس نیست";currentTetherUpdatedAt=0;
   }else currentTetherWarning="اتصال موقتاً ناپایدار؛ آخرین نرخ معتبر نمایش داده می‌شود";
   const quotes=Object.fromEntries(symbols.map(s=>[s,[]]));
