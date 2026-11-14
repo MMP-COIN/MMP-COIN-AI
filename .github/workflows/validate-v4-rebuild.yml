@@ -387,6 +387,12 @@ jobs:
             });
             // The analyzer POST is mocked only in this UI-interaction test to avoid consuming live AI quota.
             // Its real preflight is checked above; market-service GETs remain live.
+            // UI contract fixture; live Worker /health is checked independently before this browser test.
+            await page.route("https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/health", async route => route.fulfill({
+              status: 200,
+              headers: {"content-type":"application/json","access-control-allow-origin":"*"},
+              body: JSON.stringify({worker:"online",engine_version:"QIE-5.0.1",ai_binding:true,futures_engine_binding:true,market_cache_binding:true,admin_db_binding:true,checked_at:new Date().toISOString()})
+            }));
             await page.route("https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/analyze", async route => {
               if (route.request().method() === "OPTIONS") return route.continue();
               const fixture = {
