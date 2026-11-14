@@ -435,7 +435,7 @@ function buildTradePlans(longMarket,action,mode,shortMarket=longMarket){
 function validSymbol(s){return /^[A-Z0-9_]{2,30}$/.test(s||"")&&!s.startsWith("_")&&!s.endsWith("_")&&!s.includes("USDTUSDT")}
 const ASSET_SYMBOL_OVERRIDES=Object.freeze({bitcoin:"BTC",ethereum:"ETH",tether:"USDT","usd-coin":"USDC",binancecoin:"BNB",solana:"SOL",ripple:"XRP",dogecoin:"DOGE",cardano:"ADA","avalanche-2":"AVAX","the-open-network":"TON",tron:"TRX",litecoin:"LTC",polkadot:"DOT",chainlink:"LINK"});
 
-let exchangeCatalogCache=null,exchangeCatalogCacheAt=0;
+const exchangeCatalogCache=new Map();
 async function fetchWithTimeout(url,options={},timeoutMs=9000){
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeoutMs);
  const externalSignal=options.signal;
@@ -508,8 +508,9 @@ async function readOkxCatalog(instType){
  }
  return last||{ok:false,status:0,error:"OKX catalog unavailable"};
 }
-async function getExchangeCatalogs(){
- if(exchangeCatalogCache&&Date.now()-exchangeCatalogCacheAt<300000)return exchangeCatalogCache;
+async function getExchangeCatalogs(mode="both"){
+ const cached=exchangeCatalogCache.get(mode);
+ if(cached&&Date.now()-cached.at<300000)return cached.data;
  const urls=[
   ["binance_spot","https://api.binance.com/api/v3/exchangeInfo"],
   ["bybit_spot",[
@@ -533,11 +534,15 @@ async function getExchangeCatalogs(){
   ["kucoin_spot",["https://api.kucoin.com/api/v2/symbols","https://api.kucoin.tr/api/v2/symbols"]],
   ["nobitex_spot","https://apiv2.nobitex.ir/market/stats?dstCurrency=rls"]
  ];
- const results=await Promise.all(urls.map(async ([key,endpoint])=>[key,Array.isArray(endpoint)?await readAnyPublicJson(endpoint):await readPublicJson(endpoint)]));
+ const selectedUrls=urls.filter(([key])=>mode==="spot"?key.endsWith("_spot"):mode==="futures"?key.endsWith("_futures"):true);
+ const results=await Promise.all(selectedUrls.map(async ([key,endpoint])=>[key,Array.isArray(endpoint)?await readAnyPublicJson(endpoint):await readPublicJson(endpoint)]));
  const out=Object.fromEntries(results);
- const [okxSpot,okxSwap]=await Promise.all([readOkxCatalog("SPOT"),readOkxCatalog("SWAP")]);
+ const [okxSpot,okxSwap]=await Promise.all([
+  mode==="futures"?Promise.resolve({ok:false,status:0,error:"Spot catalog not requested"}):readOkxCatalog("SPOT"),
+  mode==="spot"?Promise.resolve({ok:false,status:0,error:"Futures catalog not requested"}):readOkxCatalog("SWAP")
+ ]);
  out.okx_spot=okxSpot;out.okx_futures=okxSwap;
- exchangeCatalogCache=out;exchangeCatalogCacheAt=Date.now();return out;
+ exchangeCatalogCache.set(mode,{data:out,at:Date.now()});return out;
 }
 function exchangeSupport(symbol,catalogs){
  const base=String(symbol||"").toUpperCase();
@@ -1551,7 +1556,7 @@ async function handle(request,env){
   const url=new URL(request.url);
   const symbols=[...new Set((url.searchParams.get("symbols")||"").split(",").map(x=>x.toUpperCase().replace(/[^A-Z0-9_]/g,"")).filter(validSymbol))].slice(0,150);
   if(!symbols.length)return json({error:"Provide comma-separated symbols"},400,request);
-  const catalogs=await getExchangeCatalogs();
+  const catalogs=await getExchangeCatalogs(mode);
   const assets=symbols.map(symbol=>exchangeSupport(symbol,catalogs));
   const sources=Object.fromEntries(Object.entries(catalogs).map(([k,v])=>[k,{ok:!!v?.ok,status:v?.status||0,error:v?.error||null,source:v?.source||null}]));
   return json({checked_at:new Date().toISOString(),assets,sources},200,request);
