@@ -5,16 +5,11 @@ on:
     paths:
       - "www/v4/**"
       - ".github/workflows/validate-v4-rebuild.yml"
-  pull_request:
-    branches: ["main"]
-    paths:
-      - "www/v4/**"
-      - ".github/workflows/validate-v4-rebuild.yml"
 permissions:
   contents: read
 
 concurrency:
-  group: mmp-coin-v4-validation-${{ github.event.pull_request.head.ref || github.ref_name }}
+  group: mmp-coin-release-validation-${{ github.event.pull_request.head.ref || github.ref_name }}
   cancel-in-progress: false
 jobs:
   validate:
