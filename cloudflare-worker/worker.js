@@ -1407,7 +1407,14 @@ async function handle(request,env){
   const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-futures-run",env,300),request);if(limited)return limited;try{return json(await runDigitalHunterMarketCycle(env,"futures"),200,request);}catch(e){return json({status:"error",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,market:"futures",error:String(e?.message||e).slice(0,220)},502,request);}
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-scan"){
-  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-scan",env,300),request);if(limited)return limited;const url=new URL(request.url),symbols=[...new Set((url.searchParams.get("symbols")||"").split(",").map(x=>x.toUpperCase().replace(/[^A-Z0-9]/g,"")).filter(x=>/^[A-Z0-9]{2,24}$/.test(x)))].slice(0,12);if(!symbols.length)return json({error:"حداقل یک نماد معتبر ارسال کنید."},400,request);const marketType=url.searchParams.get("market")==="futures"?"futures":"spot";try{return json({engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,...await scanHunterSymbols(symbols,marketType,[],env)},200,request);}catch(e){return json({error:String(e?.message||e).slice(0,220)},502,request);}
+  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-scan",env,300),request);if(limited)return limited;
+  const url=new URL(request.url),requestedSymbols=[...new Set((url.searchParams.get("symbols")||"").split(",").map(x=>x.toUpperCase().replace(/[^A-Z0-9]/g,"")).filter(x=>/^[A-Z0-9]{2,24}$/.test(x)))].slice(0,12);
+  if(!requestedSymbols.length)return json({error:"حداقل یک نماد معتبر ارسال کنید."},400,request);
+  const symbols=requestedSymbols.slice(0,1),marketType=url.searchParams.get("market")==="futures"?"futures":"spot";
+  try{
+   const result=await scanHunterSymbols(symbols,marketType,[],env);
+   return json({engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,...result,requested_symbols:requestedSymbols,remaining_symbols:requestedSymbols.slice(1),batch_limit:1,partial:requestedSymbols.length>1},200,request);
+  }catch(e){return json({error:String(e?.message||e).slice(0,220),requested_symbols:requestedSymbols,stage:"hunter_scan"},502,request);}
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-universe"){
   // Scheduled engine refreshes authenticate internally with a Worker secret and do not
