@@ -102,6 +102,13 @@ jobs:
           const htmlSource = fs.readFileSync("www/index.html", "utf8");
           const analyzerConfig = fs.readFileSync("cloudflare-worker/wrangler.toml", "utf8");
           const futuresConfig = fs.readFileSync("cloudflare-worker/futures-wrangler.toml", "utf8");
+          const adminConfig = fs.readFileSync("cloudflare-worker/admin-wrangler.toml", "utf8");
+          const deploymentWorkflow = fs.readFileSync(".github/workflows/cloudflare-deploy.yml", "utf8");
+          if (!adminConfig.includes('name = "mmp-coin-ai-admin"') || !adminConfig.includes('crons = ["*/15 * * * *"]') || !adminConfig.includes('binding = "ADMIN_DB"')) throw new Error("Admin Worker must use the private D1 binding and the approved 15-minute Cron");
+          if (!deploymentWorkflow.includes("workflow_dispatch:") || /^  push:/m.test(deploymentWorkflow) || /^  schedule:/m.test(deploymentWorkflow)) throw new Error("Production Worker deployment must be manual-only");
+          for (const required of ["futures-wrangler.toml","radar-wrangler.toml","wrangler.toml","admin-wrangler.toml"]) if (!deploymentWorkflow.includes(required)) throw new Error("Controlled deployment is missing required Worker config: "+required);
+          for (const forbidden of ["tether-monitor-wrangler.toml","hunter-cron-wrangler.toml","nexus-wrangler.toml","github-deploy-wrangler.toml"]) if (deploymentWorkflow.includes(forbidden)) throw new Error("Legacy or nonessential Worker must not be deployed by the V4 release: "+forbidden);
+
           if (!analyzerConfig.includes('binding = "FUTURES_ENGINE"') || !analyzerConfig.includes('service = "mmp-coin-ai-futures"')) throw new Error("Analyzer Futures service binding is missing from source config");
           if (!analyzerConfig.includes('crons = ["* * * * *"]')) throw new Error("Analyzer minute Cron must drive the Spot Hunter and 15-minute universe refresh");
           if (!futuresConfig.includes('name = "mmp-coin-ai-futures"') || !futuresConfig.includes('binding = "ADMIN_DB"') || !futuresConfig.includes('crons = ["* * * * *"]')) throw new Error("Dedicated Futures Worker deployment config or one-minute scheduler is missing");
