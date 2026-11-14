@@ -906,7 +906,7 @@ export async function loadFuturesMarketFlow(symbol,windowMinutes=5,signal=null){
  // This flow runs in the dedicated Futures Worker so its exchange requests do not
  // compete with the analyzer, Spot flow, depth, or sentiment subrequests.
  let requestsUsed=0;
- const maxRequests=50;
+ const maxRequests=18;
  const get=(url,timeoutMs=4500)=>{
   if(requestsUsed>=maxRequests)throw new Error("Futures flow request budget reached");
   requestsUsed++;
@@ -994,7 +994,7 @@ export async function loadFuturesMarketFlow(symbol,windowMinutes=5,signal=null){
  if(!trades?.length||truncated||trades.length<8){
   try{
    const instId=base+"-USDT-SWAP",history=[],seen=new Set();let after="",historyTruncated=true;
-   for(let page=0;page<45;page++){
+   for(let page=0;page<6;page++){
     const query="https://www.okx.com/api/v5/market/history-trades?instId="+encodeURIComponent(instId)+"&limit=100"+(after?"&after="+encodeURIComponent(after):"");
     const d=await get(query,4500);
     if(String(d.code)!=="0")throw Error(d.msg||"OKX history Futures trades unavailable");
