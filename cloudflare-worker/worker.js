@@ -1553,7 +1553,7 @@ async function handle(request,env){
      const row=await env.ADMIN_DB.prepare("SELECT payload,updated_at FROM hunter_engine_state WHERE id = ?").bind("digital-hunter-v2-universe-cache").first();
      const saved=row?.payload?JSON.parse(row.payload):null;
      const savedAt=Number(saved?.universeUpdatedAt)||Date.parse(row?.updated_at||"")||0;
-     const staleAssets=normalizeQuantumUniverse(saved?.assets||[],"spot");
+     const staleAssets=Array.isArray(saved?.assets)?saved.assets:[];
      if(staleAssets.length&&savedAt>0){
       const ageMs=Math.max(0,Date.now()-savedAt),stalePayload={checked_at:new Date(savedAt).toISOString(),universe_updated_at:new Date(savedAt).toISOString(),universe_age_ms:ageMs,universe_stale:true,cached_fallback:true,warning:"Live exchange catalog is unavailable; serving the last validated Spot universe.",count:staleAssets.length,hunter_count:staleAssets.length,radar_count:staleAssets.length,discovered_count:0,binance_spot_symbols:0,cmc_listings:0,universe_mode:"cached_fallback",metadata_provider:saved.universeProvider||"cached",hunter_assets:staleAssets,sources:saved.universeSources||{},live_source_status:sources};
       return json(stalePayload,200,request,{"X-MMP-Cache":"STALE","X-MMP-Data-Age":String(Math.floor(ageMs)),"Cache-Control":"no-store","Warning":'110 - "Response is stale"'});
