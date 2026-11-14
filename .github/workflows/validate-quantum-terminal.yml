@@ -2,10 +2,11 @@ name: Validate MMP Quantum Terminal
 
 on:
   push:
-    branches: ["main"]
+    branches: ["main", "rebuild/**"]
     paths:
       - "www/**/*.html"
       - "www/assets/**"
+      - "www/v4/**"
       - ".github/workflows/validate-quantum-terminal.yml"
   pull_request:
     branches: ["main"]
