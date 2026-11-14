@@ -135,7 +135,7 @@ jobs:
             ["futures engine binding", "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/futures-engine-health", d => d.service_binding === "connected" && d.status === "online" && d.market === "futures" && /^QIE-\d+\.\d+\.\d+$/.test(d.engine_version)],
             ["exchange connections", "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/connections-health", d => {
               const healthy = market => d.checks.filter(x => x.market === market && ["ok", "slow"].includes(x.status)).length;
-              return Array.isArray(d.checks) && d.checks.length >= 10 && healthy("spot") >= 2 && healthy("futures") >= 2 && healthy("iran") >= 1;
+              return d.stale !== true && Array.isArray(d.checks) && d.checks.length >= 10 && healthy("spot") >= 2 && healthy("futures") >= 2 && healthy("iran") >= 1;
             }],
             ["hunter snapshot", "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/hunter-combined-snapshot", d => {
               const spot = d.spot?.snapshot || d.spot, futures = d.futures?.snapshot || d.futures;
