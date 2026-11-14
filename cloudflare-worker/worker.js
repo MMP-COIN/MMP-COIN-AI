@@ -36,7 +36,7 @@ async function reserveCloudflareAIDailyBudget(env){
   return {allowed:false,day,calls:null,max_calls:maxCalls,remaining:0,reason:"Daily budget storage error; Cloudflare AI blocked fail-closed: "+String(error?.message||error).slice(0,140)};
  }
 }
-async function runAIWithFallback(env,prompt){
+async function runAIWithFallback(env,prompt,budget=null){
  const failures=[];
  if(env.GROQ_API_KEY){
   const groqModels=[
@@ -46,6 +46,7 @@ async function runAIWithFallback(env,prompt){
   for(const model of groqModels){
    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),model.timeoutMs);
    try{
+    if(budget){if(budget.used>=budget.max)throw new Error("Analyzer upstream request budget exhausted before Groq");budget.used++;}
     const response=await fetch("https://api.groq.com/openai/v1/chat/completions",{
      method:"POST",headers:{"Authorization":"Bearer "+env.GROQ_API_KEY,"Content-Type":"application/json"},
      body:JSON.stringify({model:model.id,messages:[{role:"system",content:"Return only one valid JSON object. Do not use markdown fences."},{role:"user",content:prompt}],response_format:{type:"json_object"},temperature:0.2,max_completion_tokens:model.maxTokens,reasoning_effort:model.reasoning_effort}),
@@ -76,6 +77,7 @@ async function runAIWithFallback(env,prompt){
  }
  if(env.HF_TOKEN){
   try{
+   if(budget){if(budget.used>=budget.max)throw new Error("Analyzer upstream request budget exhausted before Hugging Face");budget.used++;}
    const response=await fetch("https://router.huggingface.co/v1/chat/completions",{method:"POST",headers:{"Authorization":"Bearer "+env.HF_TOKEN,"Content-Type":"application/json"},body:JSON.stringify({model:"Qwen/Qwen2.5-7B-Instruct",messages:[{role:"system",content:"Return only one valid JSON object. Do not use markdown fences."},{role:"user",content:prompt}],max_tokens:1400,temperature:0.2})});
    if(response.ok){const data=await response.json(),content=data.choices?.[0]?.message?.content;if(content)return {provider:"Hugging Face Qwen",raw:content,fallbacks:failures};}
    else failures.push("Hugging Face HTTP "+response.status+": "+(await response.text()).slice(0,180));
@@ -184,7 +186,8 @@ function analyzeClosedKlines(rows,interval){
  result.candle_interval=interval;
  return result;
 }
-async function candles(symbol,interval,env,marketType="spot"){
+async function candles(symbol,interval,env,marketType="spot",budget=null){
+ const fetchMarketWithBudget=(url,options={})=>fetchWithTimeout(url,options,9000,budget);
  const headers={"Accept":"application/json, text/plain, */*","User-Agent":"MMP-COIN-AI/1.0","Accept-Language":"en-US,en;q=0.9"};
  const minimumCandles=interval==="1d"?20:30;
  if(marketType==="spot"&&String(symbol).toUpperCase().endsWith("IRT")){
@@ -194,7 +197,7 @@ async function candles(symbol,interval,env,marketType="spot"){
   for(const host of ["https://apiv2.nobitex.ir","https://api.nobitex.ir"]){
    try{
     const url=host+"/market/udf/history?symbol="+encodeURIComponent(base+"IRT")+"&resolution="+resolution+"&from="+from+"&to="+to;
-    const response=await fetchWithTimeout(url,{headers});
+    const response=await fetchMarketWithBudget(url,{headers});
     if(!response.ok)throw new Error("Nobitex candle HTTP "+response.status);
     const payload=await response.json();
     if(payload?.s!=="ok"||!Array.isArray(payload.t))throw new Error(payload?.errmsg||"Nobitex candle history unavailable");
@@ -220,7 +223,7 @@ async function candles(symbol,interval,env,marketType="spot"){
    try{
     const now=Date.now(),kucoinSymbol=(pair.base==="BTC"?"XBT":pair.base)+"USDTM";
     const url="https://api-futures.kucoin.com/api/v1/kline/query?symbol="+encodeURIComponent(kucoinSymbol)+"&granularity="+kucoinGranularity+"&from="+(now-300*kucoinGranularity*60000)+"&to="+now;
-    const r=await fetchWithTimeout(url,{headers});if(!r.ok)throw new Error("KuCoin Futures HTTP "+r.status);
+    const r=await fetchMarketWithBudget(url,{headers});if(!r.ok)throw new Error("KuCoin Futures HTTP "+r.status);
     const d=await r.json(),raw=d?.code==="200000"?d.data:null;
     const rows=Array.isArray(raw)?raw.map(x=>[Number(x[0]),String(x[1]),String(x[2]),String(x[3]),String(x[4]),String(x[5]||0),String(x[6]||0),"0","0","0"]):[];
     if(!validRows(rows))throw new Error(d?.msg||"insufficient KuCoin Futures candle history");
@@ -229,7 +232,7 @@ async function candles(symbol,interval,env,marketType="spot"){
   }
   for(const host of ["https://api.gateio.ws","https://api.gate.us"]){
    try{
-    const r=await fetchWithTimeout(host+"/api/v4/futures/usdt/candlesticks?contract="+encodeURIComponent(contract)+"&interval="+interval+"&limit=250",{headers});
+    const r=await fetchMarketWithBudget(host+"/api/v4/futures/usdt/candlesticks?contract="+encodeURIComponent(contract)+"&interval="+interval+"&limit=250",{headers});
     if(!r.ok)throw new Error("Gate Futures HTTP "+r.status);
     const raw=await r.json(),rows=Array.isArray(raw)?raw.map(x=>[Number(x.t)<1e12?Number(x.t)*1000:Number(x.t),x.o,x.h,x.l,x.c,x.v,x.sum||"0","0","0","0"]):[];
     if(!validRows(rows))throw new Error("insufficient Gate Futures candle history");
@@ -241,7 +244,7 @@ async function candles(symbol,interval,env,marketType="spot"){
   if(mexcInterval){
    try{
     const now=Math.floor(Date.now()/1000),start=now-300*({"1m":60,"5m":300,"15m":900,"1h":3600,"4h":14400,"1d":86400}[interval]);
-    const r=await fetchWithTimeout("https://contract.mexc.com/api/v1/contract/kline/"+encodeURIComponent(contract)+"?interval="+mexcInterval+"&start="+start+"&end="+now,{headers});
+    const r=await fetchMarketWithBudget("https://contract.mexc.com/api/v1/contract/kline/"+encodeURIComponent(contract)+"?interval="+mexcInterval+"&start="+start+"&end="+now,{headers});
     if(!r.ok)throw new Error("MEXC Futures HTTP "+r.status);
     const d=await r.json(),v=d?.data;
     const rows=d?.success===true&&Array.isArray(v?.time)?v.time.map((t,i)=>[Number(t)*1000,String(v.open?.[i]??0),String(v.high?.[i]??0),String(v.low?.[i]??0),String(v.close?.[i]??0),String(v.vol?.[i]??0),String(v.amount?.[i]??0),"0","0","0"]):[];
@@ -250,7 +253,7 @@ async function candles(symbol,interval,env,marketType="spot"){
    }catch(e){errors.push("MEXC: "+e.message);}
   }
   const url="https://api.bitget.com/api/v3/market/candles?category=USDT-FUTURES&symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250";
-   const r=await fetchWithTimeout(url,{headers});if(!r.ok)throw new Error("Bitget Futures HTTP "+r.status);
+   const r=await fetchMarketWithBudget(url,{headers});if(!r.ok)throw new Error("Bitget Futures HTTP "+r.status);
    const payload=await r.json(),raw=payload?.code==="00000"?payload.data:null;
    const rows=Array.isArray(raw)?raw.map(x=>[Number(x[0]),x[1],x[2],x[3],x[4],x[5]||"0",x[6]||"0","0","0","0"]):[];
    if(!validRows(rows))throw new Error(payload?.msg||"insufficient Bitget Futures candle history");
@@ -259,7 +262,7 @@ async function candles(symbol,interval,env,marketType="spot"){
   for(const host of ["https://api.bybit.com","https://api.bytick.com","https://api.bybit.eu"]){
    try{
     const url=host+"/v5/market/kline?category=linear&symbol="+encodeURIComponent(symbol)+"&interval="+bybitInterval+"&limit=250";
-    const r=await fetchWithTimeout(url,{headers});if(!r.ok)throw new Error("Bybit Linear HTTP "+r.status);
+    const r=await fetchMarketWithBudget(url,{headers});if(!r.ok)throw new Error("Bybit Linear HTTP "+r.status);
     const payload=await r.json(),list=payload?.retCode===0?payload.result?.list:null;
     if(!validRows(list))throw new Error(payload?.retMsg||"insufficient Bybit linear candle history");
     const result=analyzeClosedKlines(toBybitRows(list),interval);result.data_provider="Bybit Linear Perpetual";return result;
@@ -268,7 +271,7 @@ async function candles(symbol,interval,env,marketType="spot"){
   if(pair){
    for(const host of ["https://www.okx.com","https://us.okx.com"]){
     try{
-     const instId=pair.base+"-"+pair.quote+"-SWAP",r=await fetchWithTimeout(host+"/api/v5/market/candles?instId="+encodeURIComponent(instId)+"&bar="+okxBar+"&limit=250",{headers});
+     const instId=pair.base+"-"+pair.quote+"-SWAP",r=await fetchMarketWithBudget(host+"/api/v5/market/candles?instId="+encodeURIComponent(instId)+"&bar="+okxBar+"&limit=250",{headers});
      if(!r.ok)throw new Error("OKX Swap HTTP "+r.status);
      const payload=await r.json(),list=payload?.code==="0"?payload.data:null;
      if(!validRows(list))throw new Error(payload?.msg||"insufficient OKX swap candle history");
@@ -278,7 +281,7 @@ async function candles(symbol,interval,env,marketType="spot"){
   }
   for(const host of ["https://fapi.binance.com","https://fapi1.binance.com"]){
    try{
-    const r=await fetchWithTimeout(host+"/fapi/v1/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250",{headers});
+    const r=await fetchMarketWithBudget(host+"/fapi/v1/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250",{headers});
     if(!r.ok)throw new Error("Binance Futures HTTP "+r.status);
     const rows=await r.json();if(!validRows(rows))throw new Error("insufficient Binance Futures candle history");
     const result=analyzeClosedKlines(rows,interval);result.data_provider="Binance USD-M Futures";return result;
@@ -292,7 +295,7 @@ async function candles(symbol,interval,env,marketType="spot"){
   try{
    const kucoinInterval={"1m":"1min","3m":"3min","5m":"5min","15m":"15min","1h":"1hour","4h":"4hour","1d":"1day"}[interval];
    const url="https://api.kucoin.com/api/v1/market/candles?symbol="+encodeURIComponent(pairInfo.base+"-"+pairInfo.quote)+"&type="+kucoinInterval;
-   const r=await fetchWithTimeout(url,{headers});
+   const r=await fetchMarketWithBudget(url,{headers});
    if(!r.ok)throw new Error("KuCoin Spot HTTP "+r.status);
    const payload=await r.json(),rows=payload?.code==="200000"?payload.data:null;
    if(!validRows(rows))throw new Error(payload?.msg||"insufficient KuCoin spot candle history");
@@ -303,7 +306,7 @@ async function candles(symbol,interval,env,marketType="spot"){
    const gateInterval={"1m":"1m","3m":"3m","5m":"5m","15m":"15m","1h":"1h","4h":"4h","1d":"1d"}[interval];
    const gatePair=pairInfo.base+"_"+pairInfo.quote;
    const url="https://api.gateio.ws/api/v4/spot/candlesticks?currency_pair="+encodeURIComponent(gatePair)+"&interval="+gateInterval+"&limit=250";
-   const r=await fetchWithTimeout(url,{headers});
+   const r=await fetchMarketWithBudget(url,{headers});
    if(!r.ok)throw new Error("Gate.io Spot HTTP "+r.status);
    const rows=await r.json();
    if(!validRows(rows))throw new Error("insufficient Gate.io spot candle history");
@@ -320,13 +323,13 @@ async function candles(symbol,interval,env,marketType="spot"){
    try{
     // Confirm the exact market is currently listed before requesting its candles.
     // This avoids sending stale/unsupported symbols to WhiteBIT's instrument resolver.
-    const symbolsResponse=await fetchWithTimeout(host+"/api/v1/public/symbols",{headers});
+    const symbolsResponse=await fetchMarketWithBudget(host+"/api/v1/public/symbols",{headers});
     if(!symbolsResponse.ok)throw new Error("WhiteBIT symbols HTTP "+symbolsResponse.status);
     const symbolsPayload=await symbolsResponse.json();
     const availableSymbols=symbolsPayload?.success===true&&Array.isArray(symbolsPayload.result)?symbolsPayload.result:[];
     if(!availableSymbols.includes(market))throw new Error("WhiteBIT market is not listed: "+market);
     const url=host+"/api/v1/public/kline?market="+encodeURIComponent(market)+"&interval="+whitebitInterval+"&limit=250";
-    const r=await fetchWithTimeout(url,{headers});
+    const r=await fetchMarketWithBudget(url,{headers});
     if(!r.ok)throw new Error("WhiteBIT HTTP "+r.status);
     const payload=await r.json(),rows=payload?.success===true?(Array.isArray(payload.result)?payload.result:Array.isArray(payload.result?.kline)?payload.result.kline:null):null;
     if(!validRows(rows))throw new Error(typeof payload?.message==="string"?payload.message:"insufficient WhiteBIT candle history");
@@ -338,7 +341,7 @@ async function candles(symbol,interval,env,marketType="spot"){
  }
 
  try{
-  const r=await fetchWithTimeout("https://api.mexc.com/api/v3/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250",{headers});
+  const r=await fetchMarketWithBudget("https://api.mexc.com/api/v3/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250",{headers});
   if(!r.ok)throw new Error("MEXC Spot HTTP "+r.status);
   const rows=await r.json();if(!validRows(rows))throw new Error("insufficient MEXC spot candle history");
   const result=analyzeClosedKlines(rows,interval);result.data_provider="MEXC Spot";return result;
@@ -346,7 +349,7 @@ async function candles(symbol,interval,env,marketType="spot"){
  try{
   const bitgetInterval={"1m":"1m","3m":"3m","5m":"5m","15m":"15m","1h":"1H","4h":"4H","1d":"1D"}[interval];
   const url="https://api.bitget.com/api/v3/market/candles?category=SPOT&symbol="+encodeURIComponent(symbol)+"&interval="+bitgetInterval+"&limit=250";
-  const r=await fetchWithTimeout(url,{headers});
+  const r=await fetchMarketWithBudget(url,{headers});
   if(!r.ok)throw new Error("Bitget Spot HTTP "+r.status);
   const payload=await r.json(),rows=payload?.code==="00000"||payload?.code==="0"?payload.data:null;
   if(!validRows(rows))throw new Error(payload?.msg||"insufficient Bitget spot candle history");
@@ -357,7 +360,7 @@ async function candles(symbol,interval,env,marketType="spot"){
   const bitgetGranularity={"1m":"1min","3m":"3min","5m":"5min","15m":"15min","1h":"1h","4h":"4h","1d":"1day"}[interval];
   const now=Date.now(),start=now-250*({"1m":60000,"3m":180000,"5m":300000,"15m":900000,"1h":3600000,"4h":14400000,"1d":86400000}[interval]);
   const url="https://api.bitget.com/api/v2/spot/market/candles?symbol="+encodeURIComponent(symbol)+"&granularity="+bitgetGranularity+"&startTime="+start+"&endTime="+now+"&limit=250";
-  const r=await fetchWithTimeout(url,{headers:{...headers,"Origin":"https://www.bitget.com","Referer":"https://www.bitget.com/","User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"}});if(!r.ok)throw new Error("Bitget Spot V2 HTTP "+r.status);
+  const r=await fetchMarketWithBudget(url,{headers:{...headers,"Origin":"https://www.bitget.com","Referer":"https://www.bitget.com/","User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"}});if(!r.ok)throw new Error("Bitget Spot V2 HTTP "+r.status);
   const payload=await r.json(),rows=payload?.code==="00000"?payload.data:null;
   if(!validRows(rows))throw new Error(payload?.msg||"insufficient Bitget V2 spot candle history");
   const normalized=rows.map(x=>[Number(x[0]),x[1],x[2],x[3],x[4],x[5],x[6]||"0","0","0","0"]).sort((a,b)=>a[0]-b[0]);
@@ -366,7 +369,7 @@ async function candles(symbol,interval,env,marketType="spot"){
  for(const host of ["https://api.bybit.com","https://api.bytick.com","https://api.bybit.eu"]){
   try{
    const url=host+"/v5/market/kline?category=spot&symbol="+encodeURIComponent(symbol)+"&interval="+bybitInterval+"&limit=250";
-   const r=await fetchWithTimeout(url,{headers});
+   const r=await fetchMarketWithBudget(url,{headers});
    if(!r.ok)throw new Error("Bybit Spot HTTP "+r.status);
    const payload=await r.json(),list=payload?.retCode===0?payload.result?.list:null;
    if(!validRows(list))throw new Error(payload?.retMsg||"insufficient Bybit spot candle history");
@@ -378,7 +381,7 @@ async function candles(symbol,interval,env,marketType="spot"){
   const instId=pair.base+"-"+pair.quote;
   for(const host of ["https://www.okx.com"]){
    try{
-    const r=await fetchWithTimeout(host+"/api/v5/market/candles?instId="+encodeURIComponent(instId)+"&bar="+okxBar+"&limit=250",{headers});
+    const r=await fetchMarketWithBudget(host+"/api/v5/market/candles?instId="+encodeURIComponent(instId)+"&bar="+okxBar+"&limit=250",{headers});
     if(!r.ok)throw new Error("OKX Spot HTTP "+r.status);
     const payload=await r.json(),list=payload?.code==="0"?payload.data:null;
     if(!validRows(list))throw new Error(payload?.msg||"insufficient OKX spot candle history");
@@ -396,7 +399,7 @@ async function candles(symbol,interval,env,marketType="spot"){
  ];
  for(const url of spotUrls){
   try{
-   const r=await fetchWithTimeout(url,{headers});
+   const r=await fetchMarketWithBudget(url,{headers});
    if(!r.ok)throw new Error("Binance Spot HTTP "+r.status);
    const rows=await r.json();
    if(!validRows(rows))throw new Error("insufficient Binance spot candle history");
@@ -436,7 +439,8 @@ function validSymbol(s){return /^[A-Z0-9_]{2,30}$/.test(s||"")&&!s.startsWith("_
 const ASSET_SYMBOL_OVERRIDES=Object.freeze({bitcoin:"BTC",ethereum:"ETH",tether:"USDT","usd-coin":"USDC",binancecoin:"BNB",solana:"SOL",ripple:"XRP",dogecoin:"DOGE",cardano:"ADA","avalanche-2":"AVAX","the-open-network":"TON",tron:"TRX",litecoin:"LTC",polkadot:"DOT",chainlink:"LINK"});
 
 const exchangeCatalogCache=new Map();
-async function fetchWithTimeout(url,options={},timeoutMs=9000){
+async function fetchWithTimeout(url,options={},timeoutMs=9000,budget=null){
+ if(budget){if(budget.used>=budget.max)throw new Error("Analyzer upstream request budget exhausted ("+budget.used+"/"+budget.max+")");budget.used++;}
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeoutMs);
  const externalSignal=options.signal;
  let abortExternal=()=>controller.abort();
@@ -483,32 +487,32 @@ async function cleanupMarketFallbackCache(env){
   await env.MARKET_CACHE_DB.prepare("DELETE FROM market_data_cache WHERE cache_key IN (SELECT cache_key FROM market_data_cache ORDER BY cached_at ASC LIMIT 100) AND (SELECT COUNT(*) FROM market_data_cache)>4000").run();
  }catch(error){console.warn("Market fallback cache cleanup failed:",String(error?.message||error).slice(0,160));}
 }
-async function readPublicJson(url){
+async function readPublicJson(url,budget=null){
  try{
-  const r=await fetchWithTimeout(url,{headers:{"Accept":"application/json, text/plain, */*","User-Agent":"MMP-COIN-AI/1.0","Accept-Language":"en-US,en;q=0.9"}},7500);
+  const r=await fetchWithTimeout(url,{headers:{"Accept":"application/json, text/plain, */*","User-Agent":"MMP-COIN-AI/1.0","Accept-Language":"en-US,en;q=0.9"}},7500,budget);
   if(!r.ok)return {ok:false,status:r.status,error:"HTTP "+r.status};
   const data=await r.json();return {ok:true,status:r.status,data};
  }catch(e){return {ok:false,status:0,error:e.message||"network error"};}
 }
-async function readAnyPublicJson(urls){
+async function readAnyPublicJson(urls,budget=null){
  let last=null;
  for(const url of urls){
-  const result=await readPublicJson(url);
+  const result=await readPublicJson(url,budget);
   if(result.ok)return {...result,source:url};
   last=result;
  }
  return last||{ok:false,status:0,error:"No public endpoint responded"};
 }
-async function readOkxCatalog(instType){
+async function readOkxCatalog(instType,budget=null){
  let last=null;
  for(const host of ["https://www.okx.com"]){
-  const r=await readPublicJson(host+"/api/v5/public/instruments?instType="+instType);
+  const r=await readPublicJson(host+"/api/v5/public/instruments?instType="+instType,budget);
   if(r.ok&&r.data?.code==="0"&&Array.isArray(r.data.data))return {...r,source:host};
   last=r;
  }
  return last||{ok:false,status:0,error:"OKX catalog unavailable"};
 }
-async function getExchangeCatalogs(mode="both"){
+async function getExchangeCatalogs(mode="both",budget=null){
  const cached=exchangeCatalogCache.get(mode);
  if(cached&&Date.now()-cached.at<300000)return cached.data;
  const urls=[
@@ -535,11 +539,11 @@ async function getExchangeCatalogs(mode="both"){
   ["nobitex_spot","https://apiv2.nobitex.ir/market/stats?dstCurrency=rls"]
  ];
  const selectedUrls=urls.filter(([key])=>mode==="spot"?key.endsWith("_spot"):mode==="futures"?key.endsWith("_futures"):true);
- const results=await Promise.all(selectedUrls.map(async ([key,endpoint])=>[key,Array.isArray(endpoint)?await readAnyPublicJson(endpoint):await readPublicJson(endpoint)]));
+ const results=await Promise.all(selectedUrls.map(async ([key,endpoint])=>[key,Array.isArray(endpoint)?await readAnyPublicJson(endpoint,budget):await readPublicJson(endpoint,budget)]));
  const out=Object.fromEntries(results);
  const [okxSpot,okxSwap]=await Promise.all([
-  mode==="futures"?Promise.resolve({ok:false,status:0,error:"Spot catalog not requested"}):readOkxCatalog("SPOT"),
-  mode==="spot"?Promise.resolve({ok:false,status:0,error:"Futures catalog not requested"}):readOkxCatalog("SWAP")
+  mode==="futures"?Promise.resolve({ok:false,status:0,error:"Spot catalog not requested"}):readOkxCatalog("SPOT",budget),
+  mode==="spot"?Promise.resolve({ok:false,status:0,error:"Futures catalog not requested"}):readOkxCatalog("SWAP",budget)
  ]);
  out.okx_spot=okxSpot;out.okx_futures=okxSwap;
  exchangeCatalogCache.set(mode,{data:out,at:Date.now()});return out;
@@ -1556,7 +1560,7 @@ async function handle(request,env){
   const url=new URL(request.url);
   const symbols=[...new Set((url.searchParams.get("symbols")||"").split(",").map(x=>x.toUpperCase().replace(/[^A-Z0-9_]/g,"")).filter(validSymbol))].slice(0,150);
   if(!symbols.length)return json({error:"Provide comma-separated symbols"},400,request);
-  const catalogs=await getExchangeCatalogs(mode);
+  const catalogs=await getExchangeCatalogs(mode,upstreamBudget);
   const assets=symbols.map(symbol=>exchangeSupport(symbol,catalogs));
   const sources=Object.fromEntries(Object.entries(catalogs).map(([k,v])=>[k,{ok:!!v?.ok,status:v?.status||0,error:v?.error||null,source:v?.source||null}]));
   return json({checked_at:new Date().toISOString(),assets,sources},200,request);
@@ -1985,6 +1989,7 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/futures-engine-heal
  if(!validSymbol(symbol))return json({error:"Invalid asset symbol"},400,request);
  let pair=symbol.endsWith("USDT")?symbol:symbol+"USDT";
  const mode=["spot","futures","both"].includes(body.market_mode)?body.market_mode:"both";
+ const upstreamBudget={used:0,max:44};
  let stage="شناسایی جفت‌های فعال";
  try{
   const catalogs=await getExchangeCatalogs();
@@ -1997,7 +2002,7 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/futures-engine-heal
   let spotMarket=null,futuresMarket=null,market={},candleMarket=mode==="futures"?"futures":"spot";
   if(mode==="both"){
    const fetchMarket=async(selectedPair,type)=>{
-    const settled=await Promise.allSettled(intervals.map(async tf=>[tf,await candles(selectedPair,tf,env,type)]));
+    const settled=await Promise.allSettled(intervals.map(async tf=>[tf,await candles(selectedPair,tf,env,type,upstreamBudget)]));
     const failed=settled.filter(x=>x.status==="rejected");
     if(failed.length)throw new Error(failed.map(x=>String(x.reason?.message||"candle unavailable")).join(" | "));
     return Object.fromEntries(settled.map(x=>x.value));
@@ -2023,13 +2028,13 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/futures-engine-heal
    }
   }else{
    const selectedPair=candleMarket==="futures"?futuresPair:spotPair;pair=selectedPair;
-   const results=await Promise.all(intervals.map(async tf=>[tf,await candles(selectedPair,tf,env,candleMarket)]));
+   const results=await Promise.all(intervals.map(async tf=>[tf,await candles(selectedPair,tf,env,candleMarket,upstreamBudget)]));
    market=Object.fromEntries(results);
    if(mode==="spot")spotMarket=market;else futuresMarket=market;
   }
   stage="دریافت اطلاعات تکمیلی بازار";
   const latest=market["4h"];
-  const optionalJson=async url=>{try{const r=await fetch(url);if(!r.ok)return null;return await r.json();}catch{return null;}};
+  const optionalJson=async url=>{try{const r=await fetchWithTimeout(url,{headers:{"Accept":"application/json","User-Agent":"MMP-COIN-AI/1.0"}},6500,upstreamBudget);if(!r.ok)return null;return await r.json();}catch{return null;}};
   let [funding,openInterest,fng,global]=await Promise.all([
    mode==="spot"?Promise.resolve(null):optionalJson("https://fapi.binance.com/fapi/v1/premiumIndex?symbol="+pair),
    mode==="spot"?Promise.resolve(null):optionalJson("https://fapi.binance.com/fapi/v1/openInterest?symbol="+pair),
@@ -2060,7 +2065,7 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/futures-engine-heal
   };
   stage="اجرای هوش مصنوعی";
   let aiResult,aiProvider;
-  try{aiResult=await runAIWithFallback(env,prompt);aiProvider=aiResult.provider;}
+  try{aiResult=await runAIWithFallback(env,prompt,upstreamBudget);aiProvider=aiResult.provider;}
   catch(error){aiProvider="Local quantitative fallback";aiResult={provider:aiProvider,raw:JSON.stringify(buildLocalAnalysisFallback()),cloudflareBudget:error?.cloudflareBudget||null,fallbacks:[String(error?.message||error).slice(0,700)]};}
   stage="پردازش پاسخ هوش مصنوعی";
   let raw=aiResult.raw;
@@ -2105,8 +2110,8 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/futures-engine-heal
   analysis.plan_method="سطوح محاسبه‌شده از داده ۴ ساعته، ATR و حمایت/مقاومت؛ ورود مشروط به بسته‌شدن کندل ۴ ساعته";
   analysis.holding_horizon=analysis.holding_horizon||"تا بسته‌شدن و تأیید کندل ۴ ساعته بعدی";
   if(!analysis.recommendations.length)analysis.recommendations=["برای ورود LONG منتظر بسته‌شدن کندل ۱ ساعته بالای مقاومت و تثبیت قیمت بمان.","برای ورود SHORT منتظر بسته‌شدن کندل ۱ ساعته زیر حمایت و تثبیت قیمت بمان.","پس از ورود، حد ضرر و اهداف عددی برنامه را رعایت کن.","اگر هیچ‌کدام از شکست‌ها تأیید نشد، معامله نکن."];
-  return json({analysis,market:snapshot},200,request);
- }catch(e){return json({error:String(e?.message||"Analysis failed").slice(0,300),stage,symbol:pair,market_mode:mode},502,request)}
+  return json({analysis,market:{...snapshot,upstream_requests_used:upstreamBudget.used,upstream_request_budget:upstreamBudget.max}},200,request);
+ }catch(e){return json({error:String(e?.message||"Analysis failed").slice(0,300),stage,symbol:pair,market_mode:mode,upstream_requests_used:upstreamBudget.used,upstream_request_budget:upstreamBudget.max},502,request)}
 }
 async function settleHunterCycle(task,label,timeoutMs=50000,onTimeout=null){
  let timer;
