@@ -171,8 +171,9 @@ jobs:
           const wtm=Number(wt?.stats?.lastPrice??wt?.lastPrice), wir=Number(wi?.stats?.lastPrice??wi?.lastPrice);
           addQuote("Wallex",wtm>0?wtm:wir/10);
           const bitpin=bySource["bitpin-tickers"], br=Array.isArray(bitpin?.results)?bitpin.results:Array.isArray(bitpin?.data)?bitpin.data:Array.isArray(bitpin)?bitpin:[];
-          const bp=br.find(x=>{const c=String(x?.code||x?.symbol||"").replace(/[/-]/g,"_").toUpperCase().replace(/_/g,"");const b=String(x?.currency1?.code||x?.base_currency||x?.baseAsset||"").toUpperCase(),q=String(x?.currency2?.code||x?.quote_currency||x?.quoteAsset||"").toUpperCase();return c==="USDTIRT"||(b==="USDT"&&q==="IRT");});
-          addQuote("Bitpin",Number(bp?.price_info?.price??bp?.internal_price_info?.price??bp?.price??bp?.last_price??bp?.last)*10);
+          const bp=br.find(x=>{const c=String(x?.code||x?.symbol||"").replace(/[/-]/g,"_").toUpperCase(),flat=c.replace(/_/g,"");const b=String(x?.currency1?.code||x?.base_currency||x?.baseAsset||"").toUpperCase(),q=String(x?.currency2?.code||x?.quote_currency||x?.quoteAsset||c.split("_").pop()).toUpperCase();return /^USDT_(IRT|IRR|RLS|TMN)$/.test(c)||/^USDT(IRT|IRR|RLS|TMN)$/.test(flat)||(b==="USDT"&&["IRT","IRR","RLS","TMN"].includes(q));});
+          const bpPrice=Number(bp?.price_info?.price??bp?.internal_price_info?.price??bp?.price??bp?.last_price??bp?.last),bpUnit=String(bp?.currency2?.code||bp?.quote_currency||bp?.quoteAsset||String(bp?.code||bp?.symbol||"USDT_IRT").split(/[_/-]/).pop()).toUpperCase();
+          addQuote("Bitpin",["IRR","RLS"].includes(bpUnit)?bpPrice/10:bpPrice);
           const exir=bySource["exir-tickers"], es=exir?.result||exir?.data||exir||{}, ee=Array.isArray(es)?es.map(x=>[x?.symbol||x?.pair||"",x]):Object.entries(es);
           const ep=ee.find(([k,v])=>/^(usdt-(irt|tmn|toman|irr|rls)|(irt|tmn|toman|irr|rls)-usdt)$/.test(String(v?.symbol||v?.pair||k).toLowerCase().replace(/[_/]/g,"-")));
           if(ep){const sym=String(ep[1]?.symbol||ep[0]).toLowerCase().replace(/[_/]/g,"-"),parts=sym.split("-"),rev=parts[0]!=="usdt",unit=rev?parts[0]:parts[1],raw=Number(ep[1]?.last??ep[1]?.close??ep[1]?.price),price=rev&&raw>0?1/raw:raw;addQuote("Exir",price>0?(["irr","rls"].includes(unit)?price/10:price):0);}
