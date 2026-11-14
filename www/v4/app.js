@@ -19,17 +19,8 @@
   }finally{clearTimeout(timer);}
  }
  function money(v){const n=Number(v);return Number.isFinite(n)&&n>0?n.toLocaleString("en-US",{maximumFractionDigits:n>100?2:4}):"—";}
- let currentTetherPrice=0,currentTetherSources=[],currentTetherWarning="",currentTetherUpdatedAt=0;
+ let currentTetherPrice=0,currentTetherSources=[],currentTetherWarning="";
  let selectedCurrency="IRT",latestTickerRows=[],latestTickerFailures=[];
- try{
-  const saved=JSON.parse(localStorage.getItem("mmp_tether_cache_v1")||"null");
-  if(saved&&Number(saved.price)>0&&Date.now()-Number(saved.updatedAt)<90*1000){
-   currentTetherPrice=Number(saved.price);
-   currentTetherSources=Array.isArray(saved.sources)?saved.sources:[];
-   currentTetherUpdatedAt=Number(saved.updatedAt);
-   currentTetherWarning="آخرین نرخ معتبر ذخیره‌شده";
-  }
- }catch(e){}
  async function fetchTetherRate(){
   const fallbackPromise=(async()=>{
    const requests=[
@@ -144,11 +135,10 @@
    fetchTetherRate()
   ]);
   if(tether?.price>0){
-   currentTetherPrice=tether.price;currentTetherSources=tether.sources||[];currentTetherWarning=tether.warning||"";currentTetherUpdatedAt=Date.now();
-   try{localStorage.setItem("mmp_tether_cache_v1",JSON.stringify({price:currentTetherPrice,sources:currentTetherSources,updatedAt:currentTetherUpdatedAt}));}catch(e){}
-  }else if(!(currentTetherPrice>0&&currentTetherUpdatedAt&&Date.now()-currentTetherUpdatedAt<90*1000)){
-   currentTetherPrice=0;currentTetherSources=[];currentTetherWarning=tether?.warning||"نرخ تتر در دسترس نیست";currentTetherUpdatedAt=0;
-  }else currentTetherWarning="اتصال موقتاً ناپایدار؛ آخرین نرخ معتبر نمایش داده می‌شود";
+   currentTetherPrice=tether.price;currentTetherSources=tether.sources||[];currentTetherWarning=tether.warning||"";
+  }else{
+   currentTetherPrice=0;currentTetherSources=[];currentTetherWarning=tether?.warning||"نرخ زنده تتر تأیید نشد؛ قیمت تومانی پنهان است";
+  }
   const quotes=Object.fromEntries(symbols.map(s=>[s,[]]));
   const failures=[];
   for(let i=0;i<settled.length;i++){
