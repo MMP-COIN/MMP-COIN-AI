@@ -170,13 +170,19 @@ async function runRadar(env,scheduledTime=Date.now()){
   const cacheAge=Math.max(0,Date.now()-cacheTimestamp);
   const cachedUniverse=Array.isArray(state?.universe_cache)&&state.universe_cache.length&&cacheAge<=24*60*60*1000?state.universe_cache:null;
   let source=null,universeSource="live";
-  try{
-    const response=await getJson(MAIN_UNIVERSE,12000);
-    source=Array.isArray(response.hunter_assets)&&response.hunter_assets.length?response.hunter_assets:Array.isArray(response.radar_assets)&&response.radar_assets.length?response.radar_assets:response.assets;
-    if(!Array.isArray(source)||!source.length)throw new Error("Exchange universe returned no assets");
-  }catch(error){
-    if(!cachedUniverse)throw new Error("Live universe unavailable and no fresh cache exists: "+String(error?.message||error).slice(0,160));
-    source=cachedUniverse.map(coin=>{const currentPrice=Number(coin.current_price||coin.price||coin.marketPairs?.find(pair=>String(pair.quote||"").toUpperCase()==="USDT")?.price||0);return {...coin,current_price:currentPrice,price:currentPrice};});universeSource="cached";
+  if(cachedUniverse&&cacheAge<15*60*1000){
+    source=cachedUniverse.map(coin=>{const currentPrice=Number(coin.current_price||coin.price||coin.marketPairs?.find(pair=>String(pair.quote||"").toUpperCase()==="USDT")?.price||0);return {...coin,current_price:currentPrice,price:currentPrice};});
+    universeSource="cached";
+  }else{
+    try{
+      const response=await getJson(MAIN_UNIVERSE,12000);
+      source=Array.isArray(response.hunter_assets)&&response.hunter_assets.length?response.hunter_assets:Array.isArray(response.radar_assets)&&response.radar_assets.length?response.radar_assets:response.assets;
+      if(!Array.isArray(source)||!source.length)throw new Error("Exchange universe returned no assets");
+    }catch(error){
+      if(!cachedUniverse)throw new Error("Live universe unavailable and no fresh cache exists: "+String(error?.message||error).slice(0,160));
+      source=cachedUniverse.map(coin=>{const currentPrice=Number(coin.current_price||coin.price||coin.marketPairs?.find(pair=>String(pair.quote||"").toUpperCase()==="USDT")?.price||0);return {...coin,current_price:currentPrice,price:currentPrice};});
+      universeSource="cached";
+    }
   }
   const buildUniverse=items=>{
     const eligible=normalizeQuantumUniverse(items,"spot").filter(coin=>{
