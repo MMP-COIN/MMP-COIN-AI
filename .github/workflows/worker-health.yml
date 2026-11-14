@@ -763,26 +763,42 @@ jobs:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
           set -euo pipefail
-          for source in nobitex-tether wallex-markets; do
-            status=$(curl --silent --show-error --max-time 25 -D "/tmp/$source.headers" -o "/tmp/$source.json" -w "%{http_code}" "$WORKER_URL/market-proxy?source=$source")
-            echo "Tether source $source HTTP $status"
-            test "$status" = "200"
-            grep -qi '^x-mmp-cache: fresh' "/tmp/$source.headers"
-            test -s "/tmp/$source.json"
+          for source in nobitex-tether wallex-markets bitpin-tickers exir-tickers ramzinex-pairs; do
+            status=$(curl --silent --show-error --max-time 25 -D "/tmp/$source.headers" -o "/tmp/$source.json" -w "%{http_code}" "$WORKER_URL/market-proxy?source=$source" || echo 000)
+            if [ "$status" = "200" ] && grep -qi '^x-mmp-cache: fresh' "/tmp/$source.headers" && test -s "/tmp/$source.json"; then
+              echo "Fresh proxy payload: $source"
+            else
+              echo "Provider unavailable or stale; excluded from consensus: $source (HTTP $status)"
+              rm -f "/tmp/$source.json"
+            fi
           done
           node --input-type=module <<'NODE'
           import fs from "node:fs";
-          const nobitex=JSON.parse(fs.readFileSync("/tmp/nobitex-tether.json","utf8"));
-          const wallex=JSON.parse(fs.readFileSync("/tmp/wallex-markets.json","utf8"));
-          const nobitexToman=Number(nobitex?.stats?.["usdt-rls"]?.latest)/10;
-          const raw=wallex?.result?.symbols||wallex?.result?.markets||{};
-          const markets=Array.isArray(raw)?raw:Object.values(raw);
-          const market=markets.find(x=>["USDTTMN","USDTIRT"].includes(String(x?.symbol||"").toUpperCase()));
-          const wallexToman=Number(market?.stats?.lastPrice??market?.lastPrice)/(String(market?.symbol||"").toUpperCase()==="USDTIRT"?10:1);
-          if(!(nobitexToman>=1000&&nobitexToman<=100000000&&wallexToman>=1000&&wallexToman<=100000000)) throw new Error("Both independent Tether proxies must return nonempty valid Toman prices");
-          const spread=Math.abs(nobitexToman-wallexToman)/((nobitexToman+wallexToman)/2);
-          if(spread>0.03) throw new Error("Nobitex/Wallex Tether quotes diverge by more than 3%; do not publish an unverified rate");
-          console.log("Fresh corroborated Tether proxies:",{nobitexToman,wallexToman,spread});
+          const read=(name)=>{try{return JSON.parse(fs.readFileSync("/tmp/"+name+".json","utf8"));}catch{return null;}};
+          const quotes=[];
+          const add=(name,value)=>{const n=Number(value);if(Number.isFinite(n)&&n>=1000&&n<=100000000)quotes.push({name,price:n});};
+          const nobitex=read("nobitex-tether");
+          add("Nobitex",Number(nobitex?.stats?.["usdt-rls"]?.latest)/10);
+          const wallex=read("wallex-markets");
+          const wm=wallex?.result?.symbols||wallex?.result?.markets||{},wrows=Array.isArray(wm)?wm:Object.values(wm);
+          const wt=wrows.find(x=>String(x?.symbol||"").toUpperCase()==="USDTTMN"),wr=wrows.find(x=>String(x?.symbol||"").toUpperCase()==="USDTIRT");
+          const wta=Number(wt?.stats?.lastPrice??wt?.lastPrice),wra=Number(wr?.stats?.lastPrice??wr?.lastPrice);
+          add("Wallex",wta>0?wta:wra/10);
+          const bitpin=read("bitpin-tickers"),br=Array.isArray(bitpin?.results)?bitpin.results:Array.isArray(bitpin?.data)?bitpin.data:Array.isArray(bitpin)?bitpin:[];
+          const bp=br.find(x=>{const c=String(x?.code||x?.symbol||"").replace(/[/-]/g,"_").toUpperCase().replace(/_/g,"");const b=String(x?.currency1?.code||x?.base_currency||x?.baseAsset||"").toUpperCase(),q=String(x?.currency2?.code||x?.quote_currency||x?.quoteAsset||"").toUpperCase();return c==="USDTIRT"||(b==="USDT"&&q==="IRT");});
+          add("Bitpin",Number(bp?.price_info?.price??bp?.internal_price_info?.price??bp?.price??bp?.last_price??bp?.last)*10);
+          const exir=read("exir-tickers"),es=exir?.result||exir?.data||exir||{},ee=Array.isArray(es)?es.map(x=>[x?.symbol||x?.pair||"",x]):Object.entries(es);
+          const ep=ee.find(([k,v])=>/^(usdt-(irt|tmn|toman|irr|rls)|(irt|tmn|toman|irr|rls)-usdt)$/.test(String(v?.symbol||v?.pair||k).toLowerCase().replace(/[_/]/g,"-")));
+          if(ep){const sym=String(ep[1]?.symbol||ep[0]).toLowerCase().replace(/[_/]/g,"-"),parts=sym.split("-"),rev=parts[0]!=="usdt",unit=rev?parts[0]:parts[1],raw=Number(ep[1]?.last??ep[1]?.close??ep[1]?.price),price=rev&&raw>0?1/raw:raw;add("Exir",price>0?(["irt","tmn","toman"].includes(unit)?price*10:price):0);}
+          const ram=read("ramzinex-pairs"),rr=ram?.result?.data??ram?.data??ram?.result?.pairs??ram?.pairs??[],rrows=Array.isArray(rr)?rr:Object.values(rr);
+          const code=v=>Array.isArray(v)?String(v[0]?.symbol??v[0]?.code??v[0]??""):String(v?.symbol??v?.code??v?.name??v??"");
+          const rp=rrows.find(x=>{const b=code(x?.base_currency_symbol??x?.base_currency??x?.baseCurrency).toUpperCase(),q=code(x?.quote_currency_symbol??x?.quote_currency??x?.quoteCurrency).toUpperCase(),n=String(x?.url_name??x?.symbol??x?.pair??"").toLowerCase().replace(/[_/]/g,"-");return b==="USDT"&&["IRR","IRT","RLS","TMN","TOMAN"].includes(q)||/^usdt-(irr|irt|rls|tmn|toman)$/.test(n);});
+          if(rp){const b=Number(rp.buy??rp.best_buy??rp.bid),a=Number(rp.sell??rp.best_sell??rp.ask),last=Number(rp.last??rp.last_price??rp.price??rp.rate),q=code(rp.quote_currency_symbol??rp.quote_currency??rp.quoteCurrency).toUpperCase(),raw=b>0&&a>0?(a+b)/2:last;add("Ramzinex",raw>0?(["IRT","TMN","TOMAN"].includes(q)?raw*10:raw):0);}
+          if(quotes.length<2)throw new Error("Fewer than two independent fresh Tether sources returned valid nonempty prices: "+JSON.stringify(quotes));
+          const sorted=quotes.map(x=>x.price).sort((a,b)=>a-b),mid=Math.floor(sorted.length/2),median=sorted.length%2?sorted[mid]:(sorted[mid-1]+sorted[mid])/2;
+          const consensus=quotes.filter(x=>Math.abs(x.price-median)/median<=0.025);
+          if(consensus.length<2)throw new Error("No two-source Tether consensus within 2.5%: "+JSON.stringify(quotes));
+          console.log("PASS live Tether consensus",consensus);
           NODE
           status=$(curl --silent --show-error --max-time 25 -o /tmp/early-pressure.json -w "%{http_code}" "$WORKER_URL/early-pressure?symbol=BTC")
           echo "Early pressure endpoint HTTP $status"
