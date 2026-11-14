@@ -532,8 +532,19 @@ jobs:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
           set -euo pipefail
-          curl --fail --silent --show-error --retry 2 --retry-delay 3 --max-time 25 "$WORKER_URL/connections-health" -o /tmp/connections.json
-          jq -e '.checks | length == 18 and any(.[]; .name == "MEXC Spot") and any(.[]; .name == "WhiteBIT Futures") and any(.[]; .name == "Nobitex") and any(.[]; .name == "Wallex")' /tmp/connections.json >/dev/null
+          status=""
+          for attempt in $(seq 1 20); do
+            status=$(curl --silent --show-error --max-time 25 -o /tmp/connections.json -w "%{http_code}" "$WORKER_URL/connections-health" || true)
+            if [ "$status" = "200" ] && jq -e '(.checks | length == 18) and ((.stale == null) or (.stale == false)) and ([.checks[] | select(.market == "spot" and (.status == "ok" or .status == "slow"))] | length >= 2) and ([.checks[] | select(.market == "futures" and (.status == "ok" or .status == "slow"))] | length >= 2) and ([.checks[] | select(.market == "iran" and (.status == "ok" or .status == "slow"))] | length >= 1)' /tmp/connections.json >/dev/null; then
+              break
+            fi
+            sleep 15
+          done
+          if [ "$status" != "200" ] || ! jq -e '(.checks | length == 18) and ((.stale == null) or (.stale == false)) and ([.checks[] | select(.market == "spot" and (.status == "ok" or .status == "slow"))] | length >= 2) and ([.checks[] | select(.market == "futures" and (.status == "ok" or .status == "slow"))] | length >= 2) and ([.checks[] | select(.market == "iran" and (.status == "ok" or .status == "slow"))] | length >= 1)' /tmp/connections.json >/dev/null; then
+            cat /tmp/connections.json
+            echo "Connection monitor is stale or lacks independent Spot/Futures/Iran sources." >&2
+            exit 1
+          fi
           echo "Current exchange connection status:"
           jq -r '.checks[] | "- " + .name + ": " + .status + (if .ping == null then "" else " (" + (.ping|tostring) + " ms)" end) + (if .error == null then "" else " — " + (.error|tostring) end)' /tmp/connections.json
           jq -r '.checks[] | "- " + .name + ": " + .status + (if .ping == null then "" else " (" + (.ping|tostring) + " ms)" end) + (if .error == null then "" else " — " + (.error|tostring) end)' /tmp/connections.json >> "$GITHUB_STEP_SUMMARY"
