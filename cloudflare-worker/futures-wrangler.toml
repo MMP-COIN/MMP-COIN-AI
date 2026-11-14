@@ -14,8 +14,3 @@ region = "aws:eu-central-1"
 [triggers]
 crons = ["* * * * *"]
 
-# Isolated Tether monitor runs in its own Worker invocation.
-[[services]]
-binding = "TETHER_MONITOR"
-service = "mmp-coin-ai-tether-monitor"
-environment = "production"
