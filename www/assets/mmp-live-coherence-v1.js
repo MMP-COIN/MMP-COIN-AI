@@ -118,11 +118,19 @@
     }));
   }
 
+  const socketHosts = [
+    "wss://stream.binance.com:9443",
+    "wss://stream.binance.com:443",
+    "wss://data-stream.binance.vision"
+  ];
+  let socketHostIndex = 0;
+
   function connectSocket() {
     if (document.visibilityState === "hidden") return;
     if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) return;
     try {
-      socket = new WebSocket("wss://stream.binance.com:9443/stream?streams=btcusdt@ticker/ethusdt@ticker");
+      const host = socketHosts[socketHostIndex % socketHosts.length];
+      socket = new WebSocket(host + "/stream?streams=btcusdt@ticker/ethusdt@ticker");
       socket.addEventListener("open", () => { reconnectDelay = 2000; });
       socket.addEventListener("message", event => {
         try {
@@ -137,12 +145,14 @@
       });
       socket.addEventListener("close", () => {
         socket = null;
+        socketHostIndex = (socketHostIndex + 1) % socketHosts.length;
         if (reconnectTimer) clearTimeout(reconnectTimer);
         reconnectTimer = setTimeout(connectSocket, reconnectDelay);
         reconnectDelay = Math.min(30000, reconnectDelay * 2);
       });
     } catch (error) {
       socket = null;
+      socketHostIndex = (socketHostIndex + 1) % socketHosts.length;
       if (reconnectTimer) clearTimeout(reconnectTimer);
       reconnectTimer = setTimeout(connectSocket, reconnectDelay);
       reconnectDelay = Math.min(30000, reconnectDelay * 2);
