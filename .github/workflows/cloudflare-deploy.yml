@@ -116,7 +116,7 @@ jobs:
             curl --fail --silent --show-error --max-time 20 -X PUT "$API/$name/schedules" \
               -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" \
               --data '[]' -o "/tmp/$name-schedules.json"
-            jq -e '.success == true and (.result | length == 0)' "/tmp/$name-schedules.json" >/dev/null
+            jq -e '.success == true and (.result.schedules | length == 0)' "/tmp/$name-schedules.json" >/dev/null
           }
           set_subdomain mmp-coin-ai-analyzer true
           set_subdomain mmp-coin-ai-futures false
