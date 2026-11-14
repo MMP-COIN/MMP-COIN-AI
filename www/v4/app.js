@@ -352,6 +352,8 @@
   button.disabled=true;refreshButton.disabled=true;button.textContent="در حال دریافت…";
   $("chartStatus").textContent="در حال دریافت کندل و اعتبارسنجی تازگی داده…";
   try{
+   const libraryReady=window.mmpChartLibraryReady?await window.mmpChartLibraryReady:!!window.LightweightCharts;
+   if(!libraryReady||!window.LightweightCharts)throw new Error("کتابخانه نمودار از هیچ‌یک از منابع پشتیبان بارگذاری نشد.");
    const payload=await get(MAIN+"/market-candles?symbol="+encodeURIComponent(symbol)+"&interval="+encodeURIComponent(interval)+"&market="+encodeURIComponent(market),20000);
    const candles=chartCandleRows(payload),last=candles[candles.length-1],ageMs=Number(payload.data_age_ms),intervalMs=chartIntervalMs[interval]||900000;
    const candleAge=last?Math.max(0,Date.now()-last.time*1000):Infinity;
