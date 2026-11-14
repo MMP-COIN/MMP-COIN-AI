@@ -703,7 +703,7 @@ async function loadMarketFlow(symbol,windowMinutes=5,signal=null){
    // Gate's time-window endpoint is paginated. Continue until the oldest returned
    // trade reaches the requested window start, a short page proves exhaustion,
    // or the provider stops advancing. Never mark a capped sample as complete.
-   for(let page=1;page<=8;page++){
+   for(let page=1;page<=3;page++){
     const query="https://api.gateio.ws/api/v4/spot/trades?currency_pair="+encodeURIComponent(gatePair)+"&from="+Math.floor(cutoff/1000)+"&to="+Math.ceil(now/1000)+"&limit=1000&page="+page;
     const batch=await get(query,4500);
     if(!Array.isArray(batch))throw new Error("Gate trades response invalid");
@@ -761,7 +761,7 @@ if(!trades?.length||truncated||trades.length<8){
   // OKX Spot history is cursor-paginated; walk back until the requested window is fully covered.
   // This avoids treating a capped 500/1000-trade sample as a complete 5-minute flow window.
   const instId=pair.replace(/USDT$/,"")+"-USDT",history=[],seen=new Set();let after="",historyTruncated=true;
-  for(let page=0;page<10;page++){
+  for(let page=0;page<3;page++){
    const query="https://www.okx.com/api/v5/market/history-trades?instId="+encodeURIComponent(instId)+"&limit=100"+(after?"&after="+encodeURIComponent(after):"");
    const d=await get(query,4500);
    if(String(d.code)!=="0")throw new Error(d.msg||"OKX Spot history trades unavailable");
