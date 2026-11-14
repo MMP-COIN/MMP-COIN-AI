@@ -97,6 +97,40 @@ jobs:
           jq -e '.worker == "mmp-coin-ai-admin" and .status == "online"' /tmp/admin.json >/dev/null
           echo "Analyzer, Futures binding, Radar and Admin health endpoints passed."
 
+      - name: Expose only required production Workers and retire legacy schedules
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID || '2120f8e58c2e72df4acadeb00999324a' }}
+        run: |
+          set -euo pipefail
+          API="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts"
+          set_subdomain() {
+            local name="$1" enabled="$2"
+            curl --fail --silent --show-error --max-time 20 -X POST "$API/$name/subdomain" \
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" \
+              --data "{\"enabled\":$enabled,\"previews_enabled\":false}" -o "/tmp/$name-subdomain.json"
+            jq -e '.success == true' "/tmp/$name-subdomain.json" >/dev/null
+          }
+          clear_schedule() {
+            local name="$1"
+            curl --fail --silent --show-error --max-time 20 -X PUT "$API/$name/schedules" \
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" \
+              --data '[]' -o "/tmp/$name-schedules.json"
+            jq -e '.success == true and (.result | length == 0)' "/tmp/$name-schedules.json" >/dev/null
+          }
+          set_subdomain mmp-coin-ai-analyzer true
+          set_subdomain mmp-coin-ai-futures false
+          set_subdomain mmp-coin-ai-radar true
+          set_subdomain mmp-coin-ai-admin true
+          for name in mmp-coin-ai-hunter-cron mmp-coin-nexus; do
+            clear_schedule "$name"
+            set_subdomain "$name" false
+          done
+          for name in mmp-coin-ai-tether-monitor mmp-coin-ai-analyzer-preview mmp-coin-ai-futures-preview mmp-coin-ai-radar-preview mmp-coin-ai-hunter-cron-preview mmp-coin-ai-cron-test mmp-coin-ai-github-deploy; do
+            set_subdomain "$name" false
+          done
+          echo "Only Analyzer, Futures (private binding), Radar and Admin are exposed; legacy Cron schedules and preview/test subdomains are disabled."
+
       - name: Verify browser CORS for website and Capacitor
         run: |
           set -euo pipefail
