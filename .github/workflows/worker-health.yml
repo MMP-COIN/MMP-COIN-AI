@@ -764,7 +764,7 @@ jobs:
         run: |
           set -euo pipefail
           for source in nobitex-tether wallex-markets bitpin-tickers exir-tickers ramzinex-pairs; do
-            status=$(curl --silent --show-error --max-time 25 -D "/tmp/$source.headers" -o "/tmp/$source.json" -w "%{http_code}" "$WORKER_URL/market-proxy?source=$source" || echo 000)
+            status=$(curl --silent --show-error --max-time 25 -D "/tmp/$source.headers" -o "/tmp/$source.json" -w "%{http_code}" "$WORKER_URL/market-proxy?source=$source" 2>/dev/null || true)
             if [ "$status" = "200" ] && grep -qi '^x-mmp-cache: fresh' "/tmp/$source.headers" && test -s "/tmp/$source.json"; then
               echo "Fresh proxy payload: $source"
             else
