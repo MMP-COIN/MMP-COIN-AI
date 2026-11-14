@@ -1560,7 +1560,7 @@ async function handle(request,env){
   const url=new URL(request.url);
   const symbols=[...new Set((url.searchParams.get("symbols")||"").split(",").map(x=>x.toUpperCase().replace(/[^A-Z0-9_]/g,"")).filter(validSymbol))].slice(0,150);
   if(!symbols.length)return json({error:"Provide comma-separated symbols"},400,request);
-  const catalogs=await getExchangeCatalogs(mode,upstreamBudget);
+  const catalogs=await getExchangeCatalogs("both");
   const assets=symbols.map(symbol=>exchangeSupport(symbol,catalogs));
   const sources=Object.fromEntries(Object.entries(catalogs).map(([k,v])=>[k,{ok:!!v?.ok,status:v?.status||0,error:v?.error||null,source:v?.source||null}]));
   return json({checked_at:new Date().toISOString(),assets,sources},200,request);
