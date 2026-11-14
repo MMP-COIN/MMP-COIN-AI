@@ -4,7 +4,7 @@ name: MMP COIN AI Worker Health Check
 on:
   workflow_dispatch:
   push:
-    branches: [main, "rebuild/**"]
+    branches: [main]
   pull_request:
     paths:
       - "cloudflare-worker/**"
@@ -18,7 +18,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: mmp-coin-worker-health-${{ github.event.pull_request.head.ref || github.ref_name }}
+  group: mmp-coin-release-validation-${{ github.event.pull_request.head.ref || github.ref_name }}
   cancel-in-progress: false
 
 jobs:
