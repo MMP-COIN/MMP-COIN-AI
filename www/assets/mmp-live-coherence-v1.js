@@ -64,7 +64,8 @@
     renderCrypto(btc, "btc", "btc-sub", "BTC");
     renderCrypto(eth, "eth", "eth-sub", "ETH");
 
-    if (goldQuote && Date.now() - goldQuote.updatedAt <= MAX_GOLD_AGE_MS) {
+    const goldAge = goldQuote ? Date.now() - Number(goldQuote.updatedAt) : Infinity;
+    if (goldQuote && Number.isFinite(goldAge) && goldAge >= 0 && goldAge <= MAX_GOLD_AGE_MS) {
       setCardValue("gold", "gold-sub", number(goldQuote.price, 2) + " USDT",
         (typeof isTetherRateFresh === "function" && isTetherRateFresh()
           ? "معادل " + Math.round(Number(goldQuote.price) * Number(currentTetherPrice)).toLocaleString("en-US") + " تومان · "
@@ -231,7 +232,8 @@
       const saved = readGoldCache();
       const price = Number(saved?.price);
       const updatedAt = Number(saved?.updatedAt);
-      if (ok && price > 0 && updatedAt > 0 && Date.now() - updatedAt <= MAX_GOLD_AGE_MS) {
+      const age = Date.now() - updatedAt;
+      if (ok && price > 0 && updatedAt > 0 && Number.isFinite(age) && age >= 0 && age <= MAX_GOLD_AGE_MS) {
         goldQuote = { price, updatedAt };
       } else {
         goldQuote = null;
@@ -268,7 +270,8 @@
       const saved = readGoldCache();
       const price = Number(saved?.price);
       const updatedAt = Number(saved?.updatedAt);
-      goldQuote = ok && price > 0 && updatedAt > 0 && Date.now() - updatedAt <= MAX_GOLD_AGE_MS
+      const age = Date.now() - updatedAt;
+      goldQuote = ok && price > 0 && updatedAt > 0 && Number.isFinite(age) && age >= 0 && age <= MAX_GOLD_AGE_MS
         ? { price, updatedAt } : null;
       renderFixedCards();
       return ok;
