@@ -1149,7 +1149,7 @@ async function scanHunterSymbols(symbols,marketType="spot",assetList=[],env=null
    if(marketType==="futures"&&engineActivity?.sentiment)engineActivity.sentiment.processed++;
    const [sentimentResult,flowResult,depthResult]=await Promise.allSettled([
     marketType==="futures"?loadHunterFundingSentiment(x.symbol,x.trend,preferred,flowController.signal):Promise.resolve({available:false,score:null,sourceCount:0,sources:[]}),
-    marketType==="futures"?loadFuturesMarketFlow(x.symbol,1,flowController.signal):loadMarketFlow(x.symbol,5,flowController.signal),
+    marketType==="futures"?loadFuturesMarketFlow(x.symbol,1,flowController.signal):loadMarketFlow(x.symbol,Math.max(1,Math.min(5,Number(options.flowWindowMinutes)||5)),flowController.signal),
     loadHunterDepth(x.symbol,marketType,preferred,flowController.signal)
    ]);
    const sentiment=sentimentResult.status==="fulfilled"?sentimentResult.value:{available:false,score:null,sourceCount:0,sources:[]};
@@ -1252,14 +1252,14 @@ export async function refreshDigitalHunterUniverses(env){
  await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind("digital-hunter-universe-refresh",JSON.stringify(payload),payload.updated_at).run();
  return payload;
 }
-export async function runDigitalHunterMarketCycle(env,marketType="spot"){
+export async function runDigitalHunterMarketCycle(env,marketType="spot",options={}){
  if(!env.ADMIN_DB)throw Error("ADMIN_DB binding missing");
  const stateId=marketType==="futures"?"digital-hunter-v2-futures":"digital-hunter-v2",stored=await env.ADMIN_DB.prepare("SELECT payload FROM hunter_engine_state WHERE id = ?").bind(stateId).first(),previous=stored?.payload?JSON.parse(stored.payload):{},now=Date.now();
- if(previous.lastRun&&now-Number(previous.lastRun)<45000&&previous.snapshot)return {...previous.snapshot,cycle_skipped:true};
- const batchLimit=marketType==="futures"?FUTURES_HUNTER_BATCH_SIZE:HUNTER_BATCH_SIZE;
+ if(!options.force&&previous.lastRun&&now-Number(previous.lastRun)<45000&&previous.snapshot)return {...previous.snapshot,cycle_skipped:true};
+ const defaultBatchLimit=marketType==="futures"?FUTURES_HUNTER_BATCH_SIZE:HUNTER_BATCH_SIZE,batchLimit=Math.max(1,Math.min(defaultBatchLimit,Number(options.batchLimit)||defaultBatchLimit));
  const learningId="mmp-learning-ledger-v1-"+marketType;let priorLedger={};
  try{const learningRow=await env.ADMIN_DB.prepare("SELECT payload FROM hunter_engine_state WHERE id = ?").bind(learningId).first();priorLedger=learningRow?.payload?JSON.parse(learningRow.payload):{};}catch{}
- const dueLearningRecords=(priorLedger.records||[]).filter(record=>{if(record.market!==marketType||record.status!=="open")return false;const horizon=[5,15,60].find(minutes=>(record["outcome_"+minutes+"m"]===null||record["outcome_"+minutes+"m"]===undefined)&&record["missed_"+minutes+"m"]!==true);return !!horizon&&now>=Number(record.signal_at||now)+horizon*60000&&now<=Number(record.signal_at||now)+horizon*60000+120000;}).sort((a,b)=>Number(a.signal_at)-Number(b.signal_at)).slice(0,2);
+ const dueLearningRecords=options.skipLearningMarks?[]:(priorLedger.records||[]).filter(record=>{if(record.market!==marketType||record.status!=="open")return false;const horizon=[5,15,60].find(minutes=>(record["outcome_"+minutes+"m"]===null||record["outcome_"+minutes+"m"]===undefined)&&record["missed_"+minutes+"m"]!==true);return !!horizon&&now>=Number(record.signal_at||now)+horizon*60000&&now<=Number(record.signal_at||now)+horizon*60000+120000;}).sort((a,b)=>Number(a.signal_at)-Number(b.signal_at)).slice(0,Math.max(0,Math.min(2,Number(options.maxPriorityRechecks??2)))));
  const cacheId=stateId+"-universe-cache",cachedRow=await env.ADMIN_DB.prepare("SELECT payload FROM hunter_engine_state WHERE id = ?").bind(cacheId).first(),cached=cachedRow?.payload?JSON.parse(cachedRow.payload):null;
  let assets=Array.isArray(previous.assets)?previous.assets:[],universeUpdatedAt=Number(previous.universeUpdatedAt)||0,universeSources=previous.universeSources||{},universeProvider=previous.universeProvider||"multi-exchange",adoptedUniverse=false;
  const cacheIsNewer=Number(cached?.universeUpdatedAt)>universeUpdatedAt;
@@ -1297,7 +1297,7 @@ export async function runDigitalHunterMarketCycle(env,marketType="spot"){
   if(!symbol||selectedSymbols.has(symbol)||Number(failureCooldown[symbol]||0)>now)continue;
   batch.push(asset);selectedSymbols.add(symbol);
  }
- const result=await scanHunterSymbols(batch.map(x=>x.symbol),marketType,batch,env,{reviewAI:false});
+ const result=await scanHunterSymbols(batch.map(x=>x.symbol),marketType,batch,env,{reviewAI:false,flowWindowMinutes:options.flowWindowMinutes||5});
  const learningMarkResults=await Promise.allSettled(dueLearningRecords.map(async record=>{const asset=assets.find(x=>x.symbol===record.symbol)||null,market=await fetchHunterCandles(record.symbol,marketType,asset),closed=market.rows.slice(0,-1),last=closed.at(-1),price=Number(last?.[4]);if(!(price>0))throw new Error("No fresh closed candle for learning mark");return {symbol:record.symbol,price,currentPrice:price,checked_at:now,provider:market.provider};}));
  const learningMarks=learningMarkResults.filter(x=>x.status==="fulfilled").map(x=>x.value);
  // Retry transient exchange/network failures sooner; quality rejects are not
@@ -1331,7 +1331,7 @@ export async function runDigitalHunterMarketCycle(env,marketType="spot"){
  await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(stateId,payload,new Date(now).toISOString()).run();
  return snapshot;
 }
-async function runDigitalHunterCycle(env){return runDigitalHunterMarketCycle(env,"spot");}
+async function runDigitalHunterCycle(env,options={}){return runDigitalHunterMarketCycle(env,"spot",options);}
 
 async function handle(request,env){
  if(request.method==="OPTIONS"){
@@ -1372,7 +1372,7 @@ async function handle(request,env){
   return json(saved?.snapshot||{status:"warming_up",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,signals:[],scanned_count:0,universe_count:0},200,request);
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-run"){
-  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-run",env,300),request);if(limited)return limited;try{return json(await runDigitalHunterCycle(env),200,request);}catch(e){return json({status:"error",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,error:String(e?.message||e).slice(0,220)},502,request);}
+  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-run",env,300),request);if(limited)return limited;try{return json(await runDigitalHunterCycle(env,{batchLimit:1,maxPriorityRechecks:0,skipLearningMarks:true,flowWindowMinutes:1,force:true}),200,request);}catch(e){return json({status:"error",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,error:String(e?.message||e).slice(0,220)},502,request);}
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-cron-status"){
   const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-cron-status",env,300),request);if(limited)return limited;
