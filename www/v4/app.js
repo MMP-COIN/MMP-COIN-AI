@@ -36,10 +36,10 @@
     {source:"Nobitex",url:MAIN+"/market-proxy?source=nobitex-tether",read:d=>Number(d?.stats?.["usdt-rls"]?.latest)/10},
     {source:"Wallex",url:MAIN+"/market-proxy?source=wallex-markets",read:d=>{
      const raw=d?.result?.symbols||d?.result?.markets||{},markets=Array.isArray(raw)?raw:Object.values(raw);
-     const toman=markets.find(m=>String(m?.symbol||"").toUpperCase()==="USDTTMN");
-     const rial=markets.find(m=>String(m?.symbol||"").toUpperCase()==="USDTIRT");
+     const toman=markets.find(m=>["USDTTMN","USDTIRT"].includes(String(m?.symbol||"").toUpperCase()));
+     const rial=markets.find(m=>["USDTIRR","USDTRLS"].includes(String(m?.symbol||"").toUpperCase()));
      const a=Number(toman?.stats?.lastPrice??toman?.lastPrice),b=Number(rial?.stats?.lastPrice??rial?.lastPrice);
-     return a>0?a:b;
+     return a>0?a:b/10;
     }},
     {source:"Bitpin",url:MAIN+"/market-proxy?source=bitpin-tickers",read:d=>{
      const rows=Array.isArray(d?.results)?d.results:Array.isArray(d?.data)?d.data:Array.isArray(d)?d:[];
