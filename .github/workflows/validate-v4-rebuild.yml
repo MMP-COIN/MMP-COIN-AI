@@ -22,6 +22,22 @@ jobs:
           node-version: 20
       - name: Check JavaScript syntax
         run: node --check www/v4/app.js
+      - name: Enforce fresh Tether conversion and reduced-motion support
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+          const app = fs.readFileSync("www/v4/app.js", "utf8");
+          const css = fs.readFileSync("www/v4/app.css", "utf8");
+          for (const guard of [
+            "Date.now()-Number(saved.updatedAt)<90*1000",
+            "Date.now()-currentTetherUpdatedAt<90*1000"
+          ]) {
+            if (!app.includes(guard)) throw new Error("Tether conversion freshness guard missing: " + guard);
+          }
+          if (!css.includes("@media (prefers-reduced-motion: reduce)"))
+            throw new Error("Reduced-motion accessibility rule is missing");
+          console.log("Fresh Tether conversion and reduced-motion accessibility guards verified.");
+          NODE
       - name: Inspect current public Pages response without publishing
         run: |
           set -euo pipefail
