@@ -1584,8 +1584,8 @@ async function handle(request,env){
     const spotProviders=String(spot?.asset?.hunterExchange||"").split(",").map(x=>x.trim()).filter(Boolean);
     const futuresProviders=String(futures?.asset?.hunterExchange||"").split(",").map(x=>x.trim()).filter(Boolean);
     const pairs=Array.isArray(spot?.asset?.marketPairs)?spot.asset.marketPairs:[];
-    const spotFresh=!!spot&&spotAge!==null&&spotAge<=maxAge&&!spot.stale;
-    const futuresFresh=!!futures&&futuresAge!==null&&futuresAge<=maxAge&&!futures.stale;
+    const spotFresh=!!spot&&spotAge!==null&&spotAge<=maxAge;
+    const futuresFresh=!!futures&&futuresAge!==null&&futuresAge<=maxAge;
     const spotConfirmed=spotFresh&&spotProviders.length>=2&&pairs.length>=2;
     const futuresConfirmed=futuresFresh&&futuresProviders.length>=2;
     return {
@@ -1596,7 +1596,7 @@ async function handle(request,env){
       spot:Object.fromEntries(spotProviders.map(name=>[name,"فعال · فهرست چندصرافی"])),
       futures:Object.fromEntries(futuresProviders.map(name=>[name,"فعال · فهرست چندصرافی"]))
      },
-     cache:{spot_age_ms:spotAge,futures_age_ms:futuresAge,spot_stale:!spotFresh,futures_stale:!futuresFresh,source:"D1 precomputed multi-exchange universe"}
+     cache:{spot_age_ms:spotAge,futures_age_ms:futuresAge,spot_stale:!spotFresh||!!spot?.stale,futures_stale:!futuresFresh||!!futures?.stale,source:"D1 precomputed multi-exchange universe"}
     };
    });
    return json({checked_at:new Date().toISOString(),assets:results,sources:{spot:{cache_id:"digital-hunter-v2-universe-cache",count:spotCache.size},futures:{cache_id:"digital-hunter-v2-futures-universe-cache",count:futuresCache.size}}},200,request,{"X-MMP-Data-Source":"D1 precomputed multi-exchange universe","X-MMP-Cache":"HIT"});
