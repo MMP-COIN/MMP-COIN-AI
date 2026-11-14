@@ -88,7 +88,7 @@ jobs:
           RADAR="https://mmp-coin-ai-radar.mehrdadmohammadi1988.workers.dev"
           ADMIN="https://mmp-coin-ai-admin.mehrdadmohammadi1988.workers.dev"
           curl --fail --silent --show-error --retry 5 --retry-delay 3 "$BASE/health" -o /tmp/analyzer.json
-          jq -e '.worker == "online" and .ai_binding == true and .futures_engine_binding == true and .market_cache_binding == true' /tmp/analyzer.json >/dev/null
+          jq -e '.worker == "online" and .ai_binding == true and .futures_engine_binding == true and .market_cache_binding == true and .admin_db_binding == true' /tmp/analyzer.json >/dev/null
           curl --fail --silent --show-error --retry 5 --retry-delay 3 "$BASE/futures-engine-health" -o /tmp/futures.json
           jq -e '.status == "online" and .service_binding == "connected"' /tmp/futures.json >/dev/null
           curl --fail --silent --show-error --retry 5 --retry-delay 3 "$RADAR/health" -o /tmp/radar.json
