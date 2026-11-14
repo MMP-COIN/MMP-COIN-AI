@@ -58,6 +58,26 @@ jobs:
           }
           console.log("Core health and all required bindings are mandatory for healthy status.");
           NODE
+      - name: Validate resilient chart loading and exact Worker route wiring
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+          const html = fs.readFileSync("www/v4/index.html", "utf8");
+          const app = fs.readFileSync("www/v4/app.js", "utf8");
+          const worker = fs.readFileSync("cloudflare-worker/worker.js", "utf8");
+          const radar = fs.readFileSync("cloudflare-worker/radar-worker.js", "utf8");
+          if (!html.includes("window.mmpChartLibraryReady") || !html.includes("unpkg.com/lightweight-charts@4.2.3")) throw new Error("Chart CDN fallback is missing");
+          if (!app.includes("await window.mmpChartLibraryReady") || !app.includes("window.LightweightCharts")) throw new Error("Chart initialization must wait for a confirmed library load");
+          for (const route of ["/health","/connections-health","/local-market-watch","/market-proxy","/hunter-combined-snapshot","/market-candles","/analyze"]) {
+            if (!worker.includes(route)) throw new Error("V4 calls an Analyzer route that is absent from the Worker: " + route);
+          }
+          if (!radar.includes("/health") || !radar.includes("/fast-radar-snapshot")) throw new Error("V4 Radar routes are missing");
+          if (/fetch\(\s*["'`]https?:\/\/(?:api|fapi|stream)\./i.test(app)) throw new Error("Browser code must not call exchange APIs directly");
+          for (const source of [worker, fs.readFileSync("cloudflare-worker/futures-worker.js","utf8")]) {
+            if (source.includes("TETHER_MONITOR")) throw new Error("Required V4 Workers must not depend on an extra Tether Worker");
+          }
+          console.log("Chart fallback, Analyzer/Radar route wiring and no-direct-exchange policy verified.");
+          NODE
       - name: Inspect current public Pages response without publishing
         run: |
           set -euo pipefail
