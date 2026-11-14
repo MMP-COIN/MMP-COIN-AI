@@ -3,7 +3,7 @@
 (function () {
   "use strict";
 
-  const MAX_CRYPTO_AGE_MS = 30000;
+  const MAX_CRYPTO_AGE_MS = 90000;
   const MAX_GOLD_AGE_MS = 180000;
   const TETHER_POLL_MS = 30000;
   const GOLD_POLL_MS = 60000;
@@ -52,18 +52,24 @@
         return;
       }
       const change = Number(quote.change24h);
+      const tomanText = typeof isTetherRateFresh === "function" && isTetherRateFresh()
+        ? "معادل " + Math.round(Number(quote.usd) * Number(currentTetherPrice)).toLocaleString("en-US") + " تومان"
+        : "معادل تومانی در انتظار نرخ زنده تتر";
       const changeText = Number.isFinite(change)
         ? " · ۲۴ ساعت: " + (change >= 0 ? "+" : "") + change.toFixed(2) + "%"
         : "";
       setCardValue(valueId, subId, number(quote.usd, 2) + " USDT",
-        (quote.sources || "منبع زنده") + changeText + " · " + timeLabel(quote.exchangeTimestamp || quote.updatedAt));
+        tomanText + " · " + (quote.sources || "منبع زنده") + changeText + " · " + timeLabel(quote.exchangeTimestamp || quote.updatedAt));
     };
     renderCrypto(btc, "btc", "btc-sub", "BTC");
     renderCrypto(eth, "eth", "eth-sub", "ETH");
 
     if (goldQuote && Date.now() - goldQuote.updatedAt <= MAX_GOLD_AGE_MS) {
       setCardValue("gold", "gold-sub", number(goldQuote.price, 2) + " USDT",
-        "منبع: Gold-API · قیمت زنده · " + timeLabel(goldQuote.updatedAt));
+        (typeof isTetherRateFresh === "function" && isTetherRateFresh()
+          ? "معادل " + Math.round(Number(goldQuote.price) * Number(currentTetherPrice)).toLocaleString("en-US") + " تومان · "
+          : "معادل تومانی در انتظار نرخ زنده تتر · ")
+          + "منبع: Gold-API · قیمت زنده · " + timeLabel(goldQuote.updatedAt));
     } else {
       setCardValue("gold", "gold-sub", "—", "قیمت زنده طلا در دسترس نیست؛ قیمت ذخیره‌شده نمایش داده نمی‌شود");
     }
@@ -92,7 +98,7 @@
     lastMarket.crypto[key] = {
       usd: price,
       change24h: Number(data.P),
-      updatedAt: Date.now(),
+      updatedAt: eventTime,
       exchangeTimestamp: eventTime,
       sources: "Binance Spot WebSocket"
     };
