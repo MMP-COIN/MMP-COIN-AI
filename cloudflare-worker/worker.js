@@ -803,7 +803,7 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
     const rows=raw.map(map).filter(x=>x.every(Number.isFinite)&&x[1]>0&&x[2]>=x[3]&&x[3]>0&&x[4]>0&&x[5]>=0).sort((a,b)=>a[0]-b[0]);
     if(rows.length>=65)return [label,rows];
     throw new Error(label+" returned only "+rows.length+" candles");
-   }catch(error){const message=String(error?.message||error),upstreamStatus=/HTTP (400|403|429|451)/i,transientStatus=/HTTP (403|429|451|5\\d\\d)|fetch failed|timeout|aborted/i,invalidPayload=/invalid candle payload|Symbol Is Invalid|returned only \\d+ candles/i;lastError=new Error(label+": "+message);if(/HTTP 400/i.test(message)||invalidPayload.test(message))break;if(upstreamStatus.test(message)&&transientStatus.test(message))continue;if(transientStatus.test(message))continue;}
+   }catch(error){const message=String(error?.message||error),upstreamStatus=/HTTP (400|403|429|451)/i,transientStatus=/HTTP (403|429|451|5\d\d)|fetch failed|timeout|aborted/i,invalidPayload=/invalid candle payload|Symbol Is Invalid|returned only \\d+ candles/i;lastError=new Error(label+": "+message);if(/HTTP 400/i.test(message)||invalidPayload.test(message))break;if(upstreamStatus.test(message)&&transientStatus.test(message))continue;if(transientStatus.test(message))continue;}
   }
   throw lastError||new Error(label+" unavailable");
  };
