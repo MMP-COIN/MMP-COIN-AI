@@ -1,6 +1,8 @@
 name = "mmp-coin-ai-analyzer"
 main = "worker.js"
 compatibility_date = "2026-11-04"
+workers_dev = true
+preview_urls = false
 
 [ai]
 binding = "AI"
@@ -51,15 +53,3 @@ binding = "FUTURES_ENGINE"
 service = "mmp-coin-ai-futures"
 environment = "production"
 
-# Private service binding to the isolated Tether monitor Worker.
-[[services]]
-binding = "TETHER_MONITOR"
-service = "mmp-coin-ai-tether-monitor"
-environment = "production"
-
-# Private service binding to the internal GitHub bridge API.
-# The analyzer can call env.GITHUB_DEPLOY_API.fetch(...) without exposing the API publicly.
-[[services]]
-binding = "GITHUB_DEPLOY_API"
-service = "mmp-coin-ai-github-deploy"
-environment = "production"

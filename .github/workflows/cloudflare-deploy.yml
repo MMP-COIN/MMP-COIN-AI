@@ -1,25 +1,19 @@
-name: Deploy MMP COIN AI Cloudflare Workers
+name: Deploy MMP COIN AI required production Workers
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "cloudflare-worker/**"
-      - ".github/workflows/cloudflare-deploy.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
 
-# Never cancel a deployment halfway through the dependency chain.
 concurrency:
-  group: mmp-cloudflare-production-deploy
+  group: mmp-cloudflare-controlled-release
   cancel-in-progress: false
 
 jobs:
   deploy:
-    name: Validate and deploy production Workers
-    runs-on: ubuntu-latest
+    name: Validate and deploy only required production Workers
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -33,73 +27,130 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Validate and normalize Cloudflare deployment credentials
+      - name: Validate Cloudflare credentials without printing secrets
         run: |
           set -euo pipefail
           TOKEN="$(printf '%s' "$CLOUDFLARE_API_TOKEN" | tr -d '[:space:]')"
           if [ -z "$TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
-            echo "::error::Cloudflare deployment is blocked. Set CLOUDFLARE_API_TOKEN as a valid repository Actions secret. The account ID fallback is configured. No deployment was attempted."
+            echo "::error::Controlled Cloudflare deployment is blocked: required token/account configuration is missing."
             exit 1
           fi
           if [[ ! "$TOKEN" =~ ^[A-Za-z0-9._-]+$ ]]; then
-            echo "::error::CLOUDFLARE_API_TOKEN contains unsupported characters after whitespace normalization. Replace the GitHub Actions secret with the raw Cloudflare API token only."
+            echo "::error::Cloudflare token format is invalid after whitespace normalization."
             exit 1
           fi
           echo "::add-mask::$TOKEN"
           printf 'CLOUDFLARE_API_TOKEN=%s\n' "$TOKEN" >> "$GITHUB_ENV"
-          VERIFY_STATUS="$(curl --silent --show-error --max-time 20 -o /tmp/cloudflare-token-verify.json -w '%{http_code}' -H "Authorization: Bearer $TOKEN" https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/tokens/verify)"
-          if [ "$VERIFY_STATUS" != "200" ] || ! jq -e '.success == true and .result.status == "active"' /tmp/cloudflare-token-verify.json >/dev/null; then
-            echo "::error::Cloudflare API token verification failed. Replace CLOUDFLARE_API_TOKEN with the active raw token from Cloudflare. Token values are never printed."
-            jq -c '{success,errors}' /tmp/cloudflare-token-verify.json || true
+          VERIFY_STATUS="$(curl --silent --show-error --max-time 20 -o /tmp/cf-token.json -w '%{http_code}' -H "Authorization: Bearer $TOKEN" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/tokens/verify")"
+          if [ "$VERIFY_STATUS" != "200" ] || ! jq -e '.success == true and .result.status == "active"' /tmp/cf-token.json >/dev/null; then
+            echo "::error::Cloudflare API token verification failed. No Worker was deployed."
+            jq -c '{success,errors}' /tmp/cf-token.json || true
             exit 1
           fi
-          echo "Cloudflare API token is active and account ID is configured."
+          echo "Cloudflare token verified for the configured account."
 
-      - name: Validate Worker JavaScript syntax
+      - name: Validate required Worker entry points and deployment policy
         run: |
           set -euo pipefail
           node --check --input-type=module < cloudflare-worker/worker.js
           node --check --input-type=module < cloudflare-worker/futures-worker.js
           node --check --input-type=module < cloudflare-worker/radar-worker.js
-          node --check --input-type=module < cloudflare-worker/hunter-cron-worker.js
-          node --check --input-type=module < cloudflare-worker/nexus-worker.js
-          node --check --input-type=module < cloudflare-worker/tether-monitor-worker.js
-          node --check --input-type=module < cloudflare-worker/github-deploy-worker.js
-          grep -q '^workers_dev = false$' cloudflare-worker/github-deploy-wrangler.toml
-          grep -q '^preview_urls = false$' cloudflare-worker/github-deploy-wrangler.toml
-          echo "All seven Worker entry points passed syntax validation; internal bridge is configured private-only."
-
-      - name: Deploy isolated Tether monitor
-        run: npx --yes wrangler@4 deploy --config cloudflare-worker/tether-monitor-wrangler.toml
-
-      - name: Deploy Radar Worker
-        run: npx --yes wrangler@4 deploy --config cloudflare-worker/radar-wrangler.toml
+          node --check --input-type=module < cloudflare-worker/admin-worker.js
+          grep -Fq 'name = "mmp-coin-ai-analyzer"' cloudflare-worker/wrangler.toml
+          grep -Fq 'crons = ["* * * * *"]' cloudflare-worker/wrangler.toml
+          grep -Fq 'name = "mmp-coin-ai-futures"' cloudflare-worker/futures-wrangler.toml
+          grep -Fq 'workers_dev = false' cloudflare-worker/futures-wrangler.toml
+          grep -Fq 'name = "mmp-coin-ai-radar"' cloudflare-worker/radar-wrangler.toml
+          grep -Fq 'crons = ["* * * * *"]' cloudflare-worker/radar-wrangler.toml
+          grep -Fq 'name = "mmp-coin-ai-admin"' cloudflare-worker/admin-wrangler.toml
+          grep -Fq 'crons = ["*/15 * * * *"]' cloudflare-worker/admin-wrangler.toml
+          grep -Fq 'binding = "ADMIN_DB"' cloudflare-worker/admin-wrangler.toml
+          grep -Fq 'workers_dev = true' cloudflare-worker/admin-wrangler.toml
+          grep -Fq 'preview_urls = false' cloudflare-worker/admin-wrangler.toml
+          echo "Only Analyzer, Futures, Radar and Admin are included in the controlled release."
 
       - name: Deploy Futures Worker
         run: npx --yes wrangler@4 deploy --config cloudflare-worker/futures-wrangler.toml
 
-      - name: Deploy main Analyzer Worker
+      - name: Deploy Radar Worker
+        run: npx --yes wrangler@4 deploy --config cloudflare-worker/radar-wrangler.toml
+
+      - name: Deploy Analyzer Worker
         run: npx --yes wrangler@4 deploy --config cloudflare-worker/wrangler.toml
 
-      - name: Deploy independent Hunter scheduler
-        run: npx --yes wrangler@4 deploy --config cloudflare-worker/hunter-cron-wrangler.toml
+      - name: Deploy Admin Worker
+        run: npx --yes wrangler@4 deploy --config cloudflare-worker/admin-wrangler.toml
 
-      - name: Deploy NEXUS monitor
-        run: npx --yes wrangler@4 deploy --config cloudflare-worker/nexus-wrangler.toml
-
-      - name: Deploy private GitHub bridge API
-        run: npx --yes wrangler@4 deploy --config cloudflare-worker/github-deploy-wrangler.toml
-
-      - name: Verify deployed Analyzer and Futures service binding
+      - name: Verify deployed Worker health and bindings
         run: |
           set -euo pipefail
           BASE="https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev"
-          curl --fail --silent --show-error --retry 5 --retry-delay 3 "$BASE/health" -o /tmp/analyzer-health.json
-          node -e 'const x=require("/tmp/analyzer-health.json"); if(x.worker!=="online"||x.futures_engine_binding!==true) { console.error(x); process.exit(1) } console.log("Analyzer is online and Futures service binding is configured.")'
-          curl --fail --silent --show-error --retry 5 --retry-delay 3 "$BASE/futures-engine-health" -o /tmp/futures-health.json
-          node -e 'const x=require("/tmp/futures-health.json"); if(x.status!=="online"||x.service_binding!=="connected") { console.error(x); process.exit(1) } console.log("Dedicated Futures Worker is online through the production service binding.")'
+          RADAR="https://mmp-coin-ai-radar.mehrdadmohammadi1988.workers.dev"
+          ADMIN="https://mmp-coin-ai-admin.mehrdadmohammadi1988.workers.dev"
+          curl --fail --silent --show-error --retry 5 --retry-delay 3 "$BASE/health" -o /tmp/analyzer.json
+          jq -e '.worker == "online" and .ai_binding == true and .futures_engine_binding == true and .market_cache_binding == true' /tmp/analyzer.json >/dev/null
+          curl --fail --silent --show-error --retry 5 --retry-delay 3 "$BASE/futures-engine-health" -o /tmp/futures.json
+          jq -e '.status == "online" and .service_binding == "connected"' /tmp/futures.json >/dev/null
+          curl --fail --silent --show-error --retry 5 --retry-delay 3 "$RADAR/health" -o /tmp/radar.json
+          jq -e '.worker == "online" and (.engine_version | type == "string")' /tmp/radar.json >/dev/null
+          curl --fail --silent --show-error --retry 5 --retry-delay 3 "$ADMIN/health" -o /tmp/admin.json
+          jq -e '.worker == "mmp-coin-ai-admin" and .status == "online"' /tmp/admin.json >/dev/null
+          echo "Analyzer, Futures binding, Radar and Admin health endpoints passed."
 
-      - name: Record deployment provenance
+      - name: Expose only required production Workers and retire legacy schedules
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID || '2120f8e58c2e72df4acadeb00999324a' }}
+        run: |
+          set -euo pipefail
+          API="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts"
+          set_subdomain() {
+            local name="$1" enabled="$2"
+            curl --fail --silent --show-error --max-time 20 -X POST "$API/$name/subdomain" \
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" \
+              --data "{\"enabled\":$enabled,\"previews_enabled\":false}" -o "/tmp/$name-subdomain.json"
+            jq -e '.success == true' "/tmp/$name-subdomain.json" >/dev/null
+          }
+          clear_schedule() {
+            local name="$1"
+            curl --fail --silent --show-error --max-time 20 -X PUT "$API/$name/schedules" \
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" \
+              --data '[]' -o "/tmp/$name-schedules.json"
+            jq -e '.success == true and (.result.schedules | length == 0)' "/tmp/$name-schedules.json" >/dev/null
+          }
+          set_subdomain mmp-coin-ai-analyzer true
+          set_subdomain mmp-coin-ai-futures false
+          set_subdomain mmp-coin-ai-radar true
+          set_subdomain mmp-coin-ai-admin true
+          for name in mmp-coin-ai-hunter-cron mmp-coin-nexus; do
+            clear_schedule "$name"
+            set_subdomain "$name" false
+          done
+          for name in mmp-coin-ai-tether-monitor mmp-coin-ai-analyzer-preview mmp-coin-ai-futures-preview mmp-coin-ai-radar-preview mmp-coin-ai-hunter-cron-preview mmp-coin-ai-cron-test mmp-coin-ai-github-deploy; do
+            set_subdomain "$name" false
+          done
+          echo "Only Analyzer, Futures (private binding), Radar and Admin are exposed; legacy Cron schedules and preview/test subdomains are disabled."
+
+      - name: Verify browser CORS for website and Capacitor
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          const base = "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev";
+          const radar = "https://mmp-coin-ai-radar.mehrdadmohammadi1988.workers.dev";
+          for (const origin of ["https://mmp-coin.github.io", "capacitor://localhost"]) {
+            for (const url of [base + "/health", base + "/connections-health", base + "/hunter-combined-snapshot", base + "/market-candles?symbol=BTCUSDT&interval=1h&market=spot"]) {
+              const r = await fetch(url, {method:"OPTIONS",headers:{Origin:origin,"Access-Control-Request-Method":"GET"}});
+              if (r.status !== 204 || r.headers.get("access-control-allow-origin") !== origin) throw new Error("Analyzer CORS failed: " + origin + " " + url);
+            }
+            const p = await fetch(base + "/analyze", {method:"OPTIONS",headers:{Origin:origin,"Access-Control-Request-Method":"POST","Access-Control-Request-Headers":"content-type"}});
+            if (p.status !== 204 || p.headers.get("access-control-allow-origin") !== origin || !String(p.headers.get("access-control-allow-methods")||"").includes("POST")) throw new Error("Analyzer POST CORS failed: " + origin);
+            const rr = await fetch(radar + "/fast-radar-snapshot", {headers:{Origin:origin,Accept:"application/json"}});
+            if (!rr.ok || rr.headers.get("access-control-allow-origin") !== "*") throw new Error("Radar CORS failed: " + origin);
+            console.log("PASS CORS", origin);
+          }
+          NODE
+
+      - name: Record controlled deployment provenance
         run: |
           echo "Deployed canonical commit: $GITHUB_SHA"
-          echo "All six production Workers and the private GitHub bridge deployment completed; Analyzer and Futures health checks passed."
+          echo "Only Analyzer, Futures, Radar and Admin are deployed by this manually dispatched workflow."

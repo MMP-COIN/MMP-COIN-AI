@@ -1964,7 +1964,7 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/futures-engine-heal
    ai_binding:!!env.AI,futures_engine_binding:!!env.FUTURES_ENGINE,market_cache_binding:!!env.MARKET_CACHE_DB,
    checked_at:new Date().toISOString()},200,request);
  }
- if(request.method!=="POST")return json({error:"Method not allowed"},405,request);
+ if(request.method!=="POST"||new URL(request.url).pathname!=="/analyze")return json({error:"Method not allowed"},405,request);
  const limitResult=await checkRateLimit(env.AI_ANALYSIS_LIMITER,request,"ai-analysis",env,15);
  const limited=rateLimitReply(limitResult,request);if(limited)return limited;
 
@@ -2140,12 +2140,7 @@ export default {
   const scheduledAt=Number(event?.scheduledTime)||Date.now(),minute=new Date(scheduledAt).getUTCMinutes();
   const universeRefresh=minute%15===0?refreshDigitalHunterUniverses(env).catch(error=>console.error("Hunter universe refresh failed:",error?.message||error)):Promise.resolve();
   const hunterCycle=runDigitalHunterCron(event,env,ctx).catch(error=>console.error("Digital Hunter scheduled cycle failed:",error?.message||error));
-  // Call the isolated Tether Worker through a service binding. Its external
-  // provider requests use a separate invocation/subrequest budget.
-  const tetherMonitor=env.TETHER_MONITOR?.fetch
-   ?env.TETHER_MONITOR.fetch(new Request("https://tether-monitor.internal/run",{method:"POST",headers:{"Content-Type":"application/json"}})).then(async response=>{if(!response.ok)throw new Error("Tether monitor HTTP "+response.status);const result=await response.json();console.log("Tether monitor isolated run",JSON.stringify({status:result.status,source_count:result.source_count,checked_at:result.checked_at}));}).catch(error=>console.error("Isolated Tether monitor failed:",error?.message||error))
-   :Promise.resolve();
-  const background=Promise.allSettled([cleanup,universeRefresh,hunterCycle,tetherMonitor]);
+  const background=Promise.allSettled([cleanup,universeRefresh,hunterCycle]);
   if(ctx?.waitUntil)ctx.waitUntil(background);else await background;
  }
 };
