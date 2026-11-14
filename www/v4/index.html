@@ -99,6 +99,23 @@
  <section class="section" id="engines"><div class="section-heading"><div><span class="kicker">06 / QUANTUM INTELLIGENCE</span><h2>موتور هوشمند یکپارچه <em>MMP</em></h2><p>یک هسته هماهنگ برای اجرای تحلیل‌ها و وظایف تخصصی بازار</p></div></div><div class="unified-engine glass" id="engineCore"><div class="unified-engine-mark"><span>M</span></div><div class="unified-engine-copy"><b>هسته یکپارچه هوش بازار</b><p>۱۲ بُعد امتیازدهی وزن‌دار در یک هسته مشترک؛ هر بُعد فقط با ورودی معتبر فعال می‌شود و مؤلفه‌های فاقد شواهد از امتیاز کنار گذاشته می‌شوند. این‌ها ۱۲ مدل مستقل یا ۱۲ سرویس جداگانه نیستند.</p><small id="engineStatus">وضعیت اتصال داده‌ها: در انتظار بررسی</small></div></div></section>
  <footer class="footer"><div class="brand"><span class="coin-mark"><span>M</span></span><span class="brand-copy"><b>MMP <i>COIN</i> AI</b><small>QUANTUM MARKET TERMINAL</small></span></div><div class="footer-copy">تحلیل داده‌محور بازار؛ بدون تضمین سود و بدون سیگنال ساختگی.</div><a href="mailto:mmp.coin.ai@gmail.com">ارتباط با ما</a></footer>
 </main>
-<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js" defer></script>
+<script>
+window.mmpChartLibraryReady=new Promise(resolve=>{
+ const urls=[
+  "https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js",
+  "https://unpkg.com/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js"
+ ];
+ let index=0;
+ const loadNext=()=>{
+  if(index>=urls.length){resolve(false);return;}
+  const script=document.createElement("script");
+  script.src=urls[index++];
+  script.onload=()=>resolve(!!window.LightweightCharts);
+  script.onerror=loadNext;
+  document.head.appendChild(script);
+ };
+ loadNext();
+});
+</script>
 <script src="./app.js" defer></script>
 </body></html>
