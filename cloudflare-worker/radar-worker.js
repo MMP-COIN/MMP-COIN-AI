@@ -358,7 +358,7 @@ function json(data,status=200){return new Response(JSON.stringify(data),{status,
 export default {
   async fetch(request,env){
     const url=new URL(request.url);
-    if(request.method==="OPTIONS")return json({},204);
+    if(request.method==="OPTIONS")return new Response(null,{status:204,headers:{"Access-Control-Allow-Origin":"*","Access-Control-Allow-Methods":"GET, OPTIONS","Access-Control-Allow-Headers":"Content-Type","Access-Control-Max-Age":"86400","Cache-Control":"no-store","X-Content-Type-Options":"nosniff"}});
     if(request.method!=="GET")return json({error:"Method not allowed"},405);
     if(url.pathname==="/health")return json({worker:"online",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,scheduled_scan:"every minute",kv_read_fallback:!!env.RADAR_KV,d1_persistence:!!env.ADMIN_DB,checked_at:new Date().toISOString()});
     if(url.pathname==="/fast-radar-snapshot"||url.pathname==="/snapshot"){

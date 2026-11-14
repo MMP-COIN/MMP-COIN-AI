@@ -1753,7 +1753,7 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/market-proxy"){
    "coinlore-top":["https://api.coinlore.net/api/tickers/?start="+requestedOffset+"&limit=100"],
    "nobitex-tether":["https://apiv2.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls","https://apiv2.nobitex.ir/market/stats?dstCurrency=rls","https://apiv2.nobitex.ir/v3/orderbook/USDTIRT","https://api.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls","https://api.nobitex.ir/v3/orderbook/USDTIRT"],
    "wallex-markets":["https://api.wallex.ir/hector/web/v1/markets","https://api.wallex.ir/v1/markets","https://api.wallex.ir/v1/otc/markets"],
-   "bitpin-tickers":["https://api.bitpin.org/api/v1/mkt/tickers/","https://api.bitpin.ir/api/v1/mkt/tickers/"],
+   "bitpin-tickers":["https://api.bitpin.org/api/v1/mkt/tickers/","https://api.bitpin.ir/api/v1/mkt/tickers/","https://api.bitpin.market/api/v1/mkt/tickers/"],
    "exir-tickers":["https://api.exir.io/v2/tickers"],
    "ramzinex-pairs":["https://publicapi.ramzinex.com/exchange/api/v1.0/exchange/pairs"]
   };
@@ -1962,9 +1962,10 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/futures-engine-heal
   // Provider reachability is reported by /connections-health, not by this lightweight route.
   return json({service:"MMP COIN AI",worker:"online",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,
    ai_binding:!!env.AI,futures_engine_binding:!!env.FUTURES_ENGINE,market_cache_binding:!!env.MARKET_CACHE_DB,
+   admin_db_binding:!!env.ADMIN_DB,
    checked_at:new Date().toISOString()},200,request);
  }
- if(request.method!=="POST")return json({error:"Method not allowed"},405,request);
+ if(request.method!=="POST"||new URL(request.url).pathname!=="/analyze")return json({error:"Method not allowed"},405,request);
  const limitResult=await checkRateLimit(env.AI_ANALYSIS_LIMITER,request,"ai-analysis",env,15);
  const limited=rateLimitReply(limitResult,request);if(limited)return limited;
 
@@ -2140,12 +2141,7 @@ export default {
   const scheduledAt=Number(event?.scheduledTime)||Date.now(),minute=new Date(scheduledAt).getUTCMinutes();
   const universeRefresh=minute%15===0?refreshDigitalHunterUniverses(env).catch(error=>console.error("Hunter universe refresh failed:",error?.message||error)):Promise.resolve();
   const hunterCycle=runDigitalHunterCron(event,env,ctx).catch(error=>console.error("Digital Hunter scheduled cycle failed:",error?.message||error));
-  // Call the isolated Tether Worker through a service binding. Its external
-  // provider requests use a separate invocation/subrequest budget.
-  const tetherMonitor=env.TETHER_MONITOR?.fetch
-   ?env.TETHER_MONITOR.fetch(new Request("https://tether-monitor.internal/run",{method:"POST",headers:{"Content-Type":"application/json"}})).then(async response=>{if(!response.ok)throw new Error("Tether monitor HTTP "+response.status);const result=await response.json();console.log("Tether monitor isolated run",JSON.stringify({status:result.status,source_count:result.source_count,checked_at:result.checked_at}));}).catch(error=>console.error("Isolated Tether monitor failed:",error?.message||error))
-   :Promise.resolve();
-  const background=Promise.allSettled([cleanup,universeRefresh,hunterCycle,tetherMonitor]);
+  const background=Promise.allSettled([cleanup,universeRefresh,hunterCycle]);
   if(ctx?.waitUntil)ctx.waitUntil(background);else await background;
  }
 };
