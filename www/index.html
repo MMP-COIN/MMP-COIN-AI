@@ -3234,15 +3234,14 @@ async function refreshLiveQuotes(){
  try{
   const updated=await enrichWithBinance(cachedCoinsData);
   const now=Date.now();
-  const fresh=updated.filter(c=>Number(c.current_price)>0&&c.price_is_stale!==true&&Number(c.price_source_count)>=1&&Number.isFinite(Date.parse(c.price_updated_at||""))&&now-Date.parse(c.price_updated_at)<=120000);
+  const fresh=updated.filter(c=>Number(c.current_price)>0&&c.price_is_stale!==true&&Number(c.price_source_count)>=1&&Number.isFinite(Date.parse(c.price_updated_at||""))&&now-Date.parse(c.price_updated_at)<=90000);
   if(!fresh.length)return false;
   const byId=new Map(updated.map(c=>[String(c.id),c]));
   cachedCoinsData=cachedCoinsData.map(c=>byId.get(String(c.id))||c);
   lastMarket.crypto=lastMarket.crypto||{};
   cachedCoinsData.forEach(c=>{
    const symbol=String(c.symbol||"").toUpperCase();
-   if(symbol==="BTC"&&c.price_is_stale!==true&&Number(c.price_source_count)>=1)lastMarket.crypto.BTC={usd:Number(c.current_price),change24h:c.price_change_percentage_24h,updatedAt:now,sources:c.price_source};
-   if(symbol==="ETH"&&c.price_is_stale!==true&&Number(c.price_source_count)>=1)lastMarket.crypto.ETH={usd:Number(c.current_price),change24h:c.price_change_percentage_24h,updatedAt:now,sources:c.price_source};
+   if((symbol==="BTC"||symbol==="ETH")&&c.price_is_stale!==true&&Number(c.price_source_count)>=1){const sourceAt=Date.parse(c.price_updated_at||"");if(Number.isFinite(sourceAt)&&now-sourceAt>=0&&now-sourceAt<=90000)lastMarket.crypto[symbol]={usd:Number(c.current_price),change24h:c.price_change_percentage_24h,updatedAt:sourceAt,exchangeTimestamp:sourceAt,sources:c.price_source};}
   });
   renderCoinsTables(cachedCoinsData);renderHeroCards();
   const stamp=new Date().toLocaleTimeString("fa-IR");
@@ -3664,12 +3663,12 @@ async function refreshBenchmarkQuotes(){
    return {id:symbol==="BTC"?"bitcoin":"ethereum",symbol,name:old.name||symbol,current_price:Number(old.current_price)||0,price_change_percentage_24h:old.price_change_percentage_24h,price_source:old.price_source||"آخرین داده معتبر",price_updated_at:old.price_updated_at||null};
   });
   const quotes=await enrichWithBinance(seed);
-  const now=Date.now(),fresh=quotes.filter(c=>Number(c.current_price)>0&&c.price_is_stale!==true&&Number(c.price_source_count)>=1&&Number.isFinite(Date.parse(c.price_updated_at||""))&&now-Date.parse(c.price_updated_at)<=120000);
+  const now=Date.now(),fresh=quotes.filter(c=>Number(c.current_price)>0&&c.price_is_stale!==true&&Number(c.price_source_count)>=1&&Number.isFinite(Date.parse(c.price_updated_at||""))&&now-Date.parse(c.price_updated_at)<=90000);
   if(!fresh.length)return false;
   const bySymbol=new Map(fresh.map(c=>[String(c.symbol).toUpperCase(),c]));
   cachedCoinsData=cachedCoinsData.map(c=>bySymbol.get(String(c.symbol||"").toUpperCase())?{...c,...bySymbol.get(String(c.symbol||"").toUpperCase())}:c);
   lastMarket.crypto=lastMarket.crypto||{};
-  fresh.forEach(c=>{lastMarket.crypto[c.symbol.toUpperCase()]={usd:Number(c.current_price),change24h:c.price_change_percentage_24h,updatedAt:now,sources:c.price_source};});
+  fresh.forEach(c=>{const sourceAt=Date.parse(c.price_updated_at||"");lastMarket.crypto[c.symbol.toUpperCase()]={usd:Number(c.current_price),change24h:c.price_change_percentage_24h,updatedAt:sourceAt,exchangeTimestamp:sourceAt,sources:c.price_source};});
   renderHeroCards();
   return true;
  }catch(error){console.warn("Independent BTC/ETH quote refresh failed:",error);return false;}
