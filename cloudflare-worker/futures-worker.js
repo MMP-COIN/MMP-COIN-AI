@@ -9,7 +9,7 @@ export default {
    if(!env.FUTURES_ENGINE_TOKEN||request.headers.get("X-MMP-Futures-Token")!==env.FUTURES_ENGINE_TOKEN)return json({error:"Unauthorized"},401);
    const symbol=String(url.searchParams.get("symbol")||"").toUpperCase(),windowMinutes=url.searchParams.get("window")||1;
    if(!/^[A-Z0-9]{2,24}(USDT)?$/.test(symbol))return json({error:"Invalid Futures symbol"},400);
-   try{return json(await loadFuturesMarketFlow(symbol,windowMinutes),200);}
+   try{const flow=await loadFuturesMarketFlow(symbol,windowMinutes);if(url.searchParams.get("compact")==="1"){const trades=Array.isArray(flow.trades)?flow.trades:[];return json({...flow,trade_count:flow.trade_count||trades.length,trades:trades.slice(-100),trade_sampled:true},200);}return json(flow,200);}
    catch(error){return json({error:String(error?.message||error).slice(0,260)},502);}
   }
   if(url.pathname==="/run"&&request.method==="POST"){
