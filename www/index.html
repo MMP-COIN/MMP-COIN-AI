@@ -7678,19 +7678,17 @@ html body section#market-snapshot.mmp-market-snapshot>article.mmp-market-card:ho
 <script src="assets/mmp-compact-redesign.js?v=4" defer></script>
 <script src="assets/mmp-section-nexus-v1.js?v=20261113-2" defer></script>
 
-<style id="mmp-home-four-market-cards-refresh-20261113">
+<style id="mmp-home-four-market-cards-refresh-20261114">
 /* MMP Quantum Gold asset frames: visual-only treatment; existing card markup/data remain untouched. */
 html body main#hero>#mmp-home-hero{margin-bottom:14px!important}
 html body main#hero>section#market-snapshot.mmp-market-snapshot{
   display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;
   gap:13px!important;margin:0 0 20px!important;align-items:stretch!important
 }
-html body #market-snapshot>.mmp-market-card{
+html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-card{
   --mmp-card-accent:#e8c77b;
   --mmp-card-glow:#d9b66d38;
   --mmp-card-surface:#211d16;
-  min-height:150px!important;height:auto!important;max-height:none!important;
-  padding:15px 14px 12px!important;
   border:1px solid #d9b66dcc!important;
   border-radius:18px!important;
   background:
@@ -7701,7 +7699,7 @@ html body #market-snapshot>.mmp-market-card{
   overflow:hidden!important;position:relative!important;isolation:isolate!important;
   transition:transform .22s ease,border-color .22s ease,box-shadow .22s ease!important
 }
-html body #market-snapshot>.mmp-market-card:before{
+html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-card:before{
   content:""!important;position:absolute!important;inset:0!important;
   border-radius:inherit!important;padding:1px!important;
   background:linear-gradient(135deg,#fff0c2,#b78b43 28%,#f5dfa0 52%,#80602e 76%,#e8c77b)!important;
@@ -7709,33 +7707,33 @@ html body #market-snapshot>.mmp-market-card:before{
   -webkit-mask-composite:xor!important;mask-composite:exclude!important;
   pointer-events:none!important;z-index:2!important
 }
-html body #market-snapshot>.mmp-market-card:after{
+html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-card:after{
   content:""!important;position:absolute!important;right:-39px!important;top:-48px!important;
   width:132px!important;height:132px!important;border:1px solid #e8c77b55!important;
   border-radius:50%!important;box-shadow:0 0 0 9px #e8c77b0d,0 0 0 20px #e8c77b08,0 0 28px #d9b66d18!important;
   pointer-events:none!important;z-index:-1!important
 }
-html body #market-snapshot>.mmp-market-card .mmp-card-top,
-html body #market-snapshot>.mmp-market-card .stat-label,
-html body #market-snapshot>.mmp-market-card .stat-value,
-html body #market-snapshot>.mmp-market-card .sub,
-html body #market-snapshot>.mmp-market-card .mmp-card-track{position:relative;z-index:1}
-html body #market-snapshot .mmp-asset-icon{
+html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-card .mmp-card-top,
+html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-card .stat-label,
+html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-card .stat-value,
+html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-card .sub,
+html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-card .mmp-card-track{position:relative;z-index:1}
+html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-card .mmp-asset-icon{
   border:1px solid #e8c77b66!important;border-radius:11px!important;
   background:linear-gradient(145deg,#3a3020,#151820)!important;
   box-shadow:0 4px 13px #0008,inset 0 1px #fff2!important
 }
-html body #market-snapshot .btc-icon{color:#f2b84b!important}
-html body #market-snapshot .eth-icon{color:#aaa5ff!important}
-html body #market-snapshot .usdt-icon{color:#45d8a4!important}
-html body #market-snapshot .gold-icon{color:#f1d18a!important}
-html body #market-snapshot .mmp-card-tag{color:#d7c18e!important}
-html body #market-snapshot .stat-label{color:#c7b991!important}
-html body #market-snapshot .stat-value{color:#fff!important;text-shadow:0 0 16px #d9b66d25!important}
-html body #market-snapshot .sub{color:#a99d83!important}
-html body #market-snapshot .mmp-card-track{background:#ffffff18!important}
-html body #market-snapshot .mmp-card-track i{background:linear-gradient(90deg,#9c7536,#f5dfa0,#c59a4b)!important;box-shadow:0 0 12px #d9b66d44!important}
-html body #market-snapshot>.mmp-market-card:hover{
+html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-card .btc-icon{color:#f2b84b!important}
+html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-card .eth-icon{color:#aaa5ff!important}
+html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-card .usdt-icon{color:#45d8a4!important}
+html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-card .gold-icon{color:#f1d18a!important}
+html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-card .mmp-card-tag{color:#d7c18e!important}
+html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-card .stat-label{color:#c7b991!important}
+html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-card .stat-value{color:#fff!important;text-shadow:0 0 16px #d9b66d25!important}
+html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-card .sub{color:#a99d83!important}
+html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-card .mmp-card-track{background:#ffffff18!important}
+html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-card .mmp-card-track i{background:linear-gradient(90deg,#9c7536,#f5dfa0,#c59a4b)!important;box-shadow:0 0 12px #d9b66d44!important}
+html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-card:hover{
   transform:translateY(-3px)!important;border-color:#f5dfa0!important;
   box-shadow:0 18px 34px #000a,0 0 22px #d9b66d26,inset 0 1px #fff3!important
 }
@@ -7744,10 +7742,9 @@ html body #market-snapshot>.mmp-market-card:hover{
 }
 @media(max-width:560px){
  html body main#hero>section#market-snapshot.mmp-market-snapshot{gap:8px!important;margin-bottom:16px!important}
- html body #market-snapshot>.mmp-market-card{min-height:132px!important;padding:11px 10px 9px!important}
 }
 @media(prefers-reduced-motion:reduce){
- html body #market-snapshot>.mmp-market-card{transition:none!important}
+ html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-card{transition:none!important}
 }
 </style>
 
