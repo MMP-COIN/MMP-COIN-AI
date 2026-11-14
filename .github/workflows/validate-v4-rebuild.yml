@@ -150,33 +150,38 @@ jobs:
             throw new Error("Analyzer and Futures runtime versions do not match");
           console.log("PASS matching runtime version", livePayloads["main worker health"].engine_version);
 
-          const tetherChecks = await Promise.allSettled([
-            fetch("https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/local-market-watch", {signal: AbortSignal.timeout(12000)}).then(async r => r.ok ? {data: await r.json()} : null),
-            fetch("https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-proxy?source=nobitex-tether", {signal: AbortSignal.timeout(12000)}).then(async r => r.ok ? {data: await r.json(), cache: r.headers.get("X-MMP-Cache")} : null),
-            fetch("https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-proxy?source=wallex-markets", {signal: AbortSignal.timeout(12000)}).then(async r => r.ok ? {data: await r.json(), cache: r.headers.get("X-MMP-Cache")} : null),
-          ]);
-          const localResult = tetherChecks[0].status === "fulfilled" ? tetherChecks[0].value : null;
-          const nobitexResult = tetherChecks[1].status === "fulfilled" ? tetherChecks[1].value : null;
-          const wallexResult = tetherChecks[2].status === "fulfilled" ? tetherChecks[2].value : null;
-          const local = localResult?.data || null;
-          const nobitex = nobitexResult?.cache === "fresh" ? nobitexResult.data : null;
-          const wallex = wallexResult?.cache === "fresh" ? wallexResult.data : null;
-          const localPrice = Number(local?.median_toman);
-          const localValid = local?.fresh === true && local?.data_stale !== true && Number.isFinite(localPrice) && localPrice >= 1000 && localPrice <= 100000000 &&
-            Array.isArray(local?.sources) && local.sources.some(x => x?.fresh === true && Number(x.price_toman) > 0);
-          const nobitexPrice = Number(nobitex?.stats?.["usdt-rls"]?.latest) / 10;
-          const nobitexValid = Number.isFinite(nobitexPrice) && nobitexPrice >= 1000 && nobitexPrice <= 100000000;
-          const marketsRaw = wallex?.result?.symbols || wallex?.result?.markets || {};
-          const markets = Array.isArray(marketsRaw) ? marketsRaw : Object.values(marketsRaw);
-          const tomanMarket = markets.find(m => String(m?.symbol || "").toUpperCase() === "USDTTMN");
-          const rialMarket = markets.find(m => String(m?.symbol || "").toUpperCase() === "USDTIRT");
-          const wallexToman = Number(tomanMarket?.stats?.lastPrice ?? tomanMarket?.lastPrice);
-          const wallexRial = Number(rialMarket?.stats?.lastPrice ?? rialMarket?.lastPrice);
-          const wallexPrice = wallexToman > 0 ? wallexToman : wallexRial / 10;
-          const wallexValid = Number.isFinite(wallexPrice) && wallexPrice >= 1000 && wallexPrice <= 100000000;
-          if (!localValid && !nobitexValid && !wallexValid)
-            throw new Error("No valid live Toman/USDT rate from local-market-watch, Nobitex or Wallex");
-          console.log("PASS Toman/USDT live rate source", {localValid, nobitexValid, wallexValid});
+          const tetherSources = ["nobitex-tether","wallex-markets","bitpin-tickers","exir-tickers","ramzinex-pairs"];
+          const tetherResults = await Promise.all(tetherSources.map(async source => {
+            try {
+              const response = await fetch("https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-proxy?source="+source, {signal:AbortSignal.timeout(15000)});
+              if (!response.ok || String(response.headers.get("X-MMP-Cache")||"").toLowerCase() !== "fresh") return {source,data:null};
+              return {source,data:await response.json()};
+            } catch { return {source,data:null}; }
+          }));
+          const quotes = [];
+          const addQuote = (source,value) => { const price=Number(value); if(Number.isFinite(price)&&price>=1000&&price<=100000000)quotes.push({source,price}); };
+          const bySource = Object.fromEntries(tetherResults.map(x=>[x.source,x.data]));
+          const nobitex = bySource["nobitex-tether"];
+          addQuote("Nobitex",Number(nobitex?.stats?.["usdt-rls"]?.latest)/10);
+          const wallex = bySource["wallex-markets"], wr=wallex?.result?.symbols||wallex?.result?.markets||{}, wrows=Array.isArray(wr)?wr:Object.values(wr);
+          const wt=wrows.find(x=>String(x?.symbol||"").toUpperCase()==="USDTTMN"), wi=wrows.find(x=>String(x?.symbol||"").toUpperCase()==="USDTIRT");
+          const wtm=Number(wt?.stats?.lastPrice??wt?.lastPrice), wir=Number(wi?.stats?.lastPrice??wi?.lastPrice);
+          addQuote("Wallex",wtm>0?wtm:wir/10);
+          const bitpin=bySource["bitpin-tickers"], br=Array.isArray(bitpin?.results)?bitpin.results:Array.isArray(bitpin?.data)?bitpin.data:Array.isArray(bitpin)?bitpin:[];
+          const bp=br.find(x=>{const c=String(x?.code||x?.symbol||"").replace(/[/-]/g,"_").toUpperCase().replace(/_/g,"");const b=String(x?.currency1?.code||x?.base_currency||x?.baseAsset||"").toUpperCase(),q=String(x?.currency2?.code||x?.quote_currency||x?.quoteAsset||"").toUpperCase();return c==="USDTIRT"||(b==="USDT"&&q==="IRT");});
+          addQuote("Bitpin",Number(bp?.price_info?.price??bp?.internal_price_info?.price??bp?.price??bp?.last_price??bp?.last)*10);
+          const exir=bySource["exir-tickers"], es=exir?.result||exir?.data||exir||{}, ee=Array.isArray(es)?es.map(x=>[x?.symbol||x?.pair||"",x]):Object.entries(es);
+          const ep=ee.find(([k,v])=>/^(usdt-(irt|tmn|toman|irr|rls)|(irt|tmn|toman|irr|rls)-usdt)$/.test(String(v?.symbol||v?.pair||k).toLowerCase().replace(/[_/]/g,"-")));
+          if(ep){const sym=String(ep[1]?.symbol||ep[0]).toLowerCase().replace(/[_/]/g,"-"),parts=sym.split("-"),rev=parts[0]!=="usdt",unit=rev?parts[0]:parts[1],raw=Number(ep[1]?.last??ep[1]?.close??ep[1]?.price),price=rev&&raw>0?1/raw:raw;addQuote("Exir",price>0?(["irt","tmn","toman"].includes(unit)?price*10:price):0);}
+          const ram=bySource["ramzinex-pairs"], rr=ram?.result?.data??ram?.data??ram?.result?.pairs??ram?.pairs??[], rrows=Array.isArray(rr)?rr:Object.values(rr);
+          const code=v=>Array.isArray(v)?String(v[0]?.symbol??v[0]?.code??v[0]??""):String(v?.symbol??v?.code??v?.name??v??"");
+          const rp=rrows.find(x=>{const b=code(x?.base_currency_symbol??x?.base_currency??x?.baseCurrency).toUpperCase(),q=code(x?.quote_currency_symbol??x?.quote_currency??x?.quoteCurrency).toUpperCase(),n=String(x?.url_name??x?.symbol??x?.pair??"").toLowerCase().replace(/[_/]/g,"-");return b==="USDT"&&["IRR","IRT","RLS","TMN","TOMAN"].includes(q)||/^usdt-(irr|irt|rls|tmn|toman)$/.test(n);});
+          if(rp){const b=Number(rp.buy??rp.best_buy??rp.bid),a=Number(rp.sell??rp.best_sell??rp.ask),last=Number(rp.last??rp.last_price??rp.price??rp.rate),q=code(rp.quote_currency_symbol??rp.quote_currency??rp.quoteCurrency).toUpperCase(),raw=b>0&&a>0?(a+b)/2:last;addQuote("Ramzinex",raw>0?(["IRT","TMN","TOMAN"].includes(q)?raw*10:raw):0);}
+          if(quotes.length<2)throw new Error("Fewer than two fresh independent Tether sources returned valid prices: "+JSON.stringify(quotes));
+          const sorted=quotes.map(x=>x.price).sort((a,b)=>a-b),mid=Math.floor(sorted.length/2),median=sorted.length%2?sorted[mid]:(sorted[mid-1]+sorted[mid])/2;
+          const consensus=quotes.filter(x=>Math.abs(x.price-median)/median<=0.025);
+          if(consensus.length<2)throw new Error("No Tether source consensus within 2.5%: "+JSON.stringify(quotes));
+          console.log("PASS corroborated live Tether rate",consensus);
           const mainEndpoints = [
             "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/health",
             "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/futures-engine-health",
@@ -186,6 +191,9 @@ jobs:
             "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/local-market-watch",
             "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-proxy?source=nobitex-tether",
             "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-proxy?source=wallex-markets",
+            "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-proxy?source=bitpin-tickers",
+            "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-proxy?source=exir-tickers",
+            "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-proxy?source=ramzinex-pairs",
             "https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-candles?symbol=BTCUSDT&interval=1h&market=spot",
           ];
           for (const origin of ["https://mmp-coin.github.io", "capacitor://localhost"]) {
@@ -263,7 +271,7 @@ jobs:
               assert required in html, f"Missing required UI mount: {required}"
           for required in ['id="runtimeVersion"', "QIE Adaptive Intelligence", "فرماندهی کوانتومی", "نمودار حرفه‌ای", "رادار هوشمند", "شکارچی کوانتومی", "تحلیل‌گر هوشمند", "موتور هوشمند یکپارچه", "۱۲ بُعد امتیازدهی وزن‌دار"]:
               assert required in html, f"Missing required product section: {required}"
-          for required in ["hunter-combined-snapshot", "fast-radar-snapshot", "/connections-health", "cache:\"no-store\"", "fetchTetherRate", "getFreshProxy", "X-MMP-Cache", "data?.data_stale===true", "market.market_data_fresh===true", "r.market_data_fresh===true", "local-market-watch", "nobitex-tether", "wallex-markets", "mmp_tether_cache_v1", "Math.round(x.price*currentTetherPrice)", "— تومان"]:
+          for required in ["hunter-combined-snapshot", "fast-radar-snapshot", "/connections-health", "cache:\"no-store\"", "fetchTetherRate", "getFreshProxy", "X-MMP-Cache", "data?.data_stale===true", "market.market_data_fresh===true", "r.market_data_fresh===true", "local-market-watch", "nobitex-tether", "wallex-markets", "bitpin-tickers", "exir-tickers", "ramzinex-pairs", "mmp_tether_cache_v1", "Math.round(x.price*currentTetherPrice)", "— تومان"]:
               assert required in js, f"Missing live integration: {required}"
           assert "هیچ سیگنال ساختگی" in html, "No fabricated-signal disclosure"
           for required in ['meta name="mmp-app-version"', '__MMP_WEB_BUILD_ID__', 'mmp_native_version', 'mmp_live_refresh', 'aria-controls="primaryNav"', 'aria-expanded="false"']:
@@ -277,7 +285,7 @@ jobs:
           for required in ["Promise.allSettled(sources.map", "spread>1.5", "integrity-warning", "parseTimestamp", "age>maxAgeMs", "داده اسکن قدیمی"]:
               assert required in js, f"Missing integrity guard: {required}"
           assert "Math.random" not in js and "fake" not in js.lower(), "Synthetic market data is not allowed"
-          for host in ["api.binance.com", "api.bybit.com", "www.okx.com", "api.gateio.ws", "api.kucoin.com", "api.bitget.com", "api.mexc.com", "api.nobitex.ir", "api.wallex.ir"]:
+          for host in ["api.binance.com", "api.bybit.com", "www.okx.com", "api.gateio.ws", "api.kucoin.com", "api.bitget.com", "api.mexc.com", "api.nobitex.ir", "api.wallex.ir", "api.bitpin.org", "api.exir.io", "publicapi.ramzinex.com"]:
               assert host not in js, f"Browser must use the Worker proxy, not direct exchange host: {host}"
           assert "مرکز فرماندهی کوانتومی" not in html and "engineGrid" not in html and "engineGrid" not in js, "Legacy title or visible 12-engine grid remains"
           assert "QIE-4" not in html and "4.0" not in html, "The UI must not hardcode an outdated QIE runtime version"
