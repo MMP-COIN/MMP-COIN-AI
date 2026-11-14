@@ -51,8 +51,3 @@ binding = "FUTURES_ENGINE"
 service = "mmp-coin-ai-futures"
 environment = "production"
 
-# Private service binding to the isolated Tether monitor Worker.
-[[services]]
-binding = "TETHER_MONITOR"
-service = "mmp-coin-ai-tether-monitor"
-environment = "production"
