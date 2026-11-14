@@ -1957,69 +1957,74 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/market-proxy"){
   return json({error:"Market data source unavailable",source,detail:String(lastError||"upstream error").slice(0,120)},502,request);
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/connections-health"){
-  const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"connections-health",env,300);
-  const limited=rateLimitReply(limitResult,request);if(limited)return limited;
+  if(!internalAuthorized){
+   const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"connections-health",env,300);
+   const limited=rateLimitReply(limitResult,request);if(limited)return limited;
+  }
+  if(!env.ADMIN_DB)return json({status:"offline",error:"ADMIN_DB binding missing",checks:[],stale:true},503,request);
+  const refresh=internalAuthorized&&new URL(request.url).searchParams.get("refresh")==="1";
+  if(!refresh){
+   try{
+    const row=await env.ADMIN_DB.prepare("SELECT payload,updated_at FROM hunter_engine_state WHERE id=?").bind("connections-health").first();
+    if(!row?.payload)return json({status:"warming_up",checks:[],stale:true,error:"Connection monitor has not completed its first cycle"},503,request);
+    const saved=JSON.parse(row.payload),checks=Array.isArray(saved.checks)?saved.checks:[];
+    const now=Date.now(),ages=checks.map(x=>x.checked_at?Math.max(0,now-Date.parse(x.checked_at)):Infinity),oldestAgeMs=ages.length?Math.max(...ages):Infinity;
+    const stale=checks.length!==18||oldestAgeMs>10*60*1000||checks.some(x=>x.status==="warming_up");
+    const up=checks.filter(x=>["ok","slow"].includes(x.status)),spotUp=up.filter(x=>x.market==="spot").length,futuresUp=up.filter(x=>x.market==="futures").length,iranUp=up.filter(x=>x.market==="iran").length;
+    const status=stale?"stale":spotUp>=2&&futuresUp>=2&&iranUp>=1?"online":"degraded";
+    return json({...saved,status,stale,age_ms:Math.max(0,now-Date.parse(saved.checked_at||row.updated_at||"")),oldest_check_age_ms:Number.isFinite(oldestAgeMs)?oldestAgeMs:null,healthy:{spot:spotUp,futures:futuresUp,iran:iranUp}},200,request,{"X-MMP-Cache":"HIT","X-MMP-Health-Source":"D1 background monitor"});
+   }catch(error){return json({status:"error",checks:[],stale:true,error:"Connection monitor cache could not be read",detail:String(error?.message||error).slice(0,160)},503,request);}
+  }
   const timeoutFetch=async(url,valid,timeout=9000,extraHeaders={})=>{
    const started=Date.now(),controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeout);
    try{
     const response=await fetch(url,{headers:{"Accept":"application/json, text/plain, */*","User-Agent":"MMP-COIN-AI/1.0","Accept-Language":"en-US,en;q=0.9",...extraHeaders},signal:controller.signal,cf:{cacheTtl:5,cacheEverything:true}});
     if(!response.ok)throw new Error("HTTP "+response.status);
-    const data=await response.json();
-    if(!valid(data))throw new Error("پاسخ معتبر دریافت نشد");
+    const data=await response.json();if(!valid(data))throw new Error("پاسخ معتبر دریافت نشد");
     return {status:Date.now()-started>2500?"slow":"ok",ping:Date.now()-started};
    }catch(error){return {status:"down",ping:null,error:String(error?.message||"network error").slice(0,100)};}
    finally{clearTimeout(timer);}
   };
   const probeAny=async(urls,valid,timeout=9000,extraHeaders={})=>{
    let last={status:"down",ping:null,error:"no endpoint responded"};
-   for(const url of urls){
-    const result=await timeoutFetch(url,valid,timeout,extraHeaders);
-    if(result.status!=="down")return {...result,endpoint:url};
-    last=result;
-   }
+   for(const endpoint of urls){const result=await timeoutFetch(endpoint,valid,timeout,extraHeaders);if(result.status!=="down")return {...result,endpoint};last={...result,endpoint};}
    return last;
   };
-  const [binance,bybit,okx,nobitex,wallex,bitget,gate,kucoin,mexc,whitebit,binanceFutures,bybitFutures,okxFutures,bitgetFutures,gateFutures,mexcFutures,kucoinFutures,whitebitFutures]=await Promise.all([
-   probeAny(["https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://api.binance.us/api/v3/ticker/price?symbol=BTCUSDT","https://api1.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://api2.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://api3.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://data-api.binance.vision/api/v3/ticker/price?symbol=BTCUSDT"],d=>Number(d?.price)>0),
-   probeAny(["https://api.bybit.com/v5/market/tickers?category=spot&symbol=BTCUSDT","https://api.bytick.com/v5/market/tickers?category=spot&symbol=BTCUSDT","https://api.bybit.eu/v5/market/tickers?category=spot&symbol=BTCUSDT","https://api.bytick.eu/v5/market/tickers?category=spot&symbol=BTCUSDT"],d=>d?.retCode===0&&Number(d?.result?.list?.[0]?.lastPrice)>0),
-   probeAny(["https://www.okx.com/api/v5/market/ticker?instId=BTC-USDT","https://us.okx.com/api/v5/market/ticker?instId=BTC-USDT","https://openapi.okx.com/api/v5/market/ticker?instId=BTC-USDT"],d=>d?.code==="0"&&Number(d?.data?.[0]?.last)>0),
-   probeAny(["https://apiv2.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls","https://api.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls"],d=>d?.status==="ok"&&Number(d?.stats?.["usdt-rls"]?.latest)>0,12000),
-   probeAny(["https://api.wallex.ir/hector/web/v1/markets","https://api.wallex.ir/v1/markets","https://api.wallex.ir/v1/otc/markets"],d=>{if(d?.success!==true)return false;const raw=d?.result?.symbols??d?.result?.markets;if(Array.isArray(raw))return raw.length>0;if(raw&&typeof raw==="object")return Object.keys(raw).length>0;return false;},12000,{"Origin":"https://wallex.ir","Referer":"https://wallex.ir/","User-Agent":"curl/8.14.1"}),
-   probeAny(["https://api.bitget.com/api/v3/market/tickers?category=SPOT&symbol=BTCUSDT","https://api.bitget.com/api/v2/spot/market/tickers?symbol=BTCUSDT"],d=>["00000","0"].includes(String(d?.code))&&Number(d?.data?.[0]?.lastPrice||d?.data?.[0]?.lastPr)>0,9000,{"Origin":"https://mmp-coin.github.io","Referer":"https://mmp-coin.github.io/","User-Agent":"curl/8.14.1"}),
-   probeAny(["https://api.gateio.ws/api/v4/spot/tickers?currency_pair=BTC_USDT","https://api.gate.us/api/v4/spot/tickers?currency_pair=BTC_USDT"],d=>Array.isArray(d)&&Number(d?.[0]?.last)>0,9000),
-   probeAny(["https://api.kucoin.com/api/v1/market/orderbook/level1?symbol=BTC-USDT","https://api.kucoin.tr/api/v1/market/orderbook/level1?symbol=BTC-USDT"],d=>d?.code==="200000"&&Number(d?.data?.price)>0,9000),
-   probeAny(["https://api.mexc.com/api/v3/ticker/price?symbol=BTCUSDT"],d=>Number(d?.price)>0,9000),
-   probeAny(["https://whitebit.com/api/v4/public/ticker"],d=>Number(d?.BTC_USDT?.last_price)>0,9000),
-   probeAny(["https://fapi.binance.com/fapi/v1/ticker/price?symbol=BTCUSDT","https://fapi1.binance.com/fapi/v1/ticker/price?symbol=BTCUSDT","https://fapi2.binance.com/fapi/v1/ticker/price?symbol=BTCUSDT","https://fapi3.binance.com/fapi/v1/ticker/price?symbol=BTCUSDT"],d=>Number(d?.price)>0,7000),
-   probeAny(["https://api.bybit.com/v5/market/tickers?category=linear&symbol=BTCUSDT","https://api.bytick.com/v5/market/tickers?category=linear&symbol=BTCUSDT","https://api.bybit.eu/v5/market/tickers?category=linear&symbol=BTCUSDT","https://api.bytick.eu/v5/market/tickers?category=linear&symbol=BTCUSDT"],d=>d?.retCode===0&&Number(d?.result?.list?.[0]?.lastPrice)>0,7000),
-   probeAny(["https://www.okx.com/api/v5/market/ticker?instId=BTC-USDT-SWAP","https://us.okx.com/api/v5/market/ticker?instId=BTC-USDT-SWAP","https://openapi.okx.com/api/v5/market/ticker?instId=BTC-USDT-SWAP"],d=>d?.code==="0"&&Number(d?.data?.[0]?.last)>0,7000),
-   probeAny(["https://api.bitget.com/api/v2/mix/market/ticker?productType=USDT-FUTURES&symbol=BTCUSDT"],d=>["00000","0"].includes(String(d?.code))&&Number(d?.data?.[0]?.lastPr)>0,9000),
-   probeAny(["https://api.gateio.ws/api/v4/futures/usdt/tickers?contract=BTC_USDT","https://api.gate.us/api/v4/futures/usdt/tickers?contract=BTC_USDT"],d=>Array.isArray(d)&&Number(d?.[0]?.last)>0,9000),
-   probeAny(["https://contract.mexc.com/api/v1/contract/ticker?symbol=BTC_USDT"],d=>d?.success===true&&Number(d?.data?.lastPrice)>0,9000),
-   probeAny(["https://api-futures.kucoin.com/api/v1/ticker?symbol=XBTUSDTM"],d=>d?.code==="200000"&&Number(d?.data?.price)>0,9000),
-   probeAny(["https://whitebit.com/api/v4/public/futures"],d=>d?.success===true&&Array.isArray(d?.result)&&d.result.some(x=>x?.ticker_id==="BTC_PERP"&&Number(x?.last_price)>0),9000)
-  ]);
-  const checks=[
-   {name:"Binance Spot",market:"spot",purpose:"قیمت، حجم و کندل اسپات",...binance},
-   {name:"Bybit Spot",market:"spot",purpose:"قیمت، حجم و کندل اسپات",...bybit},
-   {name:"OKX Spot",market:"spot",purpose:"قیمت، حجم و کندل اسپات",...okx},
-   {name:"Bitget Spot",market:"spot",purpose:"قیمت، حجم و کندل اسپات",...bitget},
-   {name:"Gate.io Spot",market:"spot",purpose:"قیمت، حجم و کندل اسپات",...gate},
-   {name:"KuCoin Spot",market:"spot",purpose:"قیمت، حجم و کندل اسپات",...kucoin},
-   {name:"MEXC Spot",market:"spot",purpose:"قیمت و معاملات اسپات",...mexc},
-   {name:"WhiteBIT Spot",market:"spot",purpose:"قیمت و معاملات اسپات",...whitebit},
-   {name:"Binance Futures",market:"futures",purpose:"قیمت قرارداد دائمی",...binanceFutures},
-   {name:"Bybit Futures",market:"futures",purpose:"قیمت قرارداد دائمی",...bybitFutures},
-   {name:"OKX Futures",market:"futures",purpose:"قیمت قرارداد دائمی",...okxFutures},
-   {name:"Bitget Futures",market:"futures",purpose:"قیمت قرارداد دائمی",...bitgetFutures},
-   {name:"Gate Futures",market:"futures",purpose:"قیمت قرارداد دائمی",...gateFutures},
-   {name:"MEXC Futures",market:"futures",purpose:"قیمت قرارداد دائمی",...mexcFutures},
-   {name:"KuCoin Futures",market:"futures",purpose:"قیمت قرارداد دائمی",...kucoinFutures},
-   {name:"WhiteBIT Futures",market:"futures",purpose:"قیمت قرارداد دائمی",...whitebitFutures},
-   {name:"Nobitex",market:"iran",purpose:"نرخ تتر به تومان",...nobitex},
-   {name:"Wallex",market:"iran",purpose:"نرخ تتر به تومان",...wallex}
+  const probes=[
+   {name:"Binance Spot",market:"spot",purpose:"قیمت، حجم و کندل اسپات",run:()=>probeAny(["https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://api.binance.us/api/v3/ticker/price?symbol=BTCUSDT","https://api1.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://api2.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://api3.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://data-api.binance.vision/api/v3/ticker/price?symbol=BTCUSDT"],d=>Number(d?.price)>0)},
+   {name:"Bybit Spot",market:"spot",purpose:"قیمت، حجم و کندل اسپات",run:()=>probeAny(["https://api.bybit.com/v5/market/tickers?category=spot&symbol=BTCUSDT","https://api.bytick.com/v5/market/tickers?category=spot&symbol=BTCUSDT","https://api.bybit.eu/v5/market/tickers?category=spot&symbol=BTCUSDT","https://api.bytick.eu/v5/market/tickers?category=spot&symbol=BTCUSDT"],d=>d?.retCode===0&&Number(d?.result?.list?.[0]?.lastPrice)>0)},
+   {name:"OKX Spot",market:"spot",purpose:"قیمت، حجم و کندل اسپات",run:()=>probeAny(["https://www.okx.com/api/v5/market/ticker?instId=BTC-USDT","https://us.okx.com/api/v5/market/ticker?instId=BTC-USDT","https://openapi.okx.com/api/v5/market/ticker?instId=BTC-USDT"],d=>d?.code==="0"&&Number(d?.data?.[0]?.last)>0)},
+   {name:"Nobitex",market:"iran",purpose:"نرخ تتر به تومان",run:()=>probeAny(["https://apiv2.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls","https://api.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls"],d=>d?.status==="ok"&&Number(d?.stats?.["usdt-rls"]?.latest)>0,12000)},
+   {name:"Wallex",market:"iran",purpose:"نرخ تتر به تومان",run:()=>probeAny(["https://api.wallex.ir/hector/web/v1/markets","https://api.wallex.ir/v1/markets","https://api.wallex.ir/v1/otc/markets"],d=>{if(d?.success!==true)return false;const raw=d?.result?.symbols??d?.result?.markets;if(Array.isArray(raw))return raw.length>0;if(raw&&typeof raw==="object")return Object.keys(raw).length>0;return false;},12000,{"Origin":"https://wallex.ir","Referer":"https://wallex.ir/","User-Agent":"curl/8.14.1"})},
+   {name:"Bitget Spot",market:"spot",purpose:"قیمت، حجم و کندل اسپات",run:()=>probeAny(["https://api.bitget.com/api/v3/market/tickers?category=SPOT&symbol=BTCUSDT","https://api.bitget.com/api/v2/spot/market/tickers?symbol=BTCUSDT"],d=>["00000","0"].includes(String(d?.code))&&Number(d?.data?.[0]?.lastPrice||d?.data?.[0]?.lastPr)>0,9000,{"Origin":"https://mmp-coin.github.io","Referer":"https://mmp-coin.github.io/","User-Agent":"curl/8.14.1"})},
+   {name:"Gate.io Spot",market:"spot",purpose:"قیمت، حجم و کندل اسپات",run:()=>probeAny(["https://api.gateio.ws/api/v4/spot/tickers?currency_pair=BTC_USDT","https://api.gate.us/api/v4/spot/tickers?currency_pair=BTC_USDT"],d=>Array.isArray(d)&&Number(d?.[0]?.last)>0,9000)},
+   {name:"KuCoin Spot",market:"spot",purpose:"قیمت و معاملات اسپات",run:()=>probeAny(["https://api.kucoin.com/api/v1/market/orderbook/level1?symbol=BTC-USDT","https://api.kucoin.tr/api/v1/market/orderbook/level1?symbol=BTC-USDT"],d=>d?.code==="200000"&&Number(d?.data?.price)>0,9000)},
+   {name:"MEXC Spot",market:"spot",purpose:"قیمت و معاملات اسپات",run:()=>probeAny(["https://api.mexc.com/api/v3/ticker/price?symbol=BTCUSDT"],d=>Number(d?.price)>0,9000)},
+   {name:"WhiteBIT Spot",market:"spot",purpose:"قیمت و معاملات اسپات",run:()=>probeAny(["https://whitebit.com/api/v4/public/ticker"],d=>Number(d?.BTC_USDT?.last_price)>0,9000)},
+   {name:"Binance Futures",market:"futures",purpose:"قیمت قرارداد دائمی",run:()=>probeAny(["https://fapi.binance.com/fapi/v1/ticker/price?symbol=BTCUSDT","https://fapi1.binance.com/fapi/v1/ticker/price?symbol=BTCUSDT","https://fapi2.binance.com/fapi/v1/ticker/price?symbol=BTCUSDT","https://fapi3.binance.com/fapi/v1/ticker/price?symbol=BTCUSDT"],d=>Number(d?.price)>0,7000)},
+   {name:"Bybit Futures",market:"futures",purpose:"قیمت قرارداد دائمی",run:()=>probeAny(["https://api.bybit.com/v5/market/tickers?category=linear&symbol=BTCUSDT","https://api.bytick.com/v5/market/tickers?category=linear&symbol=BTCUSDT","https://api.bybit.eu/v5/market/tickers?category=linear&symbol=BTCUSDT","https://api.bytick.eu/v5/market/tickers?category=linear&symbol=BTCUSDT"],d=>d?.retCode===0&&Number(d?.result?.list?.[0]?.lastPrice)>0,7000)},
+   {name:"OKX Futures",market:"futures",purpose:"قیمت قرارداد دائمی",run:()=>probeAny(["https://www.okx.com/api/v5/market/ticker?instId=BTC-USDT-SWAP","https://us.okx.com/api/v5/market/ticker?instId=BTC-USDT-SWAP","https://openapi.okx.com/api/v5/market/ticker?instId=BTC-USDT-SWAP"],d=>d?.code==="0"&&Number(d?.data?.[0]?.last)>0,7000)},
+   {name:"Bitget Futures",market:"futures",purpose:"قیمت قرارداد دائمی",run:()=>probeAny(["https://api.bitget.com/api/v2/mix/market/ticker?productType=USDT-FUTURES&symbol=BTCUSDT"],d=>["00000","0"].includes(String(d?.code))&&Number(d?.data?.[0]?.lastPr)>0,9000)},
+   {name:"Gate Futures",market:"futures",purpose:"قیمت قرارداد دائمی",run:()=>probeAny(["https://api.gateio.ws/api/v4/futures/usdt/tickers?contract=BTC_USDT","https://api.gate.us/api/v4/futures/usdt/tickers?contract=BTC_USDT"],d=>Array.isArray(d)&&Number(d?.[0]?.last)>0,9000)},
+   {name:"MEXC Futures",market:"futures",purpose:"قیمت قرارداد دائمی",run:()=>probeAny(["https://contract.mexc.com/api/v1/contract/ticker?symbol=BTC_USDT"],d=>d?.success===true&&Number(d?.data?.lastPrice)>0,9000)},
+   {name:"KuCoin Futures",market:"futures",purpose:"قیمت قرارداد دائمی",run:()=>probeAny(["https://api-futures.kucoin.com/api/v1/ticker?symbol=XBTUSDTM"],d=>d?.code==="200000"&&Number(d?.data?.price)>0,9000)},
+   {name:"WhiteBIT Futures",market:"futures",purpose:"قیمت قرارداد دائمی",run:()=>probeAny(["https://whitebit.com/api/v4/public/futures"],d=>d?.success===true&&Array.isArray(d?.result)&&d.result.some(x=>x?.ticker_id==="BTC_PERP"&&Number(x?.last_price)>0),9000)}
   ];
-  return json({checked_at:new Date().toISOString(),checks},200,request);
+  try{
+   const row=await env.ADMIN_DB.prepare("SELECT payload FROM hunter_engine_state WHERE id=?").bind("connections-health").first();
+   let previous={};try{previous=row?.payload?JSON.parse(row.payload):{};}catch{}
+   const cursor=Number(previous.cursor)||0,batchSize=4,batch=Array.from({length:Math.min(batchSize,probes.length)},(_,i)=>probes[(cursor+i)%probes.length]);
+   const fresh=await Promise.all(batch.map(async p=>({...await p.run(),name:p.name,market:p.market,purpose:p.purpose,checked_at:new Date().toISOString()})));
+   const byName=new Map((Array.isArray(previous.checks)?previous.checks:[]).map(x=>[x.name,x]));
+   for(const check of fresh)byName.set(check.name,check);
+   const checks=probes.map(p=>byName.get(p.name)||{name:p.name,market:p.market,purpose:p.purpose,status:"warming_up",ping:null,endpoint:null,error:"Awaiting first background probe",checked_at:null});
+   const now=Date.now(),ages=checks.map(x=>x.checked_at?Math.max(0,now-Date.parse(x.checked_at)):Infinity),oldestAgeMs=ages.length?Math.max(...ages):Infinity;
+   const up=checks.filter(x=>["ok","slow"].includes(x.status)),spotUp=up.filter(x=>x.market==="spot").length,futuresUp=up.filter(x=>x.market==="futures").length,iranUp=up.filter(x=>x.market==="iran").length;
+   const stale=checks.length!==probes.length||oldestAgeMs>10*60*1000||checks.some(x=>x.status==="warming_up");
+   const snapshot={status:!stale&&spotUp>=2&&futuresUp>=2&&iranUp>=1?"online":"degraded",stale,checked_at:new Date(now).toISOString(),oldest_check_age_ms:Number.isFinite(oldestAgeMs)?oldestAgeMs:null,healthy:{spot:spotUp,futures:futuresUp,iran:iranUp},checks,cursor:(cursor+batch.length)%probes.length,batch_size:batch.length};
+   await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,updated_at=excluded.updated_at").bind("connections-health",JSON.stringify(snapshot),snapshot.checked_at).run();
+   return json(snapshot,200,request,{"X-MMP-Cache":"MISS","X-MMP-Health-Batch":String(batch.length)});
+  }catch(error){return json({status:"error",checks:[],stale:true,error:"Connection monitor refresh failed",detail:String(error?.message||error).slice(0,160)},503,request);}
  }
 if(request.method==="GET"&&new URL(request.url).pathname==="/futures-engine-health"){
   if(!env.FUTURES_ENGINE)return json({service_binding:"missing",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION},503,request);
