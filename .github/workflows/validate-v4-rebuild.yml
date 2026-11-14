@@ -399,7 +399,7 @@ jobs:
               body: JSON.stringify({checked_at:new Date().toISOString(),checks:Array.from({length:8},(_,i)=>({name:"provider-"+i,status:"ok"}))})
             }));
             // Live proxy payloads are validated above; deterministic fixtures isolate responsive UI behavior here.
-            await page.route("https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-proxy", async route => {
+            await page.route("https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-proxy?source=*", async route => {
               const source = new URL(route.request().url()).searchParams.get("source");
               const headers = {"content-type":"application/json","access-control-allow-origin":"https://mmp-coin.github.io","access-control-allow-methods":"GET, POST, OPTIONS","access-control-allow-headers":"Content-Type","x-mmp-cache":"fresh"};
               const rows = [{symbol:"BTCUSDT",lastPrice:"65000",last:"65000"},{symbol:"ETHUSDT",lastPrice:"3500",last:"3500"},{symbol:"PAXGUSDT",lastPrice:"2700",last:"2700"}];
