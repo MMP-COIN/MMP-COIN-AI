@@ -284,7 +284,9 @@
   refreshGold();
   renderFixedCards();
 
-  setInterval(() => { renderFixedCards(); expireCatalogPrices(); }, 2000);
+  // Keep the freshness guard, but avoid waking the main thread every 2 seconds.
+  // WebSocket and quote-refresh callbacks still update cards immediately.
+  setInterval(() => { renderFixedCards(); expireCatalogPrices(); }, 10000);
   setInterval(refreshRestFallback, REST_FALLBACK_MS);
   setInterval(refreshTether, TETHER_POLL_MS);
   setInterval(refreshGold, GOLD_POLL_MS);
