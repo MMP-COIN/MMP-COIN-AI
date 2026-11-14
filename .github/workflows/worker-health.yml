@@ -106,6 +106,10 @@ jobs:
           const adminConfig = fs.readFileSync("cloudflare-worker/admin-wrangler.toml", "utf8");
           const deploymentWorkflow = fs.readFileSync(".github/workflows/cloudflare-deploy.yml", "utf8");
           const v4App = fs.readFileSync("www/v4/app.js", "utf8");
+          const healthStart = v4App.indexOf("async function loadHealth()");
+          const healthEnd = v4App.indexOf("let marketChart", healthStart);
+          const healthCode = v4App.slice(healthStart, healthEnd);
+          if (!healthCode.includes("runtime.admin_db_binding===true") || !healthCode.includes("runtime.ai_binding===true") || !healthCode.includes("runtime.futures_engine_binding===true") || !healthCode.includes("runtime.market_cache_binding===true")) throw new Error("V4 healthy status must require every core Worker and D1 binding");
           if (!v4App.includes('valid.length<2') || !v4App.includes('consensus.length<2') || !v4App.includes('source:"Ramzinex"') || !v4App.includes('source:"Exir"') || !v4App.includes('source:"Bitpin"')) throw new Error("V4 Tether price must require a two-source consensus from independent proxy providers");
           if (!v4App.includes('const symbols=["BTCUSDT","ETHUSDT","PAXGUSDT"]') || !v4App.includes('symbol:"USDTIRT"') || v4App.includes('"BNBUSDT"') || v4App.includes('"SOLUSDT"')) throw new Error("V4 top market cards must be BTC, ETH, tokenized gold and Tether");
           if (v4App.includes("mmp_tether_cache_v1") || v4App.includes("local-market-watch")) throw new Error("V4 must not display cached or monitor-state Tether prices");
