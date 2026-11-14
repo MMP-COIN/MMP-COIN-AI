@@ -232,8 +232,9 @@
     catch(error){if(attempt<2)await new Promise(resolve=>setTimeout(resolve,450*(attempt+1)));}
    }
    const checks=Array.isArray(d?.checks)?d.checks:[],up=checks.filter(x=>x.status==="ok"||x.status==="slow").length,total=checks.length;
-   const connectionsHealthy=!!d&&total>0&&up===total;
-   const partialHealthy=runtimeHealthy&&up>0;
+   const connectionFresh=d?.stale!==true;
+   const connectionsHealthy=!!d&&connectionFresh&&total>0&&up===total;
+   const partialHealthy=runtimeHealthy&&connectionFresh&&up>0;
    const fullyHealthy=runtimeHealthy&&connectionsHealthy;
    const statusText=!runtimeHealthy?"هسته اصلی تأیید نشد":!d?"اتصال‌ها بررسی نشدند":fullyHealthy?up+" از "+total+" اتصال سالم":partialHealthy?up+" از "+total+" اتصال سالم · ناقص":"اتصال سرویس‌ها تأیید نشد";
    $("coreStatus").textContent=statusText;
