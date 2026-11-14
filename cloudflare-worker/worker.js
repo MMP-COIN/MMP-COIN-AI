@@ -1417,12 +1417,25 @@ async function handle(request,env){
    const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-universe",env,300);
    const limited=rateLimitReply(limitResult,request);if(limited)return limited;
   }
-  // Share the expensive multi-exchange catalog across web and Android clients for 90 seconds.
-  const universeCacheKey=await marketFallbackKey("hunter-universe:v1");
-  const cachedUniverse=await readMarketFallback(env,universeCacheKey);
-  if(cachedUniverse?.payload&&cachedUniverse.ageMs<90000){
-   return json({...cachedUniverse.payload,universe_stale:false,universe_age_ms:cachedUniverse.ageMs,universe_updated_at:cachedUniverse.payload.checked_at||null},200,request,{"X-MMP-Cache":"HIT","X-MMP-Data-Age":String(Math.floor(cachedUniverse.ageMs)),"Cache-Control":"no-store"});
+  const universeUrl=new URL(request.url),forceRefresh=internalAuthorized&&universeUrl.searchParams.get("force")==="1";
+  if(!forceRefresh){
+   if(!env.ADMIN_DB)return json({error:"Precomputed Spot universe cache unavailable",stage:"admin_db_missing"},503,request);
+   try{
+    const cached=await env.ADMIN_DB.prepare("SELECT json_extract(payload,'$.assets') AS assets,json_extract(payload,'$.universeUpdatedAt') AS updated_at,json_extract(payload,'$.universeProvider') AS provider,json_extract(payload,'$.universeSources') AS sources,json_extract(payload,'$.universeStale') AS stale FROM hunter_engine_state WHERE id=?").bind("digital-hunter-v2-universe-cache").first();
+    const assetsJson=typeof cached?.assets==="string"?cached.assets:"";
+    const updatedAt=Number(cached?.updated_at)||0;
+    if(!assetsJson.startsWith("[")||!updatedAt)return json({status:"warming_up",error:"No validated Spot universe cache is available",stage:"universe_cache_empty"},503,request);
+    const ageMs=Math.max(0,Date.now()-updatedAt);
+    if(ageMs>24*60*60*1000)return json({status:"stale",error:"Spot universe cache is older than 24 hours",stage:"universe_cache_expired",universe_age_ms:ageMs},503,request);
+    const checkedAt=new Date(updatedAt).toISOString(),stale=Number(cached.stale)===1||ageMs>6*60*60*1000;
+    const sourcesJson=typeof cached.sources==="string"&&cached.sources.trim().startsWith("{")?cached.sources:"{}";
+    const body='{"checked_at":'+JSON.stringify(checkedAt)+',"universe_updated_at":'+JSON.stringify(checkedAt)+',"universe_age_ms":'+Math.floor(ageMs)+',"universe_stale":'+(stale?"true":"false")+',"cached_fallback":'+(stale?"true":"false")+',"metadata_provider":'+JSON.stringify(cached.provider||"cached multi-exchange universe")+',"sources":'+sourcesJson+',"hunter_assets":'+assetsJson+'}';
+    return new Response(body,{status:200,headers:{...corsHeaders(request),"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store","X-MMP-Data-Source":"D1 precomputed multi-exchange universe","X-MMP-Cache":"HIT","X-MMP-Data-Age":String(Math.floor(ageMs))}});
+   }catch(error){
+    return json({error:"Precomputed Spot universe query failed",stage:"universe_cache_query",detail:String(error?.message||error).slice(0,160)},503,request);
+   }
   }
+  const cachedUniverse=null;
   const timedJson=async(url,timeout=12000,cacheTtl=30,extraHeaders={})=>{
    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeout);
    try{
