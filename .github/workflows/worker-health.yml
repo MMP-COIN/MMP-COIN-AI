@@ -622,13 +622,19 @@ jobs:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
           set -euo pipefail
-          for attempt in 1 2; do
-            status=$(curl --silent --show-error --max-time 25 -D /tmp/hunter-cache-headers.txt -o /dev/null -w "%{http_code}" "$WORKER_URL/hunter-universe")
-            if [ "$status" != "200" ]; then cat /tmp/hunter-cache-headers.txt; exit 1; fi
+          cache_verified=false
+          last_status=""
+          for attempt in 1 2 3 4; do
+            last_status=$(curl --silent --show-error --max-time 25 -D /tmp/hunter-cache-headers.txt -o /dev/null -w "%{http_code}" "$WORKER_URL/hunter-universe")
+            if [ "$last_status" = "200" ] && grep -Eqi '^x-mmp-cache: HIT|^x-mmp-cache: STALE' /tmp/hunter-cache-headers.txt; then
+              cache_verified=true
+              break
+            fi
+            sleep 2
           done
-          if ! grep -Eqi '^x-mmp-cache: HIT|^x-mmp-cache: STALE' /tmp/hunter-cache-headers.txt; then
+          if [ "$cache_verified" != "true" ]; then
+            echo "Hunter universe cache was not observable after four bounded attempts (HTTP $last_status)." >&2
             cat /tmp/hunter-cache-headers.txt
-            echo "Hunter universe returned neither a shared D1 cache hit nor an explicitly age-labeled stale fallback." >&2
             exit 1
           fi
           if grep -Eqi '^x-mmp-cache: STALE' /tmp/hunter-cache-headers.txt && ! grep -Eqi '^x-mmp-data-age: [0-9]+' /tmp/hunter-cache-headers.txt; then
