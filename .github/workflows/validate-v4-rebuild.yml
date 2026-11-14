@@ -176,8 +176,18 @@ jobs:
               }
             }
             if (!response) throw lastError || new Error(name + " did not respond after three attempts");
-            const data = await response.json();
-            if (!valid(data)) throw new Error(name + " returned an unexpected payload");
+            let data = await response.json();
+            if (!valid(data) && name === "hunter snapshot") {
+              for (let attempt = 0; attempt < 8; attempt++) {
+                await new Promise(resolve => setTimeout(resolve, 15000));
+                const retry = await fetch(url, {headers: {accept: "application/json"}, signal: AbortSignal.timeout(15000)});
+                if (!retry.ok) continue;
+                data = await retry.json();
+                response = retry;
+                if (valid(data)) break;
+              }
+            }
+            if (!valid(data)) throw new Error(name + " returned an unexpected payload: " + JSON.stringify(data).slice(0, 1000));
             if (name === "market proxy" && response.headers.get("X-MMP-Cache") !== "fresh")
               throw new Error("market proxy returned stale or unverified cache data");
             livePayloads[name] = data;
