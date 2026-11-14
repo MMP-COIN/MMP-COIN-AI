@@ -40,7 +40,7 @@
     if(data?.data_stale===true||data?.fresh!==true)throw new Error("stale local Toman rate");
     const sources=Array.isArray(data?.sources)?data.sources.filter(x=>x?.fresh===true&&Number(x.price_toman)>0).map(x=>String(x.exchange||"")).filter(Boolean):[];
     const price=Number(data?.median_toman);
-    if(Number.isFinite(price)&&price>=1000&&price<=100000000&&sources.length)return {price,sources,warning:String(data.warning||"")};
+    if(Number.isFinite(price)&&price>=1000&&price<=100000000&&sources.length>=2)return {price,sources,warning:String(data.warning||"")};
    }catch(error){console.warn("Local market monitor unavailable:",error?.message||error);}
    finally{clearTimeout(timer);}
    return null;
@@ -72,9 +72,9 @@
    }));
    const valid=results.filter(Boolean);
    if(!valid.length)return {price:0,sources:[],warning:"نرخ تتر موقتاً از منابع داخلی دریافت نشد"};
-   if(valid.length===1)return {price:valid[0].price,sources:[valid[0].source],warning:"فقط یک منبع نرخ تتر پاسخ داد"};
+   if(valid.length===1)return {price:0,sources:[valid[0].source],warning:"فقط یک منبع نرخ تتر پاسخ داد؛ نرخ نمایش داده نمی‌شود"};
    const a=valid[0],b=valid[1],diff=Math.abs(a.price-b.price)/((a.price+b.price)/2);
-   if(diff>0.03)return {price:a.price,sources:[a.source],warning:"اختلاف بیش از ۳٪ میان منابع؛ نرخ منبع اصلی نمایش داده شد"};
+   if(diff>0.03)return {price:0,sources:[a.source,b.source],warning:"اختلاف بیش از ۳٪ میان منابع؛ نرخ نمایش داده نمی‌شود"};
    return {price:(a.price+b.price)/2,sources:valid.map(x=>x.source),warning:""};
   })();
   const [local,fallback]=await Promise.all([localPromise,fallbackPromise]);
