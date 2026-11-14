@@ -2681,6 +2681,40 @@ html.mmp-native-app .native-menu-version{padding:5px 3px;color:#7893a7;text-alig
   </article>
 </section>
 
+<section class="card" id="mmp-autonomous-health-center" data-quantum-module="autonomous-health">
+ <div class="mmp-ah-head">
+  <div>
+   <div class="mmp-ah-kicker">MMP NEXUS · AUTONOMOUS SYSTEM INTELLIGENCE</div>
+   <h2>MMP NEXUS | مغز مستقل پایش، ترمیم و تکامل</h2>
+   <p class="mmp-ah-desc">ناظر مستقل کل سامانه؛ پایش جداگانه Analyzer، Radar، Spot/Futures Hunter، منابع داده و شواهد QIE. تشخیص با AI، اجرای فقط اقدامات امنِ ازپیش‌مجاز و بازآزمایی نتیجه.</p>
+   <span class="mmp-ah-tag" id="mmp-ah-mode">پایش زنده · تحلیل مبتنی بر شواهد</span>
+  </div>
+  <div class="mmp-ah-actions">
+   <button class="primary" id="mmp-ah-run" type="button">اجرای پایش و تحلیل</button>
+   <button id="mmp-ah-recheck" type="button">بازآزمایی اتصالات</button>
+  </div>
+ </div>
+ <div class="mmp-ah-summary">
+  <div class="mmp-ah-metric"><small>سرویس‌های سالم</small><b id="mmp-ah-healthy">—</b></div>
+  <div class="mmp-ah-metric"><small>منابع بازار متصل</small><b id="mmp-ah-sources">—</b></div>
+  <div class="mmp-ah-metric"><small>موتورهای دارای فعالیت</small><b id="mmp-ah-engines">—</b></div>
+  <div class="mmp-ah-metric"><small>نسخه موتور QIE</small><b id="mmp-ah-version">—</b></div>
+ </div>
+ <div class="mmp-ah-grid">
+  <details class="mmp-ah-box mmp-ah-accordion" id="mmp-ah-services-accordion"><summary><span>سلامت سرویس‌ها و جریان داده</span><span class="mmp-ah-chevron" aria-hidden="true">⌄</span></summary><div class="mmp-ah-accordion-content"><div id="mmp-ah-services"><div class="mmp-ah-row">در انتظار اولین پایش…</div></div></div></details>
+  <details class="mmp-ah-box mmp-ah-accordion mmp-ah-extra-accordion" id="mmp-ah-engines-accordion"><summary><span>وضعیت واقعی متخصص‌های QIE</span><span class="mmp-ah-chevron" aria-hidden="true">⌄</span></summary><div class="mmp-ah-accordion-content"><div id="mmp-ah-engine-list"><div class="mmp-ah-row">در انتظار Snapshot زنده…</div></div></div></details>
+  <details class="mmp-ah-box mmp-ah-accordion" id="mmp-ah-advice-accordion"><summary><span>تشخیص و پیشنهادهای هوشمند</span><span class="mmp-ah-chevron" aria-hidden="true">⌄</span></summary><div class="mmp-ah-accordion-content"><ul class="mmp-ah-advice" id="mmp-ah-advice"><li>پس از دریافت داده‌های زنده، موارد ناقص و اولویت اصلاح نمایش داده می‌شوند.</li></ul></div></details>
+  <details class="mmp-ah-box mmp-ah-accordion mmp-ah-extra-accordion" id="mmp-ah-report-accordion"><summary><span>گزارش آخرین چرخه</span><span class="mmp-ah-chevron" aria-hidden="true">⌄</span></summary><div class="mmp-ah-accordion-content"><div class="mmp-ah-advice" id="mmp-ah-report">هنوز چرخه‌ای اجرا نشده است.</div></div></details>
+ </div>
+ <div class="mmp-ah-grid mmp-ah-extra-panels">
+  <details class="mmp-ah-box mmp-ah-accordion mmp-ah-extra-accordion" id="mmp-ah-server-accordion"><summary><span>مغز مستقل سروری · پایش ۲۴/۷</span><span class="mmp-ah-chevron" aria-hidden="true">⌄</span></summary><div class="mmp-ah-accordion-content"><div class="mmp-ah-advice" id="mmp-ah-server">در انتظار نخستین چرخه زمان‌بندی‌شده NEXUS…</div></div></details>
+  <details class="mmp-ah-box mmp-ah-accordion mmp-ah-extra-accordion" id="mmp-ah-actions-accordion"><summary><span>دفتر اقدامات و نتیجه بازآزمایی</span><span class="mmp-ah-chevron" aria-hidden="true">⌄</span></summary><div class="mmp-ah-accordion-content"><div class="mmp-ah-advice" id="mmp-ah-action-log">هنوز اقدام اصلاحی ثبت نشده است.</div></div></details>
+ </div>
+ <div class="mmp-ah-foot" id="mmp-ah-foot">مغز سروری NEXUS مستقل از باز بودن سایت، هر ۵ دقیقه با Cron اجرا می‌شود و گزارش را در D1 نگه می‌دارد؛ داشبورد مرورگر هر ۶۰ ثانیه گزارش سرور را تازه می‌کند. ترمیم خودکار فقط چرخه‌های مجاز Hunter را دوباره اجرا می‌کند؛ تغییر کد، Secret، تنظیمات Worker یا وزن مدل نیازمند PR نسخه‌دار و تست مستقل است.</div>
+</section>
+
+
+
 
 
 <!-- تحلیلگر هوشمند؛ رابط فشرده با گزارش کاربردی و جزئیات اختیاری -->
@@ -2771,37 +2805,7 @@ html.mmp-native-app .native-menu-version{padding:5px 3px;color:#7893a7;text-alig
 #mmp-autonomous-health-center .mmp-ah-tag{display:inline-block;border:1px solid #9c7c4655;border-radius:20px;padding:4px 8px;color:#dfc17f;font-size:8px}
 @media(max-width:700px){#mmp-autonomous-health-center{padding:12px}.mmp-ah-summary{grid-template-columns:repeat(2,minmax(0,1fr))!important}.mmp-ah-grid{grid-template-columns:1fr!important}}
 </style>
-<section class="card" id="mmp-autonomous-health-center" data-quantum-module="autonomous-health">
- <div class="mmp-ah-head">
-  <div>
-   <div class="mmp-ah-kicker">MMP NEXUS · AUTONOMOUS SYSTEM INTELLIGENCE</div>
-   <h2>MMP NEXUS | مغز مستقل پایش، ترمیم و تکامل</h2>
-   <p class="mmp-ah-desc">ناظر مستقل کل سامانه؛ پایش جداگانه Analyzer، Radar، Spot/Futures Hunter، منابع داده و شواهد QIE. تشخیص با AI، اجرای فقط اقدامات امنِ ازپیش‌مجاز و بازآزمایی نتیجه.</p>
-   <span class="mmp-ah-tag" id="mmp-ah-mode">پایش زنده · تحلیل مبتنی بر شواهد</span>
-  </div>
-  <div class="mmp-ah-actions">
-   <button class="primary" id="mmp-ah-run" type="button">اجرای پایش و تحلیل</button>
-   <button id="mmp-ah-recheck" type="button">بازآزمایی اتصالات</button>
-  </div>
- </div>
- <div class="mmp-ah-summary">
-  <div class="mmp-ah-metric"><small>سرویس‌های سالم</small><b id="mmp-ah-healthy">—</b></div>
-  <div class="mmp-ah-metric"><small>منابع بازار متصل</small><b id="mmp-ah-sources">—</b></div>
-  <div class="mmp-ah-metric"><small>موتورهای دارای فعالیت</small><b id="mmp-ah-engines">—</b></div>
-  <div class="mmp-ah-metric"><small>نسخه موتور QIE</small><b id="mmp-ah-version">—</b></div>
- </div>
- <div class="mmp-ah-grid">
-  <details class="mmp-ah-box mmp-ah-accordion" id="mmp-ah-services-accordion"><summary><span>سلامت سرویس‌ها و جریان داده</span><span class="mmp-ah-chevron" aria-hidden="true">⌄</span></summary><div class="mmp-ah-accordion-content"><div id="mmp-ah-services"><div class="mmp-ah-row">در انتظار اولین پایش…</div></div></div></details>
-  <details class="mmp-ah-box mmp-ah-accordion mmp-ah-extra-accordion" id="mmp-ah-engines-accordion"><summary><span>وضعیت واقعی متخصص‌های QIE</span><span class="mmp-ah-chevron" aria-hidden="true">⌄</span></summary><div class="mmp-ah-accordion-content"><div id="mmp-ah-engine-list"><div class="mmp-ah-row">در انتظار Snapshot زنده…</div></div></div></details>
-  <details class="mmp-ah-box mmp-ah-accordion" id="mmp-ah-advice-accordion"><summary><span>تشخیص و پیشنهادهای هوشمند</span><span class="mmp-ah-chevron" aria-hidden="true">⌄</span></summary><div class="mmp-ah-accordion-content"><ul class="mmp-ah-advice" id="mmp-ah-advice"><li>پس از دریافت داده‌های زنده، موارد ناقص و اولویت اصلاح نمایش داده می‌شوند.</li></ul></div></details>
-  <details class="mmp-ah-box mmp-ah-accordion mmp-ah-extra-accordion" id="mmp-ah-report-accordion"><summary><span>گزارش آخرین چرخه</span><span class="mmp-ah-chevron" aria-hidden="true">⌄</span></summary><div class="mmp-ah-accordion-content"><div class="mmp-ah-advice" id="mmp-ah-report">هنوز چرخه‌ای اجرا نشده است.</div></div></details>
- </div>
- <div class="mmp-ah-grid mmp-ah-extra-panels">
-  <details class="mmp-ah-box mmp-ah-accordion mmp-ah-extra-accordion" id="mmp-ah-server-accordion"><summary><span>مغز مستقل سروری · پایش ۲۴/۷</span><span class="mmp-ah-chevron" aria-hidden="true">⌄</span></summary><div class="mmp-ah-accordion-content"><div class="mmp-ah-advice" id="mmp-ah-server">در انتظار نخستین چرخه زمان‌بندی‌شده NEXUS…</div></div></details>
-  <details class="mmp-ah-box mmp-ah-accordion mmp-ah-extra-accordion" id="mmp-ah-actions-accordion"><summary><span>دفتر اقدامات و نتیجه بازآزمایی</span><span class="mmp-ah-chevron" aria-hidden="true">⌄</span></summary><div class="mmp-ah-accordion-content"><div class="mmp-ah-advice" id="mmp-ah-action-log">هنوز اقدام اصلاحی ثبت نشده است.</div></div></details>
- </div>
- <div class="mmp-ah-foot" id="mmp-ah-foot">مغز سروری NEXUS مستقل از باز بودن سایت، هر ۵ دقیقه با Cron اجرا می‌شود و گزارش را در D1 نگه می‌دارد؛ داشبورد مرورگر هر ۶۰ ثانیه گزارش سرور را تازه می‌کند. ترمیم خودکار فقط چرخه‌های مجاز Hunter را دوباره اجرا می‌کند؛ تغییر کد، Secret، تنظیمات Worker یا وزن مدل نیازمند PR نسخه‌دار و تست مستقل است.</div>
-</section>
+
 <script id="mmp-autonomous-health-center-js">
 (function(){
  "use strict";
@@ -7778,5 +7782,46 @@ html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-ca
 </style>
 
 <script src="assets/mmp-live-coherence-v1.js?v=20261114.3"></script>
+
+<style id="mmp-home-order-and-market-cards-authoritative-20261114">
+/* Authoritative homepage order and responsive market-card layout. */
+html body main#hero #mmp-home-hero{display:grid!important}
+html body main#hero #market-snapshot.mmp-market-snapshot{
+  display:grid!important;
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  grid-auto-flow:row!important;
+  align-items:stretch!important;
+  gap:12px!important;
+  width:100%!important;
+  max-width:100%!important;
+  margin:0 0 18px!important;
+}
+html body main#hero #market-snapshot.mmp-market-snapshot>.mmp-market-card{
+  display:flex!important;
+  position:relative!important;
+  box-sizing:border-box!important;
+  width:100%!important;
+  min-width:0!important;
+  min-height:138px!important;
+  height:auto!important;
+  max-height:none!important;
+  margin:0!important;
+  padding:14px!important;
+  overflow:hidden!important;
+  flex-direction:column!important;
+  justify-content:flex-start!important;
+}
+html body main#hero #market-snapshot.mmp-market-snapshot>.mmp-market-card .stat-value{
+  white-space:normal!important;overflow-wrap:anywhere!important;line-height:1.25!important
+}
+@media(max-width:900px){
+ html body main#hero #market-snapshot.mmp-market-snapshot{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important}
+ html body main#hero #market-snapshot.mmp-market-snapshot>.mmp-market-card{min-height:130px!important;padding:11px!important}
+}
+@media(max-width:360px){
+ html body main#hero #market-snapshot.mmp-market-snapshot{gap:7px!important}
+ html body main#hero #market-snapshot.mmp-market-snapshot>.mmp-market-card{min-height:124px!important;padding:9px!important}
+}
+</style>
 </body>
 </html>
