@@ -345,7 +345,7 @@ jobs:
 
       - name: Install Playwright and Chromium
         run: |
-          npm install --no-save playwright@1.56.1
+          npm install --no-save playwright@1.56.1 lightweight-charts@4.2.3
           npx playwright install --with-deps chromium
       - name: Run desktop and mobile browser smoke tests
         run: |
@@ -367,6 +367,7 @@ jobs:
             ["/assets/mmp-coin-ai-icon.svg", {path: "www/assets/mmp-coin-ai-icon.svg", type: "image/svg+xml"}],
             ["/manifest.webmanifest", {path: "manifest.webmanifest", type: "application/manifest+json"}]
           ]);
+          const chartLibrary = fs.readFileSync("node_modules/lightweight-charts/dist/lightweight-charts.standalone.production.js", "utf8");
           const browser = await chromium.launch({headless: true});
           const failures = [];
           const providerSuccesses = new Set();
@@ -383,6 +384,31 @@ jobs:
             // The analyzer POST is mocked only in this UI-interaction test to avoid consuming live AI quota.
             // Its real preflight and market data are checked above; deterministic fixtures isolate UI interactions.
             // UI contract fixture; live Worker /health is checked independently before this browser test.
+            // UI-only browser tests use a pinned local copy of the exact chart library version.
+            // Live CDN reachability is checked separately; UI tests must not depend on third-party CDN uptime.
+            await page.route(url => /^(https:\/\/cdn\.jsdelivr\.net\/npm\/lightweight-charts@4\.2\.3\/|https:\/\/unpkg\.com\/lightweight-charts@4\.2\.3\/)/.test(url.href), async route => route.fulfill({
+              status: 200, contentType: "application/javascript; charset=utf-8", body: chartLibrary
+            }));
+            await page.route(url => url.hostname === "mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev" && url.pathname === "/market-candles", async route => {
+              const query = new URL(route.request().url()).searchParams;
+              const interval = query.get("interval") || "15m";
+              const seconds = ({"1m":60,"3m":180,"5m":300,"15m":900,"1h":3600,"4h":14400,"1d":86400})[interval] || 900;
+              const now = Math.floor(Date.now() / 1000 / seconds) * seconds;
+              const candles = Array.from({length:120}, (_,i) => {
+                const time = now - (119-i)*seconds;
+                const close = 65000 + i*1.25 + Math.sin(i/5)*32;
+                const open = close - Math.cos(i/4)*8;
+                return {time,open,high:Math.max(open,close)+14,low:Math.min(open,close)-14,close,volume:1200+i*7};
+              });
+              return route.fulfill({status:200,headers:{"content-type":"application/json","access-control-allow-origin":"https://mmp-coin.github.io"},body:JSON.stringify({symbol:"BTCUSDT",interval,market:query.get("market")||"spot",provider:"Pinned UI fixture",price:candles.at(-1).close,data_age_ms:Math.max(0,Date.now()-candles.at(-1).time*1000),data_stale:false,candles})});
+            });
+            await page.route("https://mmp-coin-ai-radar.mehrdadmohammadi1988.workers.dev/health", async route => route.fulfill({status:200,headers:{"content-type":"application/json","access-control-allow-origin":"https://mmp-coin.github.io"},body:JSON.stringify({worker:"online",checked_at:new Date().toISOString()})}));
+            await page.route("https://mmp-coin-ai-radar.mehrdadmohammadi1988.workers.dev/fast-radar-snapshot", async route => route.fulfill({status:200,headers:{"content-type":"application/json","access-control-allow-origin":"https://mmp-coin.github.io"},body:JSON.stringify({status:"online",scanned_at:new Date().toISOString(),signals:[]})}));
+            await page.route("https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/hunter-combined-snapshot", async route => {
+              const stamp = new Date().toISOString();
+              const snapshot = market => ({status:"online",market,scanned_at:stamp,scanned_count:120,universe_count:120,signals:[]});
+              return route.fulfill({status:200,headers:{"content-type":"application/json","access-control-allow-origin":"https://mmp-coin.github.io"},body:JSON.stringify({scanned_at:stamp,spot:{snapshot:snapshot("spot")},futures:{snapshot:snapshot("futures")}})});
+            });
             await page.route("https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/health", async route => route.fulfill({
               status: 200,
               headers: {"content-type":"application/json","access-control-allow-origin":"*"},
@@ -391,7 +417,7 @@ jobs:
             await page.route("https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/connections-health", async route => route.fulfill({
               status: 200,
               headers: {"content-type":"application/json","access-control-allow-origin":"*"},
-              body: JSON.stringify({checked_at:new Date().toISOString(),checks:Array.from({length:8},(_,i)=>({name:"provider-"+i,status:"ok"}))})
+              body: JSON.stringify({checked_at:new Date().toISOString(),checks:Array.from({length:12},(_,i)=>({name:"provider-"+i,market:i<4?"spot":i<8?"futures":"iran",status:"ok"}))})
             }));
             // Live proxy payloads are validated above; deterministic fixtures isolate responsive UI behavior here.
             await page.route("https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/market-proxy?source=*", async route => {
@@ -508,7 +534,14 @@ jobs:
               await page.waitForFunction(() => Math.abs(document.querySelector("#radar").getBoundingClientRect().top) < 180, null, {timeout: 5000});
             }
 
-            await page.waitForFunction(() => document.querySelector("#chartStatus")?.textContent.includes("نمودار آماده است") && document.querySelectorAll("#marketChart canvas").length > 0, null, {timeout: 30000});
+            try {
+              await page.waitForFunction(() => document.querySelector("#chartStatus")?.textContent.includes("نمودار آماده است") && document.querySelectorAll("#marketChart canvas").length > 0, null, {timeout: 15000});
+            } catch (error) {
+              const diagnostic = await page.evaluate(() => ({status:document.querySelector("#chartStatus")?.textContent,provider:document.querySelector("#chartProvider")?.textContent,freshness:document.querySelector("#chartFreshness")?.textContent,canvas:document.querySelectorAll("#marketChart canvas").length,library:!!window.LightweightCharts}));
+              console.error(name + " chart readiness diagnostic:", JSON.stringify(diagnostic));
+              console.error(name + " browser failures so far:", failures);
+              throw error;
+            }
             await page.locator("#chartType").selectOption("heikin-ashi");
             await page.waitForFunction(() => document.querySelectorAll("#marketChart canvas").length > 0, null, {timeout: 5000});
             await page.locator("#showRsi").uncheck();
