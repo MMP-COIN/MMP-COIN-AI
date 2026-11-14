@@ -49,13 +49,49 @@
    const requests=[
     {source:"Nobitex",url:MAIN+"/market-proxy?source=nobitex-tether",read:d=>Number(d?.stats?.["usdt-rls"]?.latest)/10},
     {source:"Wallex",url:MAIN+"/market-proxy?source=wallex-markets",read:d=>{
-     const raw=d?.result?.symbols||d?.result?.markets||{};
-     const markets=Array.isArray(raw)?raw:Object.values(raw);
-     const tomanMarket=markets.find(m=>String(m?.symbol||"").toUpperCase()==="USDTTMN");
-     const rialMarket=markets.find(m=>String(m?.symbol||"").toUpperCase()==="USDTIRT");
-     const toman=Number(tomanMarket?.stats?.lastPrice??tomanMarket?.lastPrice);
-     const rial=Number(rialMarket?.stats?.lastPrice??rialMarket?.lastPrice);
-     return toman>0?toman:rial/10;
+     const raw=d?.result?.symbols||d?.result?.markets||{},markets=Array.isArray(raw)?raw:Object.values(raw);
+     const toman=markets.find(m=>String(m?.symbol||"").toUpperCase()==="USDTTMN");
+     const rial=markets.find(m=>String(m?.symbol||"").toUpperCase()==="USDTIRT");
+     const a=Number(toman?.stats?.lastPrice??toman?.lastPrice),b=Number(rial?.stats?.lastPrice??rial?.lastPrice);
+     return a>0?a:b/10;
+    }},
+    {source:"Bitpin",url:MAIN+"/market-proxy?source=bitpin-tickers",read:d=>{
+     const rows=Array.isArray(d?.results)?d.results:Array.isArray(d?.data)?d.data:Array.isArray(d)?d:[];
+     const pair=rows.find(m=>{
+      const code=String(m?.code||m?.symbol||"").replace(/[/-]/g,"_").toUpperCase(),flat=code.replace(/_/g,"");
+      const base=String(m?.currency1?.code||m?.base_currency||m?.baseAsset||"").toUpperCase();
+      const quote=String(m?.currency2?.code||m?.quote_currency||m?.quoteAsset||"").toUpperCase();
+      return code==="USDT_IRT"||flat==="USDTIRT"||(base==="USDT"&&quote==="IRT");
+     });
+     const price=Number(pair?.price_info?.price??pair?.internal_price_info?.price??pair?.price??pair?.last_price??pair?.last);
+     return price>0?price*10:0;
+    }},
+    {source:"Exir",url:MAIN+"/market-proxy?source=exir-tickers",read:d=>{
+     const source=d?.result||d?.data||d||{},entries=Array.isArray(source)?source.map(x=>[x?.symbol||x?.pair||"",x]):Object.entries(source);
+     const pair=entries.find(([key,value])=>{
+      const symbol=String(value?.symbol||value?.pair||key).toLowerCase().replace(/[_/]/g,"-");
+      return /^(usdt-(irt|tmn|toman|irr|rls)|(irt|tmn|toman|irr|rls)-usdt)$/.test(symbol);
+     });
+     if(!pair)return 0;
+     const symbol=String(pair[1]?.symbol||pair[0]||"").toLowerCase().replace(/[_/]/g,"-"),parts=symbol.split("-");
+     const reverse=parts[0]!=="usdt",unit=reverse?parts[0]:parts[1],raw=Number(pair[1]?.last??pair[1]?.close??pair[1]?.price);
+     const price=reverse&&raw>0?1/raw:raw;
+     return price>0?(["irt","tmn","toman"].includes(unit)?price*10:price):0;
+    }},
+    {source:"Ramzinex",url:MAIN+"/market-proxy?source=ramzinex-pairs",read:d=>{
+     const raw=d?.result?.data??d?.data??d?.result?.pairs??d?.pairs??[],rows=Array.isArray(raw)?raw:Object.values(raw);
+     const code=v=>Array.isArray(v)?String(v[0]?.symbol??v[0]?.code??v[0]??""):String(v?.symbol??v?.code??v?.name??v??"");
+     const pair=rows.find(x=>{
+      const base=code(x?.base_currency_symbol??x?.base_currency??x?.baseCurrency).toUpperCase();
+      const quote=code(x?.quote_currency_symbol??x?.quote_currency??x?.quoteCurrency).toUpperCase();
+      const name=String(x?.url_name??x?.symbol??x?.pair??"").toLowerCase().replace(/[_/]/g,"-");
+      return (base==="USDT"&&["IRR","IRT","RLS","TMN","TOMAN"].includes(quote))||/^(usdt-(irr|irt|rls|tmn|toman))$/.test(name);
+     });
+     if(!pair)return 0;
+     const buy=Number(pair.buy??pair.best_buy??pair.bid),sell=Number(pair.sell??pair.best_sell??pair.ask);
+     const last=Number(pair.last??pair.last_price??pair.price??pair.rate),quote=code(pair.quote_currency_symbol??pair.quote_currency??pair.quoteCurrency).toUpperCase();
+     const rawPrice=buy>0&&sell>0?(buy+sell)/2:last;
+     return rawPrice>0?(["IRT","TMN","TOMAN"].includes(quote)?rawPrice*10:rawPrice):0;
     }}
    ];
    const results=await Promise.all(requests.map(async item=>{
@@ -71,11 +107,15 @@
     finally{clearTimeout(timer);}
    }));
    const valid=results.filter(Boolean);
-   if(!valid.length)return {price:0,sources:[],warning:"نرخ تتر موقتاً از منابع داخلی دریافت نشد"};
-   if(valid.length===1)return {price:0,sources:[valid[0].source],warning:"فقط یک منبع نرخ تتر پاسخ داد؛ نرخ نمایش داده نمی‌شود"};
-   const a=valid[0],b=valid[1],diff=Math.abs(a.price-b.price)/((a.price+b.price)/2);
-   if(diff>0.03)return {price:0,sources:[a.source,b.source],warning:"اختلاف بیش از ۳٪ میان منابع؛ نرخ نمایش داده نمی‌شود"};
-   return {price:(a.price+b.price)/2,sources:valid.map(x=>x.source),warning:""};
+   if(valid.length<2)return {price:0,sources:valid.map(x=>x.source),warning:"کمتر از دو منبع مستقل معتبر؛ نرخ نمایش داده نمی‌شود"};
+   const sorted=valid.map(x=>x.price).sort((a,b)=>a-b),middle=Math.floor(sorted.length/2);
+   const median=sorted.length%2?sorted[middle]:(sorted[middle-1]+sorted[middle])/2;
+   const consensus=valid.filter(x=>Math.abs(x.price-median)/median<=0.025);
+   if(consensus.length<2)return {price:0,sources:valid.map(x=>x.source),warning:"اختلاف منابع بیش از حد مجاز؛ نرخ نمایش داده نمی‌شود"};
+   const price=consensus.reduce((sum,x)=>sum+x.price,0)/consensus.length;
+   const spread=Math.max(...consensus.map(x=>Math.abs(x.price-price)/price));
+   if(spread>0.03)return {price:0,sources:consensus.map(x=>x.source),warning:"اجماع منابع معتبر شکل نگرفت؛ نرخ نمایش داده نمی‌شود"};
+   return {price,sources:consensus.map(x=>x.source),warning:consensus.length<valid.length?"منبع پرت از اجماع حذف شد":""};
   })();
   const [local,fallback]=await Promise.all([localPromise,fallbackPromise]);
   if(local&&local.sources.length>=(fallback?.sources?.length||0))return local;
