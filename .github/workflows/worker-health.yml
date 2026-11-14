@@ -105,6 +105,9 @@ jobs:
           const futuresConfig = fs.readFileSync("cloudflare-worker/futures-wrangler.toml", "utf8");
           const adminConfig = fs.readFileSync("cloudflare-worker/admin-wrangler.toml", "utf8");
           const deploymentWorkflow = fs.readFileSync(".github/workflows/cloudflare-deploy.yml", "utf8");
+          const v4App = fs.readFileSync("www/v4/app.js", "utf8");
+          if (!v4App.includes('valid.length<2') || !v4App.includes('consensus.length<2') || !v4App.includes('source:"Ramzinex"') || !v4App.includes('source:"Exir"') || !v4App.includes('source:"Bitpin"')) throw new Error("V4 Tether price must require a two-source consensus from independent proxy providers");
+          if (!v4App.includes('["IRR","RLS"].includes(unit)?price/10:price') || !v4App.includes('["IRR","RLS"].includes(quote)?rawPrice/10:rawPrice')) throw new Error("Iranian Rial/Toman quote units must be normalized correctly");
           if (!adminConfig.includes('name = "mmp-coin-ai-admin"') || !adminConfig.includes('crons = ["*/15 * * * *"]') || !adminConfig.includes('binding = "ADMIN_DB"')) throw new Error("Admin Worker must use the private D1 binding and approved 15-minute Cron");
           if (!deploymentWorkflow.includes("workflow_dispatch:") || /^  push:/m.test(deploymentWorkflow) || /^  schedule:/m.test(deploymentWorkflow)) throw new Error("Production Worker deployment must be manual-only");
           for (const required of ["futures-wrangler.toml","radar-wrangler.toml","wrangler.toml","admin-wrangler.toml"]) if (!deploymentWorkflow.includes(required)) throw new Error("Controlled deployment is missing required Worker config: "+required);
