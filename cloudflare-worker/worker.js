@@ -1672,24 +1672,24 @@ async function handle(request,env){
   const base=raw.replace(/USDT$/,""),symbol=base+"USDT";
   const get=async(u,ms=7500)=>{const c=new AbortController(),t=setTimeout(()=>c.abort(),ms);try{const r=await fetch(u,{signal:c.signal,headers:{"Accept":"application/json","User-Agent":"MMP-COIN-AI/1.0"}});if(!r.ok)throw new Error("HTTP "+r.status);return await r.json();}finally{clearTimeout(t);}};
   const spotDepthSources=[
-   ["Binance Spot",async()=>{let last;for(const host of ["https://api.binance.com","https://api1.binance.com","https://api2.binance.com","https://data-api.binance.vision"]){try{return await get(host+"/api/v3/depth?symbol="+symbol+"&limit=100");}catch(e){last=e;}}throw last||new Error("Binance depth unavailable");},d=>Array.isArray(d?.bids)&&Array.isArray(d?.asks)?d:null],
-   ["OKX Spot",()=>get("https://www.okx.com/api/v5/market/books?instId="+base+"-USDT&sz=100"),d=>d?.code==="0"&&d.data?.[0]?{bids:d.data[0].bids,asks:d.data[0].asks}:null],
-   ["Bitget Spot",()=>get("https://api.bitget.com/api/v2/spot/market/orderbook?symbol="+symbol+"&type=step0&limit=100"),d=>d?.code==="00000"?{bids:d.data?.bids,asks:d.data?.asks}:null],
-   ["Gate Spot",()=>get("https://api.gateio.ws/api/v4/spot/order_book?currency_pair="+base+"_USDT&limit=100"),d=>Array.isArray(d?.bids)&&Array.isArray(d?.asks)?d:null]
+   ["Binance Spot",async()=>{let last;for(const host of ["https://api.binance.com","https://api1.binance.com","https://api2.binance.com","https://data-api.binance.vision"]){try{return await get(host+"/api/v3/depth?symbol="+symbol+"&limit=50");}catch(e){last=e;}}throw last||new Error("Binance depth unavailable");},d=>Array.isArray(d?.bids)&&Array.isArray(d?.asks)?d:null],
+   ["OKX Spot",()=>get("https://www.okx.com/api/v5/market/books?instId="+base+"-USDT&sz=50"),d=>d?.code==="0"&&d.data?.[0]?{bids:d.data[0].bids,asks:d.data[0].asks}:null],
+   ["Bitget Spot",()=>get("https://api.bitget.com/api/v2/spot/market/orderbook?symbol="+symbol+"&type=step0&limit=50"),d=>d?.code==="00000"?{bids:d.data?.bids,asks:d.data?.asks}:null],
+   ["Gate Spot",()=>get("https://api.gateio.ws/api/v4/spot/order_book?currency_pair="+base+"_USDT&limit=50"),d=>Array.isArray(d?.bids)&&Array.isArray(d?.asks)?d:null]
   ];
   const futuresDepthSources=[
    ["Gate USDT Futures",async()=>{
     let details,book;
-    try{[details,book]=await Promise.all([get("https://api.gateio.ws/api/v4/futures/usdt/contracts/"+base+"_USDT"),get("https://api.gateio.ws/api/v4/futures/usdt/order_book?contract="+base+"_USDT&limit=100")]);}
-    catch{[details,book]=await Promise.all([get("https://api.gate.us/api/v4/futures/usdt/contracts/"+base+"_USDT"),get("https://api.gate.us/api/v4/futures/usdt/order_book?contract="+base+"_USDT&limit=100")]);}
+    try{[details,book]=await Promise.all([get("https://api.gateio.ws/api/v4/futures/usdt/contracts/"+base+"_USDT"),get("https://api.gateio.ws/api/v4/futures/usdt/order_book?contract="+base+"_USDT&limit=50")]);}
+    catch{[details,book]=await Promise.all([get("https://api.gate.us/api/v4/futures/usdt/contracts/"+base+"_USDT"),get("https://api.gate.us/api/v4/futures/usdt/order_book?contract="+base+"_USDT&limit=50")]);}
     const multiplier=Number(details?.quanto_multiplier)||0;if(!multiplier)throw new Error("Gate Futures contract multiplier unavailable");
     const levels=items=>(items||[]).map(x=>Array.isArray(x)?[Number(x[0]),Number(x[1])*multiplier]:[Number(x.p),Number(x.s)*multiplier]).filter(x=>x[0]>0&&x[1]>0);
     return {bids:levels(book?.bids),asks:levels(book?.asks)};
    },d=>d],
-   ["Bitget USDT Futures",()=>get("https://api.bitget.com/api/v3/market/orderbook?category=USDT-FUTURES&symbol="+symbol+"&limit=100"),d=>d?.code==="00000"?{bids:d.data?.b,asks:d.data?.a}:null],
-   ["Bybit Global Futures",()=>get("https://api.bybit.com/v5/market/orderbook?category=linear&symbol="+symbol+"&limit=100"),d=>d?.retCode===0?{bids:d.result?.b,asks:d.result?.a}:null],
-   ["Bybit EU Futures",()=>get("https://api.bybit.eu/v5/market/orderbook?category=linear&symbol="+symbol+"&limit=100"),d=>d?.retCode===0?{bids:d.result?.b,asks:d.result?.a}:null],
-   ["Bybit Bytick Futures",()=>get("https://api.bytick.com/v5/market/orderbook?category=linear&symbol="+symbol+"&limit=100"),d=>d?.retCode===0?{bids:d.result?.b,asks:d.result?.a}:null]
+   ["Bitget USDT Futures",()=>get("https://api.bitget.com/api/v3/market/orderbook?category=USDT-FUTURES&symbol="+symbol+"&limit=50"),d=>d?.code==="00000"?{bids:d.data?.b,asks:d.data?.a}:null],
+   ["Bybit Global Futures",()=>get("https://api.bybit.com/v5/market/orderbook?category=linear&symbol="+symbol+"&limit=50"),d=>d?.retCode===0?{bids:d.result?.b,asks:d.result?.a}:null],
+   ["Bybit EU Futures",()=>get("https://api.bybit.eu/v5/market/orderbook?category=linear&symbol="+symbol+"&limit=50"),d=>d?.retCode===0?{bids:d.result?.b,asks:d.result?.a}:null],
+   ["Bybit Bytick Futures",()=>get("https://api.bytick.com/v5/market/orderbook?category=linear&symbol="+symbol+"&limit=50"),d=>d?.retCode===0?{bids:d.result?.b,asks:d.result?.a}:null]
   ];
   const depthSources=marketType==="futures"?futuresDepthSources:spotDepthSources;
   let depth=null,depthSource=null,depthError=null;
@@ -1706,7 +1706,7 @@ async function handle(request,env){
   const flowWindow=marketType==="futures"?1:5;try{
    if(marketType==="futures"){
     if(!env.FUTURES_ENGINE||!env.FUTURES_ENGINE_TOKEN)throw new Error("Dedicated Futures flow service is not configured");
-    const internal=new Request("https://futures-engine/market-flow?symbol="+encodeURIComponent(base)+"&window="+encodeURIComponent(flowWindow),{headers:{"X-MMP-Futures-Token":env.FUTURES_ENGINE_TOKEN}});
+    const internal=new Request("https://futures-engine/market-flow?symbol="+encodeURIComponent(base)+"&window="+encodeURIComponent(flowWindow)+"&compact=1",{headers:{"X-MMP-Futures-Token":env.FUTURES_ENGINE_TOKEN}});
     const response=await env.FUTURES_ENGINE.fetch(internal),payload=await response.json();
     if(!response.ok)throw new Error(payload.error||"Dedicated Futures flow request failed");
     flowData=payload;
