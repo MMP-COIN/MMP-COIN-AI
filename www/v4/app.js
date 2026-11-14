@@ -109,25 +109,26 @@
  function renderTicker(rows=latestTickerRows,failures=latestTickerFailures){
   if(!Array.isArray(rows)||rows.length===0)return;
   $("ticker").innerHTML=rows.map(x=>{
-   const label=x.symbol.replace("USDT"," / USDT");
-   const rawValue=x.state==="missing"||x.state==="conflict"?"—":selectedCurrency==="IRT"?(currentTetherPrice>0?Math.round(x.price*currentTetherPrice).toLocaleString("en-US")+" تومان":"— تومان"):money(x.price)+" USDT";
-   const value=x.state==="missing"?"داده در دسترس نیست":x.state==="conflict"?"اختلاف منابع — مخفی شد":rawValue;
-   const provenance=x.state==="corroborated"?"تطبیق "+x.count+" منبع":x.state==="single"?"تک‌منبع؛ تأییدنشده":x.state==="conflict"?"اختلاف "+x.spread.toFixed(2)+"٪":"بدون منبع معتبر";
-   return '<div class="ticker-item"><small>'+label+' · '+provenance+'</small><b>'+value+'</b></div>';
+   const label=x.label||(x.symbol==="PAXGUSDT"?"طلای توکنی PAXG / USDT":x.symbol==="USDTIRT"?"تتر / تومان":x.symbol.replace("USDT"," / USDT"));
+   const unavailable=x.state==="missing"||x.state==="conflict"||x.state==="single";
+   const value=unavailable?(x.state==="conflict"?"اختلاف منابع — مخفی شد":x.state==="single"?"تک‌منبع — مخفی شد":"داده در دسترس نیست"):x.symbol==="USDTIRT"?money(currentTetherPrice)+" تومان":money(x.price)+" USDT";
+   const toman=x.symbol==="USDTIRT"?"":currentTetherPrice>0?money(Math.round(x.price*currentTetherPrice))+" تومان":"— تومان";
+   const provenance=x.state==="corroborated"?"تطبیق "+x.count+" منبع":x.state==="single"?"تک‌منبع؛ مخفی شد":x.state==="conflict"?"اختلاف "+x.spread.toFixed(2)+"٪":"بدون منبع معتبر";
+   return '<div class="ticker-item"><small>'+label+' · '+provenance+'</small><b>'+value+'</b>'+(toman?'<small class="ticker-secondary">'+toman+'</small>':'')+'</div>';
   }).join("");
   const verified=rows.filter(x=>x.state==="corroborated").length;
   const single=rows.filter(x=>x.state==="single").length;
   const conflicts=rows.filter(x=>x.state==="conflict").length;
   const integrity=$("tickerIntegrity");
   if(integrity){
-   const currencyNote=selectedCurrency==="IRT"?(currentTetherPrice>0?"نرخ تتر: "+money(currentTetherPrice)+" تومان · "+(currentTetherSources.join(" + ")||"منبع معتبر")+(currentTetherWarning?" · "+currentTetherWarning:""):"نرخ تتر در دسترس نیست؛ قیمت تومانی پنهان است"):"واحد نمایش: USDT";
+   const currencyNote=currentTetherPrice>0?"نرخ تتر: "+money(currentTetherPrice)+" تومان · "+(currentTetherSources.join(" + ")||"منبع معتبر")+(currentTetherWarning?" · "+currentTetherWarning:""):"نرخ تتر در دسترس نیست؛ قیمت تومانی پنهان است";
    integrity.textContent=[verified+" دارایی چندمنبعی",single+" تک‌منبعی",conflicts+" دارای اختلاف",failures.length+" منبع بی‌پاسخ",currencyNote].join(" · ");
    integrity.classList.toggle("integrity-good",verified===rows.length&&currentTetherPrice>0);
    integrity.classList.toggle("integrity-warning",verified!==rows.length||currentTetherPrice<=0);
   }
  }
  async function loadTicker(){
-  const symbols=["BTCUSDT","ETHUSDT","BNBUSDT","SOLUSDT"];
+  const symbols=["BTCUSDT","ETHUSDT","PAXGUSDT"];
   const sources=["binance-tickers","okx-tickers","bybit-tickers","gate-tickers","kucoin-tickers","bitget-tickers","mexc-tickers"];
   const normalize=(source,data)=>{
    let rows=[];
@@ -158,7 +159,7 @@
     if(quotes[symbol]&&Number.isFinite(price)&&price>0)quotes[symbol].push({source:source.replace("-tickers","").toUpperCase(),price});
    }
   }
-  const rows=symbols.map(symbol=>{
+  const assetRows=symbols.map(symbol=>{
    const q=quotes[symbol].sort((a,b)=>a.price-b.price);
    if(!q.length)return {symbol,state:"missing"};
    const median=q.length%2?q[(q.length-1)/2].price:(q[q.length/2-1].price+q[q.length/2].price)/2;
@@ -167,6 +168,10 @@
    const selected=q.length>=2?median:q[0].price;
    return {symbol,state:q.length>=2?"corroborated":"single",price:selected,count:q.length,spread,sources:q.map(x=>x.source)};
   });
+  const tetherRow=currentTetherPrice>0&&currentTetherSources.length>=2
+   ?{symbol:"USDTIRT",label:"تتر / تومان",state:"corroborated",price:currentTetherPrice,count:currentTetherSources.length,spread:0,sources:currentTetherSources}
+   :{symbol:"USDTIRT",label:"تتر / تومان",state:"missing",price:0,count:currentTetherSources.length,sources:currentTetherSources};
+  const rows=[...assetRows,tetherRow];
   latestTickerRows=rows;latestTickerFailures=failures;renderTicker();
   const verified=rows.filter(x=>x.state==="corroborated").length;
   if(verified!==symbols.length)console.warn("MMP ticker integrity incomplete",{rows,failures});
