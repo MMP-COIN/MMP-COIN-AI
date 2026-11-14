@@ -36,7 +36,7 @@ async function reserveCloudflareAIDailyBudget(env){
   return {allowed:false,day,calls:null,max_calls:maxCalls,remaining:0,reason:"Daily budget storage error; Cloudflare AI blocked fail-closed: "+String(error?.message||error).slice(0,140)};
  }
 }
-async function runAIWithFallback(env,prompt){
+async function runAIWithFallback(env,prompt,budget=null){
  const failures=[];
  if(env.GROQ_API_KEY){
   const groqModels=[
@@ -46,6 +46,7 @@ async function runAIWithFallback(env,prompt){
   for(const model of groqModels){
    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),model.timeoutMs);
    try{
+    if(budget){if(budget.used>=budget.max)throw new Error("Analyzer upstream request budget exhausted before Groq");budget.used++;}
     const response=await fetch("https://api.groq.com/openai/v1/chat/completions",{
      method:"POST",headers:{"Authorization":"Bearer "+env.GROQ_API_KEY,"Content-Type":"application/json"},
      body:JSON.stringify({model:model.id,messages:[{role:"system",content:"Return only one valid JSON object. Do not use markdown fences."},{role:"user",content:prompt}],response_format:{type:"json_object"},temperature:0.2,max_completion_tokens:model.maxTokens,reasoning_effort:model.reasoning_effort}),
@@ -76,6 +77,7 @@ async function runAIWithFallback(env,prompt){
  }
  if(env.HF_TOKEN){
   try{
+   if(budget){if(budget.used>=budget.max)throw new Error("Analyzer upstream request budget exhausted before Hugging Face");budget.used++;}
    const response=await fetch("https://router.huggingface.co/v1/chat/completions",{method:"POST",headers:{"Authorization":"Bearer "+env.HF_TOKEN,"Content-Type":"application/json"},body:JSON.stringify({model:"Qwen/Qwen2.5-7B-Instruct",messages:[{role:"system",content:"Return only one valid JSON object. Do not use markdown fences."},{role:"user",content:prompt}],max_tokens:1400,temperature:0.2})});
    if(response.ok){const data=await response.json(),content=data.choices?.[0]?.message?.content;if(content)return {provider:"Hugging Face Qwen",raw:content,fallbacks:failures};}
    else failures.push("Hugging Face HTTP "+response.status+": "+(await response.text()).slice(0,180));
@@ -184,9 +186,10 @@ function analyzeClosedKlines(rows,interval){
  result.candle_interval=interval;
  return result;
 }
-async function candles(symbol,interval,env,marketType="spot"){
+async function candles(symbol,interval,env,marketType="spot",budget=null,minimumCandlesOverride=null){
+ const fetchMarketWithBudget=(url,options={})=>fetchWithTimeout(url,options,9000,budget);
  const headers={"Accept":"application/json, text/plain, */*","User-Agent":"MMP-COIN-AI/1.0","Accept-Language":"en-US,en;q=0.9"};
- const minimumCandles=interval==="1d"?20:30;
+ const minimumCandles=Number.isInteger(minimumCandlesOverride)?Math.max(55,minimumCandlesOverride):(interval==="1d"?20:30);
  if(marketType==="spot"&&String(symbol).toUpperCase().endsWith("IRT")){
   const base=String(symbol).toUpperCase().slice(0,-3),resolution={"1m":"1","3m":"3","5m":"5","15m":"15","1h":"60","4h":"240","1d":"D"}[interval],seconds={"1m":60,"3m":180,"5m":300,"15m":900,"1h":3600,"4h":14400,"1d":86400}[interval];
   if(!base||!resolution||!seconds)throw new Error("Unsupported Nobitex candle interval or pair");
@@ -194,7 +197,7 @@ async function candles(symbol,interval,env,marketType="spot"){
   for(const host of ["https://apiv2.nobitex.ir","https://api.nobitex.ir"]){
    try{
     const url=host+"/market/udf/history?symbol="+encodeURIComponent(base+"IRT")+"&resolution="+resolution+"&from="+from+"&to="+to;
-    const response=await fetchWithTimeout(url,{headers});
+    const response=await fetchMarketWithBudget(url,{headers});
     if(!response.ok)throw new Error("Nobitex candle HTTP "+response.status);
     const payload=await response.json();
     if(payload?.s!=="ok"||!Array.isArray(payload.t))throw new Error(payload?.errmsg||"Nobitex candle history unavailable");
@@ -220,7 +223,7 @@ async function candles(symbol,interval,env,marketType="spot"){
    try{
     const now=Date.now(),kucoinSymbol=(pair.base==="BTC"?"XBT":pair.base)+"USDTM";
     const url="https://api-futures.kucoin.com/api/v1/kline/query?symbol="+encodeURIComponent(kucoinSymbol)+"&granularity="+kucoinGranularity+"&from="+(now-300*kucoinGranularity*60000)+"&to="+now;
-    const r=await fetchWithTimeout(url,{headers});if(!r.ok)throw new Error("KuCoin Futures HTTP "+r.status);
+    const r=await fetchMarketWithBudget(url,{headers});if(!r.ok)throw new Error("KuCoin Futures HTTP "+r.status);
     const d=await r.json(),raw=d?.code==="200000"?d.data:null;
     const rows=Array.isArray(raw)?raw.map(x=>[Number(x[0]),String(x[1]),String(x[2]),String(x[3]),String(x[4]),String(x[5]||0),String(x[6]||0),"0","0","0"]):[];
     if(!validRows(rows))throw new Error(d?.msg||"insufficient KuCoin Futures candle history");
@@ -229,7 +232,7 @@ async function candles(symbol,interval,env,marketType="spot"){
   }
   for(const host of ["https://api.gateio.ws","https://api.gate.us"]){
    try{
-    const r=await fetchWithTimeout(host+"/api/v4/futures/usdt/candlesticks?contract="+encodeURIComponent(contract)+"&interval="+interval+"&limit=250",{headers});
+    const r=await fetchMarketWithBudget(host+"/api/v4/futures/usdt/candlesticks?contract="+encodeURIComponent(contract)+"&interval="+interval+"&limit=250",{headers});
     if(!r.ok)throw new Error("Gate Futures HTTP "+r.status);
     const raw=await r.json(),rows=Array.isArray(raw)?raw.map(x=>[Number(x.t)<1e12?Number(x.t)*1000:Number(x.t),x.o,x.h,x.l,x.c,x.v,x.sum||"0","0","0","0"]):[];
     if(!validRows(rows))throw new Error("insufficient Gate Futures candle history");
@@ -241,7 +244,7 @@ async function candles(symbol,interval,env,marketType="spot"){
   if(mexcInterval){
    try{
     const now=Math.floor(Date.now()/1000),start=now-300*({"1m":60,"5m":300,"15m":900,"1h":3600,"4h":14400,"1d":86400}[interval]);
-    const r=await fetchWithTimeout("https://contract.mexc.com/api/v1/contract/kline/"+encodeURIComponent(contract)+"?interval="+mexcInterval+"&start="+start+"&end="+now,{headers});
+    const r=await fetchMarketWithBudget("https://contract.mexc.com/api/v1/contract/kline/"+encodeURIComponent(contract)+"?interval="+mexcInterval+"&start="+start+"&end="+now,{headers});
     if(!r.ok)throw new Error("MEXC Futures HTTP "+r.status);
     const d=await r.json(),v=d?.data;
     const rows=d?.success===true&&Array.isArray(v?.time)?v.time.map((t,i)=>[Number(t)*1000,String(v.open?.[i]??0),String(v.high?.[i]??0),String(v.low?.[i]??0),String(v.close?.[i]??0),String(v.vol?.[i]??0),String(v.amount?.[i]??0),"0","0","0"]):[];
@@ -250,7 +253,7 @@ async function candles(symbol,interval,env,marketType="spot"){
    }catch(e){errors.push("MEXC: "+e.message);}
   }
   const url="https://api.bitget.com/api/v3/market/candles?category=USDT-FUTURES&symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250";
-   const r=await fetchWithTimeout(url,{headers});if(!r.ok)throw new Error("Bitget Futures HTTP "+r.status);
+   const r=await fetchMarketWithBudget(url,{headers});if(!r.ok)throw new Error("Bitget Futures HTTP "+r.status);
    const payload=await r.json(),raw=payload?.code==="00000"?payload.data:null;
    const rows=Array.isArray(raw)?raw.map(x=>[Number(x[0]),x[1],x[2],x[3],x[4],x[5]||"0",x[6]||"0","0","0","0"]):[];
    if(!validRows(rows))throw new Error(payload?.msg||"insufficient Bitget Futures candle history");
@@ -259,7 +262,7 @@ async function candles(symbol,interval,env,marketType="spot"){
   for(const host of ["https://api.bybit.com","https://api.bytick.com","https://api.bybit.eu"]){
    try{
     const url=host+"/v5/market/kline?category=linear&symbol="+encodeURIComponent(symbol)+"&interval="+bybitInterval+"&limit=250";
-    const r=await fetchWithTimeout(url,{headers});if(!r.ok)throw new Error("Bybit Linear HTTP "+r.status);
+    const r=await fetchMarketWithBudget(url,{headers});if(!r.ok)throw new Error("Bybit Linear HTTP "+r.status);
     const payload=await r.json(),list=payload?.retCode===0?payload.result?.list:null;
     if(!validRows(list))throw new Error(payload?.retMsg||"insufficient Bybit linear candle history");
     const result=analyzeClosedKlines(toBybitRows(list),interval);result.data_provider="Bybit Linear Perpetual";return result;
@@ -268,7 +271,7 @@ async function candles(symbol,interval,env,marketType="spot"){
   if(pair){
    for(const host of ["https://www.okx.com","https://us.okx.com"]){
     try{
-     const instId=pair.base+"-"+pair.quote+"-SWAP",r=await fetchWithTimeout(host+"/api/v5/market/candles?instId="+encodeURIComponent(instId)+"&bar="+okxBar+"&limit=250",{headers});
+     const instId=pair.base+"-"+pair.quote+"-SWAP",r=await fetchMarketWithBudget(host+"/api/v5/market/candles?instId="+encodeURIComponent(instId)+"&bar="+okxBar+"&limit=250",{headers});
      if(!r.ok)throw new Error("OKX Swap HTTP "+r.status);
      const payload=await r.json(),list=payload?.code==="0"?payload.data:null;
      if(!validRows(list))throw new Error(payload?.msg||"insufficient OKX swap candle history");
@@ -278,7 +281,7 @@ async function candles(symbol,interval,env,marketType="spot"){
   }
   for(const host of ["https://fapi.binance.com","https://fapi1.binance.com"]){
    try{
-    const r=await fetchWithTimeout(host+"/fapi/v1/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250",{headers});
+    const r=await fetchMarketWithBudget(host+"/fapi/v1/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250",{headers});
     if(!r.ok)throw new Error("Binance Futures HTTP "+r.status);
     const rows=await r.json();if(!validRows(rows))throw new Error("insufficient Binance Futures candle history");
     const result=analyzeClosedKlines(rows,interval);result.data_provider="Binance USD-M Futures";return result;
@@ -292,7 +295,7 @@ async function candles(symbol,interval,env,marketType="spot"){
   try{
    const kucoinInterval={"1m":"1min","3m":"3min","5m":"5min","15m":"15min","1h":"1hour","4h":"4hour","1d":"1day"}[interval];
    const url="https://api.kucoin.com/api/v1/market/candles?symbol="+encodeURIComponent(pairInfo.base+"-"+pairInfo.quote)+"&type="+kucoinInterval;
-   const r=await fetchWithTimeout(url,{headers});
+   const r=await fetchMarketWithBudget(url,{headers});
    if(!r.ok)throw new Error("KuCoin Spot HTTP "+r.status);
    const payload=await r.json(),rows=payload?.code==="200000"?payload.data:null;
    if(!validRows(rows))throw new Error(payload?.msg||"insufficient KuCoin spot candle history");
@@ -303,7 +306,7 @@ async function candles(symbol,interval,env,marketType="spot"){
    const gateInterval={"1m":"1m","3m":"3m","5m":"5m","15m":"15m","1h":"1h","4h":"4h","1d":"1d"}[interval];
    const gatePair=pairInfo.base+"_"+pairInfo.quote;
    const url="https://api.gateio.ws/api/v4/spot/candlesticks?currency_pair="+encodeURIComponent(gatePair)+"&interval="+gateInterval+"&limit=250";
-   const r=await fetchWithTimeout(url,{headers});
+   const r=await fetchMarketWithBudget(url,{headers});
    if(!r.ok)throw new Error("Gate.io Spot HTTP "+r.status);
    const rows=await r.json();
    if(!validRows(rows))throw new Error("insufficient Gate.io spot candle history");
@@ -320,13 +323,13 @@ async function candles(symbol,interval,env,marketType="spot"){
    try{
     // Confirm the exact market is currently listed before requesting its candles.
     // This avoids sending stale/unsupported symbols to WhiteBIT's instrument resolver.
-    const symbolsResponse=await fetchWithTimeout(host+"/api/v1/public/symbols",{headers});
+    const symbolsResponse=await fetchMarketWithBudget(host+"/api/v1/public/symbols",{headers});
     if(!symbolsResponse.ok)throw new Error("WhiteBIT symbols HTTP "+symbolsResponse.status);
     const symbolsPayload=await symbolsResponse.json();
     const availableSymbols=symbolsPayload?.success===true&&Array.isArray(symbolsPayload.result)?symbolsPayload.result:[];
     if(!availableSymbols.includes(market))throw new Error("WhiteBIT market is not listed: "+market);
     const url=host+"/api/v1/public/kline?market="+encodeURIComponent(market)+"&interval="+whitebitInterval+"&limit=250";
-    const r=await fetchWithTimeout(url,{headers});
+    const r=await fetchMarketWithBudget(url,{headers});
     if(!r.ok)throw new Error("WhiteBIT HTTP "+r.status);
     const payload=await r.json(),rows=payload?.success===true?(Array.isArray(payload.result)?payload.result:Array.isArray(payload.result?.kline)?payload.result.kline:null):null;
     if(!validRows(rows))throw new Error(typeof payload?.message==="string"?payload.message:"insufficient WhiteBIT candle history");
@@ -338,7 +341,7 @@ async function candles(symbol,interval,env,marketType="spot"){
  }
 
  try{
-  const r=await fetchWithTimeout("https://api.mexc.com/api/v3/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250",{headers});
+  const r=await fetchMarketWithBudget("https://api.mexc.com/api/v3/klines?symbol="+encodeURIComponent(symbol)+"&interval="+interval+"&limit=250",{headers});
   if(!r.ok)throw new Error("MEXC Spot HTTP "+r.status);
   const rows=await r.json();if(!validRows(rows))throw new Error("insufficient MEXC spot candle history");
   const result=analyzeClosedKlines(rows,interval);result.data_provider="MEXC Spot";return result;
@@ -346,7 +349,7 @@ async function candles(symbol,interval,env,marketType="spot"){
  try{
   const bitgetInterval={"1m":"1m","3m":"3m","5m":"5m","15m":"15m","1h":"1H","4h":"4H","1d":"1D"}[interval];
   const url="https://api.bitget.com/api/v3/market/candles?category=SPOT&symbol="+encodeURIComponent(symbol)+"&interval="+bitgetInterval+"&limit=250";
-  const r=await fetchWithTimeout(url,{headers});
+  const r=await fetchMarketWithBudget(url,{headers});
   if(!r.ok)throw new Error("Bitget Spot HTTP "+r.status);
   const payload=await r.json(),rows=payload?.code==="00000"||payload?.code==="0"?payload.data:null;
   if(!validRows(rows))throw new Error(payload?.msg||"insufficient Bitget spot candle history");
@@ -357,7 +360,7 @@ async function candles(symbol,interval,env,marketType="spot"){
   const bitgetGranularity={"1m":"1min","3m":"3min","5m":"5min","15m":"15min","1h":"1h","4h":"4h","1d":"1day"}[interval];
   const now=Date.now(),start=now-250*({"1m":60000,"3m":180000,"5m":300000,"15m":900000,"1h":3600000,"4h":14400000,"1d":86400000}[interval]);
   const url="https://api.bitget.com/api/v2/spot/market/candles?symbol="+encodeURIComponent(symbol)+"&granularity="+bitgetGranularity+"&startTime="+start+"&endTime="+now+"&limit=250";
-  const r=await fetchWithTimeout(url,{headers:{...headers,"Origin":"https://www.bitget.com","Referer":"https://www.bitget.com/","User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"}});if(!r.ok)throw new Error("Bitget Spot V2 HTTP "+r.status);
+  const r=await fetchMarketWithBudget(url,{headers:{...headers,"Origin":"https://www.bitget.com","Referer":"https://www.bitget.com/","User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"}});if(!r.ok)throw new Error("Bitget Spot V2 HTTP "+r.status);
   const payload=await r.json(),rows=payload?.code==="00000"?payload.data:null;
   if(!validRows(rows))throw new Error(payload?.msg||"insufficient Bitget V2 spot candle history");
   const normalized=rows.map(x=>[Number(x[0]),x[1],x[2],x[3],x[4],x[5],x[6]||"0","0","0","0"]).sort((a,b)=>a[0]-b[0]);
@@ -366,7 +369,7 @@ async function candles(symbol,interval,env,marketType="spot"){
  for(const host of ["https://api.bybit.com","https://api.bytick.com","https://api.bybit.eu"]){
   try{
    const url=host+"/v5/market/kline?category=spot&symbol="+encodeURIComponent(symbol)+"&interval="+bybitInterval+"&limit=250";
-   const r=await fetchWithTimeout(url,{headers});
+   const r=await fetchMarketWithBudget(url,{headers});
    if(!r.ok)throw new Error("Bybit Spot HTTP "+r.status);
    const payload=await r.json(),list=payload?.retCode===0?payload.result?.list:null;
    if(!validRows(list))throw new Error(payload?.retMsg||"insufficient Bybit spot candle history");
@@ -378,7 +381,7 @@ async function candles(symbol,interval,env,marketType="spot"){
   const instId=pair.base+"-"+pair.quote;
   for(const host of ["https://www.okx.com"]){
    try{
-    const r=await fetchWithTimeout(host+"/api/v5/market/candles?instId="+encodeURIComponent(instId)+"&bar="+okxBar+"&limit=250",{headers});
+    const r=await fetchMarketWithBudget(host+"/api/v5/market/candles?instId="+encodeURIComponent(instId)+"&bar="+okxBar+"&limit=250",{headers});
     if(!r.ok)throw new Error("OKX Spot HTTP "+r.status);
     const payload=await r.json(),list=payload?.code==="0"?payload.data:null;
     if(!validRows(list))throw new Error(payload?.msg||"insufficient OKX spot candle history");
@@ -396,7 +399,7 @@ async function candles(symbol,interval,env,marketType="spot"){
  ];
  for(const url of spotUrls){
   try{
-   const r=await fetchWithTimeout(url,{headers});
+   const r=await fetchMarketWithBudget(url,{headers});
    if(!r.ok)throw new Error("Binance Spot HTTP "+r.status);
    const rows=await r.json();
    if(!validRows(rows))throw new Error("insufficient Binance spot candle history");
@@ -435,8 +438,9 @@ function buildTradePlans(longMarket,action,mode,shortMarket=longMarket){
 function validSymbol(s){return /^[A-Z0-9_]{2,30}$/.test(s||"")&&!s.startsWith("_")&&!s.endsWith("_")&&!s.includes("USDTUSDT")}
 const ASSET_SYMBOL_OVERRIDES=Object.freeze({bitcoin:"BTC",ethereum:"ETH",tether:"USDT","usd-coin":"USDC",binancecoin:"BNB",solana:"SOL",ripple:"XRP",dogecoin:"DOGE",cardano:"ADA","avalanche-2":"AVAX","the-open-network":"TON",tron:"TRX",litecoin:"LTC",polkadot:"DOT",chainlink:"LINK"});
 
-let exchangeCatalogCache=null,exchangeCatalogCacheAt=0;
-async function fetchWithTimeout(url,options={},timeoutMs=9000){
+const exchangeCatalogCache=new Map();
+async function fetchWithTimeout(url,options={},timeoutMs=9000,budget=null){
+ if(budget){if(budget.used>=budget.max)throw new Error("Analyzer upstream request budget exhausted ("+budget.used+"/"+budget.max+")");budget.used++;}
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeoutMs);
  const externalSignal=options.signal;
  let abortExternal=()=>controller.abort();
@@ -483,61 +487,59 @@ async function cleanupMarketFallbackCache(env){
   await env.MARKET_CACHE_DB.prepare("DELETE FROM market_data_cache WHERE cache_key IN (SELECT cache_key FROM market_data_cache ORDER BY cached_at ASC LIMIT 100) AND (SELECT COUNT(*) FROM market_data_cache)>4000").run();
  }catch(error){console.warn("Market fallback cache cleanup failed:",String(error?.message||error).slice(0,160));}
 }
-async function readPublicJson(url){
+async function readPublicJson(url,budget=null){
  try{
-  const r=await fetchWithTimeout(url,{headers:{"Accept":"application/json, text/plain, */*","User-Agent":"MMP-COIN-AI/1.0","Accept-Language":"en-US,en;q=0.9"}},7500);
+  const r=await fetchWithTimeout(url,{headers:{"Accept":"application/json, text/plain, */*","User-Agent":"MMP-COIN-AI/1.0","Accept-Language":"en-US,en;q=0.9"}},7500,budget);
   if(!r.ok)return {ok:false,status:r.status,error:"HTTP "+r.status};
   const data=await r.json();return {ok:true,status:r.status,data};
  }catch(e){return {ok:false,status:0,error:e.message||"network error"};}
 }
-async function readAnyPublicJson(urls){
+async function readAnyPublicJson(urls,budget=null){
  let last=null;
  for(const url of urls){
-  const result=await readPublicJson(url);
+  const result=await readPublicJson(url,budget);
   if(result.ok)return {...result,source:url};
   last=result;
  }
  return last||{ok:false,status:0,error:"No public endpoint responded"};
 }
-async function readOkxCatalog(instType){
+async function readOkxCatalog(instType,budget=null){
  let last=null;
  for(const host of ["https://www.okx.com"]){
-  const r=await readPublicJson(host+"/api/v5/public/instruments?instType="+instType);
+  const r=await readPublicJson(host+"/api/v5/public/instruments?instType="+instType,budget);
   if(r.ok&&r.data?.code==="0"&&Array.isArray(r.data.data))return {...r,source:host};
   last=r;
  }
  return last||{ok:false,status:0,error:"OKX catalog unavailable"};
 }
-async function getExchangeCatalogs(){
- if(exchangeCatalogCache&&Date.now()-exchangeCatalogCacheAt<300000)return exchangeCatalogCache;
- const urls=[
-  ["binance_spot","https://api.binance.com/api/v3/exchangeInfo"],
-  ["bybit_spot",[
-   "https://api.bybit.eu/v5/market/instruments-info?category=spot&limit=1000",
-   "https://api.bytick.eu/v5/market/instruments-info?category=spot&limit=1000",
-   "https://api.bybit.com/v5/market/instruments-info?category=spot&limit=1000",
-   "https://api.bytick.com/v5/market/instruments-info?category=spot&limit=1000"
-  ]],
-  ["binance_futures","https://fapi.binance.com/fapi/v1/exchangeInfo"],
-  ["bybit_futures",[
-   "https://api.bybit.eu/v5/market/instruments-info?category=linear&limit=1000",
-   "https://api.bytick.eu/v5/market/instruments-info?category=linear&limit=1000",
-   "https://api.bybit.com/v5/market/instruments-info?category=linear&limit=1000",
-   "https://api.bytick.com/v5/market/instruments-info?category=linear&limit=1000"
-  ]],
-  ["bitget_futures","https://api.bitget.com/api/v3/market/tickers?category=USDT-FUTURES"],
-  ["gate_futures",["https://api.gateio.ws/api/v4/futures/usdt/tickers","https://api.gate.us/api/v4/futures/usdt/tickers"]],
-  ["bitget_spot","https://api.bitget.com/api/v3/market/instruments?category=SPOT"],
-  ["whitebit_spot",["https://whitebit.com/api/v1/public/markets","https://whitebit.eu/api/v1/public/markets","https://whitebit.tr/api/v1/public/markets","https://whitebit.ge/api/v1/public/markets"]],
-  ["gate_spot",["https://api.gateio.ws/api/v4/spot/currency_pairs","https://api.gate.us/api/v4/spot/currency_pairs"]],
-  ["kucoin_spot",["https://api.kucoin.com/api/v2/symbols","https://api.kucoin.tr/api/v2/symbols"]],
-  ["nobitex_spot","https://apiv2.nobitex.ir/market/stats?dstCurrency=rls"]
- ];
- const results=await Promise.all(urls.map(async ([key,endpoint])=>[key,Array.isArray(endpoint)?await readAnyPublicJson(endpoint):await readPublicJson(endpoint)]));
- const out=Object.fromEntries(results);
- const [okxSpot,okxSwap]=await Promise.all([readOkxCatalog("SPOT"),readOkxCatalog("SWAP")]);
- out.okx_spot=okxSpot;out.okx_futures=okxSwap;
- exchangeCatalogCache=out;exchangeCatalogCacheAt=Date.now();return out;
+async function getExchangeCatalogs(mode="both",budget=null,env=null,pair="BTCUSDT"){
+ const now=Date.now(),memoryKey=mode+":"+pair,cacheKey="exchange-catalogs:"+memoryKey;
+ const cached=exchangeCatalogCache.get(memoryKey);
+ if(cached&&now-cached.at<24*60*60*1000)return cached.data;
+ let stale=null;
+ if(env?.MARKET_CACHE_DB){
+  try{
+   const row=await env.MARKET_CACHE_DB.prepare("SELECT payload,cached_at FROM market_data_cache WHERE cache_key = ?").bind(cacheKey).first();
+   if(row?.payload){stale=JSON.parse(row.payload);if(now-(Number(row.cached_at)||0)<7*24*60*60*1000){exchangeCatalogCache.set(memoryKey,{data:stale,at:now});return stale;}}
+  }catch{}
+ }
+ const encodedPair=encodeURIComponent(pair),tasks=[];
+ if(mode!=="futures"){
+  tasks.push(["binance_spot",()=>readPublicJson("https://api.binance.com/api/v3/exchangeInfo?symbol="+encodedPair,budget)]);
+  tasks.push(["bybit_spot",()=>readAnyPublicJson(["https://api.bybit.com/v5/market/instruments-info?category=spot&symbol="+encodedPair,"https://api.bytick.com/v5/market/instruments-info?category=spot&symbol="+encodedPair],budget)]);
+ }
+ if(mode!=="spot"){
+  tasks.push(["binance_futures",()=>readPublicJson("https://fapi.binance.com/fapi/v1/exchangeInfo?symbol="+encodedPair,budget)]);
+  tasks.push(["bybit_futures",()=>readAnyPublicJson(["https://api.bybit.com/v5/market/instruments-info?category=linear&symbol="+encodedPair,"https://api.bytick.com/v5/market/instruments-info?category=linear&symbol="+encodedPair],budget)]);
+ }
+ const entries=await Promise.all(tasks.map(async([key,run])=>[key,await run()]));
+ const catalogs=Object.fromEntries(entries),hasLiveCatalog=Object.values(catalogs).some(x=>x?.ok===true);
+ if(!hasLiveCatalog&&stale){exchangeCatalogCache.set(memoryKey,{data:stale,at:now});return stale;}
+ exchangeCatalogCache.set(memoryKey,{data:catalogs,at:now});
+ if(env?.MARKET_CACHE_DB){
+  try{await env.MARKET_CACHE_DB.prepare("INSERT INTO market_data_cache (cache_key,payload,cached_at) VALUES (?, ?, ?) ON CONFLICT(cache_key) DO UPDATE SET payload=excluded.payload,cached_at=excluded.cached_at").bind(cacheKey,JSON.stringify(catalogs),now).run();}catch(error){console.error("Exchange catalog cache write failed:",error?.message||error);}
+ }
+ return catalogs;
 }
 function exchangeSupport(symbol,catalogs){
  const base=String(symbol||"").toUpperCase();
@@ -694,7 +696,7 @@ async function loadMarketFlow(symbol,windowMinutes=5,signal=null){
    // Gate's time-window endpoint is paginated. Continue until the oldest returned
    // trade reaches the requested window start, a short page proves exhaustion,
    // or the provider stops advancing. Never mark a capped sample as complete.
-   for(let page=1;page<=8;page++){
+   for(let page=1;page<=3;page++){
     const query="https://api.gateio.ws/api/v4/spot/trades?currency_pair="+encodeURIComponent(gatePair)+"&from="+Math.floor(cutoff/1000)+"&to="+Math.ceil(now/1000)+"&limit=1000&page="+page;
     const batch=await get(query,4500);
     if(!Array.isArray(batch))throw new Error("Gate trades response invalid");
@@ -752,7 +754,7 @@ if(!trades?.length||truncated||trades.length<8){
   // OKX Spot history is cursor-paginated; walk back until the requested window is fully covered.
   // This avoids treating a capped 500/1000-trade sample as a complete 5-minute flow window.
   const instId=pair.replace(/USDT$/,"")+"-USDT",history=[],seen=new Set();let after="",historyTruncated=true;
-  for(let page=0;page<10;page++){
+  for(let page=0;page<3;page++){
    const query="https://www.okx.com/api/v5/market/history-trades?instId="+encodeURIComponent(instId)+"&limit=100"+(after?"&after="+encodeURIComponent(after):"");
    const d=await get(query,4500);
    if(String(d.code)!=="0")throw new Error(d.msg||"OKX Spot history trades unavailable");
@@ -794,7 +796,7 @@ async function fetchHunterCandles(symbol,marketType="spot",asset=null){
     const rows=raw.map(map).filter(x=>x.every(Number.isFinite)&&x[1]>0&&x[2]>=x[3]&&x[3]>0&&x[4]>0&&x[5]>=0).sort((a,b)=>a[0]-b[0]);
     if(rows.length>=65)return [label,rows];
     throw new Error(label+" returned only "+rows.length+" candles");
-   }catch(error){const message=String(error?.message||error);lastError=new Error(label+": "+message);if(/HTTP 400|invalid candle payload|Symbol Is Invalid|returned only \\d+ candles/i.test(message))break;}
+   }catch(error){const message=String(error?.message||error),upstreamStatus=/HTTP (400|403|429|451)/i,transientStatus=/HTTP (403|429|451|5\d\d)|fetch failed|timeout|aborted/i,invalidPayload=/invalid candle payload|Symbol Is Invalid|returned only \\d+ candles/i;lastError=new Error(label+": "+message);if(/HTTP 400/i.test(message)||invalidPayload.test(message))break;if(upstreamStatus.test(message)&&transientStatus.test(message))continue;if(transientStatus.test(message))continue;}
   }
   throw lastError||new Error(label+" unavailable");
  };
@@ -897,7 +899,7 @@ export async function loadFuturesMarketFlow(symbol,windowMinutes=5,signal=null){
  // This flow runs in the dedicated Futures Worker so its exchange requests do not
  // compete with the analyzer, Spot flow, depth, or sentiment subrequests.
  let requestsUsed=0;
- const maxRequests=50;
+ const maxRequests=18;
  const get=(url,timeoutMs=4500)=>{
   if(requestsUsed>=maxRequests)throw new Error("Futures flow request budget reached");
   requestsUsed++;
@@ -985,7 +987,7 @@ export async function loadFuturesMarketFlow(symbol,windowMinutes=5,signal=null){
  if(!trades?.length||truncated||trades.length<8){
   try{
    const instId=base+"-USDT-SWAP",history=[],seen=new Set();let after="",historyTruncated=true;
-   for(let page=0;page<45;page++){
+   for(let page=0;page<6;page++){
     const query="https://www.okx.com/api/v5/market/history-trades?instId="+encodeURIComponent(instId)+"&limit=100"+(after?"&after="+encodeURIComponent(after):"");
     const d=await get(query,4500);
     if(String(d.code)!=="0")throw Error(d.msg||"OKX history Futures trades unavailable");
@@ -1140,7 +1142,7 @@ async function scanHunterSymbols(symbols,marketType="spot",assetList=[],env=null
    if(marketType==="futures"&&engineActivity?.sentiment)engineActivity.sentiment.processed++;
    const [sentimentResult,flowResult,depthResult]=await Promise.allSettled([
     marketType==="futures"?loadHunterFundingSentiment(x.symbol,x.trend,preferred,flowController.signal):Promise.resolve({available:false,score:null,sourceCount:0,sources:[]}),
-    marketType==="futures"?loadFuturesMarketFlow(x.symbol,1,flowController.signal):loadMarketFlow(x.symbol,5,flowController.signal),
+    marketType==="futures"?loadFuturesMarketFlow(x.symbol,1,flowController.signal):loadMarketFlow(x.symbol,Math.max(1,Math.min(5,Number(options.flowWindowMinutes)||5)),flowController.signal),
     loadHunterDepth(x.symbol,marketType,preferred,flowController.signal)
    ]);
    const sentiment=sentimentResult.status==="fulfilled"?sentimentResult.value:{available:false,score:null,sourceCount:0,sources:[]};
@@ -1208,7 +1210,7 @@ async function loadDigitalHunterFuturesUniverse(){
 }
 async function loadDigitalHunterUniverse(env,marketType){
  if(marketType==="futures")return await loadDigitalHunterFuturesUniverse();
- const response=await handle(new Request("https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/hunter-universe",{headers:{"Accept":"application/json","User-Agent":"MMP-Digital-Hunter/2.0","X-MMP-Internal-Token":env.FUTURES_ENGINE_TOKEN||""}}),env);
+ const response=await handle(new Request("https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev/hunter-universe?force=1",{headers:{"Accept":"application/json","User-Agent":"MMP-Digital-Hunter/2.0","X-MMP-Internal-Token":env.FUTURES_ENGINE_TOKEN||""}}),env);
  if(!response.ok)throw Error("Universe HTTP "+response.status);
  const data=await response.json();
  return {assets:data.hunter_assets||[],sources:data.sources||data.live_source_status||{},metadata_provider:data.metadata_provider||"multi-exchange",stale:data.universe_stale===true||data.cached_fallback===true,universe_age_ms:Number(data.universe_age_ms),universe_updated_at:data.universe_updated_at||data.checked_at||null};
@@ -1243,14 +1245,14 @@ export async function refreshDigitalHunterUniverses(env){
  await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind("digital-hunter-universe-refresh",JSON.stringify(payload),payload.updated_at).run();
  return payload;
 }
-export async function runDigitalHunterMarketCycle(env,marketType="spot"){
+export async function runDigitalHunterMarketCycle(env,marketType="spot",options={}){
  if(!env.ADMIN_DB)throw Error("ADMIN_DB binding missing");
  const stateId=marketType==="futures"?"digital-hunter-v2-futures":"digital-hunter-v2",stored=await env.ADMIN_DB.prepare("SELECT payload FROM hunter_engine_state WHERE id = ?").bind(stateId).first(),previous=stored?.payload?JSON.parse(stored.payload):{},now=Date.now();
- if(previous.lastRun&&now-Number(previous.lastRun)<45000&&previous.snapshot)return {...previous.snapshot,cycle_skipped:true};
- const batchLimit=marketType==="futures"?FUTURES_HUNTER_BATCH_SIZE:HUNTER_BATCH_SIZE;
+ if(!options.force&&previous.lastRun&&now-Number(previous.lastRun)<45000&&previous.snapshot)return {...previous.snapshot,cycle_skipped:true};
+ const defaultBatchLimit=marketType==="futures"?FUTURES_HUNTER_BATCH_SIZE:HUNTER_BATCH_SIZE,batchLimit=Math.max(1,Math.min(defaultBatchLimit,Number(options.batchLimit)||defaultBatchLimit));
  const learningId="mmp-learning-ledger-v1-"+marketType;let priorLedger={};
  try{const learningRow=await env.ADMIN_DB.prepare("SELECT payload FROM hunter_engine_state WHERE id = ?").bind(learningId).first();priorLedger=learningRow?.payload?JSON.parse(learningRow.payload):{};}catch{}
- const dueLearningRecords=(priorLedger.records||[]).filter(record=>{if(record.market!==marketType||record.status!=="open")return false;const horizon=[5,15,60].find(minutes=>(record["outcome_"+minutes+"m"]===null||record["outcome_"+minutes+"m"]===undefined)&&record["missed_"+minutes+"m"]!==true);return !!horizon&&now>=Number(record.signal_at||now)+horizon*60000&&now<=Number(record.signal_at||now)+horizon*60000+120000;}).sort((a,b)=>Number(a.signal_at)-Number(b.signal_at)).slice(0,2);
+ const dueLearningRecords=options.skipLearningMarks?[]:(priorLedger.records||[]).filter(record=>{if(record.market!==marketType||record.status!=="open")return false;const horizon=[5,15,60].find(minutes=>(record["outcome_"+minutes+"m"]===null||record["outcome_"+minutes+"m"]===undefined)&&record["missed_"+minutes+"m"]!==true);return !!horizon&&now>=Number(record.signal_at||now)+horizon*60000&&now<=Number(record.signal_at||now)+horizon*60000+120000;}).sort((a,b)=>Number(a.signal_at)-Number(b.signal_at)).slice(0,Math.max(0,Math.min(2,Number(options.maxPriorityRechecks??2)))));
  const cacheId=stateId+"-universe-cache",cachedRow=await env.ADMIN_DB.prepare("SELECT payload FROM hunter_engine_state WHERE id = ?").bind(cacheId).first(),cached=cachedRow?.payload?JSON.parse(cachedRow.payload):null;
  let assets=Array.isArray(previous.assets)?previous.assets:[],universeUpdatedAt=Number(previous.universeUpdatedAt)||0,universeSources=previous.universeSources||{},universeProvider=previous.universeProvider||"multi-exchange",adoptedUniverse=false;
  const cacheIsNewer=Number(cached?.universeUpdatedAt)>universeUpdatedAt;
@@ -1288,7 +1290,7 @@ export async function runDigitalHunterMarketCycle(env,marketType="spot"){
   if(!symbol||selectedSymbols.has(symbol)||Number(failureCooldown[symbol]||0)>now)continue;
   batch.push(asset);selectedSymbols.add(symbol);
  }
- const result=await scanHunterSymbols(batch.map(x=>x.symbol),marketType,batch,env,{reviewAI:false});
+ const result=await scanHunterSymbols(batch.map(x=>x.symbol),marketType,batch,env,{reviewAI:false,flowWindowMinutes:options.flowWindowMinutes||5});
  const learningMarkResults=await Promise.allSettled(dueLearningRecords.map(async record=>{const asset=assets.find(x=>x.symbol===record.symbol)||null,market=await fetchHunterCandles(record.symbol,marketType,asset),closed=market.rows.slice(0,-1),last=closed.at(-1),price=Number(last?.[4]);if(!(price>0))throw new Error("No fresh closed candle for learning mark");return {symbol:record.symbol,price,currentPrice:price,checked_at:now,provider:market.provider};}));
  const learningMarks=learningMarkResults.filter(x=>x.status==="fulfilled").map(x=>x.value);
  // Retry transient exchange/network failures sooner; quality rejects are not
@@ -1322,7 +1324,7 @@ export async function runDigitalHunterMarketCycle(env,marketType="spot"){
  await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(stateId,payload,new Date(now).toISOString()).run();
  return snapshot;
 }
-async function runDigitalHunterCycle(env){return runDigitalHunterMarketCycle(env,"spot");}
+async function runDigitalHunterCycle(env,options={}){return runDigitalHunterMarketCycle(env,"spot",options);}
 
 async function handle(request,env){
  if(request.method==="OPTIONS"){
@@ -1338,11 +1340,12 @@ async function handle(request,env){
   const flowWindow=url.searchParams.get("window")||(marketType==="futures"?1:5);try{
    if(marketType==="futures"){
     if(!env.FUTURES_ENGINE||!env.FUTURES_ENGINE_TOKEN)return json({error:"Dedicated Futures flow service is not configured"},503,request);
-    const internal=new Request("https://futures-engine/market-flow?symbol="+encodeURIComponent(symbol)+"&window="+encodeURIComponent(flowWindow),{headers:{"X-MMP-Futures-Token":env.FUTURES_ENGINE_TOKEN}});
+    const internal=new Request("https://futures-engine/market-flow?symbol="+encodeURIComponent(symbol)+"&window="+encodeURIComponent(flowWindow)+"&compact=1",{headers:{"X-MMP-Futures-Token":env.FUTURES_ENGINE_TOKEN}});
     const response=await env.FUTURES_ENGINE.fetch(internal),payload=await response.json();
     return json(payload,response.status,request);
    }
-   return json(await loadMarketFlow(symbol,flowWindow),200,request);
+   const flow=await loadMarketFlow(symbol,flowWindow),trades=Array.isArray(flow.trades)?flow.trades:[];
+   return json({...flow,trade_count:flow.trade_count||trades.length,trades:trades.slice(-100),trade_sampled:trades.length>100},200,request);
   }catch(error){return json({error:String(error?.message||"دریافت جریان معاملات ناموفق بود").slice(0,260)},502,request);}
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-combined-snapshot"){
@@ -1363,7 +1366,7 @@ async function handle(request,env){
   return json(saved?.snapshot||{status:"warming_up",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,signals:[],scanned_count:0,universe_count:0},200,request);
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-run"){
-  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-run",env,300),request);if(limited)return limited;try{return json(await runDigitalHunterCycle(env),200,request);}catch(e){return json({status:"error",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,error:String(e?.message||e).slice(0,220)},502,request);}
+  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-run",env,300),request);if(limited)return limited;try{return json(await runDigitalHunterCycle(env,{batchLimit:1,maxPriorityRechecks:0,skipLearningMarks:true,flowWindowMinutes:1,force:true}),200,request);}catch(e){return json({status:"error",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,error:String(e?.message||e).slice(0,220)},502,request);}
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-cron-status"){
   const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-cron-status",env,300),request);if(limited)return limited;
@@ -1398,7 +1401,14 @@ async function handle(request,env){
   const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-futures-run",env,300),request);if(limited)return limited;try{return json(await runDigitalHunterMarketCycle(env,"futures"),200,request);}catch(e){return json({status:"error",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,market:"futures",error:String(e?.message||e).slice(0,220)},502,request);}
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-scan"){
-  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-scan",env,300),request);if(limited)return limited;const url=new URL(request.url),symbols=[...new Set((url.searchParams.get("symbols")||"").split(",").map(x=>x.toUpperCase().replace(/[^A-Z0-9]/g,"")).filter(x=>/^[A-Z0-9]{2,24}$/.test(x)))].slice(0,12);if(!symbols.length)return json({error:"حداقل یک نماد معتبر ارسال کنید."},400,request);const marketType=url.searchParams.get("market")==="futures"?"futures":"spot";try{return json({engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,...await scanHunterSymbols(symbols,marketType,[],env)},200,request);}catch(e){return json({error:String(e?.message||e).slice(0,220)},502,request);}
+  const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-scan",env,300),request);if(limited)return limited;
+  const url=new URL(request.url),requestedSymbols=[...new Set((url.searchParams.get("symbols")||"").split(",").map(x=>x.toUpperCase().replace(/[^A-Z0-9]/g,"")).filter(x=>/^[A-Z0-9]{2,24}$/.test(x)))].slice(0,12);
+  if(!requestedSymbols.length)return json({error:"حداقل یک نماد معتبر ارسال کنید."},400,request);
+  const symbols=requestedSymbols.slice(0,1),marketType=url.searchParams.get("market")==="futures"?"futures":"spot";
+  try{
+   const result=await scanHunterSymbols(symbols,marketType,[],env);
+   return json({engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,...result,requested_symbols:requestedSymbols,remaining_symbols:requestedSymbols.slice(1),batch_limit:1,partial:requestedSymbols.length>1},200,request);
+  }catch(e){return json({error:String(e?.message||e).slice(0,220),requested_symbols:requestedSymbols,stage:"hunter_scan"},502,request);}
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-universe"){
   // Scheduled engine refreshes authenticate internally with a Worker secret and do not
@@ -1408,12 +1418,25 @@ async function handle(request,env){
    const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"hunter-universe",env,300);
    const limited=rateLimitReply(limitResult,request);if(limited)return limited;
   }
-  // Share the expensive multi-exchange catalog across web and Android clients for 90 seconds.
-  const universeCacheKey=await marketFallbackKey("hunter-universe:v1");
-  const cachedUniverse=await readMarketFallback(env,universeCacheKey);
-  if(cachedUniverse?.payload&&cachedUniverse.ageMs<90000){
-   return json({...cachedUniverse.payload,universe_stale:false,universe_age_ms:cachedUniverse.ageMs,universe_updated_at:cachedUniverse.payload.checked_at||null},200,request,{"X-MMP-Cache":"HIT","X-MMP-Data-Age":String(Math.floor(cachedUniverse.ageMs)),"Cache-Control":"no-store"});
+  const universeUrl=new URL(request.url),forceRefresh=internalAuthorized&&universeUrl.searchParams.get("force")==="1";
+  if(!forceRefresh){
+   if(!env.ADMIN_DB)return json({error:"Precomputed Spot universe cache unavailable",stage:"admin_db_missing"},503,request);
+   try{
+    const cached=await env.ADMIN_DB.prepare("SELECT json_extract(payload,'$.assets') AS assets,json_extract(payload,'$.universeUpdatedAt') AS updated_at,json_extract(payload,'$.universeProvider') AS provider,json_extract(payload,'$.universeSources') AS sources,json_extract(payload,'$.universeStale') AS stale FROM hunter_engine_state WHERE id=?").bind("digital-hunter-v2-universe-cache").first();
+    const assetsJson=typeof cached?.assets==="string"?cached.assets:"";
+    const updatedAt=Number(cached?.updated_at)||0;
+    if(!assetsJson.startsWith("[")||!updatedAt)return json({status:"warming_up",error:"No validated Spot universe cache is available",stage:"universe_cache_empty"},503,request);
+    const ageMs=Math.max(0,Date.now()-updatedAt);
+    if(ageMs>24*60*60*1000)return json({status:"stale",error:"Spot universe cache is older than 24 hours",stage:"universe_cache_expired",universe_age_ms:ageMs},503,request);
+    const checkedAt=new Date(updatedAt).toISOString(),stale=Number(cached.stale)===1||ageMs>6*60*60*1000;
+    const sourcesJson=typeof cached.sources==="string"&&cached.sources.trim().startsWith("{")?cached.sources:"{}";
+    const body='{"checked_at":'+JSON.stringify(checkedAt)+',"universe_updated_at":'+JSON.stringify(checkedAt)+',"universe_age_ms":'+Math.floor(ageMs)+',"universe_stale":'+(stale?"true":"false")+',"cached_fallback":'+(stale?"true":"false")+',"metadata_provider":'+JSON.stringify(cached.provider||"cached multi-exchange universe")+',"sources":'+sourcesJson+',"hunter_assets":'+assetsJson+'}';
+    return new Response(body,{status:200,headers:{...corsHeaders(request),"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store","X-MMP-Data-Source":"D1 precomputed multi-exchange universe","X-MMP-Cache":"HIT","X-MMP-Data-Age":String(Math.floor(ageMs))}});
+   }catch(error){
+    return json({error:"Precomputed Spot universe query failed",stage:"universe_cache_query",detail:String(error?.message||error).slice(0,160)},503,request);
+   }
   }
+  const cachedUniverse=null;
   const timedJson=async(url,timeout=12000,cacheTtl=30,extraHeaders={})=>{
    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeout);
    try{
@@ -1510,7 +1533,7 @@ async function handle(request,env){
     hunterChange24h:Number.isFinite(best.change24h)?best.change24h:Number(cmcQuote.percent_change_24h)||0,
     hunterVenueVolume:venueVolume,marketPairs:quotes.map(q=>({exchange:q.exchange,pair:q.pair,quote:q.quoteAsset,price:Number(q.price)||0,volume:Number(q.volume)||0})),hasUsdtMarket:quotes.some(q=>String(q.quoteAsset).toUpperCase()==="USDT"),hasDomesticMarket:quotes.some(q=>["Nobitex","Wallex"].includes(q.exchange)),cmcDuplicateCount:cmcDuplicateCount.get(symbol)||1
    };
-  }).filter(x=>x.current_price>0).sort((a,b)=>Math.abs(Number(b.hunterChange24h)||0)-Math.abs(Number(a.hunterChange24h)||0)||b.total_volume-a.total_volume||Number(a.market_cap_rank||999999)-Number(b.market_cap_rank||999999));
+  }).filter(x=>x.current_price>0);
   // Canonical assets retain metadata identity where available; independent discoveries remain a separate market-instrument universe.
   const rankedAssets=assets.sort((a,b)=>b.total_volume-a.total_volume||Number(a.market_cap_rank||999999)-Number(b.market_cap_rank||999999));
   const discoveredAssets=[...discoveryMarkets.entries()].map(([symbol,market])=>{
@@ -1518,45 +1541,74 @@ async function handle(request,env){
    return {id:"market-discovery:"+symbol,symbol,name:symbol,image:"",current_price:Number(best.price)||0,total_volume:quotes.reduce((sum,x)=>sum+(Number(x.volume)||0),0),market_cap:null,market_cap_rank:null,hunterExchange:[...market.venues].join(", "),hunterPriceExchange:best.exchange||"Exchange discovery",hunterChange24h:Number(best.change24h)||0,hunterVenueVolume:Object.fromEntries(quotes.map(x=>[x.exchange,Number(x.volume)||0])),marketPairs:quotes.map(q=>({exchange:q.exchange,pair:q.pair,quote:q.quoteAsset,price:Number(q.price)||0,volume:Number(q.volume)||0})),hasUsdtMarket:true,hasDomesticMarket:false,isDiscovery:true};
   }).filter(asset=>asset.current_price>0&&discoveryMarkets.get(asset.symbol).venues.size>=2&&asset.total_volume>=50000);
   const hunterAssets=[...rankedAssets.filter(asset=>asset.hasUsdtMarket===true),...discoveredAssets].sort((a,b)=>Number(b.total_volume||0)-Number(a.total_volume||0));
-  const radarAssets=[...rankedAssets,...discoveredAssets].sort((a,b)=>Number(b.total_volume||0)-Number(a.total_volume||0));
-  if(!rankedAssets.length&&!hunterAssets.length&&!radarAssets.length){
-   if(cachedUniverse?.payload){
-    const stalePayload={...cachedUniverse.payload,cached_fallback:true,universe_stale:true,universe_age_ms:cachedUniverse.ageMs,universe_updated_at:cachedUniverse.payload.checked_at||null,live_source_status:sources};
-    return json(stalePayload,200,request,{"X-MMP-Cache":"STALE","X-MMP-Data-Age":String(Math.floor(cachedUniverse.ageMs)),"Cache-Control":"no-store","Warning":'110 - "Response is stale"'});
-   }
+  if(!hunterAssets.length){
    if(env.ADMIN_DB){
     try{
      const row=await env.ADMIN_DB.prepare("SELECT payload,updated_at FROM hunter_engine_state WHERE id = ?").bind("digital-hunter-v2-universe-cache").first();
      const saved=row?.payload?JSON.parse(row.payload):null;
      const savedAt=Number(saved?.universeUpdatedAt)||Date.parse(row?.updated_at||"")||0;
-     const staleAssets=normalizeQuantumUniverse(saved?.assets||[],"spot");
+     const staleAssets=Array.isArray(saved?.assets)?saved.assets:[];
      if(staleAssets.length&&savedAt>0){
-      const ageMs=Math.max(0,Date.now()-savedAt),stalePayload={checked_at:new Date(savedAt).toISOString(),universe_updated_at:new Date(savedAt).toISOString(),universe_age_ms:ageMs,universe_stale:true,cached_fallback:true,warning:"Live exchange catalog is unavailable; serving the last validated Spot universe.",count:staleAssets.length,hunter_count:staleAssets.length,radar_count:staleAssets.length,discovered_count:0,binance_spot_symbols:0,cmc_listings:0,universe_mode:"cached_fallback",metadata_provider:saved.universeProvider||"cached",assets:staleAssets,hunter_assets:staleAssets,radar_assets:staleAssets,sources:saved.universeSources||{},live_source_status:sources};
+      const ageMs=Math.max(0,Date.now()-savedAt),stalePayload={checked_at:new Date(savedAt).toISOString(),universe_updated_at:new Date(savedAt).toISOString(),universe_age_ms:ageMs,universe_stale:true,cached_fallback:true,warning:"Live exchange catalog is unavailable; serving the last validated Spot universe.",count:staleAssets.length,hunter_count:staleAssets.length,radar_count:staleAssets.length,discovered_count:0,binance_spot_symbols:0,cmc_listings:0,universe_mode:"cached_fallback",metadata_provider:saved.universeProvider||"cached",hunter_assets:staleAssets,sources:saved.universeSources||{},live_source_status:sources};
       return json(stalePayload,200,request,{"X-MMP-Cache":"STALE","X-MMP-Data-Age":String(Math.floor(ageMs)),"Cache-Control":"no-store","Warning":'110 - "Response is stale"'});
      }
     }catch(error){console.warn("Hunter admin universe fallback failed:",String(error?.message||error).slice(0,140));}
    }
    return json({error:"هیچ بازار معتبر و قابل‌تأییدی از صرافی‌ها دریافت نشد.",sources},502,request);
   }
-  const universePayload={checked_at:new Date().toISOString(),count:rankedAssets.length,hunter_count:hunterAssets.length,radar_count:radarAssets.length,discovered_count:discoveredAssets.length,binance_spot_symbols:binanceSymbols.size,cmc_listings:cmcRows.length,universe_mode:"unified_catalog_plus_independent_exchange_discovery",metadata_provider:metadataProvider,assets:rankedAssets,hunter_assets:hunterAssets,radar_assets:radarAssets,sources};
-  if(env.MARKET_CACHE_DB){
-   try{await env.MARKET_CACHE_DB.prepare("INSERT INTO market_data_cache (cache_key,payload,cached_at) VALUES (?, ?, ?) ON CONFLICT(cache_key) DO UPDATE SET payload=excluded.payload,cached_at=excluded.cached_at").bind(universeCacheKey,JSON.stringify(universePayload),Date.now()).run();}
-   catch(error){console.warn("Hunter universe shared cache write failed:",String(error?.message||error).slice(0,140));}
-  }
+  const universePayload={checked_at:new Date().toISOString(),count:hunterAssets.length,hunter_count:hunterAssets.length,discovered_count:discoveredAssets.length,binance_spot_symbols:binanceSymbols.size,cmc_listings:cmcRows.length,universe_mode:"unified_catalog_plus_independent_exchange_discovery",metadata_provider:metadataProvider,hunter_assets:hunterAssets,sources};
   return json(universePayload,200,request,{"X-MMP-Data-Source":"Binance, Bybit, OKX, Bitget, Gate, KuCoin, WhiteBIT, Nobitex, Wallex + "+metadataProvider,"X-MMP-Cache":"MISS","Cache-Control":"no-store"});
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/support-check"){
   const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"support-check",env,300);
   const limited=rateLimitReply(limitResult,request);if(limited)return limited;
   const url=new URL(request.url);
-  const symbols=[...new Set((url.searchParams.get("symbols")||"").split(",").map(x=>x.toUpperCase().replace(/[^A-Z0-9_]/g,"")).filter(validSymbol))].slice(0,150);
+  const symbols=[...new Set((url.searchParams.get("symbols")||"").split(",").map(x=>x.toUpperCase().replace(/[^A-Z0-9_]/g,"")).filter(validSymbol))].slice(0,20);
   if(!symbols.length)return json({error:"Provide comma-separated symbols"},400,request);
-  const catalogs=await getExchangeCatalogs();
-  const assets=symbols.map(symbol=>exchangeSupport(symbol,catalogs));
-  const sources=Object.fromEntries(Object.entries(catalogs).map(([k,v])=>[k,{ok:!!v?.ok,status:v?.status||0,error:v?.error||null,source:v?.source||null}]));
-  return json({checked_at:new Date().toISOString(),assets,sources},200,request);
+  if(!env.ADMIN_DB)return json({error:"Support cache unavailable",stage:"admin_db_missing"},503,request);
+  try{
+   const marks=symbols.map(()=>"?").join(",");
+   const readCache=async id=>{
+    const sql="SELECT upper(json_extract(j.value,'$.symbol')) AS symbol,j.value AS asset_payload,json_extract(h.payload,'$.universeUpdatedAt') AS universe_updated_at,json_extract(h.payload,'$.universeStale') AS universe_stale,json_extract(h.payload,'$.universeProvider') AS provider FROM hunter_engine_state h,json_each(h.payload,'$.assets') j WHERE h.id=? AND upper(json_extract(j.value,'$.symbol')) IN ("+marks+")";
+    const result=await env.ADMIN_DB.prepare(sql).bind(id,...symbols).all();
+    const map=new Map();
+    for(const row of result.results||[]){
+     try{map.set(String(row.symbol||"").toUpperCase(),{asset:JSON.parse(row.asset_payload),updatedAt:Number(row.universe_updated_at)||Date.parse(row.universe_updated_at)||Date.parse(row.updated_at)||0,stale:Number(row.universe_stale)===1,provider:row.provider||"cached multi-exchange universe"});}catch{}
+    }
+    return map;
+   };
+   const [spotCache,futuresCache]=await Promise.all([
+    readCache("digital-hunter-v2-universe-cache"),
+    readCache("digital-hunter-v2-futures-universe-cache")
+   ]);
+   const now=Date.now(),maxAge=6*60*60*1000;
+   const results=symbols.map(symbol=>{
+    const spot=spotCache.get(symbol),futures=futuresCache.get(symbol);
+    const spotAge=spot?.updatedAt?Math.max(0,now-spot.updatedAt):null;
+    const futuresAge=futures?.updatedAt?Math.max(0,now-futures.updatedAt):null;
+    const spotProviders=String(spot?.asset?.hunterExchange||"").split(",").map(x=>x.trim()).filter(Boolean);
+    const futuresProviders=String(futures?.asset?.hunterExchange||"").split(",").map(x=>x.trim()).filter(Boolean);
+    const pairs=Array.isArray(spot?.asset?.marketPairs)?spot.asset.marketPairs:[];
+    const spotFresh=!!spot&&spotAge!==null&&spotAge<=maxAge;
+    const futuresFresh=!!futures&&futuresAge!==null&&futuresAge<=maxAge;
+    const spotConfirmed=spotFresh&&spotProviders.length>=2&&pairs.length>=2;
+    const futuresConfirmed=futuresFresh&&futuresProviders.length>=2;
+    return {
+     symbol,
+     spot:{confirmed:spotConfirmed,pair:pairs[0]?.pair||null,providers:spotProviders,market_pairs:pairs.length},
+     futures:{confirmed:futuresConfirmed,pair:null,providers:futuresProviders},
+     providers:{
+      spot:Object.fromEntries(spotProviders.map(name=>[name,"فعال · فهرست چندصرافی"])),
+      futures:Object.fromEntries(futuresProviders.map(name=>[name,"فعال · فهرست چندصرافی"]))
+     },
+     cache:{spot_age_ms:spotAge,futures_age_ms:futuresAge,spot_stale:!spotFresh||!!spot?.stale,futures_stale:!futuresFresh||!!futures?.stale,source:"D1 precomputed multi-exchange universe"}
+    };
+   });
+   return json({checked_at:new Date().toISOString(),assets:results,sources:{spot:{cache_id:"digital-hunter-v2-universe-cache",count:spotCache.size},futures:{cache_id:"digital-hunter-v2-futures-universe-cache",count:futuresCache.size}}},200,request,{"X-MMP-Data-Source":"D1 precomputed multi-exchange universe","X-MMP-Cache":"HIT"});
+  }catch(error){
+   return json({error:"Support cache query failed",stage:"support_cache_query",detail:String(error?.message||error).slice(0,180)},503,request);
+  }
  }
-
 
  if(request.method==="GET"&&new URL(request.url).pathname==="/market-derivatives"){
   const limited=rateLimitReply(await checkRateLimit(env.PUBLIC_API_LIMITER,request,"market-derivatives",env,300),request);if(limited)return limited;
@@ -1614,24 +1666,24 @@ async function handle(request,env){
   const base=raw.replace(/USDT$/,""),symbol=base+"USDT";
   const get=async(u,ms=7500)=>{const c=new AbortController(),t=setTimeout(()=>c.abort(),ms);try{const r=await fetch(u,{signal:c.signal,headers:{"Accept":"application/json","User-Agent":"MMP-COIN-AI/1.0"}});if(!r.ok)throw new Error("HTTP "+r.status);return await r.json();}finally{clearTimeout(t);}};
   const spotDepthSources=[
-   ["Binance Spot",async()=>{let last;for(const host of ["https://api.binance.com","https://api1.binance.com","https://api2.binance.com","https://data-api.binance.vision"]){try{return await get(host+"/api/v3/depth?symbol="+symbol+"&limit=100");}catch(e){last=e;}}throw last||new Error("Binance depth unavailable");},d=>Array.isArray(d?.bids)&&Array.isArray(d?.asks)?d:null],
-   ["OKX Spot",()=>get("https://www.okx.com/api/v5/market/books?instId="+base+"-USDT&sz=100"),d=>d?.code==="0"&&d.data?.[0]?{bids:d.data[0].bids,asks:d.data[0].asks}:null],
-   ["Bitget Spot",()=>get("https://api.bitget.com/api/v2/spot/market/orderbook?symbol="+symbol+"&type=step0&limit=100"),d=>d?.code==="00000"?{bids:d.data?.bids,asks:d.data?.asks}:null],
-   ["Gate Spot",()=>get("https://api.gateio.ws/api/v4/spot/order_book?currency_pair="+base+"_USDT&limit=100"),d=>Array.isArray(d?.bids)&&Array.isArray(d?.asks)?d:null]
+   ["Binance Spot",async()=>{let last;for(const host of ["https://api.binance.com","https://api1.binance.com","https://api2.binance.com","https://data-api.binance.vision"]){try{return await get(host+"/api/v3/depth?symbol="+symbol+"&limit=50");}catch(e){last=e;}}throw last||new Error("Binance depth unavailable");},d=>Array.isArray(d?.bids)&&Array.isArray(d?.asks)?d:null],
+   ["OKX Spot",()=>get("https://www.okx.com/api/v5/market/books?instId="+base+"-USDT&sz=50"),d=>d?.code==="0"&&d.data?.[0]?{bids:d.data[0].bids,asks:d.data[0].asks}:null],
+   ["Bitget Spot",()=>get("https://api.bitget.com/api/v2/spot/market/orderbook?symbol="+symbol+"&type=step0&limit=50"),d=>d?.code==="00000"?{bids:d.data?.bids,asks:d.data?.asks}:null],
+   ["Gate Spot",()=>get("https://api.gateio.ws/api/v4/spot/order_book?currency_pair="+base+"_USDT&limit=50"),d=>Array.isArray(d?.bids)&&Array.isArray(d?.asks)?d:null]
   ];
   const futuresDepthSources=[
    ["Gate USDT Futures",async()=>{
     let details,book;
-    try{[details,book]=await Promise.all([get("https://api.gateio.ws/api/v4/futures/usdt/contracts/"+base+"_USDT"),get("https://api.gateio.ws/api/v4/futures/usdt/order_book?contract="+base+"_USDT&limit=100")]);}
-    catch{[details,book]=await Promise.all([get("https://api.gate.us/api/v4/futures/usdt/contracts/"+base+"_USDT"),get("https://api.gate.us/api/v4/futures/usdt/order_book?contract="+base+"_USDT&limit=100")]);}
+    try{[details,book]=await Promise.all([get("https://api.gateio.ws/api/v4/futures/usdt/contracts/"+base+"_USDT"),get("https://api.gateio.ws/api/v4/futures/usdt/order_book?contract="+base+"_USDT&limit=50")]);}
+    catch{[details,book]=await Promise.all([get("https://api.gate.us/api/v4/futures/usdt/contracts/"+base+"_USDT"),get("https://api.gate.us/api/v4/futures/usdt/order_book?contract="+base+"_USDT&limit=50")]);}
     const multiplier=Number(details?.quanto_multiplier)||0;if(!multiplier)throw new Error("Gate Futures contract multiplier unavailable");
     const levels=items=>(items||[]).map(x=>Array.isArray(x)?[Number(x[0]),Number(x[1])*multiplier]:[Number(x.p),Number(x.s)*multiplier]).filter(x=>x[0]>0&&x[1]>0);
     return {bids:levels(book?.bids),asks:levels(book?.asks)};
    },d=>d],
-   ["Bitget USDT Futures",()=>get("https://api.bitget.com/api/v3/market/orderbook?category=USDT-FUTURES&symbol="+symbol+"&limit=100"),d=>d?.code==="00000"?{bids:d.data?.b,asks:d.data?.a}:null],
-   ["Bybit Global Futures",()=>get("https://api.bybit.com/v5/market/orderbook?category=linear&symbol="+symbol+"&limit=100"),d=>d?.retCode===0?{bids:d.result?.b,asks:d.result?.a}:null],
-   ["Bybit EU Futures",()=>get("https://api.bybit.eu/v5/market/orderbook?category=linear&symbol="+symbol+"&limit=100"),d=>d?.retCode===0?{bids:d.result?.b,asks:d.result?.a}:null],
-   ["Bybit Bytick Futures",()=>get("https://api.bytick.com/v5/market/orderbook?category=linear&symbol="+symbol+"&limit=100"),d=>d?.retCode===0?{bids:d.result?.b,asks:d.result?.a}:null]
+   ["Bitget USDT Futures",()=>get("https://api.bitget.com/api/v3/market/orderbook?category=USDT-FUTURES&symbol="+symbol+"&limit=50"),d=>d?.code==="00000"?{bids:d.data?.b,asks:d.data?.a}:null],
+   ["Bybit Global Futures",()=>get("https://api.bybit.com/v5/market/orderbook?category=linear&symbol="+symbol+"&limit=50"),d=>d?.retCode===0?{bids:d.result?.b,asks:d.result?.a}:null],
+   ["Bybit EU Futures",()=>get("https://api.bybit.eu/v5/market/orderbook?category=linear&symbol="+symbol+"&limit=50"),d=>d?.retCode===0?{bids:d.result?.b,asks:d.result?.a}:null],
+   ["Bybit Bytick Futures",()=>get("https://api.bytick.com/v5/market/orderbook?category=linear&symbol="+symbol+"&limit=50"),d=>d?.retCode===0?{bids:d.result?.b,asks:d.result?.a}:null]
   ];
   const depthSources=marketType==="futures"?futuresDepthSources:spotDepthSources;
   let depth=null,depthSource=null,depthError=null;
@@ -1648,7 +1700,7 @@ async function handle(request,env){
   const flowWindow=marketType==="futures"?1:5;try{
    if(marketType==="futures"){
     if(!env.FUTURES_ENGINE||!env.FUTURES_ENGINE_TOKEN)throw new Error("Dedicated Futures flow service is not configured");
-    const internal=new Request("https://futures-engine/market-flow?symbol="+encodeURIComponent(base)+"&window="+encodeURIComponent(flowWindow),{headers:{"X-MMP-Futures-Token":env.FUTURES_ENGINE_TOKEN}});
+    const internal=new Request("https://futures-engine/market-flow?symbol="+encodeURIComponent(base)+"&window="+encodeURIComponent(flowWindow)+"&compact=1",{headers:{"X-MMP-Futures-Token":env.FUTURES_ENGINE_TOKEN}});
     const response=await env.FUTURES_ENGINE.fetch(internal),payload=await response.json();
     if(!response.ok)throw new Error(payload.error||"Dedicated Futures flow request failed");
     flowData=payload;
@@ -1710,7 +1762,7 @@ async function handle(request,env){
   const candleCacheKey=await marketFallbackKey("candles|"+marketType+"|"+symbol+"|"+interval);
   const staleCandles=await readMarketFallback(env,candleCacheKey);
   try{
-   const result=await candles(symbol,interval,env,marketType);
+   const result=await candles(symbol,interval,env,marketType,null,55);
    if(result.chart_data_fresh!==true)throw new Error("کندل زنده منبع "+String(result.data_provider||"بازار")+" قدیمی است: "+String(result.chart_data_freshness_reason||"freshness check failed"));
    const chartCandles=Array.isArray(result.chart_candles)&&result.chart_candles.length?result.chart_candles:result.candles.map(c=>({time:Math.floor(c.t/1000),open:c.o,high:c.h,low:c.l,close:c.c,volume:c.v}));
    const lastChartCandle=chartCandles[chartCandles.length-1],checkedAt=new Date().toISOString();
@@ -1753,7 +1805,7 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/market-proxy"){
    "coinlore-top":["https://api.coinlore.net/api/tickers/?start="+requestedOffset+"&limit=100"],
    "nobitex-tether":["https://apiv2.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls","https://apiv2.nobitex.ir/market/stats?dstCurrency=rls","https://apiv2.nobitex.ir/v3/orderbook/USDTIRT","https://api.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls","https://api.nobitex.ir/v3/orderbook/USDTIRT"],
    "wallex-markets":["https://api.wallex.ir/hector/web/v1/markets","https://api.wallex.ir/v1/markets","https://api.wallex.ir/v1/otc/markets"],
-   "bitpin-tickers":["https://api.bitpin.org/api/v1/mkt/tickers/","https://api.bitpin.ir/api/v1/mkt/tickers/"],
+   "bitpin-tickers":["https://api.bitpin.org/api/v1/mkt/tickers/","https://api.bitpin.ir/api/v1/mkt/tickers/","https://api.bitpin.market/api/v1/mkt/tickers/"],
    "exir-tickers":["https://api.exir.io/v2/tickers"],
    "ramzinex-pairs":["https://publicapi.ramzinex.com/exchange/api/v1.0/exchange/pairs"]
   };
@@ -1769,9 +1821,25 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/market-proxy"){
    source==="coinlore-top"?"offset="+requestedOffset:"",
    source==="coingecko-extra"?"ids="+(url.searchParams.get("ids")||""):""
   ].filter(Boolean).join("|");
-  const marketCacheKey=await marketFallbackKey(cacheIdentity);
-  const staleMarketResponse=await readMarketFallback(env,marketCacheKey);
+  const structuredSource=source==="nobitex-tether";
+  const marketCacheKey=structuredSource?await marketFallbackKey(cacheIdentity):null;
+  const staleMarketResponse=structuredSource?await readMarketFallback(env,marketCacheKey):null;
   const responseCacheTtl=source.startsWith("coingecko")?180:source==="coinlore-top"?60:source.includes("tether")||source.includes("wallex")||source.includes("bitpin")||source.includes("exir")||source.includes("ramzinex")?10:5;
+  const rawCacheKey=new Request("https://mmp-market-proxy-cache.internal/"+encodeURIComponent(cacheIdentity));
+  let staleRawResponse=null;
+  if(!structuredSource&&typeof caches!=="undefined"&&caches.default){
+   try{staleRawResponse=await caches.default.match(rawCacheKey);}catch{}
+  }
+  if(staleRawResponse){
+   const cachedAt=Number(staleRawResponse.headers.get("X-MMP-Cached-At"))||0,ageMs=cachedAt?Math.max(0,Date.now()-cachedAt):Infinity;
+   if(ageMs<=responseCacheTtl*1000){
+    const headers=new Headers(corsHeaders(request));
+    headers.set("Content-Type",staleRawResponse.headers.get("Content-Type")||"application/json; charset=utf-8");
+    headers.set("X-MMP-Data-Source",source);headers.set("X-MMP-Cache","fresh");headers.set("X-MMP-Data-Age",String(Math.floor(ageMs)));
+    headers.set("Cache-Control","public, max-age="+responseCacheTtl);headers.set("X-Content-Type-Options","nosniff");
+    return new Response(staleRawResponse.body,{status:200,headers});
+   }
+  }
   let lastError=null;
   for(const endpoint of candidates){
    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),9000);
@@ -1780,6 +1848,17 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/market-proxy"){
    if(source==="wallex-markets"){upstreamHeaders.Origin="https://wallex.ir";upstreamHeaders.Referer="https://wallex.ir/";upstreamHeaders["User-Agent"]="curl/8.14.1";}
    const upstream=await fetch(endpoint,{headers:upstreamHeaders,signal:controller.signal,cf:{cacheTtl:responseCacheTtl,cacheEverything:true}});
     if(!upstream.ok){lastError="Upstream HTTP "+upstream.status;continue;}
+    if(!structuredSource){
+     const contentType=upstream.headers.get("content-type")||"application/json; charset=utf-8";
+     if(!contentType.toLowerCase().includes("json")){lastError="Upstream returned non-JSON content";continue;}
+     const headers=new Headers(corsHeaders(request));
+     headers.set("Content-Type",contentType);headers.set("X-MMP-Data-Source",source);headers.set("X-MMP-Cache","fresh");
+     headers.set("X-MMP-Cached-At",String(Date.now()));headers.set("Cache-Control","public, max-age="+responseCacheTtl);
+     headers.set("X-Content-Type-Options","nosniff");
+     const response=new Response(upstream.body,{status:200,headers});
+     if(typeof caches!=="undefined"&&caches.default){try{await caches.default.put(rawCacheKey,response.clone());}catch{}}
+     return response;
+    }
     let data=await upstream.json();
     if(data===null||typeof data!=="object")throw new Error("Invalid upstream JSON");
     if(source==="nobitex-tether"){
@@ -1801,6 +1880,16 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/market-proxy"){
     return json(data,200,request,{"X-MMP-Data-Source":source,"X-MMP-Cache":"fresh","Cache-Control":"public, max-age="+responseCacheTtl});
    }catch(error){lastError=String(error?.message||"network error");}
    finally{clearTimeout(timer);}
+  }
+  if(!structuredSource&&staleRawResponse){
+   const cachedAt=Number(staleRawResponse.headers.get("X-MMP-Cached-At"))||0,ageMs=cachedAt?Math.max(0,Date.now()-cachedAt):Infinity;
+   if(ageMs<=60000){
+    const headers=new Headers(corsHeaders(request));
+    headers.set("Content-Type",staleRawResponse.headers.get("Content-Type")||"application/json; charset=utf-8");
+    headers.set("X-MMP-Data-Source",source);headers.set("X-MMP-Cache","stale");headers.set("X-MMP-Data-Age",String(Math.floor(ageMs)));
+    headers.set("Warning",'110 - "Response is stale"');headers.set("Cache-Control","no-store");
+    return new Response(staleRawResponse.body,{status:200,headers});
+   }
   }
   if(source==="coingecko-top"){
    // Prefer a known-good D1 snapshot during provider throttling; do not turn
@@ -1862,69 +1951,75 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/market-proxy"){
   return json({error:"Market data source unavailable",source,detail:String(lastError||"upstream error").slice(0,120)},502,request);
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/connections-health"){
-  const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"connections-health",env,300);
-  const limited=rateLimitReply(limitResult,request);if(limited)return limited;
+  const internalAuthorized=!!env.FUTURES_ENGINE_TOKEN&&request.headers.get("X-MMP-Internal-Token")===env.FUTURES_ENGINE_TOKEN;
+  if(!internalAuthorized){
+   const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"connections-health",env,300);
+   const limited=rateLimitReply(limitResult,request);if(limited)return limited;
+  }
+  if(!env.ADMIN_DB)return json({status:"offline",error:"ADMIN_DB binding missing",checks:[],stale:true},503,request);
+  const refresh=internalAuthorized&&new URL(request.url).searchParams.get("refresh")==="1";
+  if(!refresh){
+   try{
+    const row=await env.ADMIN_DB.prepare("SELECT payload,updated_at FROM hunter_engine_state WHERE id=?").bind("connections-health").first();
+    if(!row?.payload)return json({status:"warming_up",checks:[],stale:true,error:"Connection monitor has not completed its first cycle"},503,request);
+    const saved=JSON.parse(row.payload),checks=Array.isArray(saved.checks)?saved.checks:[];
+    const now=Date.now(),ages=checks.map(x=>x.checked_at?Math.max(0,now-Date.parse(x.checked_at)):Infinity),oldestAgeMs=ages.length?Math.max(...ages):Infinity;
+    const stale=checks.length!==18||oldestAgeMs>10*60*1000||checks.some(x=>x.status==="warming_up");
+    const up=checks.filter(x=>["ok","slow"].includes(x.status)),spotUp=up.filter(x=>x.market==="spot").length,futuresUp=up.filter(x=>x.market==="futures").length,iranUp=up.filter(x=>x.market==="iran").length;
+    const status=stale?"stale":spotUp>=2&&futuresUp>=2&&iranUp>=1?"online":"degraded";
+    return json({...saved,status,stale,age_ms:Math.max(0,now-Date.parse(saved.checked_at||row.updated_at||"")),oldest_check_age_ms:Number.isFinite(oldestAgeMs)?oldestAgeMs:null,healthy:{spot:spotUp,futures:futuresUp,iran:iranUp}},200,request,{"X-MMP-Cache":"HIT","X-MMP-Health-Source":"D1 background monitor"});
+   }catch(error){return json({status:"error",checks:[],stale:true,error:"Connection monitor cache could not be read",detail:String(error?.message||error).slice(0,160)},503,request);}
+  }
   const timeoutFetch=async(url,valid,timeout=9000,extraHeaders={})=>{
    const started=Date.now(),controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeout);
    try{
     const response=await fetch(url,{headers:{"Accept":"application/json, text/plain, */*","User-Agent":"MMP-COIN-AI/1.0","Accept-Language":"en-US,en;q=0.9",...extraHeaders},signal:controller.signal,cf:{cacheTtl:5,cacheEverything:true}});
     if(!response.ok)throw new Error("HTTP "+response.status);
-    const data=await response.json();
-    if(!valid(data))throw new Error("پاسخ معتبر دریافت نشد");
+    const data=await response.json();if(!valid(data))throw new Error("پاسخ معتبر دریافت نشد");
     return {status:Date.now()-started>2500?"slow":"ok",ping:Date.now()-started};
    }catch(error){return {status:"down",ping:null,error:String(error?.message||"network error").slice(0,100)};}
    finally{clearTimeout(timer);}
   };
   const probeAny=async(urls,valid,timeout=9000,extraHeaders={})=>{
    let last={status:"down",ping:null,error:"no endpoint responded"};
-   for(const url of urls){
-    const result=await timeoutFetch(url,valid,timeout,extraHeaders);
-    if(result.status!=="down")return {...result,endpoint:url};
-    last=result;
-   }
+   for(const endpoint of urls){const result=await timeoutFetch(endpoint,valid,timeout,extraHeaders);if(result.status!=="down")return {...result,endpoint};last={...result,endpoint};}
    return last;
   };
-  const [binance,bybit,okx,nobitex,wallex,bitget,gate,kucoin,mexc,whitebit,binanceFutures,bybitFutures,okxFutures,bitgetFutures,gateFutures,mexcFutures,kucoinFutures,whitebitFutures]=await Promise.all([
-   probeAny(["https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://api.binance.us/api/v3/ticker/price?symbol=BTCUSDT","https://api1.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://api2.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://api3.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://data-api.binance.vision/api/v3/ticker/price?symbol=BTCUSDT"],d=>Number(d?.price)>0),
-   probeAny(["https://api.bybit.com/v5/market/tickers?category=spot&symbol=BTCUSDT","https://api.bytick.com/v5/market/tickers?category=spot&symbol=BTCUSDT","https://api.bybit.eu/v5/market/tickers?category=spot&symbol=BTCUSDT","https://api.bytick.eu/v5/market/tickers?category=spot&symbol=BTCUSDT"],d=>d?.retCode===0&&Number(d?.result?.list?.[0]?.lastPrice)>0),
-   probeAny(["https://www.okx.com/api/v5/market/ticker?instId=BTC-USDT","https://us.okx.com/api/v5/market/ticker?instId=BTC-USDT","https://openapi.okx.com/api/v5/market/ticker?instId=BTC-USDT"],d=>d?.code==="0"&&Number(d?.data?.[0]?.last)>0),
-   probeAny(["https://apiv2.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls","https://api.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls"],d=>d?.status==="ok"&&Number(d?.stats?.["usdt-rls"]?.latest)>0,12000),
-   probeAny(["https://api.wallex.ir/hector/web/v1/markets","https://api.wallex.ir/v1/markets","https://api.wallex.ir/v1/otc/markets"],d=>{if(d?.success!==true)return false;const raw=d?.result?.symbols??d?.result?.markets;if(Array.isArray(raw))return raw.length>0;if(raw&&typeof raw==="object")return Object.keys(raw).length>0;return false;},12000,{"Origin":"https://wallex.ir","Referer":"https://wallex.ir/","User-Agent":"curl/8.14.1"}),
-   probeAny(["https://api.bitget.com/api/v3/market/tickers?category=SPOT&symbol=BTCUSDT","https://api.bitget.com/api/v2/spot/market/tickers?symbol=BTCUSDT"],d=>["00000","0"].includes(String(d?.code))&&Number(d?.data?.[0]?.lastPrice||d?.data?.[0]?.lastPr)>0,9000,{"Origin":"https://mmp-coin.github.io","Referer":"https://mmp-coin.github.io/","User-Agent":"curl/8.14.1"}),
-   probeAny(["https://api.gateio.ws/api/v4/spot/tickers?currency_pair=BTC_USDT","https://api.gate.us/api/v4/spot/tickers?currency_pair=BTC_USDT"],d=>Array.isArray(d)&&Number(d?.[0]?.last)>0,9000),
-   probeAny(["https://api.kucoin.com/api/v1/market/orderbook/level1?symbol=BTC-USDT","https://api.kucoin.tr/api/v1/market/orderbook/level1?symbol=BTC-USDT"],d=>d?.code==="200000"&&Number(d?.data?.price)>0,9000),
-   probeAny(["https://api.mexc.com/api/v3/ticker/price?symbol=BTCUSDT"],d=>Number(d?.price)>0,9000),
-   probeAny(["https://whitebit.com/api/v4/public/ticker"],d=>Number(d?.BTC_USDT?.last_price)>0,9000),
-   probeAny(["https://fapi.binance.com/fapi/v1/ticker/price?symbol=BTCUSDT","https://fapi1.binance.com/fapi/v1/ticker/price?symbol=BTCUSDT","https://fapi2.binance.com/fapi/v1/ticker/price?symbol=BTCUSDT","https://fapi3.binance.com/fapi/v1/ticker/price?symbol=BTCUSDT"],d=>Number(d?.price)>0,7000),
-   probeAny(["https://api.bybit.com/v5/market/tickers?category=linear&symbol=BTCUSDT","https://api.bytick.com/v5/market/tickers?category=linear&symbol=BTCUSDT","https://api.bybit.eu/v5/market/tickers?category=linear&symbol=BTCUSDT","https://api.bytick.eu/v5/market/tickers?category=linear&symbol=BTCUSDT"],d=>d?.retCode===0&&Number(d?.result?.list?.[0]?.lastPrice)>0,7000),
-   probeAny(["https://www.okx.com/api/v5/market/ticker?instId=BTC-USDT-SWAP","https://us.okx.com/api/v5/market/ticker?instId=BTC-USDT-SWAP","https://openapi.okx.com/api/v5/market/ticker?instId=BTC-USDT-SWAP"],d=>d?.code==="0"&&Number(d?.data?.[0]?.last)>0,7000),
-   probeAny(["https://api.bitget.com/api/v2/mix/market/ticker?productType=USDT-FUTURES&symbol=BTCUSDT"],d=>["00000","0"].includes(String(d?.code))&&Number(d?.data?.[0]?.lastPr)>0,9000),
-   probeAny(["https://api.gateio.ws/api/v4/futures/usdt/tickers?contract=BTC_USDT","https://api.gate.us/api/v4/futures/usdt/tickers?contract=BTC_USDT"],d=>Array.isArray(d)&&Number(d?.[0]?.last)>0,9000),
-   probeAny(["https://contract.mexc.com/api/v1/contract/ticker?symbol=BTC_USDT"],d=>d?.success===true&&Number(d?.data?.lastPrice)>0,9000),
-   probeAny(["https://api-futures.kucoin.com/api/v1/ticker?symbol=XBTUSDTM"],d=>d?.code==="200000"&&Number(d?.data?.price)>0,9000),
-   probeAny(["https://whitebit.com/api/v4/public/futures"],d=>d?.success===true&&Array.isArray(d?.result)&&d.result.some(x=>x?.ticker_id==="BTC_PERP"&&Number(x?.last_price)>0),9000)
-  ]);
-  const checks=[
-   {name:"Binance Spot",market:"spot",purpose:"قیمت، حجم و کندل اسپات",...binance},
-   {name:"Bybit Spot",market:"spot",purpose:"قیمت، حجم و کندل اسپات",...bybit},
-   {name:"OKX Spot",market:"spot",purpose:"قیمت، حجم و کندل اسپات",...okx},
-   {name:"Bitget Spot",market:"spot",purpose:"قیمت، حجم و کندل اسپات",...bitget},
-   {name:"Gate.io Spot",market:"spot",purpose:"قیمت، حجم و کندل اسپات",...gate},
-   {name:"KuCoin Spot",market:"spot",purpose:"قیمت، حجم و کندل اسپات",...kucoin},
-   {name:"MEXC Spot",market:"spot",purpose:"قیمت و معاملات اسپات",...mexc},
-   {name:"WhiteBIT Spot",market:"spot",purpose:"قیمت و معاملات اسپات",...whitebit},
-   {name:"Binance Futures",market:"futures",purpose:"قیمت قرارداد دائمی",...binanceFutures},
-   {name:"Bybit Futures",market:"futures",purpose:"قیمت قرارداد دائمی",...bybitFutures},
-   {name:"OKX Futures",market:"futures",purpose:"قیمت قرارداد دائمی",...okxFutures},
-   {name:"Bitget Futures",market:"futures",purpose:"قیمت قرارداد دائمی",...bitgetFutures},
-   {name:"Gate Futures",market:"futures",purpose:"قیمت قرارداد دائمی",...gateFutures},
-   {name:"MEXC Futures",market:"futures",purpose:"قیمت قرارداد دائمی",...mexcFutures},
-   {name:"KuCoin Futures",market:"futures",purpose:"قیمت قرارداد دائمی",...kucoinFutures},
-   {name:"WhiteBIT Futures",market:"futures",purpose:"قیمت قرارداد دائمی",...whitebitFutures},
-   {name:"Nobitex",market:"iran",purpose:"نرخ تتر به تومان",...nobitex},
-   {name:"Wallex",market:"iran",purpose:"نرخ تتر به تومان",...wallex}
+  const probes=[
+   {name:"Binance Spot",market:"spot",purpose:"قیمت، حجم و کندل اسپات",run:()=>probeAny(["https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://api.binance.us/api/v3/ticker/price?symbol=BTCUSDT","https://api1.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://api2.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://api3.binance.com/api/v3/ticker/price?symbol=BTCUSDT","https://data-api.binance.vision/api/v3/ticker/price?symbol=BTCUSDT"],d=>Number(d?.price)>0)},
+   {name:"Bybit Spot",market:"spot",purpose:"قیمت، حجم و کندل اسپات",run:()=>probeAny(["https://api.bybit.com/v5/market/tickers?category=spot&symbol=BTCUSDT","https://api.bytick.com/v5/market/tickers?category=spot&symbol=BTCUSDT","https://api.bybit.eu/v5/market/tickers?category=spot&symbol=BTCUSDT","https://api.bytick.eu/v5/market/tickers?category=spot&symbol=BTCUSDT"],d=>d?.retCode===0&&Number(d?.result?.list?.[0]?.lastPrice)>0)},
+   {name:"OKX Spot",market:"spot",purpose:"قیمت، حجم و کندل اسپات",run:()=>probeAny(["https://www.okx.com/api/v5/market/ticker?instId=BTC-USDT","https://us.okx.com/api/v5/market/ticker?instId=BTC-USDT","https://openapi.okx.com/api/v5/market/ticker?instId=BTC-USDT"],d=>d?.code==="0"&&Number(d?.data?.[0]?.last)>0)},
+   {name:"Nobitex",market:"iran",purpose:"نرخ تتر به تومان",run:()=>probeAny(["https://apiv2.nobitex.ir/v3/orderbook/USDTIRT","https://api.nobitex.ir/v3/orderbook/USDTIRT"],d=>Number(d?.lastTradePrice??d?.data?.lastTradePrice)>0,12000)},
+   {name:"Wallex",market:"iran",purpose:"نرخ تتر به تومان",run:()=>probeAny(["https://api.wallex.ir/hector/web/v1/markets","https://api.wallex.ir/v1/markets","https://api.wallex.ir/v1/otc/markets"],d=>{if(d?.success!==true)return false;const raw=d?.result?.symbols??d?.result?.markets;if(Array.isArray(raw))return raw.length>0;if(raw&&typeof raw==="object")return Object.keys(raw).length>0;return false;},12000,{"Origin":"https://wallex.ir","Referer":"https://wallex.ir/","User-Agent":"curl/8.14.1"})},
+   {name:"Bitget Spot",market:"spot",purpose:"قیمت، حجم و کندل اسپات",run:()=>probeAny(["https://api.bitget.com/api/v3/market/tickers?category=SPOT&symbol=BTCUSDT","https://api.bitget.com/api/v2/spot/market/tickers?symbol=BTCUSDT"],d=>["00000","0"].includes(String(d?.code))&&Number(d?.data?.[0]?.lastPrice||d?.data?.[0]?.lastPr)>0,9000,{"Origin":"https://mmp-coin.github.io","Referer":"https://mmp-coin.github.io/","User-Agent":"curl/8.14.1"})},
+   {name:"Gate.io Spot",market:"spot",purpose:"قیمت، حجم و کندل اسپات",run:()=>probeAny(["https://api.gateio.ws/api/v4/spot/tickers?currency_pair=BTC_USDT","https://api.gate.us/api/v4/spot/tickers?currency_pair=BTC_USDT"],d=>Array.isArray(d)&&Number(d?.[0]?.last)>0,9000)},
+   {name:"KuCoin Spot",market:"spot",purpose:"قیمت و معاملات اسپات",run:()=>probeAny(["https://api.kucoin.com/api/v1/market/orderbook/level1?symbol=BTC-USDT","https://api.kucoin.tr/api/v1/market/orderbook/level1?symbol=BTC-USDT"],d=>d?.code==="200000"&&Number(d?.data?.price)>0,9000)},
+   {name:"MEXC Spot",market:"spot",purpose:"قیمت و معاملات اسپات",run:()=>probeAny(["https://api.mexc.com/api/v3/ticker/price?symbol=BTCUSDT"],d=>Number(d?.price)>0,9000)},
+   {name:"WhiteBIT Spot",market:"spot",purpose:"قیمت و معاملات اسپات",run:()=>probeAny(["https://whitebit.com/api/v4/public/ticker"],d=>Number(d?.BTC_USDT?.last_price)>0,9000)},
+   {name:"Binance Futures",market:"futures",purpose:"قیمت قرارداد دائمی",run:()=>probeAny(["https://fapi.binance.com/fapi/v1/ticker/price?symbol=BTCUSDT","https://fapi1.binance.com/fapi/v1/ticker/price?symbol=BTCUSDT","https://fapi2.binance.com/fapi/v1/ticker/price?symbol=BTCUSDT","https://fapi3.binance.com/fapi/v1/ticker/price?symbol=BTCUSDT"],d=>Number(d?.price)>0,7000)},
+   {name:"Bybit Futures",market:"futures",purpose:"قیمت قرارداد دائمی",run:()=>probeAny(["https://api.bybit.com/v5/market/tickers?category=linear&symbol=BTCUSDT","https://api.bytick.com/v5/market/tickers?category=linear&symbol=BTCUSDT","https://api.bybit.eu/v5/market/tickers?category=linear&symbol=BTCUSDT","https://api.bytick.eu/v5/market/tickers?category=linear&symbol=BTCUSDT"],d=>d?.retCode===0&&Number(d?.result?.list?.[0]?.lastPrice)>0,7000)},
+   {name:"OKX Futures",market:"futures",purpose:"قیمت قرارداد دائمی",run:()=>probeAny(["https://www.okx.com/api/v5/market/ticker?instId=BTC-USDT-SWAP","https://us.okx.com/api/v5/market/ticker?instId=BTC-USDT-SWAP","https://openapi.okx.com/api/v5/market/ticker?instId=BTC-USDT-SWAP"],d=>d?.code==="0"&&Number(d?.data?.[0]?.last)>0,7000)},
+   {name:"Bitget Futures",market:"futures",purpose:"قیمت قرارداد دائمی",run:()=>probeAny(["https://api.bitget.com/api/v2/mix/market/ticker?productType=USDT-FUTURES&symbol=BTCUSDT"],d=>["00000","0"].includes(String(d?.code))&&Number(d?.data?.[0]?.lastPr)>0,9000)},
+   {name:"Gate Futures",market:"futures",purpose:"قیمت قرارداد دائمی",run:()=>probeAny(["https://api.gateio.ws/api/v4/futures/usdt/tickers?contract=BTC_USDT","https://api.gate.us/api/v4/futures/usdt/tickers?contract=BTC_USDT"],d=>Array.isArray(d)&&Number(d?.[0]?.last)>0,9000)},
+   {name:"MEXC Futures",market:"futures",purpose:"قیمت قرارداد دائمی",run:()=>probeAny(["https://contract.mexc.com/api/v1/contract/ticker?symbol=BTC_USDT"],d=>d?.success===true&&Number(d?.data?.lastPrice)>0,9000)},
+   {name:"KuCoin Futures",market:"futures",purpose:"قیمت قرارداد دائمی",run:()=>probeAny(["https://api-futures.kucoin.com/api/v1/ticker?symbol=XBTUSDTM"],d=>d?.code==="200000"&&Number(d?.data?.price)>0,9000)},
+   {name:"WhiteBIT Futures",market:"futures",purpose:"قیمت قرارداد دائمی",run:()=>probeAny(["https://whitebit.com/api/v4/public/futures"],d=>d?.success===true&&Array.isArray(d?.result)&&d.result.some(x=>x?.ticker_id==="BTC_PERP"&&Number(x?.last_price)>0),9000)}
   ];
-  return json({checked_at:new Date().toISOString(),checks},200,request);
+  try{
+   const row=await env.ADMIN_DB.prepare("SELECT payload FROM hunter_engine_state WHERE id=?").bind("connections-health").first();
+   let previous={};try{previous=row?.payload?JSON.parse(row.payload):{};}catch{}
+   const cursor=Number(previous.cursor)||0,batchSize=4,batch=Array.from({length:Math.min(batchSize,probes.length)},(_,i)=>probes[(cursor+i)%probes.length]);
+   const fresh=await Promise.all(batch.map(async p=>({...await p.run(),name:p.name,market:p.market,purpose:p.purpose,checked_at:new Date().toISOString()})));
+   const byName=new Map((Array.isArray(previous.checks)?previous.checks:[]).map(x=>[x.name,x]));
+   for(const check of fresh)byName.set(check.name,check);
+   const checks=probes.map(p=>byName.get(p.name)||{name:p.name,market:p.market,purpose:p.purpose,status:"warming_up",ping:null,endpoint:null,error:"Awaiting first background probe",checked_at:null});
+   const now=Date.now(),ages=checks.map(x=>x.checked_at?Math.max(0,now-Date.parse(x.checked_at)):Infinity),oldestAgeMs=ages.length?Math.max(...ages):Infinity;
+   const up=checks.filter(x=>["ok","slow"].includes(x.status)),spotUp=up.filter(x=>x.market==="spot").length,futuresUp=up.filter(x=>x.market==="futures").length,iranUp=up.filter(x=>x.market==="iran").length;
+   const stale=checks.length!==probes.length||oldestAgeMs>10*60*1000||checks.some(x=>x.status==="warming_up");
+   const snapshot={status:!stale&&spotUp>=2&&futuresUp>=2&&iranUp>=1?"online":"degraded",stale,checked_at:new Date(now).toISOString(),oldest_check_age_ms:Number.isFinite(oldestAgeMs)?oldestAgeMs:null,healthy:{spot:spotUp,futures:futuresUp,iran:iranUp},checks,cursor:(cursor+batch.length)%probes.length,batch_size:batch.length};
+   await env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,updated_at=excluded.updated_at").bind("connections-health",JSON.stringify(snapshot),snapshot.checked_at).run();
+   return json(snapshot,200,request,{"X-MMP-Cache":"MISS","X-MMP-Health-Batch":String(batch.length)});
+  }catch(error){return json({status:"error",checks:[],stale:true,error:"Connection monitor refresh failed",detail:String(error?.message||error).slice(0,160)},503,request);}
  }
 if(request.method==="GET"&&new URL(request.url).pathname==="/futures-engine-health"){
   if(!env.FUTURES_ENGINE)return json({service_binding:"missing",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION},503,request);
@@ -1962,9 +2057,10 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/futures-engine-heal
   // Provider reachability is reported by /connections-health, not by this lightweight route.
   return json({service:"MMP COIN AI",worker:"online",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,
    ai_binding:!!env.AI,futures_engine_binding:!!env.FUTURES_ENGINE,market_cache_binding:!!env.MARKET_CACHE_DB,
+   admin_db_binding:!!env.ADMIN_DB,
    checked_at:new Date().toISOString()},200,request);
  }
- if(request.method!=="POST")return json({error:"Method not allowed"},405,request);
+ if(request.method!=="POST"||new URL(request.url).pathname!=="/analyze")return json({error:"Method not allowed"},405,request);
  const limitResult=await checkRateLimit(env.AI_ANALYSIS_LIMITER,request,"ai-analysis",env,15);
  const limited=rateLimitReply(limitResult,request);if(limited)return limited;
 
@@ -1979,9 +2075,10 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/futures-engine-heal
  if(!validSymbol(symbol))return json({error:"Invalid asset symbol"},400,request);
  let pair=symbol.endsWith("USDT")?symbol:symbol+"USDT";
  const mode=["spot","futures","both"].includes(body.market_mode)?body.market_mode:"both";
+ const upstreamBudget={used:0,max:44};
  let stage="شناسایی جفت‌های فعال";
  try{
-  const catalogs=await getExchangeCatalogs();
+  const catalogs=await getExchangeCatalogs(mode,upstreamBudget,env,pair);
   const support=exchangeSupport(symbol,catalogs);
   const spotPair=support.spot.pair||pair;
   const futuresPair=support.futures.pair||pair;
@@ -1991,7 +2088,7 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/futures-engine-heal
   let spotMarket=null,futuresMarket=null,market={},candleMarket=mode==="futures"?"futures":"spot";
   if(mode==="both"){
    const fetchMarket=async(selectedPair,type)=>{
-    const settled=await Promise.allSettled(intervals.map(async tf=>[tf,await candles(selectedPair,tf,env,type)]));
+    const settled=await Promise.allSettled(intervals.map(async tf=>[tf,await candles(selectedPair,tf,env,type,upstreamBudget)]));
     const failed=settled.filter(x=>x.status==="rejected");
     if(failed.length)throw new Error(failed.map(x=>String(x.reason?.message||"candle unavailable")).join(" | "));
     return Object.fromEntries(settled.map(x=>x.value));
@@ -2017,13 +2114,13 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/futures-engine-heal
    }
   }else{
    const selectedPair=candleMarket==="futures"?futuresPair:spotPair;pair=selectedPair;
-   const results=await Promise.all(intervals.map(async tf=>[tf,await candles(selectedPair,tf,env,candleMarket)]));
+   const results=await Promise.all(intervals.map(async tf=>[tf,await candles(selectedPair,tf,env,candleMarket,upstreamBudget)]));
    market=Object.fromEntries(results);
    if(mode==="spot")spotMarket=market;else futuresMarket=market;
   }
   stage="دریافت اطلاعات تکمیلی بازار";
   const latest=market["4h"];
-  const optionalJson=async url=>{try{const r=await fetch(url);if(!r.ok)return null;return await r.json();}catch{return null;}};
+  const optionalJson=async url=>{try{const r=await fetchWithTimeout(url,{headers:{"Accept":"application/json","User-Agent":"MMP-COIN-AI/1.0"}},6500,upstreamBudget);if(!r.ok)return null;return await r.json();}catch{return null;}};
   let [funding,openInterest,fng,global]=await Promise.all([
    mode==="spot"?Promise.resolve(null):optionalJson("https://fapi.binance.com/fapi/v1/premiumIndex?symbol="+pair),
    mode==="spot"?Promise.resolve(null):optionalJson("https://fapi.binance.com/fapi/v1/openInterest?symbol="+pair),
@@ -2054,7 +2151,7 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/futures-engine-heal
   };
   stage="اجرای هوش مصنوعی";
   let aiResult,aiProvider;
-  try{aiResult=await runAIWithFallback(env,prompt);aiProvider=aiResult.provider;}
+  try{aiResult=await runAIWithFallback(env,prompt,upstreamBudget);aiProvider=aiResult.provider;}
   catch(error){aiProvider="Local quantitative fallback";aiResult={provider:aiProvider,raw:JSON.stringify(buildLocalAnalysisFallback()),cloudflareBudget:error?.cloudflareBudget||null,fallbacks:[String(error?.message||error).slice(0,700)]};}
   stage="پردازش پاسخ هوش مصنوعی";
   let raw=aiResult.raw;
@@ -2099,8 +2196,8 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/futures-engine-heal
   analysis.plan_method="سطوح محاسبه‌شده از داده ۴ ساعته، ATR و حمایت/مقاومت؛ ورود مشروط به بسته‌شدن کندل ۴ ساعته";
   analysis.holding_horizon=analysis.holding_horizon||"تا بسته‌شدن و تأیید کندل ۴ ساعته بعدی";
   if(!analysis.recommendations.length)analysis.recommendations=["برای ورود LONG منتظر بسته‌شدن کندل ۱ ساعته بالای مقاومت و تثبیت قیمت بمان.","برای ورود SHORT منتظر بسته‌شدن کندل ۱ ساعته زیر حمایت و تثبیت قیمت بمان.","پس از ورود، حد ضرر و اهداف عددی برنامه را رعایت کن.","اگر هیچ‌کدام از شکست‌ها تأیید نشد، معامله نکن."];
-  return json({analysis,market:snapshot},200,request);
- }catch(e){return json({error:String(e?.message||"Analysis failed").slice(0,300),stage,symbol:pair,market_mode:mode},502,request)}
+  return json({analysis,market:{...snapshot,upstream_requests_used:upstreamBudget.used,upstream_request_budget:upstreamBudget.max}},200,request);
+ }catch(e){return json({error:String(e?.message||"Analysis failed").slice(0,300),stage,symbol:pair,market_mode:mode,upstream_requests_used:upstreamBudget.used,upstream_request_budget:upstreamBudget.max},502,request)}
 }
 async function settleHunterCycle(task,label,timeoutMs=50000,onTimeout=null){
  let timer;
@@ -2137,15 +2234,11 @@ export default {
   // Keep independent health/maintenance tasks alive even when a Hunter scan fails.
   // Cloudflare waitUntil owns every background task until it settles.
   const cleanup=cleanupMarketFallbackCache(env).catch(error=>console.error("Market fallback cleanup failed:",error?.message||error));
-  const scheduledAt=Number(event?.scheduledTime)||Date.now(),minute=new Date(scheduledAt).getUTCMinutes();
-  const universeRefresh=minute%15===0?refreshDigitalHunterUniverses(env).catch(error=>console.error("Hunter universe refresh failed:",error?.message||error)):Promise.resolve();
+  const scheduledAt=Number(event?.scheduledTime)||Date.now(),scheduledDate=new Date(scheduledAt),minute=scheduledDate.getUTCMinutes(),hour=scheduledDate.getUTCHours(),universeRefreshDue=minute===0&&hour%6===0;
+  const universeRefresh=universeRefreshDue?refreshDigitalHunterUniverses(env).catch(error=>console.error("Hunter universe refresh failed:",error?.message||error)):Promise.resolve();
   const hunterCycle=runDigitalHunterCron(event,env,ctx).catch(error=>console.error("Digital Hunter scheduled cycle failed:",error?.message||error));
-  // Call the isolated Tether Worker through a service binding. Its external
-  // provider requests use a separate invocation/subrequest budget.
-  const tetherMonitor=env.TETHER_MONITOR?.fetch
-   ?env.TETHER_MONITOR.fetch(new Request("https://tether-monitor.internal/run",{method:"POST",headers:{"Content-Type":"application/json"}})).then(async response=>{if(!response.ok)throw new Error("Tether monitor HTTP "+response.status);const result=await response.json();console.log("Tether monitor isolated run",JSON.stringify({status:result.status,source_count:result.source_count,checked_at:result.checked_at}));}).catch(error=>console.error("Isolated Tether monitor failed:",error?.message||error))
-   :Promise.resolve();
-  const background=Promise.allSettled([cleanup,universeRefresh,hunterCycle,tetherMonitor]);
+  const healthRefresh=env.FUTURES_ENGINE_TOKEN&&!universeRefreshDue?handle(new Request("https://internal/connections-health?refresh=1",{headers:{"X-MMP-Internal-Token":env.FUTURES_ENGINE_TOKEN}}),env).then(async response=>{if(!response.ok)throw new Error("Connection health refresh HTTP "+response.status);}).catch(error=>console.error("Connection health background monitor failed:",error?.message||error)):Promise.resolve();
+  const background=Promise.allSettled([cleanup,universeRefresh,hunterCycle,healthRefresh]);
   if(ctx?.waitUntil)ctx.waitUntil(background);else await background;
  }
 };

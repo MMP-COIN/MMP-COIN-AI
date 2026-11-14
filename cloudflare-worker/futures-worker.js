@@ -9,7 +9,7 @@ export default {
    if(!env.FUTURES_ENGINE_TOKEN||request.headers.get("X-MMP-Futures-Token")!==env.FUTURES_ENGINE_TOKEN)return json({error:"Unauthorized"},401);
    const symbol=String(url.searchParams.get("symbol")||"").toUpperCase(),windowMinutes=url.searchParams.get("window")||1;
    if(!/^[A-Z0-9]{2,24}(USDT)?$/.test(symbol))return json({error:"Invalid Futures symbol"},400);
-   try{return json(await loadFuturesMarketFlow(symbol,windowMinutes),200);}
+   try{const flow=await loadFuturesMarketFlow(symbol,windowMinutes);if(url.searchParams.get("compact")==="1"){const trades=Array.isArray(flow.trades)?flow.trades:[];return json({...flow,trade_count:flow.trade_count||trades.length,trades:trades.slice(-100),trade_sampled:true},200);}return json(flow,200);}
    catch(error){return json({error:String(error?.message||error).slice(0,260)},502);}
   }
   if(url.pathname==="/run"&&request.method==="POST"){
@@ -22,19 +22,6 @@ export default {
  },
  async scheduled(event,env,ctx){
   if(!env.ADMIN_DB)throw new Error("ADMIN_DB binding missing");
-  const tetherMonitor=(async()=>{
-   const row=await env.ADMIN_DB.prepare("SELECT payload FROM hunter_engine_state WHERE id = ?").bind("local-tether-watch").first();
-   let saved=null;try{saved=row?.payload?JSON.parse(row.payload):null;}catch{}
-   const updated=Date.parse(saved?.monitor_updated_at||saved?.checked_at||"");
-   if(!Number.isFinite(updated)||Date.now()-updated>120000){
-    if(!env.TETHER_MONITOR?.fetch)throw new Error("Tether service binding unavailable while monitor snapshot is stale");
-    const response=await env.TETHER_MONITOR.fetch(new Request("https://tether-monitor.internal/run",{method:"POST",headers:{"Content-Type":"application/json"}}));
-    if(!response.ok)throw new Error("Tether monitor HTTP "+response.status);
-    const result=await response.json();
-    console.log("Futures Cron Tether fallback run",JSON.stringify({status:result.status,source_count:result.source_count,checked_at:result.checked_at}));
-   }
-  })().catch(error=>console.error("Futures Cron Tether monitor fallback failed:",error?.message||error));
-  if(ctx?.waitUntil)ctx.waitUntil(tetherMonitor);else await tetherMonitor;
   const id="digital-hunter-futures-cron-heartbeat",started=Date.now(),stamp=new Date(started).toISOString();
   const save=payload=>env.ADMIN_DB.prepare("INSERT INTO hunter_engine_state (id,payload,updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at").bind(id,JSON.stringify(payload),payload.updated_at||new Date().toISOString()).run();
   await save({status:"started",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,market:"futures",cron:event?.cron||"* * * * *",scheduledTime:event?.scheduledTime||null,updated_at:stamp});

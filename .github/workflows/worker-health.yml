@@ -10,14 +10,16 @@ on:
       - "cloudflare-worker/**"
       - "www/index.html"
       - "www/quantum-lab.html"
+      - "www/v4/**"
+      - ".github/workflows/validate-v4-rebuild.yml"
       - ".github/workflows/worker-health.yml"
 
 permissions:
   contents: read
 
 concurrency:
-  group: worker-health-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: mmp-coin-worker-health-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: false
 
 jobs:
   smoke-test:
@@ -27,67 +29,6 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      # Cron Worker is intentionally private (workers.dev disabled). Its scheduled
-      # execution is verified below through the public analyzer's D1-backed status endpoint.
-      - name: Validate MMP NEXUS monitor, Radar isolation and repair safety
-        run: |
-          set -euo pipefail
-          node --input-type=module <<'NODE'
-          import fs from "node:fs";
-          import vm from "node:vm";
-          const html = fs.readFileSync("www/index.html", "utf8");
-          const open = '<script id="mmp-autonomous-health-center-js">';
-          const start = html.indexOf(open);
-          const end = html.indexOf("</script>", start + open.length);
-          if (start < 0 || end < 0) throw new Error("MMP NEXUS inline monitor script is missing");
-          new vm.Script(html.slice(start + open.length, end), {filename:"mmp-nexus-inline.js"});
-          for (const required of [
-            "MMP NEXUS · AUTONOMOUS SYSTEM INTELLIGENCE",
-            "RADAR_API+\"/health\"",
-            "RADAR_API+\"/fast-radar-snapshot\"",
-            "RADAR_API+\"/last-error\"",
-            "isRunning=false",
-            "چرخه‌های مجاز Hunter",
-            "next_checks",
-            "market-orderflow?market=futures&symbol=BTC",
-            "futuresOrderflow?.flow?.complete===true"
-          ]) {
-            if (!html.includes(required)) throw new Error("MMP NEXUS monitor requirement missing: " + required);
-          }
-          const worker = fs.readFileSync("cloudflare-worker/worker.js", "utf8");
-          if (!worker.includes('pathname==="/system-diagnose"') ||
-              !worker.includes("You are MMP NEXUS") ||
-              !worker.includes("Never emit executable code") ||
-              !worker.includes("code_changes_executed:false")) {
-            throw new Error("NEXUS AI diagnostic safety contract is missing");
-          }
-          console.log("NEXUS inline script syntax, independent Radar probes, overlap guard and AI repair boundaries verified.");
-          NODE
-      - name: Validate independent server-side MMP NEXUS Worker
-        run: |
-          set -euo pipefail
-          node --input-type=module --check < cloudflare-worker/nexus-worker.js
-          grep -Fq 'crons = ["*/5 * * * *"]' cloudflare-worker/nexus-wrangler.toml
-          grep -Fq 'name = "mmp-coin-nexus"' cloudflare-worker/nexus-wrangler.toml
-          grep -Fq 'runCycle(env)' cloudflare-worker/nexus-worker.js
-          grep -Fq 'last_repair_at' cloudflare-worker/nexus-worker.js
-          grep -Fq 'ai_calls:' cloudflare-worker/nexus-worker.js
-          grep -Fq 'code_changes_executed:false' cloudflare-worker/nexus-worker.js
-          echo "Independent NEXUS Worker syntax, five-minute Cron, safe-repair cooldown and AI budget guard validated."
-      - name: Validate Hunter universe refresher and Cron scan budgets
-        run: |
-          set -euo pipefail
-          node --check cloudflare-worker/hunter-cron-worker.js
-          node - <<'NODE'
-          const fs = require("fs");
-          const source = fs.readFileSync("cloudflare-worker/hunter-cron-worker.js", "utf8");
-          const config = fs.readFileSync("cloudflare-worker/hunter-cron-wrangler.toml", "utf8");
-          for (const required of ["refreshDigitalHunterUniverses", "digital-hunter-universe-refresh", "hourly-universe-refresh", "async scheduled(event,env)", "Object.create(env)", "PUBLIC_API_LIMITER"]) {
-            if (!source.includes(required)) throw new Error("Dedicated Hunter scheduler missing: " + required);
-          }
-          if (!config.includes('crons = ["5 * * * *"]') || !config.includes('binding = "ADMIN_DB"') || !config.includes('binding = "AI"')) throw new Error("Dedicated Hunter Cron deployment config does not match production");
-          console.log("Dedicated universe refresh worker and trusted internal limiter verified.");
-          NODE
       - name: Validate Worker syntax and Quantum signal gates
         run: |
           set -euo pipefail
@@ -98,7 +39,7 @@ jobs:
           node --check --input-type=module < cloudflare-worker/learning-engine.js
           node --check --input-type=module < cloudflare-worker/decision-engine.js
           node --check --input-type=module < cloudflare-worker/futures-worker.js
-          node --check --input-type=module < cloudflare-worker/tether-monitor-worker.js
+          node --check --input-type=module < cloudflare-worker/admin-worker.js
           node --input-type=module <<'NODE'
           import fs from "node:fs";
           const source = fs.readFileSync("cloudflare-worker/quantum-core.js", "utf8");
@@ -158,40 +99,64 @@ jobs:
           if (matureSummary.calibrationStatus !== "calibrated" || matureSummary.matured5m !== 40 || matureSummary.calibrationAdjustment !== 5) throw new Error("Bounded learning calibration did not activate at the minimum sample size");
           const workerSource = fs.readFileSync("cloudflare-worker/worker.js", "utf8");
           if (!workerSource.includes('pathname==="/system-diagnose"') || !workerSource.includes("runAIWithFallback(env,prompt)") || !workerSource.includes("code_changes_executed:false")) throw new Error("Rate-limited AI system diagnostics endpoint or no-code-mutation guarantee is missing");
+          if (!workerSource.includes('const upstreamBudget={used:0,max:44};') || !workerSource.includes("getExchangeCatalogs(mode,upstreamBudget,env,pair)") || !workerSource.includes("candles(selectedPair,tf,env,candleMarket,upstreamBudget)") || !workerSource.includes("upstream_request_budget:upstreamBudget.max")) throw new Error("AI analysis must enforce a request-scoped upstream budget and only load catalogs for the selected market mode");
+          const supportCheckStart=workerSource.indexOf('pathname==="/support-check"');
+          const supportCheckEnd=workerSource.indexOf('pathname===',supportCheckStart+20);
+          const supportCheckSource=workerSource.slice(supportCheckStart,supportCheckEnd>supportCheckStart?supportCheckEnd:undefined);
+          if(supportCheckStart<0 || !supportCheckSource.includes('digital-hunter-v2-universe-cache') || !supportCheckSource.includes("json_each(h.payload") || supportCheckSource.includes("getExchangeCatalogs")) throw new Error("Support-check must use the precomputed D1 universe and avoid full exchange-catalog parsing");
+          if (!workerSource.includes("minimumCandlesOverride") || !workerSource.includes("candles(symbol,interval,env,marketType,null,55)")) throw new Error("Live chart endpoint must guarantee the 55 candles required by EMA50 and chart indicators");
+          if (!workerSource.includes('forceRefresh=internalAuthorized&&universeUrl.searchParams.get("force")==="1"') || !workerSource.includes('SELECT json_extract(payload,\'$.assets\') AS assets') || !workerSource.includes('hunter_assets:staleAssets')) throw new Error("Public Hunter universe must serve the compact validated D1 cache and reserve expensive refresh for authenticated cron");
+          if (!workerSource.includes('const structuredSource=source==="nobitex-tether"') || !workerSource.includes("caches.default.put(rawCacheKey,response.clone())") || !workerSource.includes("new Response(upstream.body")) throw new Error("Large exchange ticker proxy must stream raw JSON and use edge cache instead of parsing and serializing megabyte payloads");
+          if (!workerSource.includes("const symbols=requestedSymbols.slice(0,1)") || !workerSource.includes("batch_limit:1")) throw new Error("Public Hunter diagnostics must process one symbol per CPU-safe request");
+          const radarCpuSource = fs.readFileSync("cloudflare-worker/radar-worker.js", "utf8");
+          if (!radarCpuSource.includes("cacheAge<15*60*1000") || !radarCpuSource.includes("universe_cache_stale:sourceStale")) throw new Error("Radar must reuse its local universe cache and preserve source freshness metadata");
           const futuresSource = fs.readFileSync("cloudflare-worker/futures-worker.js", "utf8");
           const htmlSource = fs.readFileSync("www/index.html", "utf8");
           const analyzerConfig = fs.readFileSync("cloudflare-worker/wrangler.toml", "utf8");
           const futuresConfig = fs.readFileSync("cloudflare-worker/futures-wrangler.toml", "utf8");
+          const adminConfig = fs.readFileSync("cloudflare-worker/admin-wrangler.toml", "utf8");
+          const deploymentWorkflow = fs.readFileSync(".github/workflows/cloudflare-deploy.yml", "utf8");
+          const v4App = fs.readFileSync("www/v4/app.js", "utf8");
+          const healthStart = v4App.indexOf("async function loadHealth()");
+          const healthEnd = v4App.indexOf("let marketChart", healthStart);
+          const healthCode = v4App.slice(healthStart, healthEnd);
+          if (!healthCode.includes("runtime.admin_db_binding===true") || !healthCode.includes("runtime.ai_binding===true") || !healthCode.includes("runtime.futures_engine_binding===true") || !healthCode.includes("runtime.market_cache_binding===true")) throw new Error("V4 healthy status must require every core Worker and D1 binding");
+          if (!v4App.includes('valid.length<2') || !v4App.includes('consensus.length<2') || !v4App.includes('source:"Ramzinex"') || !v4App.includes('source:"Exir"') || !v4App.includes('source:"Bitpin"')) throw new Error("V4 Tether price must require a two-source consensus from independent proxy providers");
+          if (!v4App.includes('const symbols=["BTCUSDT","ETHUSDT","PAXGUSDT"]') || !v4App.includes('symbol:"USDTIRT"') || v4App.includes('"BNBUSDT"') || v4App.includes('"SOLUSDT"')) throw new Error("V4 top market cards must be BTC, ETH, tokenized gold and Tether");
+          if (v4App.includes("mmp_tether_cache_v1") || v4App.includes("local-market-watch")) throw new Error("V4 must not display cached or monitor-state Tether prices");
+          if (!v4App.includes('["IRR","RLS"].includes(unit)?price/10:price') || !v4App.includes('["IRR","RLS"].includes(quote)?rawPrice/10:rawPrice')) throw new Error("Iranian Rial/Toman quote units must be normalized correctly");
+          if (!adminConfig.includes('name = "mmp-coin-ai-admin"') || !adminConfig.includes('crons = ["*/15 * * * *"]') || !adminConfig.includes('binding = "ADMIN_DB"')) throw new Error("Admin Worker must use the private D1 binding and approved 15-minute Cron");
+          if (!deploymentWorkflow.includes("workflow_dispatch:") || /^  push:/m.test(deploymentWorkflow) || /^  schedule:/m.test(deploymentWorkflow)) throw new Error("Production Worker deployment must be manual-only");
+          if (!deploymentWorkflow.includes("verify_schedule") || !deploymentWorkflow.includes("previews_enabled == false") || !deploymentWorkflow.includes("schedules-verified.json")) throw new Error("Production Worker deployment must read back exact Cron and workers.dev settings");
+          for (const required of ["futures-wrangler.toml","radar-wrangler.toml","wrangler.toml","admin-wrangler.toml"]) if (!deploymentWorkflow.includes(required)) throw new Error("Controlled deployment is missing required Worker config: "+required);
+          for (const forbidden of ["tether-monitor-wrangler.toml","hunter-cron-wrangler.toml","nexus-wrangler.toml","github-deploy-wrangler.toml"]) if (deploymentWorkflow.includes(forbidden)) throw new Error("Legacy or nonessential Worker must not be deployed by the V4 release: "+forbidden);
+          if (workerSource.includes("TETHER_MONITOR") || futuresSource.includes("TETHER_MONITOR") || analyzerConfig.includes('binding = "TETHER_MONITOR"') || futuresConfig.includes('binding = "TETHER_MONITOR"')) throw new Error("Required V4 services must not depend on a fifth Tether Worker");
           if (!analyzerConfig.includes('binding = "FUTURES_ENGINE"') || !analyzerConfig.includes('service = "mmp-coin-ai-futures"')) throw new Error("Analyzer Futures service binding is missing from source config");
-          if (!analyzerConfig.includes('crons = ["* * * * *"]')) throw new Error("Analyzer minute Cron must drive the Spot Hunter and local Tether monitor");
+          if (!analyzerConfig.includes('crons = ["* * * * *"]')) throw new Error("Analyzer minute Cron must drive the Spot Hunter and six-hour universe refresh");
           if (!futuresConfig.includes('name = "mmp-coin-ai-futures"') || !futuresConfig.includes('binding = "ADMIN_DB"') || !futuresConfig.includes('crons = ["* * * * *"]')) throw new Error("Dedicated Futures Worker deployment config or one-minute scheduler is missing");
-          const universeCronConfig = fs.readFileSync("cloudflare-worker/hunter-cron-wrangler.toml", "utf8");
-          if (!universeCronConfig.includes('crons = ["5 * * * *"]')) throw new Error("Independent universe refresh must remain hourly to conserve free Cron slots");
           if (!workerSource.includes('"/futures-engine-health"') || !workerSource.includes('env.FUTURES_ENGINE.fetch(new Request("https://futures-engine/health"))')) throw new Error("Analyzer internal Futures health route is missing");
           if (!workerSource.includes('X-MMP-Internal-Token') || !workerSource.includes('request.headers.get("X-MMP-Internal-Token")===env.FUTURES_ENGINE_TOKEN')) throw new Error("Internal Hunter universe refresh must authenticate without consuming the public limiter");
-          if (!workerSource.includes('page<=8') || !workerSource.includes('from="+Math.floor(cutoff/1000)+"&to="+Math.ceil(now/1000)+"&limit=1000&page="+page') || !workerSource.includes('https://api3.binance.com')) throw new Error("Spot executed-flow pagination and alternate Binance hosts are missing");
+          if (!workerSource.includes('page<=3') || !workerSource.includes('from="+Math.floor(cutoff/1000)+"&to="+Math.ceil(now/1000)+"&limit=1000&page="+page') || !workerSource.includes('https://api3.binance.com')) throw new Error("Spot executed-flow pagination and alternate Binance hosts are missing");
           if (!workerSource.includes("const maxRequests=18") || !workerSource.includes("request_budget:maxRequests") || !workerSource.includes('provider:"unavailable",exchange:"",complete:false')) throw new Error("Spot flow must enforce a safe subrequest budget and return an explicit incomplete result rather than crashing the Worker");
-          if (!workerSource.includes("for(let page=0;page<10;page++)")) throw new Error("OKX historical trade pagination must be bounded to protect the Worker subrequest quota");
+          if (!workerSource.includes("for(let page=0;page<3;page++)")) throw new Error("OKX historical trade pagination must be bounded to protect the Worker subrequest quota");
           const futuresUniverseStart = workerSource.indexOf("async function loadDigitalHunterFuturesUniverse");
           const futuresUniverseEnd = workerSource.indexOf("async function loadDigitalHunterUniverse", futuresUniverseStart);
           const futuresUniverseSource = workerSource.slice(futuresUniverseStart, futuresUniverseEnd);
           if (futuresUniverseStart < 0 || !futuresUniverseSource.includes("MEXC USDT Futures") || !futuresUniverseSource.includes("contract.mexc.com/api/v1/contract/detail") || !futuresUniverseSource.includes("contract.mexc.com/api/v1/contract/ticker") || !futuresUniverseSource.includes('x.state===0&&x.quoteCoin==="USDT"&&x.settleCoin==="USDT"')) throw new Error("MEXC active USDT perpetual discovery is missing");
           if (!workerSource.includes("cached_fallback:true") || !workerSource.includes("fresh:false") || !workerSource.includes("universe_stale===true") || !workerSource.includes("universe_age_ms")) throw new Error("Hunter universe refresh must expose age-labeled stale cache fallback without relabelling it fresh");
-          if (!workerSource.includes('normalizeQuantumUniverse(saved?.assets||[],"spot")') || !workerSource.includes("universe_updated_at:new Date(savedAt).toISOString()")) throw new Error("Hunter Spot must serve its last validated ADMIN_DB universe with the original timestamp when live providers fail");
+          if (!workerSource.includes("Array.isArray(saved?.assets)?saved.assets:[]") || !workerSource.includes("universe_updated_at:new Date(savedAt).toISOString()")) throw new Error("Hunter Spot must reuse its already-normalized last validated ADMIN_DB universe on provider failure");
           if (!workerSource.includes("fapi1.binance.com/fapi/v1/ticker/price") || !workerSource.includes("api.bytick.com/v5/market/tickers?category=linear") || !workerSource.includes("us.okx.com/api/v5/market/ticker?instId=BTC-USDT-SWAP")) throw new Error("Futures connection health must probe alternate regional endpoints");
-          const tetherMonitorSource = fs.readFileSync("cloudflare-worker/tether-monitor-worker.js", "utf8");
-          if (!tetherMonitorSource.includes("last_known_age_ms") || !tetherMonitorSource.includes("monitor_updated_at:now")) throw new Error("Dedicated Iranian Tether monitor must preserve last-known values and heartbeat during provider outages");
-          if (!futuresSource.includes('pathname==="/market-flow"') || !futuresSource.includes("loadFuturesMarketFlow(symbol,windowMinutes)") || !workerSource.includes("env.FUTURES_ENGINE.fetch(internal)") || !workerSource.includes("const maxRequests=50") || !workerSource.includes("for(let page=0;page<45;page++)")) throw new Error("Futures real-trade flow must run in its isolated Worker with a bounded request budget and extended OKX pagination");
+          if (!futuresSource.includes('pathname==="/market-flow"') || !futuresSource.includes("loadFuturesMarketFlow(symbol,windowMinutes)") || !futuresSource.includes("trade_sampled:true") || !workerSource.includes("&compact=1") || !workerSource.includes("env.FUTURES_ENGINE.fetch(internal)") || !workerSource.slice(workerSource.indexOf("export async function loadFuturesMarketFlow(")).includes("const maxRequests=18") || !workerSource.slice(workerSource.indexOf("export async function loadFuturesMarketFlow(")).includes("for(let page=0;page<6;page++)")) throw new Error("Futures real-trade flow must run in its isolated Worker with a bounded request budget and extended OKX pagination");
           for (const fallback of ['if(!trades?.length||truncated||trades.length<8){\n  try{\n   const contract=base+"_USDT";','if(!trades?.length||truncated||trades.length<8){\n  try{\n   const kucoinSymbol=','if(!trades?.length||truncated||trades.length<8){\n try{\n  const market=base+"_PERP";']) if (!workerSource.includes(fallback)) throw new Error("Futures fallback providers must remain available for incomplete flow while respecting the hard request budget");
           const orderflowStart = workerSource.indexOf('pathname==="/market-orderflow"');
           const orderflowEnd = workerSource.indexOf('pathname===', orderflowStart + 24);
           const orderflowRoute = workerSource.slice(orderflowStart, orderflowEnd > orderflowStart ? orderflowEnd : undefined);
           if (orderflowStart < 0 || !orderflowRoute.includes("env.FUTURES_ENGINE.fetch(internal)") || orderflowRoute.includes("await loadFuturesMarketFlow(base,flowWindow)")) throw new Error("Futures order-flow must use the isolated Futures Worker instead of consuming the analyzer Worker request budget");
-          if (!tetherMonitorSource.includes("Array.isArray(urls)?urls:[urls]")) throw new Error("Tether monitor must accept both single and multiple fallback URLs safely");
-          if (!workerSource.includes('env.TETHER_MONITOR.fetch(new Request("https://tether-monitor.internal/run"') || !futuresSource.includes('env.TETHER_MONITOR.fetch(new Request("https://tether-monitor.internal/run"')) throw new Error("Analyzer and Futures Cron must both trigger the isolated Tether Worker through private service bindings");
-          if (!futuresSource.includes("Date.now()-updated>120000") || !fs.readFileSync("cloudflare-worker/wrangler.toml","utf8").includes('binding = "TETHER_MONITOR"') || !fs.readFileSync("cloudflare-worker/futures-wrangler.toml","utf8").includes('binding = "TETHER_MONITOR"')) throw new Error("Futures Cron must trigger Tether only when the primary monitor snapshot is stale");
-          if (!workerSource.includes("minute%15===0?refreshDigitalHunterUniverses(env)")) throw new Error("Shared Spot/Futures universe refresh must run on the proven analyzer minute Cron");
-          if (!workerSource.includes("ctx.waitUntil(background)") || !workerSource.includes("Promise.allSettled([cleanup,universeRefresh,hunterCycle,tetherMonitor])")) throw new Error("Hunter cleanup and scans must survive independent monitor failures");
+          if (!workerSource.includes("universeRefreshDue=minute===0&&hour%6===0") || !workerSource.includes("universeRefresh=universeRefreshDue?refreshDigitalHunterUniverses(env)")) throw new Error("Shared Spot/Futures universe refresh must run on the bounded six-hour schedule");
+          if (!workerSource.includes('const refresh=internalAuthorized&&new URL(request.url).searchParams.get("refresh")==="1"') || !workerSource.includes("batchSize=4") || !workerSource.includes('bind("connections-health"') || !workerSource.includes("healthRefresh=env.FUTURES_ENGINE_TOKEN&&!universeRefreshDue?handle(")) throw new Error("Exchange connection health must run in bounded background batches and serve a D1 snapshot to public clients");
+          const connectionHealthStart=workerSource.indexOf('pathname==="/connections-health"'),connectionHealthEnd=workerSource.indexOf('pathname===',connectionHealthStart+24),connectionHealthSource=workerSource.slice(connectionHealthStart,connectionHealthEnd>connectionHealthStart?connectionHealthEnd:undefined);
+          if(connectionHealthStart<0 || !connectionHealthSource.includes('const internalAuthorized=!!env.FUTURES_ENGINE_TOKEN&&request.headers.get("X-MMP-Internal-Token")===env.FUTURES_ENGINE_TOKEN')) throw new Error("Background connection monitor refresh must authenticate with the configured internal service secret");
+          if (!workerSource.includes("ctx.waitUntil(background)") || !workerSource.includes("Promise.allSettled([cleanup,universeRefresh,hunterCycle,healthRefresh])")) throw new Error("Hunter cleanup and scans must survive independent monitor failures");
           if (!workerSource.includes("const dueLearningRecords=") || !workerSource.includes("fetchHunterCandles(record.symbol,marketType,asset)") || !workerSource.includes("...learningMarks")) throw new Error("Self-learning must capture fresh 5m/15m/60m outcome marks for open signals");
           const hunterCandlesStart = workerSource.indexOf('async function fetchHunterCandles(symbol,marketType="spot",asset=null){');
           const hunterCandlesEnd = workerSource.indexOf("async function analyzeDigitalHunterSymbol", hunterCandlesStart);
@@ -200,10 +165,6 @@ jobs:
           if (!workerSource.includes("function emaSeries(values,period)") || workerSource.includes("closes.slice(0,i+1)")) throw new Error("Multi-timeframe MACD must use linear-time EMA series, not quadratic recomputation");
           if (!workerSource.includes("const ASSET_SYMBOL_OVERRIDES=Object.freeze(")) throw new Error("AI analyzer must define safe asset-id to ticker overrides before request parsing");
           if (!workerSource.includes('if(source==="coingecko-top"){') || !workerSource.includes('const baseOffset=(requestedTopPage-1)*250') || !workerSource.includes('offsets=[baseOffset,baseOffset+100,baseOffset+200]') || !workerSource.includes('"CoinLore fallback"')) throw new Error("CoinGecko deep pagination must have a 250-row CoinLore fallback that preserves array responses");
-          const tetherWorkerSource = fs.readFileSync("cloudflare-worker/tether-monitor-worker.js", "utf8");
-          const tetherWrangler = fs.readFileSync("cloudflare-worker/tether-monitor-wrangler.toml", "utf8");
-          if (!tetherWrangler.includes('name = "mmp-coin-ai-tether-monitor"') || !tetherWrangler.includes('database_name = "mmp_coin_ai_private_admin"') || tetherWrangler.includes("crons =") || !tetherWrangler.includes("workers_dev = false")) throw new Error("Dedicated Tether Worker deployment configuration is incomplete");
-          if (!tetherWorkerSource.includes("async function monitorLocalTether(env)") || !tetherWorkerSource.includes('url.pathname==="/run"&&request.method==="POST"') || !tetherWorkerSource.includes('monitor:"dedicated-tether-service-1m"') || !tetherWorkerSource.includes("Promise.all([") || !tetherWorkerSource.includes("Array.isArray(urls)?urls:[urls]") || tetherWorkerSource.includes("async scheduled")) throw new Error("Iranian Tether monitor must expose a private service endpoint and robust multi-provider polling");
           if (!workerSource.includes("data-api.binance.vision/api/v3/exchangeInfo") || !workerSource.includes("data-api.binance.vision/api/v3/ticker/24hr") || !workerSource.includes("api-gcp.binance.com/api/v3/ticker/24hr")) throw new Error("Hunter Spot universe must use official Binance market-data failover hosts");
           if (!workerSource.includes('priority=[4,3,6,8,5,2,1,7,0]') || !workerSource.includes("preferredOrder.length>=3") || !workerSource.includes("extraIndices=orderedIndices.filter")) throw new Error("Spot Hunter must prioritize the verified live venues and expand fallback only when the first set cannot confirm a shared candle");
           if (!workerSource.includes('"binance-tickers":["https://data-api.binance.vision/api/v3/ticker/24hr"')) throw new Error("Public Binance ticker proxy must prefer the official market-data-only host");
@@ -211,16 +172,12 @@ jobs:
           const tetherRouteEnd = workerSource.indexOf('pathname==="/market-proxy"', tetherRouteStart);
           const tetherRoute = workerSource.slice(tetherRouteStart, tetherRouteEnd);
           if (tetherRouteStart < 0 || tetherRoute.includes("fetchLocalTetherSnapshot") || !tetherRoute.includes("data_stale:dataStale") || !tetherRoute.includes("readLocalTetherState(env)")) throw new Error("Tether API must serve the dedicated D1 monitor snapshot and expose data freshness");
-          if (!tetherWorkerSource.includes("publicapi.ramzinex.com/exchange/api/v1.0/exchange/pairs") || !tetherWorkerSource.includes('"Ramzinex"') || !tetherWorkerSource.includes("attempt<2") || !tetherWorkerSource.includes("Retry-After")) throw new Error("Iranian Tether monitor must include Ramzinex fallback and bounded retry/backoff for transient provider errors");
 
           const radarSource = fs.readFileSync("cloudflare-worker/radar-worker.js", "utf8");
-          const universeCronSource = fs.readFileSync("cloudflare-worker/hunter-cron-worker.js", "utf8");
           const cronStart = workerSource.indexOf("async function runDigitalHunterCron");
           const cronEnd = workerSource.indexOf("export default {", cronStart);
           const cronSource = workerSource.slice(cronStart, cronEnd);
           if (!futuresSource.includes('async scheduled(event,env,ctx)') || !futuresSource.includes('runDigitalHunterMarketCycle(env,"futures")') || !futuresSource.includes("digital-hunter-futures-cron-heartbeat")) throw new Error("Futures must run on its own scheduled Worker");
-          if (!fs.readFileSync("cloudflare-worker/futures-wrangler.toml","utf8").includes('binding = "TETHER_MONITOR"') || !fs.readFileSync("cloudflare-worker/wrangler.toml","utf8").includes('binding = "TETHER_MONITOR"')) throw new Error("Both scheduled market Workers must declare the isolated Tether service binding");
-          if ((!universeCronSource.includes("refreshDigitalHunterUniverses(env)") && !universeCronSource.includes("refreshDigitalHunterUniverses(refreshEnv)")) || !universeCronSource.includes("hourly-universe-refresh")) throw new Error("Hunter universe refresh must remain independent and low-frequency");
           if (!cronSource.includes('runDigitalHunterMarketCycle(env,"spot")') || cronSource.includes("FUTURES_ENGINE.fetch")) throw new Error("Analyzer Cron must scan Spot only; Futures has its own scheduler");
           if (!workerSource.includes("digital-hunter-futures-cron-heartbeat") || !workerSource.includes("markets:{spot,futures}")) throw new Error("Hunter status endpoint must merge independent Spot/Futures heartbeats");
           if (!radarSource.includes("cacheAge<=24*60*60*1000") || !radarSource.includes("cached universe; live candles") || !radarSource.includes("radar:last-error")) throw new Error("Radar must keep a recent cached universe fallback and record failures");
@@ -238,7 +195,7 @@ jobs:
 
           if (!radarSource.includes("const BATCH_SIZE = 12;") || !radarSource.includes("universe.length>500?12:BATCH_SIZE") || !radarSource.includes("const verificationOrder=[...new Set([...order,...fallback])].slice(0,3);")) throw new Error("Radar scan must stay within the per-invocation subrequest budget");
           if (!workerSource.includes("const HUNTER_BATCH_SIZE = 8;") || !workerSource.includes("const FUTURES_HUNTER_BATCH_SIZE = 8;") || !workerSource.includes("const sourceLimit=Math.min(4,sources.length)") || !workerSource.includes("for(const host of hosts.slice(0,2))") || !workerSource.includes("const concurrency=4;")) throw new Error("Hunter scan must stay within the per-invocation subrequest budget");
-          if (!workerSource.includes("async scheduled(event,env,ctx)") || !workerSource.includes("const hunterCycle=runDigitalHunterCron(event,env,ctx).catch") || !workerSource.includes("Promise.allSettled([cleanup,universeRefresh,hunterCycle,tetherMonitor])") || !workerSource.includes("ctx.waitUntil(background)")) throw new Error("Cron must retain the Hunter cycle and independent maintenance tasks through waitUntil");
+          if (!workerSource.includes("async scheduled(event,env,ctx)") || !workerSource.includes("const hunterCycle=runDigitalHunterCron(event,env,ctx).catch") || !workerSource.includes("Promise.allSettled([cleanup,universeRefresh,hunterCycle,healthRefresh])") || !workerSource.includes("ctx.waitUntil(background)")) throw new Error("Cron must retain the Hunter cycle and independent maintenance tasks through waitUntil");
           if (!workerSource.includes("for(const url of urls)") || workerSource.includes("Promise.all(urls.map(url=>timeoutFetch")) throw new Error("Exchange health fallback must try alternate endpoints sequentially and stop after a verified response");
                     if (!workerSource.includes("async function fetchWithTimeout") || !workerSource.includes("return await fetch(url,{...options,signal:controller.signal})") || workerSource.includes("return await fetchWithTimeout(url,{...options,signal:controller.signal})")) throw new Error("Bounded fetch helper must call native fetch exactly once and must not recurse");
           if (!workerSource.includes("async function readMarketFallback") || !workerSource.includes("async function writeMarketFallback") || !workerSource.includes("env.MARKET_CACHE_DB") || !workerSource.includes("data_stale:true") || !workerSource.includes("X-MMP-Cache") || !workerSource.includes("market_cache_binding:!!env.MARKET_CACHE_DB")) throw new Error("Persistent D1 market cache and explicit stale-data reporting are required");
@@ -426,7 +383,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Smoke-test live MMP NEXUS AI diagnostic endpoint
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' || github.event_name == 'pull_request'
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
@@ -446,19 +403,6 @@ jobs:
           jq -e '.status == "ok" and (.severity == "healthy" or .severity == "warning" or .severity == "critical") and (.provider | type == "string" and length > 0) and (.issues | type == "array") and (.next_checks | type == "array") and .code_changes_executed == false' /tmp/nexus-diagnosis.json >/dev/null
           jq -r '"NEXUS AI provider: " + .provider + " | severity: " + .severity + " | issues: " + (.issues|length|tostring) + " | next checks: " + (.next_checks|length|tostring)' /tmp/nexus-diagnosis.json
       # NEXUS workers.dev subdomain enabled; verify the independent server monitor after each push.
-      - name: Check independent MMP NEXUS Cron Worker
-        env:
-          NEXUS_URL: https://mmp-coin-nexus.mehrdadmohammadi1988.workers.dev
-        run: |
-          set -euo pipefail
-          status="$(curl --silent --show-error --retry 3 --retry-all-errors --retry-delay 2 --max-time 20 -o /tmp/nexus-health.json -w "%{http_code}" "$NEXUS_URL/health")"
-          echo "Independent NEXUS health HTTP $status"
-          test "$status" = "200"
-          jq -e '.worker == "online" and .database == "ok" and .ai_binding == true and .monitor == "server-cron-5m"' /tmp/nexus-health.json >/dev/null
-          status="$(curl --silent --show-error --retry 2 --retry-delay 2 --max-time 20 -o /tmp/nexus-status.json -w "%{http_code}" "$NEXUS_URL/status")"
-          echo "Independent NEXUS report HTTP $status"
-          test "$status" = "200"
-          jq -e '.status == "ok" or .status == "warming_up"' /tmp/nexus-status.json >/dev/null
       - name: Check Futures service binding and live Quantum snapshots
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
@@ -484,21 +428,21 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Smoke-test production five-provider Quantum Hunter
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/rebuild/v4-new-platform' || github.head_ref == 'rebuild/v4-new-platform'
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
           set -euo pipefail
-          curl --fail --silent --show-error --retry 1 --retry-delay 3 --max-time 90 "$WORKER_URL/hunter-scan?market=spot&symbols=BTC%2CETH%2CSOL%2CXRP" -o /tmp/five-provider-hunter.json
-          jq '{requested,scanned,failed,errors,signals_count:(.signals|length)}' /tmp/five-provider-hunter.json
-          jq -e '.requested == 4 and (.scanned // 0) >= 2 and (.failed // 4) <= 2' /tmp/five-provider-hunter.json >/dev/null
-          jq -r '"Deployed five-provider Hunter: " + (.scanned|tostring) + "/4 scanned; " + (.candidates|tostring) + " preliminary candidates; " + (.failed|tostring) + " data failures; " + (.signals|length|tostring) + " confirmed signals." ' /tmp/five-provider-hunter.json
-          curl --fail --silent --show-error --retry 1 --retry-delay 3 --max-time 120 "$WORKER_URL/hunter-scan?market=futures&symbols=BTC%2CETH%2CSOL%2CXRP%2CDOGE%2CBNB" -o /tmp/futures-provider-hunter.json
-          jq '{requested,scanned,failed,errors,signals_count:(.signals|length)}' /tmp/futures-provider-hunter.json
-          jq -e '.requested == 6 and (.scanned // 0) >= 4 and (.failed // 6) <= 2' /tmp/futures-provider-hunter.json >/dev/null
-          jq -r '"Deployed Futures fallback: " + (.scanned|tostring) + "/6 scanned; " + (.failed|tostring) + " data failures; " + (.signals|length|tostring) + " flow-confirmed signals." ' /tmp/futures-provider-hunter.json
+          for market in spot futures; do
+            status=$(curl --silent --show-error --retry 1 --retry-delay 3 --max-time 55 -o "/tmp/five-provider-$market.json" -w "%{http_code}" "$WORKER_URL/hunter-scan?market=$market&symbols=BTC")
+            echo "$market one-symbol five-provider Hunter HTTP $status"
+            if [ "$status" != "200" ]; then cat "/tmp/five-provider-$market.json"; exit 1; fi
+            jq -e '.requested == 1 and .scanned == 1 and (.failed // 0) == 0 and .batch_limit == 1 and .requested_symbols == ["BTC"] and (.signals | type == "array") and (.errors | type == "array")' "/tmp/five-provider-$market.json" >/dev/null
+            jq -e '[.signals[] | select(.confirmed != true or .quantum.engine != "MMP QUANTUM INTELLIGENCE ENGINE" or .flow.complete != true or (.flow.provider | type != "string"))] | length == 0' "/tmp/five-provider-$market.json" >/dev/null
+            jq -r '"Deployed " + .market + " Hunter: " + (.scanned|tostring) + " BTC scan; " + (.signals|length|tostring) + " flow-confirmed signals; " + (.failed|tostring) + " data failures."' "/tmp/five-provider-$market.json"
+          done
       - name: Verify scheduled Spot and Futures hunter cycles
-        if: always() && github.ref == 'refs/heads/main'
+        if: always() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/rebuild/v4-new-platform' || github.head_ref == 'rebuild/v4-new-platform')
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
@@ -522,7 +466,7 @@ jobs:
           echo "- Scheduled Spot and Futures engines: both completed a live scan without cycle errors" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Verify independent server-side fast radar scan
-        if: always() && github.ref == 'refs/heads/main'
+        if: always() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/rebuild/v4-new-platform' || github.head_ref == 'rebuild/v4-new-platform')
         env:
           RADAR_WORKER_URL: https://mmp-coin-ai-radar.mehrdadmohammadi1988.workers.dev
         run: |
@@ -547,7 +491,7 @@ jobs:
           echo "- Independent server-side radar: live scan and snapshot verified" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Check private analytics Worker
-        if: always() && github.ref == 'refs/heads/main'
+        if: always() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/rebuild/v4-new-platform' || github.head_ref == 'rebuild/v4-new-platform')
         env:
           ADMIN_WORKER_URL: https://mmp-coin-ai-admin.mehrdadmohammadi1988.workers.dev
         run: |
@@ -559,7 +503,7 @@ jobs:
           echo "- Private analytics Worker: online; admin API responds without a session" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Diagnose exchange API access from GitHub runner
-        if: always() && github.ref == 'refs/heads/main'
+        if: always() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/rebuild/v4-new-platform' || github.head_ref == 'rebuild/v4-new-platform')
         continue-on-error: true
         run: |
           set -u
@@ -586,13 +530,24 @@ jobs:
           probe_cors "Bitget" "https://api.bitget.com/api/v3/market/tickers?category=SPOT&symbol=BTCUSDT"
 
       - name: Check exchange connection monitor
-        if: always() && github.ref == 'refs/heads/main'
+        if: always() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/rebuild/v4-new-platform' || github.head_ref == 'rebuild/v4-new-platform')
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
           set -euo pipefail
-          curl --fail --silent --show-error --retry 2 --retry-delay 3 --max-time 25 "$WORKER_URL/connections-health" -o /tmp/connections.json
-          jq -e '.checks | length == 18 and any(.[]; .name == "MEXC Spot") and any(.[]; .name == "WhiteBIT Futures") and any(.[]; .name == "Nobitex") and any(.[]; .name == "Wallex")' /tmp/connections.json >/dev/null
+          status=""
+          for attempt in $(seq 1 20); do
+            status=$(curl --silent --show-error --max-time 25 -o /tmp/connections.json -w "%{http_code}" "$WORKER_URL/connections-health" || true)
+            if [ "$status" = "200" ] && jq -e '(.checks | length == 18) and ((.stale == null) or (.stale == false)) and ([.checks[] | select(.market == "spot" and (.status == "ok" or .status == "slow"))] | length >= 2) and ([.checks[] | select(.market == "futures" and (.status == "ok" or .status == "slow"))] | length >= 2) and ([.checks[] | select(.market == "iran" and (.status == "ok" or .status == "slow"))] | length >= 1)' /tmp/connections.json >/dev/null; then
+              break
+            fi
+            sleep 15
+          done
+          if [ "$status" != "200" ] || ! jq -e '(.checks | length == 18) and ((.stale == null) or (.stale == false)) and ([.checks[] | select(.market == "spot" and (.status == "ok" or .status == "slow"))] | length >= 2) and ([.checks[] | select(.market == "futures" and (.status == "ok" or .status == "slow"))] | length >= 2) and ([.checks[] | select(.market == "iran" and (.status == "ok" or .status == "slow"))] | length >= 1)' /tmp/connections.json >/dev/null; then
+            cat /tmp/connections.json
+            echo "Connection monitor is stale or lacks independent Spot/Futures/Iran sources." >&2
+            exit 1
+          fi
           echo "Current exchange connection status:"
           jq -r '.checks[] | "- " + .name + ": " + .status + (if .ping == null then "" else " (" + (.ping|tostring) + " ms)" end) + (if .error == null then "" else " — " + (.error|tostring) end)' /tmp/connections.json
           jq -r '.checks[] | "- " + .name + ": " + .status + (if .ping == null then "" else " (" + (.ping|tostring) + " ms)" end) + (if .error == null then "" else " — " + (.error|tostring) end)' /tmp/connections.json >> "$GITHUB_STEP_SUMMARY"
@@ -602,7 +557,7 @@ jobs:
           fi
 
       - name: Check expanded multi-exchange hunter universe
-        if: always() && github.ref == 'refs/heads/main'
+        if: always() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/rebuild/v4-new-platform' || github.head_ref == 'rebuild/v4-new-platform')
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
@@ -617,7 +572,7 @@ jobs:
           echo "- Canonical catalog: $count assets; independent Hunter universe: $hunter_count instruments ($discovered outside metadata catalog) across $venues" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Verify shared edge cache for Hunter universe
-        if: always() && github.ref == 'refs/heads/main'
+        if: always() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/rebuild/v4-new-platform' || github.head_ref == 'rebuild/v4-new-platform')
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
@@ -645,7 +600,7 @@ jobs:
           echo "- Hunter universe: shared D1 cache or age-labeled stale fallback verified" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Check market data proxy
-        if: always() && github.ref == 'refs/heads/main'
+        if: always() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/rebuild/v4-new-platform' || github.head_ref == 'rebuild/v4-new-platform')
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
@@ -687,14 +642,15 @@ jobs:
           echo "- CoinLore fallback proxy: responding with ranked assets and live USD prices" >> "$GITHUB_STEP_SUMMARY"
  
       - name: Smoke-test live spot candlestick endpoint
-        if: always() && github.ref == 'refs/heads/main'
+        if: always() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/rebuild/v4-new-platform' || github.head_ref == 'rebuild/v4-new-platform')
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
           set -euo pipefail
           status=$(curl --fail --silent --show-error --retry 2 --retry-delay 2 --max-time 35 -o /tmp/candles.json -w "%{http_code}" "$WORKER_URL/market-candles?symbol=BTC&interval=15m")
           echo "Live candle endpoint HTTP $status"
-          jq -e '.symbol == "BTCUSDT" and .interval == "15m" and (.candles | length >= 30) and (.provider | type == "string" and length > 0) and (.candles[0].open > 0)' /tmp/candles.json >/dev/null
+          jq -e '.symbol == "BTCUSDT" and .interval == "15m" and (.candles | length >= 55) and (.provider | type == "string" and length > 0) and (.candles[0].open > 0) and .data_stale == false and (.data_age_ms | type == "number" and . <= 1920000)' /tmp/candles.json >/dev/null
+          jq -r '"15m chart provider: " + .provider + " | candles: " + (.candles|length|tostring) + " | data age ms: " + (.data_age_ms|tostring)' /tmp/candles.json
           local_status=$(curl --silent --show-error --max-time 25 -o /tmp/local-candles.json -w "%{http_code}" "$WORKER_URL/market-candles?symbol=BTCIRT&interval=1h")
           echo "Nobitex local Spot candle endpoint HTTP $local_status"
           if [ "$local_status" != "200" ]; then cat /tmp/local-candles.json; exit 1; fi
@@ -706,7 +662,7 @@ jobs:
 
 
       - name: Run and verify the scheduled Quantum Hunter snapshot
-        if: always() && github.ref == 'refs/heads/main'
+        if: always() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/rebuild/v4-new-platform' || github.head_ref == 'rebuild/v4-new-platform')
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
@@ -721,7 +677,7 @@ jobs:
           jq -r '"Quantum Hunter snapshot: scanned " + (.scanned_count|tostring) + "/" + (.universe_count|tostring) + " liquid instruments; " + (.signals|length|tostring) + " confirmed signals; failures " + (.failed_count|tostring)' /tmp/hunter-snapshot.json >> "$GITHUB_STEP_SUMMARY"
 
       - name: Verify 1m/3m/5m and Futures candle endpoints
-        if: always() && github.ref == 'refs/heads/main'
+        if: always() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/rebuild/v4-new-platform' || github.head_ref == 'rebuild/v4-new-platform')
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
@@ -739,7 +695,7 @@ jobs:
       # Preview workers.dev hostnames are disabled by policy. Keep the production
       # completeness assertions below as the authoritative gate instead of testing dead preview URLs.
       - name: Smoke-test Spot/Futures trade flow, order book and analysis
-        if: always() && github.ref == 'refs/heads/main'
+        if: always() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/rebuild/v4-new-platform' || github.head_ref == 'rebuild/v4-new-platform')
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
@@ -786,22 +742,22 @@ jobs:
           else
             echo "::warning::Derivatives endpoint responded but did not provide funding/open-interest values for BTC in this run."
           fi
-          hunter_status=$(curl --silent --show-error --retry 1 --retry-delay 2 --max-time 50 -o /tmp/hunter-scan.json -w "%{http_code}" "$WORKER_URL/hunter-scan?symbols=BTC,ETH")
-          echo "Independent Spot Hunter scan HTTP $hunter_status"
-          if [ "$hunter_status" != "200" ]; then cat /tmp/hunter-scan.json; exit 1; fi
-          cat /tmp/hunter-scan.json
-          jq -e '.engine == "MMP QUANTUM INTELLIGENCE ENGINE" and .requested == 2 and (.signals | type == "array")' /tmp/hunter-scan.json >/dev/null
-          jq -e '[.signals[] | select(.confirmed != true or .quantum.engine != "MMP QUANTUM INTELLIGENCE ENGINE" or .flow.complete != true or (.flow.provider | type != "string"))] | length == 0' /tmp/hunter-scan.json >/dev/null
-          jq -r '.errors[]? | "Spot Hunter diagnostic: " + .symbol + " · " + .error' /tmp/hunter-scan.json
-          jq -r '"Quantum Spot Hunter: " + (.scanned|tostring) + " symbols checked; " + (.signals|length|tostring) + " flow-confirmed signals"' /tmp/hunter-scan.json
-          futures_status=$(curl --silent --show-error --retry 1 --retry-delay 2 --max-time 60 -o /tmp/hunter-futures-scan.json -w "%{http_code}" "$WORKER_URL/hunter-scan?market=futures&symbols=BTC,ETH")
-          echo "Independent Futures Hunter scan HTTP $futures_status"
-          if [ "$futures_status" != "200" ]; then cat /tmp/hunter-futures-scan.json; exit 1; fi
-          cat /tmp/hunter-futures-scan.json
-          jq -e '.engine == "MMP QUANTUM INTELLIGENCE ENGINE" and .market == "futures" and .requested == 2 and (.signals | type == "array")' /tmp/hunter-futures-scan.json >/dev/null
-          jq -e '[.signals[] | select(.market != "futures" or .confirmed != true or .quantum.engine != "MMP QUANTUM INTELLIGENCE ENGINE" or .flow.complete != true or (.flow.provider | type != "string"))] | length == 0' /tmp/hunter-futures-scan.json >/dev/null
-          jq -r '.errors[]? | "Futures Hunter diagnostic: " + .symbol + " · " + .error' /tmp/hunter-futures-scan.json
-          jq -r '"Quantum Futures Hunter: " + (.scanned|tostring) + " symbols checked; " + (.signals|length|tostring) + " flow-confirmed signals"' /tmp/hunter-futures-scan.json
+          for symbol in ETH; do
+            hunter_status=$(curl --silent --show-error --retry 1 --retry-delay 2 --max-time 50 -o /tmp/hunter-scan.json -w "%{http_code}" "$WORKER_URL/hunter-scan?symbols=$symbol")
+            echo "Independent Spot Hunter scan ($symbol) HTTP $hunter_status"
+            if [ "$hunter_status" != "200" ]; then cat /tmp/hunter-scan.json; exit 1; fi
+            jq -e '.engine == "MMP QUANTUM INTELLIGENCE ENGINE" and .requested == 1 and .scanned == 1 and (.signals | type == "array")' /tmp/hunter-scan.json >/dev/null
+            jq -e '[.signals[] | select(.confirmed != true or .quantum.engine != "MMP QUANTUM INTELLIGENCE ENGINE" or .flow.complete != true or (.flow.provider | type != "string"))] | length == 0' /tmp/hunter-scan.json >/dev/null
+            jq -r '.errors[]? | "Spot Hunter diagnostic: " + .symbol + " · " + .error' /tmp/hunter-scan.json
+          done
+          for symbol in ETH; do
+            futures_status=$(curl --silent --show-error --retry 1 --retry-delay 2 --max-time 60 -o /tmp/hunter-futures-scan.json -w "%{http_code}" "$WORKER_URL/hunter-scan?market=futures&symbols=$symbol")
+            echo "Independent Futures Hunter scan ($symbol) HTTP $futures_status"
+            if [ "$futures_status" != "200" ]; then cat /tmp/hunter-futures-scan.json; exit 1; fi
+            jq -e '.engine == "MMP QUANTUM INTELLIGENCE ENGINE" and .market == "futures" and .requested == 1 and .scanned == 1 and (.signals | type == "array")' /tmp/hunter-futures-scan.json >/dev/null
+            jq -e '[.signals[] | select(.market != "futures" or .confirmed != true or .quantum.engine != "MMP QUANTUM INTELLIGENCE ENGINE" or .flow.complete != true or (.flow.provider | type != "string"))] | length == 0' /tmp/hunter-futures-scan.json >/dev/null
+            jq -r '.errors[]? | "Futures Hunter diagnostic: " + .symbol + " · " + .error' /tmp/hunter-futures-scan.json
+          done
           {
             echo "- Spot/Futures real trade flow and order books: live sources verified"
             echo "- BTC/ETH Futures support: multiple active venues verified"
@@ -810,7 +766,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Smoke-test market intelligence endpoints
-        if: always() && github.ref == 'refs/heads/main'
+        if: always() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/rebuild/v4-new-platform' || github.head_ref == 'rebuild/v4-new-platform')
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
@@ -837,18 +793,50 @@ jobs:
             echo "- Derivatives: endpoint responding with provider attribution"
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Smoke-test Iranian tether watch and early pressure APIs
-        if: always() && github.ref == 'refs/heads/main'
+      - name: Smoke-test live Iranian Tether proxy fallbacks and early pressure APIs
+        if: always() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/rebuild/v4-new-platform' || github.head_ref == 'rebuild/v4-new-platform')
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
           set -euo pipefail
-          status=$(curl --silent --show-error --max-time 25 -o /tmp/local-watch.json -w "%{http_code}" "$WORKER_URL/local-market-watch")
-          echo "Iranian USDT watch HTTP $status"
-          if [ "$status" != "200" ]; then cat /tmp/local-watch.json; exit 1; fi
-          jq -e '.market == "USDT/IRR" and (.sources | length == 5) and (.source_count | type == "number" and . >= 0 and . <= 5) and (.status as $status | ["multi_source","single_source","offline","primary_nobitex_confirmed","primary_nobitex","fallback_consensus","fallback_single","fallback_disagreement"] | index($status) != null) and (.server_alert | type == "boolean") and (.data_stale | type == "boolean") and (.fresh | type == "boolean") and (.server_monitor == "dedicated-tether-service-1m" or .server_monitor == "dedicated-tether-cron-1m" or .server_monitor == "warming_up" or (.server_monitor == "server-cron-1m" and ((.data_age_ms // 999999) <= 180000))) and (.last_known_toman == null or (.last_known_toman | type == "number")) and (.last_known_age_ms == null or (.last_known_age_ms | type == "number"))' /tmp/local-watch.json >/dev/null
-          jq -r '"Iranian USDT/Toman watch: " + .status + " | valid venues: " + (.source_count|tostring)' /tmp/local-watch.json
-          jq -r '.sources[]? | "  " + .exchange + ": " + (if .fresh then "fresh" else "offline" end) + (if .error then " · " + .error else "" end)' /tmp/local-watch.json
+          for source in nobitex-tether wallex-markets bitpin-tickers exir-tickers ramzinex-pairs; do
+            status=$(curl --silent --show-error --max-time 25 -D "/tmp/$source.headers" -o "/tmp/$source.json" -w "%{http_code}" "$WORKER_URL/market-proxy?source=$source" 2>/dev/null || true)
+            if [ "$status" = "200" ] && grep -qi '^x-mmp-cache: fresh' "/tmp/$source.headers" && test -s "/tmp/$source.json"; then
+              echo "Fresh proxy payload: $source"
+            else
+              echo "Provider unavailable or stale; excluded from consensus: $source (HTTP $status)"
+              rm -f "/tmp/$source.json"
+            fi
+          done
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+          const read=(name)=>{try{return JSON.parse(fs.readFileSync("/tmp/"+name+".json","utf8"));}catch{return null;}};
+          const quotes=[];
+          const add=(name,value)=>{const n=Number(value);if(Number.isFinite(n)&&n>=1000&&n<=100000000)quotes.push({name,price:n});};
+          const nobitex=read("nobitex-tether");
+          add("Nobitex",Number(nobitex?.stats?.["usdt-rls"]?.latest)/10);
+          const wallex=read("wallex-markets");
+          const wm=wallex?.result?.symbols||wallex?.result?.markets||{},wrows=Array.isArray(wm)?wm:Object.values(wm);
+          const wt=wrows.find(x=>["USDTTMN","USDTIRT"].includes(String(x?.symbol||"").toUpperCase())),wr=wrows.find(x=>["USDTIRR","USDTRLS"].includes(String(x?.symbol||"").toUpperCase()));
+          const wta=Number(wt?.stats?.lastPrice??wt?.lastPrice),wra=Number(wr?.stats?.lastPrice??wr?.lastPrice);
+          add("Wallex",wta>0?wta:wra/10);
+          const bitpin=read("bitpin-tickers"),br=Array.isArray(bitpin?.results)?bitpin.results:Array.isArray(bitpin?.data)?bitpin.data:Array.isArray(bitpin)?bitpin:[];
+          const bp=br.find(x=>{const c=String(x?.code||x?.symbol||"").replace(/[/-]/g,"_").toUpperCase(),flat=c.replace(/_/g,"");const b=String(x?.currency1?.code||x?.base_currency||x?.baseAsset||"").toUpperCase(),q=String(x?.currency2?.code||x?.quote_currency||x?.quoteAsset||c.split("_").pop()).toUpperCase();return /^USDT_(IRT|IRR|RLS|TMN)$/.test(c)||/^USDT(IRT|IRR|RLS|TMN)$/.test(flat)||(b==="USDT"&&["IRT","IRR","RLS","TMN"].includes(q));});
+          const bpPrice=Number(bp?.price_info?.price??bp?.internal_price_info?.price??bp?.price??bp?.last_price??bp?.last),bpUnit=String(bp?.currency2?.code||bp?.quote_currency||bp?.quoteAsset||String(bp?.code||bp?.symbol||"USDT_IRT").split(/[_/-]/).pop()).toUpperCase();
+          add("Bitpin",["IRR","RLS"].includes(bpUnit)?bpPrice/10:bpPrice);
+          const exir=read("exir-tickers"),es=exir?.result||exir?.data||exir||{},ee=Array.isArray(es)?es.map(x=>[x?.symbol||x?.pair||"",x]):Object.entries(es);
+          const ep=ee.find(([k,v])=>/^(usdt-(irt|tmn|toman|irr|rls)|(irt|tmn|toman|irr|rls)-usdt)$/.test(String(v?.symbol||v?.pair||k).toLowerCase().replace(/[_/]/g,"-")));
+          if(ep){const sym=String(ep[1]?.symbol||ep[0]).toLowerCase().replace(/[_/]/g,"-"),parts=sym.split("-"),rev=parts[0]!=="usdt",unit=rev?parts[0]:parts[1],raw=Number(ep[1]?.last??ep[1]?.close??ep[1]?.price),price=rev&&raw>0?1/raw:raw;add("Exir",price>0?(["irr","rls"].includes(unit)?price/10:price):0);}
+          const ram=read("ramzinex-pairs"),rr=ram?.result?.data??ram?.data??ram?.result?.pairs??ram?.pairs??[],rrows=Array.isArray(rr)?rr:Object.values(rr);
+          const code=v=>Array.isArray(v)?String(v[0]?.symbol??v[0]?.code??v[0]??""):String(v?.symbol??v?.code??v?.name??v??"");
+          const rp=rrows.find(x=>{const b=code(x?.base_currency_symbol??x?.base_currency??x?.baseCurrency).toUpperCase(),q=code(x?.quote_currency_symbol??x?.quote_currency??x?.quoteCurrency).toUpperCase(),n=String(x?.url_name??x?.symbol??x?.pair??"").toLowerCase().replace(/[_/]/g,"-");return b==="USDT"&&["IRR","IRT","RLS","TMN","TOMAN"].includes(q)||/^usdt-(irr|irt|rls|tmn|toman)$/.test(n);});
+          if(rp){const b=Number(rp.buy??rp.best_buy??rp.bid),a=Number(rp.sell??rp.best_sell??rp.ask),last=Number(rp.last??rp.last_price??rp.price??rp.rate),q=code(rp.quote_currency_symbol??rp.quote_currency??rp.quoteCurrency).toUpperCase(),raw=b>0&&a>0?(a+b)/2:last;add("Ramzinex",raw>0?(["IRR","RLS"].includes(q)?raw/10:raw):0);}
+          if(quotes.length<2)throw new Error("Fewer than two independent fresh Tether sources returned valid nonempty prices: "+JSON.stringify(quotes));
+          const sorted=quotes.map(x=>x.price).sort((a,b)=>a-b),mid=Math.floor(sorted.length/2),median=sorted.length%2?sorted[mid]:(sorted[mid-1]+sorted[mid])/2;
+          const consensus=quotes.filter(x=>Math.abs(x.price-median)/median<=0.025);
+          if(consensus.length<2)throw new Error("No two-source Tether consensus within 2.5%: "+JSON.stringify(quotes));
+          console.log("PASS live Tether consensus",consensus);
+          NODE
           status=$(curl --silent --show-error --max-time 25 -o /tmp/early-pressure.json -w "%{http_code}" "$WORKER_URL/early-pressure?symbol=BTC")
           echo "Early pressure endpoint HTTP $status"
           if [ "$status" != "200" ]; then cat /tmp/early-pressure.json; exit 1; fi
@@ -877,16 +865,18 @@ jobs:
           NODE
 
       - name: Live AI analyzer end-to-end smoke test
-        if: always() && github.ref == 'refs/heads/main'
+        if: always() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/rebuild/v4-new-platform' || github.head_ref == 'rebuild/v4-new-platform')
         env:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
           set -euo pipefail
           payload='{"coin_id":"bitcoin","symbol":"BTC","name":"Bitcoin","market_mode":"spot"}'
-          status=$(curl --silent --show-error --max-time 95 -H "Content-Type: application/json" -X POST --data "$payload" -o /tmp/analysis.json -w "%{http_code}" "$WORKER_URL/analyze")
+          status=$(curl --silent --show-error --max-time 95 -D /tmp/analysis.headers -H "Content-Type: application/json" -X POST --data "$payload" -o /tmp/analysis.json -w "%{http_code}" "$WORKER_URL/analyze")
           echo "Live AI analyzer HTTP $status"
           if [ "$status" != "200" ]; then
-            jq -r '.stage // "unknown stage", .error // "unknown error"' /tmp/analysis.json || cat /tmp/analysis.json
+            echo "Response headers:"; sed -n '1,25p' /tmp/analysis.headers || true
+            echo "Response bytes: $(wc -c < /tmp/analysis.json 2>/dev/null || echo 0)"
+            if jq -e . /tmp/analysis.json >/dev/null 2>&1; then jq -r '.stage // "unknown stage", .error // "unknown error", .upstream_requests_used // "request budget unavailable", .upstream_request_budget // "budget limit unavailable"' /tmp/analysis.json; else cat /tmp/analysis.json; fi
             exit 1
           fi
           jq -e '.analysis.action as $a | (["BUY","SELL","WAIT"] | index($a) != null) and (.market.timeframes | has("15m") and has("1h") and has("4h") and has("1d"))' /tmp/analysis.json >/dev/null

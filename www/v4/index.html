@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#070b12"><meta name="description" content="MMP COIN AI — پایانه هوشمند تحلیل بازار رمزارز">
+<link rel="icon" type="image/svg+xml" href="/assets/mmp-coin-ai-icon.svg?v=v4"><link rel="apple-touch-icon" href="/assets/mmp-coin-ai-icon.svg?v=v4"><link rel="manifest" href="./manifest.webmanifest">
+<meta name="mmp-app-version" content="2.0.0"><meta name="mmp-web-build" content="__MMP_WEB_BUILD_ID__">
+<script>
+(function(){
+ try{
+  var params=new URLSearchParams(window.location.search);
+  if(params.has("mmp_native_version")&&!params.has("mmp_live_refresh")){
+   params.set("mmp_live_refresh",String(Date.now()));
+   window.location.replace(window.location.pathname+"?"+params.toString()+window.location.hash);
+  }
+ }catch(e){}
+})();
+</script>
+<title>MMP COIN AI | Quantum Market Terminal</title>
+<link rel="stylesheet" href="./app.css">
+</head>
+<body>
+<div class="ambient ambient-a"></div><div class="ambient ambient-b"></div>
+<header class="topbar">
+ <a class="brand" href="#home" aria-label="MMP COIN AI">
+  <span class="coin-mark"><span>M</span></span><span class="brand-copy"><b>MMP <i>COIN</i> AI</b><small>QUANTUM INTELLIGENCE NETWORK</small></span>
+ </a>
+ <div class="currency-switch" role="group" aria-label="انتخاب واحد قیمت"><button type="button" class="currency-option active" id="btn-irt" aria-pressed="true">تومان</button><button type="button" class="currency-option" id="btn-usdt" aria-pressed="false">تتر</button></div>
+ <nav id="primaryNav" class="desktop-nav" aria-label="ناوبری اصلی"><a href="#command">فرماندهی کوانتومی</a><a href="#chart">نمودار زنده</a><a href="#radar">رادار هوشمند</a><a href="#hunter">شکارچی کوانتومی</a><a href="#analyzer">تحلیل‌گر هوشمند</a><a href="#engines">شبکه هوش کوانتومی</a></nav>
+ <div class="top-actions"><span class="live-state pending"><i></i> <span id="serviceStatus">در حال بررسی سرویس‌ها</span></span><button class="icon-btn" id="refreshAll" aria-label="به‌روزرسانی">↻</button><button class="menu-btn" id="menuToggle" aria-label="بازکردن منو" aria-controls="primaryNav" aria-expanded="false">☰</button></div>
+</header>
+<main id="home">
+ <section class="hero">
+  <div class="hero-copy"><div class="eyebrow"><span></span> INTELLIGENCE • PRECISION • SPEED</div>
+   <h1>بازار را <em>زودتر</em> ببین.</h1><p>مرکز یکپارچه هوش بازار؛ از جریان نقدینگی و ساختار قیمت تا کشف حرکت‌های اولیه.</p>
+   <div class="hero-actions"><a class="primary-btn" href="#command">ورود به مرکز فرماندهی <b>←</b></a><a class="quiet-link" href="#radar">مشاهده رادار بازار</a></div>
+   <div class="hero-stats"><div><b>QIE</b><small>ADAPTIVE CORE</small></div><div><b>Network</b><small>QUANTUM INTELLIGENCE</small></div><div><b>Multi</b><small>EXCHANGE DATA</small></div></div>
+  </div>
+  <div class="hero-art" aria-hidden="true"><div class="orbit orbit-one"></div><div class="orbit orbit-two"></div><div class="orbit orbit-three"></div><div class="hero-coin"><div class="coin-rim"></div><div class="coin-face"><span>M</span><small>MMP</small></div></div><div class="float-tag tag-top">QIE <b>CORE</b></div><div class="float-tag tag-bottom"><i></i> MARKET INTELLIGENCE</div></div>
+ </section>
+ <section class="ticker-panel" aria-label="قیمت‌های بازار"><div class="ticker-heading"><span class="pulse"></span> MARKET PULSE <small>قیمت لحظه‌ای</small></div><div class="ticker-items" id="ticker"><div class="ticker-item"><small>BTC / USDT</small><b>در حال دریافت…</b></div><div class="ticker-item"><small>ETH / USDT</small><b>در حال دریافت…</b></div><div class="ticker-item"><small>طلای توکنی PAXG / USDT</small><b>در حال دریافت…</b></div><div class="ticker-item"><small>تتر / تومان</small><b>در حال دریافت…</b></div></div><div class="ticker-integrity" id="tickerIntegrity" role="status" aria-live="polite">اعتبارسنجی مستقل منابع در حال انجام است؛ تا تأیید، قیمت قطعی تلقی نمی‌شود.</div></section>
+ <section class="section command-section" id="command">
+  <div class="section-heading"><div><span class="kicker">01 / CONTROL CENTER</span><h2>فرماندهی کوانتومی <em>MMP</em></h2><p>نمای وضعیت اتصال سرویس‌ها و فرصت‌های دریافت‌شده از بازار</p></div><span class="version-chip" id="runtimeVersion">ENGINE —</span></div>
+  <div class="command-grid">
+   <article class="command-main glass"><div class="command-top"><span class="status-dot"></span><span>QUANTUM CORE STATUS</span><span class="spacer"></span><b id="coreStatus">در حال بررسی</b></div><div class="core-visual"><div class="core-ring ring-a"></div><div class="core-ring ring-b"></div><div class="core-orb"><span>M</span></div></div><div class="command-foot"><div><small>هسته تحلیل</small><b>QIE Adaptive Intelligence</b></div><div><small>آخرین بررسی</small><b id="coreUpdated">—</b></div></div></article>
+   <div class="command-side"><a class="feature-tile" href="#radar"><span class="tile-icon">⌁</span><span><b>رادار هوشمند</b><small>کشف حرکت‌های قدرتمند با تأیید چندلایه</small></span><strong>←</strong></a><a class="feature-tile" href="#hunter"><span class="tile-icon">⌖</span><span><b>شکارچی کوانتومی</b><small>شناسایی زودهنگام فرصت‌های Spot و Futures</small></span><strong>←</strong></a><a class="feature-tile" href="#analyzer"><span class="tile-icon">◈</span><span><b>تحلیل‌گر هوشمند</b><small>ساختار، مومنتوم، نقدینگی و ریسک</small></span><strong>←</strong></a></div>
+  </div>
+ </section>
+ <section class="section" id="chart">
+  <div class="section-heading"><div><span class="kicker">02 / LIVE MARKET CHART</span><h2>نمودار حرفه‌ای <em>بازار</em></h2><p>کندل تازه از Worker چندمسیره؛ بدون اتصال مستقیم مرورگر به صرافی.</p></div><button class="outline-btn" id="chartRefresh" type="button">به‌روزرسانی نمودار ↻</button></div>
+  <div class="chart-terminal glass">
+   <div class="chart-controls">
+    <label>نماد دارایی<input id="chartSymbol" type="text" value="BTC" maxlength="20" autocomplete="off" spellcheck="false" aria-label="نماد نمودار"></label>
+    <label>بازه زمانی<select id="chartInterval" aria-label="بازه زمانی نمودار"><option value="1m">۱ دقیقه</option><option value="3m">۳ دقیقه</option><option value="5m">۵ دقیقه</option><option value="15m" selected>۱۵ دقیقه</option><option value="1h">۱ ساعت</option><option value="4h">۴ ساعت</option><option value="1d">روزانه</option></select></label>
+    <label>نوع بازار<select id="chartMarket" aria-label="نوع بازار نمودار"><option value="spot">اسپات</option><option value="futures">فیوچرز</option></select></label>
+    <label>نوع نمایش<select id="chartType" aria-label="نوع نمودار"><option value="candles">کندلی</option><option value="heikin-ashi">هیکن‌آشی</option><option value="bars">میله‌ای</option><option value="line">خطی</option></select></label>
+    <button class="primary-btn" id="loadChart" type="button">بارگذاری نمودار</button>
+   </div>
+   <div class="chart-status-row"><div id="chartStatus" role="status" aria-live="polite">در انتظار دریافت کندل تازه…</div><div class="chart-meta"><span id="chartProvider">منبع: —</span><span id="chartFreshness">تازگی: بررسی‌نشده</span><span id="chartLastPrice">قیمت: —</span></div></div>
+   <div class="chart-indicators" aria-label="اندیکاتورهای نمودار">
+    <label><input id="showEma20" type="checkbox" checked> EMA 20</label>
+    <label><input id="showEma50" type="checkbox" checked> EMA 50</label>
+    <label><input id="showBollinger" type="checkbox" checked> Bollinger</label>
+    <label><input id="showVolume" type="checkbox" checked> Volume</label>
+    <label><input id="showMacd" type="checkbox" checked> MACD</label>
+    <label><input id="showRsi" type="checkbox" checked> RSI 14</label>
+   </div>
+   <div id="marketChart" class="chart-canvas" role="img" aria-label="نمودار زنده قیمت و حجم"></div>
+   <div id="macdChart" class="indicator-canvas" role="img" aria-label="اندیکاتور MACD"></div>
+   <div id="rsiChart" class="indicator-canvas" role="img" aria-label="اندیکاتور RSI 14"></div>
+   <p class="chart-note">قیمت محور نمودار بر حسب USDT است؛ نرخ تومان در صورت تأیید منبع تتر کنار قیمت نمایش داده می‌شود. داده کهنه یا فاقد کندل کافی به‌عنوان زنده معرفی نمی‌شود.</p>
+  </div>
+ </section>
+ <section class="section" id="radar"><div class="section-heading"><div><span class="kicker">03 / OPPORTUNITY SCANNER</span><h2>رادار <em>هوشمند</em></h2><p>فقط سیگنال‌هایی نمایش داده می‌شوند که از سرویس واقعی دریافت شوند.</p></div><button class="outline-btn" data-refresh="radar">به‌روزرسانی رادار ↻</button></div><div class="signal-panel glass"><div class="panel-bar"><span><i class="status-dot"></i> FAST RADAR / SNAPSHOT</span><small id="radarMeta">در انتظار پاسخ سرویس</small></div><div id="radarList" class="signal-list"><div class="empty-state"><span class="loader"></span><b>در حال اتصال به رادار</b><small>هیچ سیگنال ساختگی نمایش داده نمی‌شود.</small></div></div></div></section>
+ <section class="section" id="hunter"><div class="section-heading"><div><span class="kicker">04 / EARLY MOVE DISCOVERY</span><h2>شکارچی <em>کوانتومی</em></h2><p>فرصت‌های Spot و Futures با وضعیت داده و صرافی مبدأ</p></div><button class="outline-btn" data-refresh="hunter">به‌روزرسانی شکارچی ↻</button></div><div class="hunter-grid"><article class="glass hunter-card"><div class="panel-bar"><span>SPOT HUNTER</span><small id="spotMeta">در انتظار داده</small></div><div id="spotList" class="signal-list compact"><div class="empty-state"><span class="loader"></span><b>در حال دریافت داده Spot</b></div></div></article><article class="glass hunter-card"><div class="panel-bar"><span>FUTURES HUNTER</span><small id="futuresMeta">در انتظار داده</small></div><div id="futuresList" class="signal-list compact"><div class="empty-state"><span class="loader"></span><b>در حال دریافت داده Futures</b></div></div></article></div></section>
+ <section class="section" id="analyzer">
+  <div class="section-heading">
+   <div><span class="kicker">05 / REAL QUANTITATIVE ANALYSIS</span><h2>تحلیل‌گر <em>هوشمند</em></h2><p>اتصال مستقیم به موتور تحلیل واقعی نسخهٔ قبلی؛ بررسی چهار بازهٔ زمانی، تازگی کندل‌ها، حجم، ریسک و سناریوها.</p></div>
+   <button class="outline-btn" data-refresh="analyzer" id="analyzerRefresh">تازه‌سازی تحلیل ↻</button>
+  </div>
+  <div class="analysis-terminal glass">
+   <div class="analysis-controls">
+    <label>نماد دارایی <input id="analysisSymbol" type="text" value="BTC" maxlength="20" autocomplete="off" spellcheck="false" aria-label="نماد ارز برای تحلیل"></label>
+    <label>نوع بازار <select id="analysisMarketMode" aria-label="نوع بازار تحلیل"><option value="both">اسپات + فیوچرز</option><option value="spot">فقط اسپات</option><option value="futures">فقط فیوچرز</option></select></label>
+    <button class="primary-btn" id="runAnalysis" type="button">اجرای تحلیل واقعی</button>
+   </div>
+   <div class="analysis-status" id="analysisStatus" role="status" aria-live="polite">موتور تحلیل آماده است؛ نماد را انتخاب و تحلیل را اجرا کن.</div>
+   <div class="analysis-metrics">
+    <div><small>جمع‌بندی جهت بازار</small><b id="analysisAction">در انتظار تحلیل</b></div>
+    <div><small>قیمت مرجع</small><b id="analysisPrice">—</b></div>
+    <div><small>سطح ریسک</small><b id="analysisRisk">—</b></div>
+    <div><small>قدرت شواهد</small><b id="analysisConfidence">—</b></div>
+   </div>
+   <div class="analysis-confidence"><span id="analysisConfidenceBar"></span></div>
+   <div class="analysis-timeframes" id="analysisTimeframes"><div class="empty-state">پس از اجرای تحلیل، وضعیت ۱۵ دقیقه، ۱ ساعت، ۴ ساعت و روزانه نمایش داده می‌شود.</div></div>
+   <div class="analysis-report" id="analysisReport"><div class="empty-state"><b>گزارش هنوز اجرا نشده است</b><small>هیچ سیگنال یا سطح معاملاتی از پیش ساخته‌شده‌ای نمایش داده نمی‌شود.</small></div></div>
+  </div>
+ </section>
+ <section class="section" id="engines"><div class="section-heading"><div><span class="kicker">06 / QUANTUM INTELLIGENCE</span><h2>موتور هوشمند یکپارچه <em>MMP</em></h2><p>یک هسته هماهنگ برای اجرای تحلیل‌ها و وظایف تخصصی بازار</p></div></div><div class="unified-engine glass" id="engineCore"><div class="unified-engine-mark"><span>M</span></div><div class="unified-engine-copy"><b>هسته یکپارچه هوش بازار</b><p>۱۲ بُعد امتیازدهی وزن‌دار در یک هسته مشترک؛ هر بُعد فقط با ورودی معتبر فعال می‌شود و مؤلفه‌های فاقد شواهد از امتیاز کنار گذاشته می‌شوند. این‌ها ۱۲ مدل مستقل یا ۱۲ سرویس جداگانه نیستند.</p><small id="engineStatus">وضعیت اتصال داده‌ها: در انتظار بررسی</small></div></div></section>
+ <footer class="footer"><div class="brand"><span class="coin-mark"><span>M</span></span><span class="brand-copy"><b>MMP <i>COIN</i> AI</b><small>QUANTUM MARKET TERMINAL</small></span></div><div class="footer-copy">تحلیل داده‌محور بازار؛ بدون تضمین سود و بدون سیگنال ساختگی.</div><a href="mailto:mmp.coin.ai@gmail.com">ارتباط با ما</a></footer>
+</main>
+<script>
+window.mmpChartLibraryReady=new Promise(resolve=>{
+ const urls=[
+  "https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js",
+  "https://unpkg.com/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js"
+ ];
+ let index=0;
+ const loadNext=()=>{
+  if(index>=urls.length){resolve(false);return;}
+  const script=document.createElement("script");
+  script.src=urls[index++];
+  script.onload=()=>resolve(!!window.LightweightCharts);
+  script.onerror=loadNext;
+  document.head.appendChild(script);
+ };
+ loadNext();
+});
+</script>
+<script src="./app.js" defer></script>
+</body></html>
