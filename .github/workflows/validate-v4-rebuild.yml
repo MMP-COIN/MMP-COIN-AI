@@ -4,6 +4,8 @@ on:
     branches: ["rebuild/**"]
     paths:
       - "www/v4/**"
+      - "cloudflare-worker/worker.js"
+      - ".github/workflows/worker-health.yml"
       - ".github/workflows/validate-v4-rebuild.yml"
 permissions:
   contents: read
@@ -21,6 +23,19 @@ jobs:
           node-version: 20
       - name: Check JavaScript syntax
         run: node --check www/v4/app.js
+      - name: Validate chart data contract and deterministic UI harness
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+          const app = fs.readFileSync("www/v4/app.js", "utf8");
+          const worker = fs.readFileSync("cloudflare-worker/worker.js", "utf8");
+          const workflow = fs.readFileSync(".github/workflows/validate-v4-rebuild.yml", "utf8");
+          if (!app.includes("candles.length<55")) throw new Error("Chart EMA50/indicator minimum must remain 55 candles");
+          if (!worker.includes("candles(symbol,interval,env,marketType,null,55)") || !worker.includes("minimumCandlesOverride")) throw new Error("Live chart API must enforce the same 55-candle minimum as the UI");
+          if (!worker.includes("const upstreamBudget={used:0,max:44};") || !worker.includes("getExchangeCatalogs(mode,upstreamBudget)") || !worker.includes("upstream_request_budget:upstreamBudget.max")) throw new Error("Analyzer must enforce and report its bounded upstream request budget");
+          if (!workflow.includes("lightweight-charts@4.2.3") || !workflow.includes('url.pathname === "/market-candles"') || !workflow.includes("length:120")) throw new Error("Browser smoke tests must use a pinned chart library and a deterministic nonempty candle fixture");
+          console.log("Chart contract, 55-candle API minimum, request budget and deterministic browser fixture verified.");
+          NODE
       - name: Enforce fresh Tether conversion and reduced-motion support
         run: |
           node --input-type=module <<'NODE'
