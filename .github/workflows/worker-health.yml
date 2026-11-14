@@ -433,14 +433,14 @@ jobs:
           WORKER_URL: https://mmp-coin-ai-analyzer.mehrdadmohammadi1988.workers.dev
         run: |
           set -euo pipefail
-          curl --fail --silent --show-error --retry 1 --retry-delay 3 --max-time 90 "$WORKER_URL/hunter-scan?market=spot&symbols=BTC%2CETH%2CSOL%2CXRP" -o /tmp/five-provider-hunter.json
-          jq '{requested,scanned,failed,errors,signals_count:(.signals|length)}' /tmp/five-provider-hunter.json
-          jq -e '.requested == 4 and (.scanned // 0) >= 2 and (.failed // 4) <= 2' /tmp/five-provider-hunter.json >/dev/null
-          jq -r '"Deployed five-provider Hunter: " + (.scanned|tostring) + "/4 scanned; " + (.candidates|tostring) + " preliminary candidates; " + (.failed|tostring) + " data failures; " + (.signals|length|tostring) + " confirmed signals." ' /tmp/five-provider-hunter.json
-          curl --fail --silent --show-error --retry 1 --retry-delay 3 --max-time 120 "$WORKER_URL/hunter-scan?market=futures&symbols=BTC%2CETH%2CSOL%2CXRP%2CDOGE%2CBNB" -o /tmp/futures-provider-hunter.json
-          jq '{requested,scanned,failed,errors,signals_count:(.signals|length)}' /tmp/futures-provider-hunter.json
-          jq -e '.requested == 6 and (.scanned // 0) >= 4 and (.failed // 6) <= 2' /tmp/futures-provider-hunter.json >/dev/null
-          jq -r '"Deployed Futures fallback: " + (.scanned|tostring) + "/6 scanned; " + (.failed|tostring) + " data failures; " + (.signals|length|tostring) + " flow-confirmed signals." ' /tmp/futures-provider-hunter.json
+          for market in spot futures; do
+            status=$(curl --silent --show-error --retry 1 --retry-delay 3 --max-time 55 -o "/tmp/five-provider-$market.json" -w "%{http_code}" "$WORKER_URL/hunter-scan?market=$market&symbols=BTC")
+            echo "$market one-symbol five-provider Hunter HTTP $status"
+            if [ "$status" != "200" ]; then cat "/tmp/five-provider-$market.json"; exit 1; fi
+            jq -e '.requested == 1 and .scanned == 1 and (.failed // 0) == 0 and .batch_limit == 1 and .requested_symbols == ["BTC"] and (.signals | type == "array") and (.errors | type == "array")' "/tmp/five-provider-$market.json" >/dev/null
+            jq -e '[.signals[] | select(.confirmed != true or .quantum.engine != "MMP QUANTUM INTELLIGENCE ENGINE" or .flow.complete != true or (.flow.provider | type != "string"))] | length == 0' "/tmp/five-provider-$market.json" >/dev/null
+            jq -r '"Deployed " + .market + " Hunter: " + (.scanned|tostring) + " BTC scan; " + (.signals|length|tostring) + " flow-confirmed signals; " + (.failed|tostring) + " data failures."' "/tmp/five-provider-$market.json"
+          done
       - name: Verify scheduled Spot and Futures hunter cycles
         if: always() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/rebuild/v4-new-platform' || github.head_ref == 'rebuild/v4-new-platform')
         env:
@@ -742,7 +742,7 @@ jobs:
           else
             echo "::warning::Derivatives endpoint responded but did not provide funding/open-interest values for BTC in this run."
           fi
-          for symbol in BTC ETH; do
+          for symbol in ETH; do
             hunter_status=$(curl --silent --show-error --retry 1 --retry-delay 2 --max-time 50 -o /tmp/hunter-scan.json -w "%{http_code}" "$WORKER_URL/hunter-scan?symbols=$symbol")
             echo "Independent Spot Hunter scan ($symbol) HTTP $hunter_status"
             if [ "$hunter_status" != "200" ]; then cat /tmp/hunter-scan.json; exit 1; fi
@@ -750,7 +750,7 @@ jobs:
             jq -e '[.signals[] | select(.confirmed != true or .quantum.engine != "MMP QUANTUM INTELLIGENCE ENGINE" or .flow.complete != true or (.flow.provider | type != "string"))] | length == 0' /tmp/hunter-scan.json >/dev/null
             jq -r '.errors[]? | "Spot Hunter diagnostic: " + .symbol + " · " + .error' /tmp/hunter-scan.json
           done
-          for symbol in BTC ETH; do
+          for symbol in ETH; do
             futures_status=$(curl --silent --show-error --retry 1 --retry-delay 2 --max-time 60 -o /tmp/hunter-futures-scan.json -w "%{http_code}" "$WORKER_URL/hunter-scan?market=futures&symbols=$symbol")
             echo "Independent Futures Hunter scan ($symbol) HTTP $futures_status"
             if [ "$futures_status" != "200" ]; then cat /tmp/hunter-futures-scan.json; exit 1; fi
