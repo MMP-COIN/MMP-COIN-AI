@@ -3236,7 +3236,7 @@ async function refreshLiveQuotes(){
   const now=Date.now();
   const fresh=updated.filter(c=>{
    const stamp=Date.parse(c.price_updated_at||"");
-   return Number(c.current_price)>0&&c.price_is_stale!==true&&Number(c.price_source_count)>=1&&Number.isFinite(stamp)&&now-stamp>=0&&now-stamp<=120000;
+   return Number(c.current_price)>0&&c.price_is_stale!==true&&Number(c.price_source_count)>=1&&Number.isFinite(stamp)&&now-stamp>=0&&now-stamp<=90000;
   });
   const freshById=new Map(fresh.map(c=>[String(c.id),c]));
   const freshBySymbol=new Map(fresh.map(c=>[String(c.symbol||"").toUpperCase(),c]));
@@ -3271,7 +3271,7 @@ async function refreshLiveQuotes(){
   const now=Date.now();
   cachedCoinsData=cachedCoinsData.map(c=>{
    const stamp=Date.parse(c.price_updated_at||"");
-   return !Number.isFinite(stamp)||now-stamp<0||now-stamp>120000?{...c,price_is_stale:true}:c;
+   return !Number.isFinite(stamp)||now-stamp<0||now-stamp>90000?{...c,price_is_stale:true}:c;
   });
   renderCoinsTables(cachedCoinsData);
   const status=$("updated");if(status)status.textContent="به‌روزرسانی قیمت ناموفق بود؛ قیمت‌های منقضی پنهان شدند.";
@@ -3692,12 +3692,12 @@ async function refreshBenchmarkQuotes(){
    return {id:symbol==="BTC"?"bitcoin":"ethereum",symbol,name:old.name||symbol,current_price:Number(old.current_price)||0,price_change_percentage_24h:old.price_change_percentage_24h,price_source:old.price_source||"آخرین داده معتبر",price_updated_at:old.price_updated_at||null};
   });
   const quotes=await enrichWithBinance(seed);
-  const now=Date.now(),fresh=quotes.filter(c=>Number(c.current_price)>0&&c.price_is_stale!==true&&Number(c.price_source_count)>=1&&Number.isFinite(Date.parse(c.price_updated_at||""))&&now-Date.parse(c.price_updated_at)<=120000);
+  const now=Date.now(),fresh=quotes.filter(c=>{const stamp=Date.parse(c.price_updated_at||"");return Number(c.current_price)>0&&c.price_is_stale!==true&&Number(c.price_source_count)>=1&&Number.isFinite(stamp)&&now-stamp>=0&&now-stamp<=90000;});
   if(!fresh.length)return false;
   const bySymbol=new Map(fresh.map(c=>[String(c.symbol).toUpperCase(),c]));
   cachedCoinsData=cachedCoinsData.map(c=>bySymbol.get(String(c.symbol||"").toUpperCase())?{...c,...bySymbol.get(String(c.symbol||"").toUpperCase())}:c);
   lastMarket.crypto=lastMarket.crypto||{};
-  fresh.forEach(c=>{lastMarket.crypto[c.symbol.toUpperCase()]={usd:Number(c.current_price),change24h:c.price_change_percentage_24h,updatedAt:now,sources:c.price_source};});
+  fresh.forEach(c=>{const sourceAt=Date.parse(c.price_updated_at||"");lastMarket.crypto[c.symbol.toUpperCase()]={usd:Number(c.current_price),change24h:c.price_change_percentage_24h,updatedAt:sourceAt,exchangeTimestamp:sourceAt,sources:c.price_source};});
   renderHeroCards();
   return true;
  }catch(error){console.warn("Independent BTC/ETH quote refresh failed:",error);return false;}
@@ -7781,6 +7781,6 @@ html body section#market-snapshot.grid.mmp-market-snapshot>article.mmp-market-ca
 }
 </style>
 
-<script src="assets/mmp-live-coherence-v1.js?v=20261114.1"></script>
+<script src="assets/mmp-live-coherence-v1.js?v=20261114.2"></script>
 </body>
 </html>

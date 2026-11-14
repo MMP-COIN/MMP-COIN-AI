@@ -52,18 +52,24 @@
         return;
       }
       const change = Number(quote.change24h);
+      const tomanText = typeof isTetherRateFresh === "function" && isTetherRateFresh()
+        ? "معادل " + Math.round(Number(quote.usd) * Number(currentTetherPrice)).toLocaleString("en-US") + " تومان"
+        : "معادل تومانی در انتظار نرخ زنده تتر";
       const changeText = Number.isFinite(change)
         ? " · ۲۴ ساعت: " + (change >= 0 ? "+" : "") + change.toFixed(2) + "%"
         : "";
       setCardValue(valueId, subId, number(quote.usd, 2) + " USDT",
-        (quote.sources || "منبع زنده") + changeText + " · " + timeLabel(quote.exchangeTimestamp || quote.updatedAt));
+        tomanText + " · " + (quote.sources || "منبع زنده") + changeText + " · " + timeLabel(quote.exchangeTimestamp || quote.updatedAt));
     };
     renderCrypto(btc, "btc", "btc-sub", "BTC");
     renderCrypto(eth, "eth", "eth-sub", "ETH");
 
     if (goldQuote && Date.now() - goldQuote.updatedAt <= MAX_GOLD_AGE_MS) {
       setCardValue("gold", "gold-sub", number(goldQuote.price, 2) + " USDT",
-        "منبع: Gold-API · قیمت زنده · " + timeLabel(goldQuote.updatedAt));
+        (typeof isTetherRateFresh === "function" && isTetherRateFresh()
+          ? "معادل " + Math.round(Number(goldQuote.price) * Number(currentTetherPrice)).toLocaleString("en-US") + " تومان · "
+          : "معادل تومانی در انتظار نرخ زنده تتر · ")
+          + "منبع: Gold-API · قیمت زنده · " + timeLabel(goldQuote.updatedAt));
     } else {
       setCardValue("gold", "gold-sub", "—", "قیمت زنده طلا در دسترس نیست؛ قیمت ذخیره‌شده نمایش داده نمی‌شود");
     }
@@ -101,14 +107,15 @@
     if (symbol !== "BTCUSDT" && symbol !== "ETHUSDT") return;
     const price = Number(data.c);
     const eventTime = Number(data.E) || Date.now();
-    if (!(price > 0) || !Number.isFinite(price) || Date.now() - eventTime > 15000) return;
+    const eventAge = Date.now() - eventTime;
+    if (!(price > 0) || !Number.isFinite(price) || eventAge < 0 || eventAge > 15000) return;
     const key = symbol.slice(0, 3);
     lastSocketMessageAt = Date.now();
     lastMarket.crypto = lastMarket.crypto || {};
     lastMarket.crypto[key] = {
       usd: price,
       change24h: Number(data.P),
-      updatedAt: Date.now(),
+      updatedAt: eventTime,
       exchangeTimestamp: eventTime,
       sources: "Binance Spot WebSocket"
     };
@@ -128,11 +135,19 @@
     }));
   }
 
+  const socketHosts = [
+    "wss://stream.binance.com:9443",
+    "wss://stream.binance.com:443",
+    "wss://data-stream.binance.vision"
+  ];
+  let socketHostIndex = 0;
+
   function connectSocket() {
     if (document.visibilityState === "hidden") return;
     if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) return;
     try {
-      socket = new WebSocket("wss://stream.binance.com:9443/stream?streams=btcusdt@ticker/ethusdt@ticker");
+      const host = socketHosts[socketHostIndex % socketHosts.length];
+      socket = new WebSocket(host + "/stream?streams=btcusdt@ticker/ethusdt@ticker");
       socket.addEventListener("open", () => { reconnectDelay = 2000; });
       socket.addEventListener("message", event => {
         try {
@@ -147,12 +162,14 @@
       });
       socket.addEventListener("close", () => {
         socket = null;
+        socketHostIndex = (socketHostIndex + 1) % socketHosts.length;
         if (reconnectTimer) clearTimeout(reconnectTimer);
         reconnectTimer = setTimeout(connectSocket, reconnectDelay);
         reconnectDelay = Math.min(30000, reconnectDelay * 2);
       });
     } catch (error) {
       socket = null;
+      socketHostIndex = (socketHostIndex + 1) % socketHosts.length;
       if (reconnectTimer) clearTimeout(reconnectTimer);
       reconnectTimer = setTimeout(connectSocket, reconnectDelay);
       reconnectDelay = Math.min(30000, reconnectDelay * 2);
