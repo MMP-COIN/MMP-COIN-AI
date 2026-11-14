@@ -1835,7 +1835,7 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/market-proxy"){
    if(ageMs<=responseCacheTtl*1000){
     const headers=new Headers(corsHeaders(request));
     headers.set("Content-Type",staleRawResponse.headers.get("Content-Type")||"application/json; charset=utf-8");
-    headers.set("X-MMP-Data-Source",source);headers.set("X-MMP-Cache","HIT");headers.set("X-MMP-Data-Age",String(Math.floor(ageMs)));
+    headers.set("X-MMP-Data-Source",source);headers.set("X-MMP-Cache","fresh");headers.set("X-MMP-Data-Age",String(Math.floor(ageMs)));
     headers.set("Cache-Control","public, max-age="+responseCacheTtl);headers.set("X-Content-Type-Options","nosniff");
     return new Response(staleRawResponse.body,{status:200,headers});
    }
