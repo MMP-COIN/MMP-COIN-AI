@@ -39,6 +39,7 @@ jobs:
           node --check --input-type=module < cloudflare-worker/learning-engine.js
           node --check --input-type=module < cloudflare-worker/decision-engine.js
           node --check --input-type=module < cloudflare-worker/futures-worker.js
+          node --check --input-type=module < cloudflare-worker/admin-worker.js
           node --input-type=module <<'NODE'
           import fs from "node:fs";
           const source = fs.readFileSync("cloudflare-worker/quantum-core.js", "utf8");
