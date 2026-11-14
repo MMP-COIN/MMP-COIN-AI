@@ -2242,7 +2242,8 @@ export default {
   const scheduledAt=Number(event?.scheduledTime)||Date.now(),minute=new Date(scheduledAt).getUTCMinutes();
   const universeRefresh=minute%15===0?refreshDigitalHunterUniverses(env).catch(error=>console.error("Hunter universe refresh failed:",error?.message||error)):Promise.resolve();
   const hunterCycle=runDigitalHunterCron(event,env,ctx).catch(error=>console.error("Digital Hunter scheduled cycle failed:",error?.message||error));
-  const background=Promise.allSettled([cleanup,universeRefresh,hunterCycle]);
+  const healthRefresh=env.INTERNAL_API_TOKEN&&minute%15!==0?handle(new Request("https://internal/connections-health?refresh=1",{headers:{"X-MMP-Internal-Token":env.INTERNAL_API_TOKEN}}),env).then(async response=>{if(!response.ok)throw new Error("Connection health refresh HTTP "+response.status);}).catch(error=>console.error("Connection health background monitor failed:",error?.message||error)):Promise.resolve();
+  const background=Promise.allSettled([cleanup,universeRefresh,hunterCycle,healthRefresh]);
   if(ctx?.waitUntil)ctx.waitUntil(background);else await background;
  }
 };
