@@ -781,19 +781,20 @@ jobs:
           add("Nobitex",Number(nobitex?.stats?.["usdt-rls"]?.latest)/10);
           const wallex=read("wallex-markets");
           const wm=wallex?.result?.symbols||wallex?.result?.markets||{},wrows=Array.isArray(wm)?wm:Object.values(wm);
-          const wt=wrows.find(x=>String(x?.symbol||"").toUpperCase()==="USDTTMN"),wr=wrows.find(x=>String(x?.symbol||"").toUpperCase()==="USDTIRT");
+          const wt=wrows.find(x=>["USDTTMN","USDTIRT"].includes(String(x?.symbol||"").toUpperCase())),wr=wrows.find(x=>["USDTIRR","USDTRLS"].includes(String(x?.symbol||"").toUpperCase()));
           const wta=Number(wt?.stats?.lastPrice??wt?.lastPrice),wra=Number(wr?.stats?.lastPrice??wr?.lastPrice);
           add("Wallex",wta>0?wta:wra/10);
           const bitpin=read("bitpin-tickers"),br=Array.isArray(bitpin?.results)?bitpin.results:Array.isArray(bitpin?.data)?bitpin.data:Array.isArray(bitpin)?bitpin:[];
-          const bp=br.find(x=>{const c=String(x?.code||x?.symbol||"").replace(/[/-]/g,"_").toUpperCase().replace(/_/g,"");const b=String(x?.currency1?.code||x?.base_currency||x?.baseAsset||"").toUpperCase(),q=String(x?.currency2?.code||x?.quote_currency||x?.quoteAsset||"").toUpperCase();return c==="USDTIRT"||(b==="USDT"&&q==="IRT");});
-          add("Bitpin",Number(bp?.price_info?.price??bp?.internal_price_info?.price??bp?.price??bp?.last_price??bp?.last)*10);
+          const bp=br.find(x=>{const c=String(x?.code||x?.symbol||"").replace(/[/-]/g,"_").toUpperCase(),flat=c.replace(/_/g,"");const b=String(x?.currency1?.code||x?.base_currency||x?.baseAsset||"").toUpperCase(),q=String(x?.currency2?.code||x?.quote_currency||x?.quoteAsset||c.split("_").pop()).toUpperCase();return /^USDT_(IRT|IRR|RLS|TMN)$/.test(c)||/^USDT(IRT|IRR|RLS|TMN)$/.test(flat)||(b==="USDT"&&["IRT","IRR","RLS","TMN"].includes(q));});
+          const bpPrice=Number(bp?.price_info?.price??bp?.internal_price_info?.price??bp?.price??bp?.last_price??bp?.last),bpUnit=String(bp?.currency2?.code||bp?.quote_currency||bp?.quoteAsset||String(bp?.code||bp?.symbol||"USDT_IRT").split(/[_/-]/).pop()).toUpperCase();
+          add("Bitpin",["IRR","RLS"].includes(bpUnit)?bpPrice/10:bpPrice);
           const exir=read("exir-tickers"),es=exir?.result||exir?.data||exir||{},ee=Array.isArray(es)?es.map(x=>[x?.symbol||x?.pair||"",x]):Object.entries(es);
           const ep=ee.find(([k,v])=>/^(usdt-(irt|tmn|toman|irr|rls)|(irt|tmn|toman|irr|rls)-usdt)$/.test(String(v?.symbol||v?.pair||k).toLowerCase().replace(/[_/]/g,"-")));
-          if(ep){const sym=String(ep[1]?.symbol||ep[0]).toLowerCase().replace(/[_/]/g,"-"),parts=sym.split("-"),rev=parts[0]!=="usdt",unit=rev?parts[0]:parts[1],raw=Number(ep[1]?.last??ep[1]?.close??ep[1]?.price),price=rev&&raw>0?1/raw:raw;add("Exir",price>0?(["irt","tmn","toman"].includes(unit)?price*10:price):0);}
+          if(ep){const sym=String(ep[1]?.symbol||ep[0]).toLowerCase().replace(/[_/]/g,"-"),parts=sym.split("-"),rev=parts[0]!=="usdt",unit=rev?parts[0]:parts[1],raw=Number(ep[1]?.last??ep[1]?.close??ep[1]?.price),price=rev&&raw>0?1/raw:raw;add("Exir",price>0?(["irr","rls"].includes(unit)?price/10:price):0);}
           const ram=read("ramzinex-pairs"),rr=ram?.result?.data??ram?.data??ram?.result?.pairs??ram?.pairs??[],rrows=Array.isArray(rr)?rr:Object.values(rr);
           const code=v=>Array.isArray(v)?String(v[0]?.symbol??v[0]?.code??v[0]??""):String(v?.symbol??v?.code??v?.name??v??"");
           const rp=rrows.find(x=>{const b=code(x?.base_currency_symbol??x?.base_currency??x?.baseCurrency).toUpperCase(),q=code(x?.quote_currency_symbol??x?.quote_currency??x?.quoteCurrency).toUpperCase(),n=String(x?.url_name??x?.symbol??x?.pair??"").toLowerCase().replace(/[_/]/g,"-");return b==="USDT"&&["IRR","IRT","RLS","TMN","TOMAN"].includes(q)||/^usdt-(irr|irt|rls|tmn|toman)$/.test(n);});
-          if(rp){const b=Number(rp.buy??rp.best_buy??rp.bid),a=Number(rp.sell??rp.best_sell??rp.ask),last=Number(rp.last??rp.last_price??rp.price??rp.rate),q=code(rp.quote_currency_symbol??rp.quote_currency??rp.quoteCurrency).toUpperCase(),raw=b>0&&a>0?(a+b)/2:last;add("Ramzinex",raw>0?(["IRT","TMN","TOMAN"].includes(q)?raw*10:raw):0);}
+          if(rp){const b=Number(rp.buy??rp.best_buy??rp.bid),a=Number(rp.sell??rp.best_sell??rp.ask),last=Number(rp.last??rp.last_price??rp.price??rp.rate),q=code(rp.quote_currency_symbol??rp.quote_currency??rp.quoteCurrency).toUpperCase(),raw=b>0&&a>0?(a+b)/2:last;add("Ramzinex",raw>0?(["IRR","RLS"].includes(q)?raw/10:raw):0);}
           if(quotes.length<2)throw new Error("Fewer than two independent fresh Tether sources returned valid nonempty prices: "+JSON.stringify(quotes));
           const sorted=quotes.map(x=>x.price).sort((a,b)=>a-b),mid=Math.floor(sorted.length/2),median=sorted.length%2?sorted[mid]:(sorted[mid-1]+sorted[mid])/2;
           const consensus=quotes.filter(x=>Math.abs(x.price-median)/median<=0.025);
