@@ -1828,7 +1828,7 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/market-proxy"){
    source==="coinlore-top"?"offset="+requestedOffset:"",
    source==="coingecko-extra"?"ids="+(url.searchParams.get("ids")||""):""
   ].filter(Boolean).join("|");
-  const structuredSource=["coingecko-top","coinlore-top","coingecko-extra","nobitex-tether"].includes(source);
+  const structuredSource=source==="nobitex-tether";
   const marketCacheKey=structuredSource?await marketFallbackKey(cacheIdentity):null;
   const staleMarketResponse=structuredSource?await readMarketFallback(env,marketCacheKey):null;
   const responseCacheTtl=source.startsWith("coingecko")?180:source==="coinlore-top"?60:source.includes("tether")||source.includes("wallex")||source.includes("bitpin")||source.includes("exir")||source.includes("ramzinex")?10:5;
