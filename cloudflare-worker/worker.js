@@ -1962,6 +1962,7 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/futures-engine-heal
   // Provider reachability is reported by /connections-health, not by this lightweight route.
   return json({service:"MMP COIN AI",worker:"online",engine:QUANTUM_ENGINE_NAME,engine_version:QUANTUM_ENGINE_VERSION,
    ai_binding:!!env.AI,futures_engine_binding:!!env.FUTURES_ENGINE,market_cache_binding:!!env.MARKET_CACHE_DB,
+   admin_db_binding:!!env.ADMIN_DB,
    checked_at:new Date().toISOString()},200,request);
  }
  if(request.method!=="POST"||new URL(request.url).pathname!=="/analyze")return json({error:"Method not allowed"},405,request);
