@@ -512,41 +512,34 @@ async function readOkxCatalog(instType,budget=null){
  }
  return last||{ok:false,status:0,error:"OKX catalog unavailable"};
 }
-async function getExchangeCatalogs(mode="both",budget=null){
- const cached=exchangeCatalogCache.get(mode);
- if(cached&&Date.now()-cached.at<300000)return cached.data;
- const urls=[
-  ["binance_spot","https://api.binance.com/api/v3/exchangeInfo"],
-  ["bybit_spot",[
-   "https://api.bybit.eu/v5/market/instruments-info?category=spot&limit=1000",
-   "https://api.bytick.eu/v5/market/instruments-info?category=spot&limit=1000",
-   "https://api.bybit.com/v5/market/instruments-info?category=spot&limit=1000",
-   "https://api.bytick.com/v5/market/instruments-info?category=spot&limit=1000"
-  ]],
-  ["binance_futures","https://fapi.binance.com/fapi/v1/exchangeInfo"],
-  ["bybit_futures",[
-   "https://api.bybit.eu/v5/market/instruments-info?category=linear&limit=1000",
-   "https://api.bytick.eu/v5/market/instruments-info?category=linear&limit=1000",
-   "https://api.bybit.com/v5/market/instruments-info?category=linear&limit=1000",
-   "https://api.bytick.com/v5/market/instruments-info?category=linear&limit=1000"
-  ]],
-  ["bitget_futures","https://api.bitget.com/api/v3/market/tickers?category=USDT-FUTURES"],
-  ["gate_futures",["https://api.gateio.ws/api/v4/futures/usdt/tickers","https://api.gate.us/api/v4/futures/usdt/tickers"]],
-  ["bitget_spot","https://api.bitget.com/api/v3/market/instruments?category=SPOT"],
-  ["whitebit_spot",["https://whitebit.com/api/v1/public/markets","https://whitebit.eu/api/v1/public/markets","https://whitebit.tr/api/v1/public/markets","https://whitebit.ge/api/v1/public/markets"]],
-  ["gate_spot",["https://api.gateio.ws/api/v4/spot/currency_pairs","https://api.gate.us/api/v4/spot/currency_pairs"]],
-  ["kucoin_spot",["https://api.kucoin.com/api/v2/symbols","https://api.kucoin.tr/api/v2/symbols"]],
-  ["nobitex_spot","https://apiv2.nobitex.ir/market/stats?dstCurrency=rls"]
- ];
- const selectedUrls=urls.filter(([key])=>mode==="spot"?key.endsWith("_spot"):mode==="futures"?key.endsWith("_futures"):true);
- const results=await Promise.all(selectedUrls.map(async ([key,endpoint])=>[key,Array.isArray(endpoint)?await readAnyPublicJson(endpoint,budget):await readPublicJson(endpoint,budget)]));
- const out=Object.fromEntries(results);
- const [okxSpot,okxSwap]=await Promise.all([
-  mode==="futures"?Promise.resolve({ok:false,status:0,error:"Spot catalog not requested"}):readOkxCatalog("SPOT",budget),
-  mode==="spot"?Promise.resolve({ok:false,status:0,error:"Futures catalog not requested"}):readOkxCatalog("SWAP",budget)
- ]);
- out.okx_spot=okxSpot;out.okx_futures=okxSwap;
- exchangeCatalogCache.set(mode,{data:out,at:Date.now()});return out;
+async function getExchangeCatalogs(mode="both",budget=null,env=null,pair="BTCUSDT"){
+ const now=Date.now(),memoryKey=mode+":"+pair,cacheKey="exchange-catalogs:"+memoryKey;
+ const cached=exchangeCatalogCache.get(memoryKey);
+ if(cached&&now-cached.at<24*60*60*1000)return cached.data;
+ let stale=null;
+ if(env?.MARKET_CACHE_DB){
+  try{
+   const row=await env.MARKET_CACHE_DB.prepare("SELECT payload,cached_at FROM market_data_cache WHERE cache_key = ?").bind(cacheKey).first();
+   if(row?.payload){stale=JSON.parse(row.payload);if(now-(Number(row.cached_at)||0)<7*24*60*60*1000){exchangeCatalogCache.set(memoryKey,{data:stale,at:now});return stale;}}
+  }catch{}
+ }
+ const encodedPair=encodeURIComponent(pair),tasks=[];
+ if(mode!=="futures"){
+  tasks.push(["binance_spot",()=>readPublicJson("https://api.binance.com/api/v3/exchangeInfo?symbol="+encodedPair,budget)]);
+  tasks.push(["bybit_spot",()=>readAnyPublicJson(["https://api.bybit.com/v5/market/instruments-info?category=spot&symbol="+encodedPair,"https://api.bytick.com/v5/market/instruments-info?category=spot&symbol="+encodedPair],budget)]);
+ }
+ if(mode!=="spot"){
+  tasks.push(["binance_futures",()=>readPublicJson("https://fapi.binance.com/fapi/v1/exchangeInfo?symbol="+encodedPair,budget)]);
+  tasks.push(["bybit_futures",()=>readAnyPublicJson(["https://api.bybit.com/v5/market/instruments-info?category=linear&symbol="+encodedPair,"https://api.bytick.com/v5/market/instruments-info?category=linear&symbol="+encodedPair],budget)]);
+ }
+ const entries=await Promise.all(tasks.map(async([key,run])=>[key,await run()]));
+ const catalogs=Object.fromEntries(entries),hasLiveCatalog=Object.values(catalogs).some(x=>x?.ok===true);
+ if(!hasLiveCatalog&&stale){exchangeCatalogCache.set(memoryKey,{data:stale,at:now});return stale;}
+ exchangeCatalogCache.set(memoryKey,{data:catalogs,at:now});
+ if(env?.MARKET_CACHE_DB){
+  try{await env.MARKET_CACHE_DB.prepare("INSERT INTO market_data_cache (cache_key,payload,cached_at) VALUES (?, ?, ?) ON CONFLICT(cache_key) DO UPDATE SET payload=excluded.payload,cached_at=excluded.cached_at").bind(cacheKey,JSON.stringify(catalogs),now).run();}catch(error){console.error("Exchange catalog cache write failed:",error?.message||error);}
+ }
+ return catalogs;
 }
 function exchangeSupport(symbol,catalogs){
  const base=String(symbol||"").toUpperCase();
@@ -2085,7 +2078,7 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/futures-engine-heal
  const upstreamBudget={used:0,max:44};
  let stage="شناسایی جفت‌های فعال";
  try{
-  const catalogs=await getExchangeCatalogs(mode,upstreamBudget);
+  const catalogs=await getExchangeCatalogs(mode,upstreamBudget,env,pair);
   const support=exchangeSupport(symbol,catalogs);
   const spotPair=support.spot.pair||pair;
   const futuresPair=support.futures.pair||pair;
