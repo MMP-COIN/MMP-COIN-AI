@@ -80,6 +80,22 @@
     }
   }
 
+  function expireCatalogPrices() {
+    if (!Array.isArray(cachedCoinsData) || !cachedCoinsData.length || typeof renderCoinsTables !== "function") return;
+    const now = Date.now();
+    let changed = false;
+    cachedCoinsData = cachedCoinsData.map(coin => {
+      const stamp = Date.parse(coin?.price_updated_at || "");
+      const fresh = coin?.price_is_stale !== true && Number(coin?.current_price) > 0
+        && Number(coin?.price_source_count) >= 1 && Number.isFinite(stamp)
+        && now - stamp >= 0 && now - stamp <= 120000;
+      if (fresh) return coin;
+      if (coin?.price_is_stale !== true) changed = true;
+      return { ...coin, price_is_stale: true };
+    });
+    if (changed) renderCoinsTables(cachedCoinsData);
+  }
+
   function acceptTicker(data) {
     const symbol = String(data?.s || "").toUpperCase();
     if (symbol !== "BTCUSDT" && symbol !== "ETHUSDT") return;
@@ -248,7 +264,7 @@
   refreshGold();
   renderFixedCards();
 
-  setInterval(renderFixedCards, 2000);
+  setInterval(() => { renderFixedCards(); expireCatalogPrices(); }, 2000);
   setInterval(refreshRestFallback, REST_FALLBACK_MS);
   setInterval(refreshTether, TETHER_POLL_MS);
   setInterval(refreshGold, GOLD_POLL_MS);
