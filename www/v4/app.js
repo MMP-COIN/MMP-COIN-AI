@@ -220,28 +220,28 @@
    $("futuresList").innerHTML='<div class="signal-error">سرویس Futures پاسخ نداد.</div>';
   }
  }
- async function loadHealth(){
-  try{
-   const [d,runtime]=await Promise.all([get(MAIN+"/connections-health"),get(MAIN+"/health").catch(()=>null)]);
-   const runtimeHealthy=runtime?.worker==="online"&&/^QIE-\\d+\\.\\d+\\.\\d+$/.test(String(runtime.engine_version||""))&&runtime.ai_binding===true&&runtime.futures_engine_binding===true&&runtime.market_cache_binding===true;
+  async function loadHealth(){
+   let runtime=null;
+   try{runtime=await get(MAIN+"/health");}catch(e){}
+   const runtimeHealthy=runtime?.worker==="online"&&/^QIE-\d+\.\d+\.\d+$/.test(String(runtime.engine_version||""))&&runtime.ai_binding===true&&runtime.futures_engine_binding===true&&runtime.market_cache_binding===true&&runtime.admin_db_binding===true;
    const runtimeVersion=$("runtimeVersion");
    if(runtimeVersion)runtimeVersion.textContent=runtimeHealthy?"ENGINE "+runtime.engine_version:"ENGINE VERSION UNVERIFIED";
-   const checks=Array.isArray(d.checks)?d.checks:[],up=checks.filter(x=>x.status==="ok"||x.status==="slow").length,total=checks.length;
-   const connectionsHealthy=total>0&&up===total;
-   const fullyHealthy=runtimeHealthy&&connectionsHealthy;
+   let d=null;
+   for(let attempt=0;attempt<3&&!d;attempt++){
+    try{d=await get(MAIN+"/connections-health");}
+    catch(error){if(attempt<2)await new Promise(resolve=>setTimeout(resolve,450*(attempt+1)));}
+   }
+   const checks=Array.isArray(d?.checks)?d.checks:[],up=checks.filter(x=>x.status==="ok"||x.status==="slow").length,total=checks.length;
+   const connectionsHealthy=!!d&&total>0&&up===total;
    const partialHealthy=runtimeHealthy&&up>0;
-   const statusText=fullyHealthy?up+" از "+total+" اتصال سالم":!runtimeHealthy?"هسته اصلی تأیید نشد":up>0?up+" از "+total+" اتصال سالم · ناقص":"اتصال سرویس‌ها تأیید نشد";
+   const fullyHealthy=runtimeHealthy&&connectionsHealthy;
+   const statusText=!runtimeHealthy?"هسته اصلی تأیید نشد":!d?"اتصال‌ها بررسی نشدند":fullyHealthy?up+" از "+total+" اتصال سالم":partialHealthy?up+" از "+total+" اتصال سالم · ناقص":"اتصال سرویس‌ها تأیید نشد";
    $("coreStatus").textContent=statusText;
    const engineStatus=$("engineStatus");if(engineStatus)engineStatus.textContent="وضعیت هسته و داده‌ها: "+statusText;
-   $("coreUpdated").textContent=d.checked_at?new Date(d.checked_at).toLocaleTimeString("fa-IR"):"—";
+   $("coreUpdated").textContent=d?.checked_at?new Date(d.checked_at).toLocaleTimeString("fa-IR"):"—";
    const live=$("serviceStatus");
-   if(live){live.textContent=fullyHealthy?"هسته و "+up+"/"+total+" اتصال سالم":!runtimeHealthy?"هسته تأییدنشده":partialHealthy?up+"/"+total+" اتصال سالم · ناقص":"اتصال تأییدنشده";live.classList.remove("pending","healthy","partial","down");live.classList.add(fullyHealthy?"healthy":partialHealthy?"partial":"down");}
-  }catch(e){
-   $("coreStatus").textContent="عدم دریافت پاسخ";$("coreUpdated").textContent="اتصال بررسی نشد";
-   const engineStatus=$("engineStatus");if(engineStatus)engineStatus.textContent="وضعیت اتصال داده‌ها: بررسی ناموفق";
-   const live=$("serviceStatus");if(live){live.textContent="عدم دریافت پاسخ";live.classList.remove("pending","healthy","partial");live.classList.add("down");}
+   if(live){live.textContent=fullyHealthy?"هسته و "+up+"/"+total+" اتصال سالم":!runtimeHealthy?"هسته تأییدنشده":!d?"اتصال بررسی نشد":partialHealthy?up+"/"+total+" اتصال سالم · ناقص":"اتصال تأییدنشده";live.classList.remove("pending","healthy","partial","down");live.classList.add(fullyHealthy?"healthy":partialHealthy?"partial":"down");}
   }
- }
 
  let marketChart=null,macdChart=null,rsiChart=null,mainChartSeries=null,mainChartType="",ema20Series=null,ema50Series=null,bollUpperSeries=null,bollLowerSeries=null,volumeSeries=null,macdLineSeries=null,macdSignalSeries=null,macdHistogramSeries=null,rsiLineSeries=null;
  let lastChartPayload=null,lastChartKey="",chartBusy=false;
