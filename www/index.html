@@ -7823,5 +7823,20 @@ html body main#hero #market-snapshot.mmp-market-snapshot>.mmp-market-card .stat-
  html body main#hero #market-snapshot.mmp-market-snapshot>.mmp-market-card{min-height:124px!important;padding:9px!important}
 }
 </style>
+
+<style id="mmp-mobile-render-performance-20261114">
+/* Preserve the existing palette and layout while reducing expensive mobile paints. */
+@media(max-width:900px){
+  .top,.mmp-mobile-dock,.dropdown-menu,.radar-detail-header{
+    -webkit-backdrop-filter:none!important;
+    backdrop-filter:none!important;
+  }
+  body:after{display:none!important;animation:none!important;filter:none!important}
+  .hero-coin,#mmp-home-hero .mmp-emblem-coin{animation:none!important}
+  .card,.chart-box-wrapper,.collapsible-coins-container,.intel-panel,.intel-suite{
+    transition:border-color .16s ease!important;
+  }
+}
+</style>
 </body>
 </html>
