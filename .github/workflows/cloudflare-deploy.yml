@@ -110,6 +110,9 @@ jobs:
               -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" \
               --data "{\"enabled\":$enabled,\"previews_enabled\":false}" -o "/tmp/$name-subdomain.json"
             jq -e '.success == true' "/tmp/$name-subdomain.json" >/dev/null
+            curl --fail --silent --show-error --max-time 20 "$API/$name/subdomain" \
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -o "/tmp/$name-subdomain-verified.json"
+            jq -e --argjson expected "$enabled" '.success == true and .result.enabled == $expected and .result.previews_enabled == false' "/tmp/$name-subdomain-verified.json" >/dev/null
           }
           clear_schedule() {
             local name="$1"
@@ -117,11 +120,24 @@ jobs:
               -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" \
               --data '[]' -o "/tmp/$name-schedules.json"
             jq -e '.success == true and (.result.schedules | length == 0)' "/tmp/$name-schedules.json" >/dev/null
+            curl --fail --silent --show-error --max-time 20 "$API/$name/schedules" \
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -o "/tmp/$name-schedules-verified.json"
+            jq -e '.success == true and (.result.schedules | length == 0)' "/tmp/$name-schedules-verified.json" >/dev/null
+          }
+          verify_schedule() {
+            local name="$1" expected="$2"
+            curl --fail --silent --show-error --max-time 20 "$API/$name/schedules" \
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -o "/tmp/$name-schedules-verified.json"
+            jq -e --arg cron "$expected" '.success == true and any(.result.schedules[]?; .cron == $cron)' "/tmp/$name-schedules-verified.json" >/dev/null
           }
           set_subdomain mmp-coin-ai-analyzer true
           set_subdomain mmp-coin-ai-futures false
           set_subdomain mmp-coin-ai-radar true
           set_subdomain mmp-coin-ai-admin true
+          verify_schedule mmp-coin-ai-analyzer '* * * * *'
+          verify_schedule mmp-coin-ai-futures '* * * * *'
+          verify_schedule mmp-coin-ai-radar '* * * * *'
+          verify_schedule mmp-coin-ai-admin '*/15 * * * *'
           for name in mmp-coin-ai-hunter-cron mmp-coin-nexus; do
             clear_schedule "$name"
             set_subdomain "$name" false
