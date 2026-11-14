@@ -3282,8 +3282,8 @@ async function refreshLiveQuotes(){
 
 const money=(v,d=2)=>Number(v).toLocaleString('en-US',{maximumFractionDigits:d});
 const toman=(v)=>Math.round(v).toLocaleString('en-US');
-const isTetherRateFresh=()=>currentTetherPrice>0&&!currentTetherStale&&currentTetherUpdatedAt>0&&Date.now()-currentTetherUpdatedAt<=120000;
-const isTetherRateRecentlyKnown=()=>currentTetherPrice>0&&currentTetherUpdatedAt>0&&Date.now()-currentTetherUpdatedAt<=15*60*1000;
+const isTetherRateFresh=()=>{const age=Date.now()-Number(currentTetherUpdatedAt||0);return currentTetherPrice>0&&!currentTetherStale&&Number.isFinite(age)&&age>=0&&age<=120000;};
+const isTetherRateRecentlyKnown=()=>{const age=Date.now()-Number(currentTetherUpdatedAt||0);return currentTetherPrice>0&&Number.isFinite(age)&&age>=0&&age<=15*60*1000;};
 
 function clock(){$('clock').textContent=new Date().toLocaleTimeString('fa-IR')}
 setInterval(clock,1000);clock();
@@ -3722,8 +3722,7 @@ async function refreshGoldQuote(){
   try{localStorage.setItem("mmp_gold_quote_v1",JSON.stringify({price,updatedAt,receivedAt:Date.now()}));}catch(e){}
   return true;
  }catch(error){
-  console.warn("Gold quote refresh failed:",error);
-  try{const saved=JSON.parse(localStorage.getItem("mmp_gold_quote_v1")||"null");if(Number(saved?.price)>0&&Date.now()-Number(saved.updatedAt)<30*60*1000){$("gold").textContent="$"+money(Number(saved.price),2);const sub=$("gold-sub");if(sub)sub.textContent="آخرین قیمت معتبر ذخیره‌شده · منبع: Gold-API";return false;}}catch(e){}
+  console.warn("Gold quote refresh failed; stale cached price is not rendered:",error);
   return false;
  }finally{clearTimeout(timer);goldQuoteInFlight=false;}
 }
@@ -3996,17 +3995,13 @@ function renderHeroCards() {
 
 function renderTetherCard(){
  const value=$("usdt"),source=$("usdt-source");if(!value||!source)return;
- const inToman=money(currentTetherPrice,0)+" تومان";
- const provider=currentTetherSources.length?currentTetherSources.join(" + "):"منبع نرخ تتر";
  if(isTetherRateFresh()){
-  value.textContent=inToman;
+  value.textContent=money(currentTetherPrice,0)+" تومان";
+  const provider=currentTetherSources.length?currentTetherSources.join(" + "):"منبع نرخ تتر";
   source.textContent="نرخ زنده USDT/IRT · "+provider+(currentTetherWarning?" · "+currentTetherWarning:"");
- }else if(isTetherRateRecentlyKnown()){
-  value.textContent=inToman;
-  source.textContent="آخرین نرخ ذخیره‌شده، نه قیمت زنده · "+new Date(currentTetherUpdatedAt).toLocaleTimeString("fa-IR")+" · "+provider;
  }else{
   value.textContent="—";
-  source.textContent=currentTetherWarning||"نرخ زنده تتر از منابع اصلی و پشتیبان در دسترس نیست";
+  source.textContent=currentTetherWarning||"نرخ زنده تتر از منابع اصلی و پشتیبان در دسترس نیست؛ نرخ ذخیره‌شده نمایش داده نمی‌شود";
  }
 }
 
