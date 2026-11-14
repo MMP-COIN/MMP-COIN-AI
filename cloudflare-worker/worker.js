@@ -1958,6 +1958,7 @@ if(request.method==="GET"&&new URL(request.url).pathname==="/market-proxy"){
   return json({error:"Market data source unavailable",source,detail:String(lastError||"upstream error").slice(0,120)},502,request);
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/connections-health"){
+  const internalAuthorized=!!env.FUTURES_ENGINE_TOKEN&&request.headers.get("X-MMP-Internal-Token")===env.FUTURES_ENGINE_TOKEN;
   if(!internalAuthorized){
    const limitResult=await checkRateLimit(env.PUBLIC_API_LIMITER,request,"connections-health",env,300);
    const limited=rateLimitReply(limitResult,request);if(limited)return limited;
@@ -2243,7 +2244,7 @@ export default {
   const scheduledAt=Number(event?.scheduledTime)||Date.now(),scheduledDate=new Date(scheduledAt),minute=scheduledDate.getUTCMinutes(),hour=scheduledDate.getUTCHours(),universeRefreshDue=minute===0&&hour%6===0;
   const universeRefresh=universeRefreshDue?refreshDigitalHunterUniverses(env).catch(error=>console.error("Hunter universe refresh failed:",error?.message||error)):Promise.resolve();
   const hunterCycle=runDigitalHunterCron(event,env,ctx).catch(error=>console.error("Digital Hunter scheduled cycle failed:",error?.message||error));
-  const healthRefresh=env.INTERNAL_API_TOKEN&&!universeRefreshDue?handle(new Request("https://internal/connections-health?refresh=1",{headers:{"X-MMP-Internal-Token":env.INTERNAL_API_TOKEN}}),env).then(async response=>{if(!response.ok)throw new Error("Connection health refresh HTTP "+response.status);}).catch(error=>console.error("Connection health background monitor failed:",error?.message||error)):Promise.resolve();
+  const healthRefresh=env.FUTURES_ENGINE_TOKEN&&!universeRefreshDue?handle(new Request("https://internal/connections-health?refresh=1",{headers:{"X-MMP-Internal-Token":env.FUTURES_ENGINE_TOKEN}}),env).then(async response=>{if(!response.ok)throw new Error("Connection health refresh HTTP "+response.status);}).catch(error=>console.error("Connection health background monitor failed:",error?.message||error)):Promise.resolve();
   const background=Promise.allSettled([cleanup,universeRefresh,hunterCycle,healthRefresh]);
   if(ctx?.waitUntil)ctx.waitUntil(background);else await background;
  }
