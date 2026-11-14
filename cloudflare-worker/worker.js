@@ -1347,11 +1347,12 @@ async function handle(request,env){
   const flowWindow=url.searchParams.get("window")||(marketType==="futures"?1:5);try{
    if(marketType==="futures"){
     if(!env.FUTURES_ENGINE||!env.FUTURES_ENGINE_TOKEN)return json({error:"Dedicated Futures flow service is not configured"},503,request);
-    const internal=new Request("https://futures-engine/market-flow?symbol="+encodeURIComponent(symbol)+"&window="+encodeURIComponent(flowWindow),{headers:{"X-MMP-Futures-Token":env.FUTURES_ENGINE_TOKEN}});
+    const internal=new Request("https://futures-engine/market-flow?symbol="+encodeURIComponent(symbol)+"&window="+encodeURIComponent(flowWindow)+"&compact=1",{headers:{"X-MMP-Futures-Token":env.FUTURES_ENGINE_TOKEN}});
     const response=await env.FUTURES_ENGINE.fetch(internal),payload=await response.json();
     return json(payload,response.status,request);
    }
-   return json(await loadMarketFlow(symbol,flowWindow),200,request);
+   const flow=await loadMarketFlow(symbol,flowWindow),trades=Array.isArray(flow.trades)?flow.trades:[];
+   return json({...flow,trade_count:flow.trade_count||trades.length,trades:trades.slice(-100),trade_sampled:trades.length>100},200,request);
   }catch(error){return json({error:String(error?.message||"دریافت جریان معاملات ناموفق بود").slice(0,260)},502,request);}
  }
  if(request.method==="GET"&&new URL(request.url).pathname==="/hunter-combined-snapshot"){
