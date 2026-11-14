@@ -31,20 +31,6 @@
   }
  }catch(e){}
  async function fetchTetherRate(){
-  const localPromise=(async()=>{
-   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),10000);
-   try{
-    const response=await fetch(MAIN+"/local-market-watch",{cache:"no-store",signal:controller.signal,headers:{Accept:"application/json"}});
-    if(!response.ok)throw new Error("HTTP "+response.status);
-    const data=await response.json();
-    if(data?.data_stale===true||data?.fresh!==true)throw new Error("stale local Toman rate");
-    const sources=Array.isArray(data?.sources)?data.sources.filter(x=>x?.fresh===true&&Number(x.price_toman)>0).map(x=>String(x.exchange||"")).filter(Boolean):[];
-    const price=Number(data?.median_toman);
-    if(Number.isFinite(price)&&price>=1000&&price<=100000000&&sources.length>=2)return {price,sources,warning:String(data.warning||"")};
-   }catch(error){console.warn("Local market monitor unavailable:",error?.message||error);}
-   finally{clearTimeout(timer);}
-   return null;
-  })();
   const fallbackPromise=(async()=>{
    const requests=[
     {source:"Nobitex",url:MAIN+"/market-proxy?source=nobitex-tether",read:d=>Number(d?.stats?.["usdt-rls"]?.latest)/10},
@@ -53,7 +39,7 @@
      const toman=markets.find(m=>String(m?.symbol||"").toUpperCase()==="USDTTMN");
      const rial=markets.find(m=>String(m?.symbol||"").toUpperCase()==="USDTIRT");
      const a=Number(toman?.stats?.lastPrice??toman?.lastPrice),b=Number(rial?.stats?.lastPrice??rial?.lastPrice);
-     return a>0?a:b/10;
+     return a>0?a:b;
     }},
     {source:"Bitpin",url:MAIN+"/market-proxy?source=bitpin-tickers",read:d=>{
      const rows=Array.isArray(d?.results)?d.results:Array.isArray(d?.data)?d.data:Array.isArray(d)?d:[];
@@ -63,8 +49,8 @@
       const quote=String(m?.currency2?.code||m?.quote_currency||m?.quoteAsset||"").toUpperCase();
       return code==="USDT_IRT"||flat==="USDTIRT"||(base==="USDT"&&quote==="IRT");
      });
-     const price=Number(pair?.price_info?.price??pair?.internal_price_info?.price??pair?.price??pair?.last_price??pair?.last);
-     return price>0?price*10:0;
+     const price=Number(pair?.price_info?.price??pair?.internal_price_info?.price??pair?.price??pair?.last_price??pair?.last),unit=String(pair?.currency2?.code||pair?.quote_currency||pair?.quoteAsset||"IRT").toUpperCase();
+     return price>0?(["IRR","RLS"].includes(unit)?price/10:price):0;
     }},
     {source:"Exir",url:MAIN+"/market-proxy?source=exir-tickers",read:d=>{
      const source=d?.result||d?.data||d||{},entries=Array.isArray(source)?source.map(x=>[x?.symbol||x?.pair||"",x]):Object.entries(source);
@@ -76,7 +62,7 @@
      const symbol=String(pair[1]?.symbol||pair[0]||"").toLowerCase().replace(/[_/]/g,"-"),parts=symbol.split("-");
      const reverse=parts[0]!=="usdt",unit=reverse?parts[0]:parts[1],raw=Number(pair[1]?.last??pair[1]?.close??pair[1]?.price);
      const price=reverse&&raw>0?1/raw:raw;
-     return price>0?(["irt","tmn","toman"].includes(unit)?price*10:price):0;
+     return price>0?(["irr","rls"].includes(unit)?price/10:price):0;
     }},
     {source:"Ramzinex",url:MAIN+"/market-proxy?source=ramzinex-pairs",read:d=>{
      const raw=d?.result?.data??d?.data??d?.result?.pairs??d?.pairs??[],rows=Array.isArray(raw)?raw:Object.values(raw);
@@ -91,7 +77,7 @@
      const buy=Number(pair.buy??pair.best_buy??pair.bid),sell=Number(pair.sell??pair.best_sell??pair.ask);
      const last=Number(pair.last??pair.last_price??pair.price??pair.rate),quote=code(pair.quote_currency_symbol??pair.quote_currency??pair.quoteCurrency).toUpperCase();
      const rawPrice=buy>0&&sell>0?(buy+sell)/2:last;
-     return rawPrice>0?(["IRT","TMN","TOMAN"].includes(quote)?rawPrice*10:rawPrice):0;
+     return rawPrice>0?(["IRR","RLS"].includes(quote)?rawPrice/10:rawPrice):0;
     }}
    ];
    const results=await Promise.all(requests.map(async item=>{
@@ -117,9 +103,8 @@
    if(spread>0.03)return {price:0,sources:consensus.map(x=>x.source),warning:"اجماع منابع معتبر شکل نگرفت؛ نرخ نمایش داده نمی‌شود"};
    return {price,sources:consensus.map(x=>x.source),warning:consensus.length<valid.length?"منبع پرت از اجماع حذف شد":""};
   })();
-  const [local,fallback]=await Promise.all([localPromise,fallbackPromise]);
-  if(local&&local.sources.length>=(fallback?.sources?.length||0))return local;
-  return fallback?.price>0?fallback:local||{price:0,sources:[],warning:"نرخ تتر موقتاً از منابع داخلی دریافت نشد"};
+  const fallback=await fallbackPromise;
+  return fallback?.price>0?fallback:fallback||{price:0,sources:[],warning:"نرخ تتر موقتاً از منابع داخلی دریافت نشد"};
  }
  function renderTicker(rows=latestTickerRows,failures=latestTickerFailures){
   if(!Array.isArray(rows)||rows.length===0)return;
