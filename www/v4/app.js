@@ -47,9 +47,9 @@
       const code=String(m?.code||m?.symbol||"").replace(/[/-]/g,"_").toUpperCase(),flat=code.replace(/_/g,"");
       const base=String(m?.currency1?.code||m?.base_currency||m?.baseAsset||"").toUpperCase();
       const quote=String(m?.currency2?.code||m?.quote_currency||m?.quoteAsset||"").toUpperCase();
-      return code==="USDT_IRT"||flat==="USDTIRT"||(base==="USDT"&&quote==="IRT");
+      return /^USDT_(IRT|IRR|RLS|TMN)$/.test(code)||/^USDT(IRT|IRR|RLS|TMN)$/.test(flat)||(base==="USDT"&&["IRT","IRR","RLS","TMN"].includes(quote));
      });
-     const price=Number(pair?.price_info?.price??pair?.internal_price_info?.price??pair?.price??pair?.last_price??pair?.last),unit=String(pair?.currency2?.code||pair?.quote_currency||pair?.quoteAsset||"IRT").toUpperCase();
+     const price=Number(pair?.price_info?.price??pair?.internal_price_info?.price??pair?.price??pair?.last_price??pair?.last),unit=String(pair?.currency2?.code||pair?.quote_currency||pair?.quoteAsset||String(pair?.code||pair?.symbol||"USDT_IRT").split(/[_/-]/).pop()).toUpperCase();
      return price>0?(["IRR","RLS"].includes(unit)?price/10:price):0;
     }},
     {source:"Exir",url:MAIN+"/market-proxy?source=exir-tickers",read:d=>{
